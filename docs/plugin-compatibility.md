@@ -1,6 +1,8 @@
 # Plugin and script compatibility
 
-Applies to the **`expert` edition only**. The `play` edition ships no third-party Python.
+Applies to **both editions** (Tier 3). The `play` edition accepts pure-Python plugins and
+Fava extensions with the Java/Android bridge withheld; the `expert` edition accepts native
+wheels and exposes the bridge. See [distribution.md](distribution.md) §2.1 for why.
 
 ---
 
@@ -94,6 +96,10 @@ Plugins are **not sandboxed** — see [threat-model.md](threat-model.md) §3.2. 
   the user granted access through a supported Android mechanism.
 - **Safe mode** disables all third-party code and opens ledgers read-only.
 - **Recovery mode** is reachable when a plugin breaks engine startup.
+- **`play` additionally:** pure-Python plugins only (no `.so`), no code fetched from any
+  network source, and the Java/Android bridge withheld from the user import context. These
+  are Play-policy compliance measures — they are *not* a security sandbox, and the UI must
+  not imply otherwise.
 - Timeouts and cancellation for scripts; scheduled work uses `WorkManager` and states
   plainly that Android does not guarantee exact timing.
 
@@ -119,8 +125,9 @@ A future vetted catalog would be a signed JSON document:
 }
 ```
 
-It is **not shipped in v1** in either edition. In `play` it would constitute interpreted
-code delivered outside review and needs an explicit policy decision first.
+It is **not shipped in v1** in either edition. A catalog means the *app* downloads code,
+which is a materially different policy position from the user supplying their own local
+files — in `play` it would need an explicit policy decision first.
 
 ---
 

@@ -1,8 +1,17 @@
 # Distribution, editions, and monetization
 
+Policy positions below were verified against Google's published policies on 2026-08-16
+and are re-verified before each release. Sources are cited inline.
+
 ---
 
-## 1. Edition feature matrix
+## 1. Design principle: parity by default
+
+The two editions ship the **same features and the same contribution tiers**. Differences
+exist only where Google Play policy makes parity impossible, and each one is named and
+justified below. There is no artificial crippling of the Play build.
+
+## 2. Edition feature matrix
 
 | Capability | `play` | `expert` |
 |---|:--:|:--:|
@@ -13,157 +22,202 @@
 | SAF import / export / auto-mirror | ✅ | ✅ |
 | Backups (manual + scheduled), encryption | ✅ | ✅ |
 | Documents, camera, PDF assembly, widgets | ✅ | ✅ |
-| **Bundled Fava extensions** | ❌ | ✅ |
-| **User Beancount plugins** | ❌ | ✅ |
-| **User Fava extensions** | ❌ | ✅ |
-| **Beangulp statement importers** | ❌ | ✅ |
-| **Python script runner** | ❌ | ✅ |
-| **beangrow / fava-portfolio-returns** | ❌ | ✅ on-demand |
-| Safe mode / recovery mode | ✅ | ✅ (also disables all third-party code) |
-| In-app update check + user-confirmed install | ❌ (Play handles it) | ✅ |
-| Purchase keys in-app | Play Billing | PayPal / Payoneer link |
-| "Enter key" (key bought elsewhere) | ✅ | ✅ |
+| **Bundled Fava extensions** | ✅ | ✅ |
+| **User Fava extensions (Tier 3)** | ✅ pure-Python only | ✅ |
+| **User Beancount plugins (Tier 3)** | ✅ pure-Python only | ✅ |
+| **Beangulp statement importers (Tier 3)** | ✅ pure-Python only | ✅ |
+| **Python script runner (Tier 3)** | ✅ restricted context | ✅ full |
+| Java/Android API bridge exposed to user Python | ❌ withheld | ✅ available |
+| Installing packages that contain native code (`.so`) | ❌ | ✅ |
+| beangrow / fava-portfolio-returns | ⏳ deferred (Play Feature Delivery) | ✅ on-demand |
+| Safe mode / recovery mode | ✅ | ✅ |
+| In-app update check + user-confirmed install | ❌ Play handles updates | ✅ |
+| Contribution purchase flow inside the app | ❌ none | ❌ none |
+| "Enter key" | ✅ | ✅ |
 
-The `play` build ships **no third-party Python at all** — not even bundled Fava
-extensions. This is the strictest reading of the
-[Device and Network Abuse policy](https://support.google.com/googleplay/android-developer/answer/9888379)
-and removes any argument about interpreted-code delivery outside review.
+**File formats are identical.** A project created in `play` opens unchanged in `expert`
+and on desktop Beancount.
 
-**File formats are identical between editions.** A project created in `play` opens
-unchanged in `expert` and on desktop Beancount.
+### 2.1 The three real differences, and why
 
-### 1.1 Build-time enforcement
+| # | Difference | Policy basis |
+|---|---|---|
+| D1 | Play user-plugins must be **pure Python**; no wheels containing `.so` | [DNA policy](https://support.google.com/googleplay/android-developer/answer/9888379): "an app may not download executable code (such as dex, JAR, .so files) from a source other than Google Play." Native code for Play must arrive via the APK/AAB or Play Feature Delivery. |
+| D2 | Play user-plugins run with the **Java/Android bridge withheld** | The DNA exception covers interpreters providing *indirect* access to Android APIs. Chaquopy's bridge is direct access, so the Play build withholds it from user code to stay inside the exception. |
+| D3 | No self-update in `play` | Play apps update through Play. |
 
-Plugin, extension, importer, and script-runner code lives in an `expert`-only source set
-and an `expert`-only Gradle module. A verification task (`:verifyPlayFlavorBoundaries`)
-runs in CI and in the release pipeline, failing the `play` build if:
+Everything else — including Fava extensions in Tier 3 — is identical across editions.
 
-- any `play` variant classpath resolves the expert engine module,
-- the `play` Python asset bundle contains anything outside the pinned wheel manifest,
-- `play` sources reference the script runner or plugin loader APIs.
+### 2.2 Why loading user plugins is permitted on Play
 
-This is a **release gate**, not a lint warning.
+The DNA prohibition targets *downloading* executable code. This app **never downloads
+code**: the user selects Python files already on their own device, and the app imports
+them into an embedded interpreter. The policy further states that "apps... with
+interpreted languages (JavaScript, Python, Lua, etc.) loaded at run time... must not allow
+potential violations of Google Play policies" — a compliance obligation on the loaded
+code's behaviour, not a prohibition on loading. General-purpose Python interpreters
+(Pydroid 3, QPython) ship on Play on this basis.
+
+Obligations we therefore accept in the `play` build:
+
+- No fetching of code from any network source, by us or by a plugin. Plugin network
+  access is off by default and requires explicit per-project consent.
+- No mechanism to install wheels containing native code.
+- The Java/Android bridge is not importable from user plugin code.
+- Safe mode and a plugin-free relaunch are always reachable.
+
+### 2.3 Build-time enforcement
+
+`:verifyPlayFlavorBoundaries` is a **release gate**, not a lint warning. The `play` build
+fails if:
+
+- any code path can install a wheel containing native binaries,
+- the Java bridge is reachable from the user-plugin import context,
+- self-update or APK-installer code is on the `play` classpath,
+- any purchase-flow or payment-SDK dependency is on the `play` classpath,
+- the Python asset bundle deviates from the pinned wheel manifest.
 
 ---
 
-## 2. Update channels
+## 3. Update channels
 
 | Edition | Mechanism |
 |---|---|
-| `play` | Google Play releases only. No self-update, no `.dex`/`.so`/APK fetching, no runtime code download. Play Feature Delivery may later deliver optional on-device components if justified. |
-| `expert` | Opt-in periodic check (user-configurable frequency, default off) against GitHub Releases over TLS → shows release notes → **explicit user action** downloads the APK → signature and SHA-256 verified against the release manifest → `PackageInstaller` invoked → user confirms in the system dialog. Never silent, never automatic. |
+| `play` | Google Play releases only. No self-update, no APK/`.so`/`dex` fetching. Play Feature Delivery may later deliver optional on-device components (the beangrow stack) — from Play, therefore compliant. |
+| `expert` | Opt-in check (default **off**, user-configurable frequency) against GitHub Releases over TLS → release notes → **explicit user action** downloads the APK → signature and SHA-256 verified against the release manifest → `PackageInstaller` → user confirms in the system dialog. Never silent, never automatic. |
 
-Downgrades are rejected unless the user explicitly enables recovery-downgrade. The
-runtime is never replaced while executing: an update that changes the Python runtime
-requires an engine stop and a ledger-compatibility snapshot first.
+Downgrades are rejected unless the user explicitly enables recovery-downgrade. The Python
+runtime is never replaced while executing; an update that changes it requires an engine
+stop and a ledger-compatibility snapshot first.
 
 ---
 
-## 3. Monetization
+## 4. Monetization: external contributions + offline keys
 
-### 3.1 Model
+### 4.1 The model
 
-A **contribution model** modelled on My Expenses: cumulative one-time keys, no
-subscription. The app is GPL-2.0-only, so anyone can rebuild it without the gate; the UI
-states this openly and asks for support rather than pretending to enforce it.
+**There is no billing SDK in this application — in either edition.** No Play Billing, no
+PayPal SDK, no Payoneer SDK, no payment code of any kind. The app can verify a key. That
+is the entire payment-related surface.
+
+- Keys are purchased on the project website (PayPal / Payoneer / GitHub Sponsors),
+  entirely outside the app, in an ordinary browser.
+- Both editions offer **"Enter key"** and nothing else.
+- The `play` build contains **no purchase flow and no link-out** — it does not direct
+  users to any payment method.
+- Verification is offline Ed25519 signature checking. No licence server, no network call,
+  no telemetry.
+
+### 4.2 Why this is Play-compliant
+
+The [Payments policy](https://support.google.com/googleplay/android-developer/answer/10281818)
+requires Google Play's billing system for purchases of "app functionality or content"
+**made inside the app**, and states that **"Apps without in-app purchases aren't
+affected."** It further permits developers to communicate with users about alternative
+purchase options *outside* the app. The Play build makes no purchase, initiates no
+payment, and links to no payment method — so the billing requirement is not engaged. This
+is the long-standing licence-key pattern used by My Expenses, Tasker, and Titanium Backup
+on Play.
+
+Anti-steering rules restrict *directing* users to alternative payment inside the app. We
+do not. The website, GitHub, and email are outside-the-app channels the policy explicitly
+allows.
+
+**Residual risk, stated honestly:** Google could take the view that unlocking app
+functionality via an externally-purchased key circumvents the billing requirement. It is
+not the plain reading of the policy and there is a long precedent of such apps on Play,
+but review outcomes are not guaranteed. **Mitigation:** the entitlement layer sits behind
+a `PurchaseRoute` interface with exactly one implementation today (`EnterKeyOnly`). If
+Google objects, adding a Play Billing implementation is a contained change in
+`:app-play`, not an architectural one — and `:core-entitlement` never changes.
+
+**Upside available later:** the US court order, EEA DMA, India and South Korea programs
+allow alternative billing or external links for enrolled developers. Enrolling is a
+business decision, not an architectural one.
+
+### 4.3 Consequences of dropping Play Billing
+
+- One fewer proprietary, **GPL-2.0-incompatible** dependency — the linking-exception
+  question narrows to future OCR only.
+- No SKU management, no upgrade-SKU matrix, no purchase-acknowledgement or refund
+  edge cases, no Play Billing library version churn.
+- One entitlement code path for both editions, testable without a store connection.
+- Genuine Play/Expert parity in the contribution tiers.
+
+### 4.4 Tiers (identical in both editions)
 
 | Tier | Price (USD) | Unlocks |
 |---|---|---|
 | — | Free | Add/edit/delete/duplicate all directives · journal · **account balances list** · raw editing of every file with highlighting, search, validation · first import of an existing project · **all export** · manual backup archive · safe mode · diagnostics |
 | **T1 Reports** | $9.99 | Full Fava report surface: balance sheet, income statement, trial balance, holdings, commodities, account/payee/tag/link views, charts and graphs, **BQL queries** |
 | **T2 Capture** | $14.99 | T1 + external documents, camera, PDF assembly, OCR (when it ships), home-screen widgets |
-| **T3 Power** | $19.99 | T2 + auto-mirror to SAF, scheduled backups, remote mode, statement importers, scripts/plugins/Fava extensions |
+| **T3 Power** | $19.99 | T2 + auto-mirror to SAF, scheduled backups, remote mode, statement importers, scripts, **Beancount plugins and Fava extensions** |
 
-Upgrade SKUs priced at the difference: T1→T2 $5.00, T2→T3 $5.00, T1→T3 $10.00.
+Upgrades are handled by issuing a replacement key at the price difference — a manual
+step on the website, with no in-app mechanism at all.
 
 **Data-out is never paywalled.** Export and manual backup creation are free in every
-edition, forever. This is a product principle, not a pricing decision.
+edition, forever.
 
-**Tier 3 across editions:** plugins, extensions, and importers are functional only in the
-Expert build. The same key validates in both editions, so a Play T3 buyer installs the
-GitHub build to use them. The Play store listing and the in-app purchase screen must both
-state this before purchase.
+Tier 3 behaves identically in both editions except for D1/D2 above: Play users can load
+pure-Python plugins and extensions without the Android bridge; Expert users can load
+anything.
 
-### 3.2 Payment routes
-
-| Edition | Route | Policy basis |
-|---|---|---|
-| `play` | Google Play Billing (one-time products + upgrade SKUs) | Default compliant path |
-| `expert` | PayPal / Payoneer link on the project site | Off-Play, unconstrained |
-| both | "Enter key" for keys purchased directly or via GitHub Sponsors | No purchase flow is initiated in-app, so no Play payment policy is engaged |
-
-The Play build must **not** link out to PayPal by default. Google's post-Epic changes
-(settlement March 2026; decoupled fees and external-link programs from 2026-06-30, with
-transaction reporting and service fees from 2026-10-01) permit external links only for
-enrolled developers and currently only for US/UK/EEA users. Enrolling is a later business
-decision; the architecture keeps it a one-line configuration change behind the
-`PurchaseRoute` interface.
-
-### 3.3 Entitlement mechanics
-
-A key is a compact signed token:
+### 4.5 Key format and verification
 
 ```
 BCA1.<base64url(payload)>.<base64url(ed25519_sig)>
 
-payload = {
-  "v": 1,            // format version
-  "kid": "k1",       // signing key id (enables rotation)
-  "tier": 3,         // 1 | 2 | 3
-  "email": "buyer@example.com",
-  "order": "PP-8FJ2...",
-  "iat": "2026-08-16"
-}
+payload = { "v":1, "kid":"k1", "tier":3,
+            "email":"buyer@example.com", "order":"PP-8FJ2…", "iat":"2026-08-16" }
 ```
 
-- Verified **fully offline** against Ed25519 public keys compiled into the app. The app
-  ships several trusted public keys so a compromised signing key is a rotation, not a
-  catastrophe.
-- **Soft binding to email, unlimited devices.** The buyer's email is shown in Settings
-  (mild social deterrent against resharing). No device lock, no activation counter, no
-  reissue support burden, no network call, no telemetry.
-- Entitlement is cached in app-private storage; the raw key is retained so the user can
-  re-display and re-enter it. Keys never appear in logs, backups, screenshots, widget
-  previews, or diagnostics bundles.
-- Play Billing purchases are converted to the same internal entitlement, so exactly one
-  gating code path exists (`:core-entitlement`), with no Play dependency in it.
+- Verified offline against Ed25519 public keys compiled into the app; several trusted keys
+  ship so a compromised signing key is a rotation (`kid`), not a catastrophe. Old `kid`s
+  keep verifying forever, so issued keys never stop working.
+- **Soft binding to email, unlimited devices.** The email is shown in Settings as a mild
+  social deterrent. No device lock, no activation counter, no reissue support burden.
+- Stored in app-private storage; the raw key is retained so the user can re-display it.
+  Keys never appear in logs, backups, screenshots, widget previews, or diagnostics.
 
-### 3.4 Key issuance runbook
+### 4.6 Issuance runbook
 
-**The signing private key never enters the application repository.** GitHub has no
-per-branch visibility control — branch visibility follows repository visibility, so a
-"hidden branch" does not exist and cannot be used to hide secrets.
+**The signing private key never enters this repository.** GitHub has no per-branch
+visibility control — branch visibility follows repository visibility, so "a hidden branch"
+does not exist and cannot be used to hide a secret.
 
-Setup:
-
-1. A **separate private repository** (`beancount-android-keys`) holds the issuing CLI and
-   the buyer ledger. The application repo holds only public keys.
-2. The Ed25519 private key is stored as a GitHub Actions **environment secret** in a
-   protected environment requiring manual approval per run.
+1. A separate **private repository** (`beancount-android-keys`) holds the issuing CLI and
+   the buyer ledger. This repo holds only public keys.
+2. The Ed25519 private key is a GitHub Actions **environment secret** in a protected
+   environment requiring manual approval per run.
 3. Issuance is a `workflow_dispatch` job: inputs `email`, `tier`, `order`; output is the
    signed key, mailed to the buyer and appended to an issuance log.
-4. An offline fallback path exists: the same CLI runs locally from a hardware-backed
-   backup of the key, so issuance survives GitHub being unavailable.
-5. Rotation: increment `kid`, add the new public key to the app, keep verifying old
-   `kid`s so previously issued keys keep working forever.
+4. Offline fallback: the same CLI runs locally from a hardware-backed key backup, so
+   issuance survives GitHub being unavailable.
+5. Rotation: bump `kid`, add the new public key to the app, keep the old ones trusted.
 
 **Developer self-unlock:** you hold the private key and issue yourself a Tier 3 key like
-any other buyer. There is no hidden backdoor, no debug-only bypass in release builds, and
-therefore no way to lock yourself out. Debug builds may additionally default to Tier 3
-for development convenience; release builds must not.
+any other buyer. No hidden backdoor exists, release builds contain no bypass, and you
+cannot be locked out of your own app. Debug builds may default to Tier 3 for convenience;
+release builds must not.
 
-Residual risk accepted: the signing key lives on GitHub's infrastructure while the
-workflow runs. Mitigated by the protected environment, per-run approval, `kid` rotation,
-and the fact that a leaked key mints entitlements for a GPL app that anyone could rebuild
-anyway — the loss is revenue, not user security.
+Residual risk accepted: the signing key is present in GitHub's infrastructure while the
+workflow runs. Mitigated by the protected environment, per-run approval, and `kid`
+rotation — and a leaked key mints entitlements for a GPL app anyone could rebuild anyway.
+The loss would be revenue, never user security.
+
+### 4.7 Honest framing in the UI
+
+The Contribute screen states that the app is open source under GPL-2.0, that anyone can
+build it without a key, and that a key is a contribution rather than a technical
+restriction. No dark patterns, no nagging modals, no countdowns.
 
 ---
 
-## 4. Channels not supported in v1
+## 5. Channels not supported in v1
 
-**F-Droid** is excluded because the shared core would need to be free of Play Billing and
-ML Kit, which would require a third flavor and a separate build pipeline. Revisit after
-v1; the `PurchaseRoute` and `OcrEngine` interfaces already make it a flavor problem
-rather than a rewrite.
+**F-Droid**: now much closer to viable, since Play Billing is gone. The remaining blocker
+is future ML Kit OCR (proprietary) — kept behind the `OcrEngine` interface so F-Droid
+becomes a flavor decision rather than a rewrite. Revisit after v1.
 
 **Amazon Appstore** and others: deferred, no architectural blocker.

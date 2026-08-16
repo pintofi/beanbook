@@ -167,10 +167,14 @@ Detailed adversary analysis: [threat-model.md](threat-model.md).
 
 Rules:
 - `:core-domain` depends on nothing Android-specific and holds every invariant.
-- Billing implementations live only in `:app-play`; the `expert` flavor cannot compile
-  against Play Billing, and a build-time check enforces it.
-- Plugin/script code paths live in an `expert`-only source set. A Gradle verification
-  task fails the `play` build if those classes are reachable — this is the build-time
+- **No billing or payment SDK exists in any module.** `:core-entitlement` verifies signed
+  keys offline and has exactly one route implementation (`EnterKeyOnly`) in both flavors.
+- Plugin/script loading is **shared** by both flavors (parity), but the loader takes a
+  `PluginPolicy` supplied per flavor:
+  `PlayPluginPolicy` — pure-Python only, no native wheel installation, Java/Android bridge
+  withheld from the user import context; `ExpertPluginPolicy` — unrestricted.
+  A Gradle verification task fails the `play` build if native-wheel installation, the
+  bridge, self-update, or any payment dependency is reachable. This is the build-time
   proof required by Play policy.
 
 ---
@@ -180,14 +184,13 @@ Rules:
 ### 7.1 GPL-2.0 and Apache-2.0
 
 Apache-2.0 is incompatible with GPL-2.0-only. This constrains dependency choice
-(notably: `tesseract4android` is Apache-2.0 and would be a problem; ML Kit is proprietary
-and can only be linked because *we* are the copyright holder of the app and grant an
-exception, or because it is a system-provided library). This is unresolved and tracked as
-a licensing task before OCR ships — it does not block v1, which has no OCR. The Play
-Billing library is likewise proprietary; the standard resolution is an explicit
-**GPL linking exception** added by us as the app's copyright holder, which we can grant
-because we hold copyright on our own code, while Beancount's own terms remain unchanged.
-This must be reviewed before the first Play release.
+(notably: `tesseract4android` is Apache-2.0 and would be a problem; ML Kit is proprietary).
+Because monetization uses **external contribution keys with no billing SDK**, the Play
+Billing library — previously the main proprietary dependency — is not present at all, and
+the licensing question narrows to future OCR only. The resolution there, if needed, is an
+explicit **GPL linking exception** granted by us as copyright holder of our own code,
+leaving Beancount's terms untouched. Tracked as a licensing task before OCR ships; it does
+not block v1, which has no OCR.
 
 ### 7.2 Expert plugins are not sandboxed
 
