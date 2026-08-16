@@ -30,3 +30,7 @@ dist/
 *.pem
 *.key
 secrets.properties
+
+# Spike-local machine paths
+spikes/**/local.properties
+spikes/**/.gradle/
