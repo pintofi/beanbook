@@ -51,5 +51,6 @@ chaquopy {
 
 dependencies {
     api(project(":core-engine"))
+    api(project(":core-data"))
     implementation(libs.kotlinx.coroutines.android)
 }

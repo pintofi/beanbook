@@ -1,0 +1,110 @@
+package dev.beancount.engine.local
+
+import android.content.Context
+import dev.beancount.core.data.LedgerValidator
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+
+/**
+ * The real [LedgerValidator]: it re-parses the project with Beancount itself.
+ *
+ * A ledger that loads *with errors* is still a success here — errors are a normal state
+ * and the writer surfaces them as warnings. Only a ledger that cannot be loaded at all is
+ * a failure, and that is what triggers rollback.
+ */
+class BeancountValidator(
+    private val context: Context,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+) : LedgerValidator {
+
+    override suspend fun validate(mainFile: String): Result<List<String>> =
+        withContext(io) {
+            runCatching {
+                val json = PythonRuntime.ensureStarted(context)
+                    .getModule("writer")
+                    .callAttr("validate", mainFile)
+                    .toString()
+                val root = JSONObject(json)
+                val errors = root.optJSONArray("errors")
+                val messages = (0 until (errors?.length() ?: 0)).map { index ->
+                    val error = errors!!.optJSONObject(index)
+                    if (error == null) {
+                        errors.optString(index)
+                    } else {
+                        val file = error.optString("file").substringAfterLast('/')
+                        val line = error.opt("line")
+                        val position = if (file.isNotEmpty() && line != null) "$file:$line " else ""
+                        position + error.optString("message")
+                    }
+                }
+                if (!root.optBoolean("ok")) {
+                    throw IllegalStateException(
+                        messages.firstOrNull() ?: "the ledger could not be parsed"
+                    )
+                }
+                messages
+            }
+        }
+}
+
+/** Where an entry lives in its source file, as Beancount and Fava report it. */
+data class EntrySlice(
+    val file: String,
+    val startLine: Int,
+    val endLine: Int,
+    val text: String,
+    val sha256: String,
+)
+
+/**
+ * Locates entries in source and computes edited file content — without writing anything.
+ * Writing belongs to `ProjectWriter`, which owns the journal and the atomic rename.
+ */
+class BeancountEditor(
+    private val context: Context,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+) {
+
+    suspend fun sliceAt(mainFile: String, file: String, line: Int): EntrySlice? =
+        withContext(io) {
+            val json = PythonRuntime.ensureStarted(context)
+                .getModule("writer")
+                .callAttr("entry_slice", mainFile, file, line)
+                .toString()
+            val root = JSONObject(json)
+            if (!root.optBoolean("found")) return@withContext null
+            EntrySlice(
+                file = root.getString("file"),
+                startLine = root.getInt("start_line"),
+                endLine = root.getInt("end_line"),
+                text = root.getString("text"),
+                sha256 = root.getString("sha256"),
+            )
+        }
+
+    suspend fun contentWithReplacement(file: String, from: Int, to: Int, newText: String): String =
+        transform("replace_lines", file, from, to, newText)
+
+    suspend fun contentWithDeletion(file: String, from: Int, to: Int): String =
+        transform("delete_lines", file, from, to, null)
+
+    private suspend fun transform(
+        function: String,
+        file: String,
+        from: Int,
+        to: Int,
+        newText: String?,
+    ): String = withContext(io) {
+        val module = PythonRuntime.ensureStarted(context).getModule("writer")
+        val json = if (newText == null) {
+            module.callAttr(function, file, from, to).toString()
+        } else {
+            module.callAttr(function, file, from, to, newText).toString()
+        }
+        val root = JSONObject(json)
+        check(root.optBoolean("ok")) { root.optString("error") }
+        root.getString("content")
+    }
+}

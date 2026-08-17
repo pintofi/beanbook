@@ -5,6 +5,11 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
+import dev.beancount.core.data.WriteJournal
+import java.io.File
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +31,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.beancount.app.engine.RecoveryOnStart
 import dev.beancount.app.ui.BalancesScreen
 import dev.beancount.app.ui.JournalScreen
 import dev.beancount.app.web.FavaWebView
@@ -44,6 +50,8 @@ import dev.beancount.core.engine.ReportPath
  */
 class MainActivity : ComponentActivity() {
 
+    private var recoveryMessage: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val app = application as BeancountApplication
@@ -53,8 +61,24 @@ class MainActivity : ComponentActivity() {
             app.workspace.createProject(projectId, title = "My Ledger")
         }
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
-        app.engineManager.start(ledgerPath)
-        app.ledgerState.load(ledgerPath)
+
+        lifecycleScope.launch {
+            // Recovery first: an interrupted write is resolved before the ledger is shown
+            // or served, never after (docs/architecture.md 5).
+            val report = RecoveryOnStart(app.writer).run(projectId)
+            if (!report.isClean) {
+                recoveryMessage = report.describe()
+            }
+            app.engineManager.start(ledgerPath)
+            app.ledgerState.load(ledgerPath)
+
+            // Debug-only: begin a write and stall before committing, so a process kill
+            // can be timed to land mid-write (docs/milestones/m4.md, process-death test).
+            val stall = intent.getStringExtra("m4_test")
+            if (BuildConfig.DEBUG && stall != null && stall.startsWith("stall_mid_write")) {
+                stallMidWrite(app, projectId, introducesErrors = stall.endsWith("_bad"))
+            }
+        }
 
         setContent {
             MaterialTheme {
@@ -73,6 +97,37 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Writes a real entry and then stops short of committing, leaving an open journal
+     * record on disk. Debug builds only — this exists so `adb shell am kill` can be
+     * timed to land in the window the write protocol has to survive.
+     */
+    private suspend fun stallMidWrite(
+        app: BeancountApplication,
+        projectId: String,
+        introducesErrors: Boolean,
+    ) {
+        val file = app.workspace.projectDir(projectId).resolve("files/transactions.beancount")
+        val baseline = if (introducesErrors) 0 else 0
+        val record = app.journal.begin(
+            projectId = projectId,
+            operation = if (introducesErrors) "stall-test-bad" else "stall-test",
+            files = listOf(file),
+            baselineErrors = baseline,
+            rollbackOnNewErrors = true,
+        )
+        // A date before the account was opened is an error; a later one is not.
+        val entry = if (introducesErrors) {
+            "\n2020-02-02 note Assets:Cash \"before the account existed\"\n"
+        } else {
+            "\n2027-02-02 note Assets:Cash \"written but never committed\"\n"
+        }
+        file.appendText(entry)
+        app.journal.markRenamed(record)
+        android.util.Log.w("M4Test", "stalled mid-write txn=" + record.txnId + "; kill me now")
+        delay(10 * 60 * 1000)
     }
 
     private fun openInBrowser(uri: Uri) {

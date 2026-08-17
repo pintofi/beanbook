@@ -5,7 +5,11 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import dev.beancount.app.engine.EngineManager
 import dev.beancount.app.engine.LedgerState
 import dev.beancount.core.data.ProjectWorkspace
+import dev.beancount.core.data.ProjectWriter
+import dev.beancount.core.data.WriteJournal
 import dev.beancount.core.engine.PluginPolicy
+import dev.beancount.engine.local.BeancountEditor
+import dev.beancount.engine.local.BeancountValidator
 import dev.beancount.engine.local.LedgerReader
 import dev.beancount.engine.local.LocalEngineClient
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +36,18 @@ class BeancountApplication : Application() {
     val engineManager: EngineManager by lazy { EngineManager(engine, appScope) }
 
     val ledgerState: LedgerState by lazy { LedgerState(LedgerReader(this), appScope) }
+
+    val journal: WriteJournal by lazy { WriteJournal(workspace) }
+
+    val editor: BeancountEditor by lazy { BeancountEditor(this) }
+
+    /**
+     * Every write goes through here: lock, snapshot, journal, atomic rename, re-parse
+     * with Beancount, and only then report success (CLAUDE.md, write protocol).
+     */
+    val writer: ProjectWriter by lazy {
+        ProjectWriter(workspace, journal, BeancountValidator(this))
+    }
 
     override fun onCreate() {
         super.onCreate()

@@ -7,8 +7,10 @@ plugins {
 // testable on the JVM.
 dependencies {
     api(project(":core-domain"))
+    implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 kotlin { jvmToolchain(21) }
