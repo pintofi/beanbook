@@ -3,6 +3,18 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+// Stage the golden corpus so it lands at assets/corpus/... in the test APK.
+val copyCorpusToAssets = tasks.register<Copy>("copyCorpusToAssets") {
+    from(rootProject.layout.projectDirectory.dir("corpus"))
+    into(layout.buildDirectory.dir("generated/corpusAssets/corpus"))
+}
+
+// AGP's SourceSet API rejects task Providers, so the dependency is declared explicitly:
+// every androidTest asset merge must wait for the corpus to be staged.
+tasks.matching { it.name.contains("AndroidTestAssets") }.configureEach {
+    dependsOn(copyCorpusToAssets)
+}
+
 android {
     namespace = "dev.beancount.app"
     compileSdk = libs.versions.compileSdk.get().toInt()
@@ -76,7 +88,14 @@ android {
         getByName("main") { kotlin.srcDir("src/main/kotlin") }
         getByName("play") { kotlin.srcDir("src/play/kotlin") }
         getByName("expert") { kotlin.srcDir("src/expert/kotlin") }
-        getByName("androidTest") { kotlin.srcDir("src/androidTest/kotlin") }
+        getByName("androidTest") {
+            kotlin.srcDir("src/androidTest/kotlin")
+            // The golden corpus is shipped inside the test APK rather than duplicated:
+            // the same files the desktop differential runner uses (tools/corpus). The
+            // copy keeps the "corpus/" prefix, which srcDir on the directory itself
+            // would flatten away.
+            assets.srcDir(layout.buildDirectory.dir("generated/corpusAssets").get().asFile)
+        }
     }
 }
 

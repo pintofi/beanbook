@@ -1,0 +1,63 @@
+{
+  "account_count": 4,
+  "accounts": [
+    {
+      "name": "Assets:Bank:Checking",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "1000.00"
+        }
+      ]
+    },
+    {
+      "name": "Equity:Opening-Balances",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "-1020.50"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Food:Restaurant",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "12.50"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Misc",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "8.00"
+        }
+      ]
+    }
+  ],
+  "commodities": [],
+  "entry_count": 15,
+  "entry_counts": {
+    "Balance": 1,
+    "Custom": 2,
+    "Event": 1,
+    "Note": 1,
+    "Open": 4,
+    "Pad": 1,
+    "Query": 1,
+    "Transaction": 4
+  },
+  "error_count": 0,
+  "error_lines": [],
+  "error_messages": [],
+  "included_file_names": [
+    "main.beancount"
+  ],
+  "operating_currency": [
+    "USD"
+  ],
+  "title": "Custom directives"
+}

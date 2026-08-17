@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Base64
 import android.util.Log
 import com.chaquo.python.Python
-import com.chaquo.python.android.AndroidPlatform
 import dev.beancount.core.engine.EngineClient
 import dev.beancount.core.engine.EngineStatus
 import dev.beancount.core.engine.ReportPath
@@ -46,12 +45,10 @@ class LocalEngineClient(
         _status.value = EngineStatus.Starting
         val result = withContext(io) {
             runCatching {
-                if (!Python.isStarted()) {
-                    Python.start(AndroidPlatform(context))
-                }
+                val python = PythonRuntime.ensureStarted(context)
                 val newToken = newToken()
                 val started = System.currentTimeMillis()
-                val report = Python.getInstance()
+                val report = python
                     .getModule(PYTHON_MODULE)
                     .callAttr("start", projectPath, newToken)
                     .toString()

@@ -1,0 +1,7 @@
+2024-02-01 * "Landlord" "February rent"
+  Expenses:Home:Rent       1200.00 USD
+  Assets:Bank:Checking
+
+2024-03-05 * "Grocer" "Shop"
+  Expenses:Food:Groceries    55.20 USD
+  Assets:Bank:Checking

@@ -1,0 +1,108 @@
+{
+  "account_count": 10,
+  "accounts": [
+    {
+      "name": "Assets:Bank:Checking",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "-2862998.98"
+        }
+      ]
+    },
+    {
+      "name": "Assets:Cash",
+      "positions": []
+    },
+    {
+      "name": "Equity:Opening-Balances",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "-100000.00"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Food:Groceries",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "533236.87"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Food:Restaurant",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "517332.47"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Health:Pharmacy",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "516924.91"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Home:Rent",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "520258.24"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Home:Utilities",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "519147.31"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Transport:Transit",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "531099.18"
+        }
+      ]
+    },
+    {
+      "name": "Income:Salary",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "-175000.00"
+        }
+      ]
+    }
+  ],
+  "commodities": [],
+  "entry_count": 25061,
+  "entry_counts": {
+    "Open": 10,
+    "Transaction": 25051
+  },
+  "error_count": 0,
+  "error_lines": [],
+  "error_messages": [],
+  "included_file_names": [
+    "accounts.beancount",
+    "transactions.beancount",
+    "main.beancount"
+  ],
+  "operating_currency": [
+    "USD"
+  ],
+  "title": "Large"
+}

@@ -1,0 +1,57 @@
+{
+  "account_count": 3,
+  "accounts": [
+    {
+      "name": "Assets:Bank:Checking",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "-45.00"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Food:Groceries",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "42.30"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Unopened:Account",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "5.00"
+        }
+      ]
+    }
+  ],
+  "commodities": [],
+  "entry_count": 5,
+  "entry_counts": {
+    "Balance": 1,
+    "Open": 2,
+    "Transaction": 2
+  },
+  "error_count": 3,
+  "error_lines": [
+    18,
+    13,
+    8
+  ],
+  "error_messages": [
+    "Balance failed for 'Assets:Bank:Checking': expected 999999.00 USD != accumulated -45.00 USD (1000044.00 too little)",
+    "Invalid reference to unknown account 'Expenses:Unopened:Account'",
+    "Transaction does not balance: (2.30 USD)"
+  ],
+  "included_file_names": [
+    "main.beancount"
+  ],
+  "operating_currency": [
+    "USD"
+  ],
+  "title": "Invalid"
+}

@@ -1,0 +1,5 @@
+option "title" "Multi-file"
+option "operating_currency" "USD"
+
+include "files/accounts.beancount"
+include "files/2024/transactions.beancount"

@@ -1,0 +1,60 @@
+{
+  "account_count": 4,
+  "accounts": [
+    {
+      "name": "Assets:Bank:Checking",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "1744.80"
+        }
+      ]
+    },
+    {
+      "name": "Equity:Opening-Balances",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "-3000.00"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Food:Groceries",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "55.20"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Home:Rent",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "1200.00"
+        }
+      ]
+    }
+  ],
+  "commodities": [],
+  "entry_count": 7,
+  "entry_counts": {
+    "Open": 4,
+    "Transaction": 3
+  },
+  "error_count": 0,
+  "error_lines": [],
+  "error_messages": [],
+  "included_file_names": [
+    "q1.beancount",
+    "transactions.beancount",
+    "accounts.beancount",
+    "main.beancount"
+  ],
+  "operating_currency": [
+    "USD"
+  ],
+  "title": "Multi-file"
+}

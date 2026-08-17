@@ -39,3 +39,7 @@ spikes/**/.gradle/
 /build/
 /*/build/
 /local.properties
+
+# Generated corpus: deterministic, rebuilt with tools/corpus/generate.py.
+# The small cases and the recorded baselines are committed; the 2.5 MB one is not.
+/corpus/large/

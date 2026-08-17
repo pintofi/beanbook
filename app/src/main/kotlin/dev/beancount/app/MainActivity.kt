@@ -11,29 +11,36 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.beancount.app.ui.BalancesScreen
+import dev.beancount.app.ui.JournalScreen
 import dev.beancount.app.web.FavaWebView
-import dev.beancount.app.web.clearSessionToken
 import dev.beancount.app.web.installSessionToken
+import dev.beancount.core.domain.LedgerSnapshot
 import dev.beancount.core.engine.EngineStatus
 import dev.beancount.core.engine.OriginAllowlist
 import dev.beancount.core.engine.ReportPath
 
 /**
- * M2 shell: start the embedded engine for a project and render Fava in the hardened
- * WebView.
+ * M3 shell: three surfaces over one ledger — the native journal and balances (free tier)
+ * and Fava's own reports in the hardened WebView.
  *
- * The project picker, guided entry and native journal arrive in M6. Until then this
- * screen uses a single starter project and says exactly what it is doing — it does not
- * pretend to be the finished app.
+ * The project picker and guided entry arrive in M6; this screen still uses a single
+ * starter project and says so rather than pretending otherwise.
  */
 class MainActivity : ComponentActivity() {
 
@@ -45,14 +52,19 @@ class MainActivity : ComponentActivity() {
         if (!app.workspace.exists(projectId)) {
             app.workspace.createProject(projectId, title = "My Ledger")
         }
-        app.engineManager.start(app.workspace.mainFile(projectId).absolutePath)
+        val ledgerPath = app.workspace.mainFile(projectId).absolutePath
+        app.engineManager.start(ledgerPath)
+        app.ledgerState.load(ledgerPath)
 
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    val status by app.engineManager.status.collectAsStateWithLifecycle()
-                    EngineScreen(
-                        status = status,
+                    val engineStatus by app.engineManager.status.collectAsStateWithLifecycle()
+                    val ledger by app.ledgerState.snapshot.collectAsStateWithLifecycle()
+
+                    LedgerApp(
+                        engineStatus = engineStatus,
+                        ledger = ledger,
                         editionName = app.pluginPolicy.name,
                         token = app.engine.sessionToken,
                         debuggingAllowed = BuildConfig.DEBUG,
@@ -64,7 +76,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openInBrowser(uri: Uri) {
-        // External links leave the app rather than loading inside the Fava WebView.
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
     }
 
@@ -73,35 +84,74 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private enum class Surface(val label: String) {
+    JOURNAL("Journal"),
+    BALANCES("Balances"),
+    REPORTS("Reports"),
+}
+
 @Composable
-internal fun EngineScreen(
-    status: EngineStatus,
+internal fun LedgerApp(
+    engineStatus: EngineStatus,
+    ledger: LedgerSnapshot?,
     editionName: String,
     token: String?,
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    when (status) {
-        is EngineStatus.Serving -> {
-            if (token != null) {
-                installSessionToken(status.origin, token)
-            }
-            FavaWebView(
-                url = "${status.origin}/${status.ledgerSlug}/${ReportPath.JOURNAL.path}/",
-                allowlist = OriginAllowlist(setOf(status.origin)),
-                modifier = modifier.fillMaxSize(),
-                debuggingAllowed = debuggingAllowed,
-                onExternalLink = onOpenExternally,
-            )
-        }
+    var selected by remember { mutableStateOf(Surface.JOURNAL) }
 
-        else -> EngineStatusMessage(status, editionName, modifier)
+    Scaffold(
+        modifier = modifier,
+        bottomBar = {
+            NavigationBar {
+                Surface.entries.forEach { surface ->
+                    NavigationBarItem(
+                        selected = selected == surface,
+                        onClick = { selected = surface },
+                        label = { Text(surface.label) },
+                        icon = {},
+                        modifier = Modifier.semantics {
+                            contentDescription = surface.label
+                        },
+                    )
+                }
+            }
+        },
+    ) { padding ->
+        when (selected) {
+            Surface.JOURNAL, Surface.BALANCES -> {
+                if (ledger == null) {
+                    LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
+                } else if (selected == Surface.JOURNAL) {
+                    JournalScreen(ledger, Modifier.padding(padding))
+                } else {
+                    BalancesScreen(ledger, Modifier.padding(padding))
+                }
+            }
+
+            Surface.REPORTS -> {
+                val serving = engineStatus as? EngineStatus.Serving
+                if (serving == null) {
+                    LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
+                } else {
+                    if (token != null) installSessionToken(serving.origin, token)
+                    FavaWebView(
+                        url = "${serving.origin}/${serving.ledgerSlug}/${ReportPath.INCOME_STATEMENT.path}/",
+                        allowlist = OriginAllowlist(setOf(serving.origin)),
+                        modifier = Modifier.fillMaxSize().padding(padding),
+                        debuggingAllowed = debuggingAllowed,
+                        onExternalLink = onOpenExternally,
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun EngineStatusMessage(
+private fun LoadingOrError(
     status: EngineStatus,
     editionName: String,
     modifier: Modifier = Modifier,
@@ -116,22 +166,11 @@ private fun EngineStatusMessage(
             modifier = Modifier.semantics { contentDescription = "Edition $editionName" },
         )
         when (status) {
-            EngineStatus.Starting -> {
+            is EngineStatus.Failed -> Text("The engine could not start: ${status.message}")
+            else -> {
                 CircularProgressIndicator()
-                Text("Starting the accounting engine…")
+                Text("Reading your ledger…")
             }
-
-            EngineStatus.Stopped -> Text("Engine stopped.")
-
-            is EngineStatus.Failed -> Text(
-                text = "The engine could not start: ${status.message}",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-
-            is EngineStatus.Serving -> Unit
         }
     }
 }
-
-/** Clears the session cookie when a serving origin goes away. */
-internal fun forgetSession(origin: String) = clearSessionToken(origin)

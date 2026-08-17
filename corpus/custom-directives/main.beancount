@@ -1,0 +1,40 @@
+; ============================================================
+; A comment block. Invariant 4: this must survive every edit.
+; ============================================================
+option "title" "Custom directives"
+option "operating_currency" "USD"
+
+plugin "beancount.plugins.auto_accounts"
+
+; A custom directive Beancount does not interpret.
+2024-01-01 custom "budget" Expenses:Food "monthly"  400.00 USD
+2024-01-01 custom "fava-option" "language" "en"
+
+2024-01-01 open Assets:Bank:Checking USD
+  institution: "Example Bank"
+  account-number: "0001"
+
+2024-01-02 * "Öffentlicher Café" "Non-ASCII payee — em dash, ümlauts"
+  ; a comment inside a transaction
+  invoice: "documents/2024-01-02.pdf"
+  Expenses:Food:Restaurant      12.50 USD
+    posting-note: "with a colleague"
+  Assets:Bank:Checking
+
+2024-01-03 ! "Flagged" "Needs review"
+  Expenses:Misc                 5.00 USD
+  Assets:Bank:Checking
+
+2024-01-04 note Assets:Bank:Checking "a note with \"quotes\" inside"
+2024-01-05 event "location" "Berlin"
+2024-01-06 query "recent" "SELECT date, narration WHERE date >= 2024-01-01"
+
+2024-01-06 * "Tabs" "Tab-indented posting and comment"
+	; a tab-indented comment inside a transaction is legal
+	Expenses:Misc		3.00 USD
+	Assets:Bank:Checking
+
+2024-01-07 pad Assets:Bank:Checking Equity:Opening-Balances
+2024-01-08 balance Assets:Bank:Checking   1000.00 USD
+
+; trailing comment, no newline issues please

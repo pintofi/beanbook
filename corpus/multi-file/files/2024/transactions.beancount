@@ -1,0 +1,5 @@
+include "quarters/q1.beancount"
+
+2024-01-01 * "Opening"
+  Assets:Bank:Checking     3000.00 USD
+  Equity:Opening-Balances

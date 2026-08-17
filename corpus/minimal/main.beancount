@@ -1,0 +1,16 @@
+option "title" "Minimal"
+option "operating_currency" "USD"
+
+2024-01-01 open Assets:Bank:Checking USD
+2024-01-01 open Expenses:Food:Groceries USD
+2024-01-01 open Equity:Opening-Balances USD
+
+2024-01-01 * "Opening" "Initial balance"
+  Assets:Bank:Checking      1000.00 USD
+  Equity:Opening-Balances
+
+2024-01-05 * "Grocer" "Weekly shop"
+  Expenses:Food:Groceries      42.30 USD
+  Assets:Bank:Checking
+
+2024-01-31 balance Assets:Bank:Checking   957.70 USD

@@ -3,8 +3,10 @@ package dev.beancount.app
 import android.app.Application
 import androidx.lifecycle.ProcessLifecycleOwner
 import dev.beancount.app.engine.EngineManager
+import dev.beancount.app.engine.LedgerState
 import dev.beancount.core.data.ProjectWorkspace
 import dev.beancount.core.engine.PluginPolicy
+import dev.beancount.engine.local.LedgerReader
 import dev.beancount.engine.local.LocalEngineClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -28,6 +30,8 @@ class BeancountApplication : Application() {
     val engine: LocalEngineClient by lazy { LocalEngineClient(this) }
 
     val engineManager: EngineManager by lazy { EngineManager(engine, appScope) }
+
+    val ledgerState: LedgerState by lazy { LedgerState(LedgerReader(this), appScope) }
 
     override fun onCreate() {
         super.onCreate()

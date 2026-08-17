@@ -1,0 +1,18 @@
+option "title" "Invalid"
+option "operating_currency" "USD"
+
+2024-01-01 open Assets:Bank:Checking USD
+2024-01-01 open Expenses:Food:Groceries USD
+
+; line 8: transaction does not balance
+2024-01-05 * "Grocer" "Does not balance"
+  Expenses:Food:Groceries      42.30 USD
+  Assets:Bank:Checking        -40.00 USD
+
+; line 13: account was never opened
+2024-01-06 * "Mystery" "Unopened account"
+  Expenses:Unopened:Account     5.00 USD
+  Assets:Bank:Checking
+
+; line 18: balance assertion that will fail
+2024-01-31 balance Assets:Bank:Checking   999999.00 USD

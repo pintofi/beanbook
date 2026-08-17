@@ -1,0 +1,49 @@
+{
+  "account_count": 3,
+  "accounts": [
+    {
+      "name": "Assets:Bank:Checking",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "957.70"
+        }
+      ]
+    },
+    {
+      "name": "Equity:Opening-Balances",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "-1000.00"
+        }
+      ]
+    },
+    {
+      "name": "Expenses:Food:Groceries",
+      "positions": [
+        {
+          "currency": "USD",
+          "number": "42.30"
+        }
+      ]
+    }
+  ],
+  "commodities": [],
+  "entry_count": 6,
+  "entry_counts": {
+    "Balance": 1,
+    "Open": 3,
+    "Transaction": 2
+  },
+  "error_count": 0,
+  "error_lines": [],
+  "error_messages": [],
+  "included_file_names": [
+    "main.beancount"
+  ],
+  "operating_currency": [
+    "USD"
+  ],
+  "title": "Minimal"
+}
