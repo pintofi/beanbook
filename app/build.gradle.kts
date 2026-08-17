@@ -76,17 +76,20 @@ android {
         getByName("main") { kotlin.srcDir("src/main/kotlin") }
         getByName("play") { kotlin.srcDir("src/play/kotlin") }
         getByName("expert") { kotlin.srcDir("src/expert/kotlin") }
+        getByName("androidTest") { kotlin.srcDir("src/androidTest/kotlin") }
     }
 }
 
 dependencies {
     implementation(project(":core-domain"))
+    implementation(project(":core-data"))
     implementation(project(":core-engine"))
     implementation(project(":engine-local"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime)
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(platform(libs.compose.bom))
@@ -100,6 +103,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.kotlinx.coroutines.android)
 }
 
 apply(from = "$rootDir/gradle/play-boundaries.gradle.kts")
