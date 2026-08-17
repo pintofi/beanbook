@@ -135,9 +135,21 @@ no success is reported before a durable, re-parsed write.
 - Update checks (expert only) are opt-in, off by default, and disclosed.
 - The diagnostics bundle is redacted by default: no ledger content, no amounts, no
   account names, no credentials, no keys — and it is shown to the user before sharing.
-- Permissions requested: `CAMERA` (Tier 2, at point of use), `INTERNET` (remote mode and
-  expert update checks; local mode never uses it), `POST_NOTIFICATIONS` (backup/script
-  results). No storage permissions — SAF only. No location, contacts, or account access.
+- Permissions requested: `CAMERA` (Tier 2, at point of use), `INTERNET`,
+  `POST_NOTIFICATIONS` (backup/script results). No storage permissions — SAF only. No
+  location, contacts, or account access.
+
+**About `INTERNET`, stated plainly.** Android refuses socket creation without it —
+including a bind to `127.0.0.1` — so the app must declare `INTERNET` even in local-only
+mode, where it makes no outbound connections at all
+([measured in S4](feasibility/s4-loopback-webview.md) §1). The permission list therefore
+overstates what the app does, and it is our job to close that gap rather than let users
+infer it: the store listing, Play Data Safety declaration, and in-app privacy screen must
+say that local mode contacts nothing, that the permission exists solely to run the
+on-device Fava server on loopback, and that the claim is verifiable by using the app in
+airplane mode. Release builds additionally set `usesCleartextTraffic=false` with a network
+security config permitting cleartext for `127.0.0.1` only, so no remote server can ever be
+configured over plain HTTP.
 
 ---
 
