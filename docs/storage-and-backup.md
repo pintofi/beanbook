@@ -25,6 +25,27 @@ limitation we hide.
 Runtime caches, indexes, logs, credentials, and generated app state are **outside** the
 portable project tree, so an exported project is clean.
 
+### 1.1 What "raw file access" does and does not mean
+
+Two different things get called raw access, and only one of them is possible:
+
+| | Supported? | |
+|---|:--:|---|
+| **In-app raw editing** of every included file — highlighting, search, completion, validation, stale-write detection | ✅ **Yes, free, permanently** | Core to the plain-text promise |
+| **Browsing the canonical files with a file manager or another app** | ❌ **No** | Not a product choice — an Android constraint |
+
+The canonical store must be app-private because Fava and Beancount need real POSIX paths,
+and app-private storage is not visible to file managers on modern Android
+(`Android/data/<pkg>/` was closed to file managers in Android 11+). There is no
+configuration in which the user browses the canonical files *and* Fava runs in-process
+against them. Import, export, and mirror are the bridge; on a rooted device or over `adb`
+the directory is reachable, but that is not a supported path.
+
+A consequence worth stating plainly: because the raw editor is free, a user can already
+copy ledger text out of the app by hand. Gating export would therefore be a weak lock that
+mainly inconveniences honest users — which is why manual import, export, backup and
+restore are all free. See [distribution.md](distribution.md) §4.4.
+
 ---
 
 ## 2. Portable project layout
@@ -96,8 +117,9 @@ After copying, the project is parsed. Errors are shown with file/line/column; th
 still completes so the user can fix them in the app (a ledger with errors is a normal
 state in Beancount).
 
-**Free tier:** the first import of an existing project is free, because onboarding must
-never start with a paywall.
+**Free tier:** manual import is free and unlimited, for any number of projects. Onboarding
+must never start with a paywall, and a per-count import limit would be both unenforceable
+in spirit (the raw editor already accepts pasted text) and impossible to define cleanly.
 
 ---
 
@@ -114,7 +136,7 @@ partial failure explicitly (SAF providers do fail).
 
 ---
 
-## 6. Auto-mirror (Tier 3)
+## 6. Auto-mirror (Tier 2)
 
 Optional. The private workspace stays canonical; after every successful commit, changed
 files are mirrored to the user's SAF folder.
@@ -169,7 +191,7 @@ forgotten passphrase means permanently lost data — we cannot recover it.
 **Never overwrite the only good copy** — activation is a rename, and the prior project is
 kept until the user prunes it.
 
-**Scheduled backups (Tier 3)** use `WorkManager` with constraints; exact timing is not
+**Scheduled backups (Tier 2)** use `WorkManager` with constraints; exact timing is not
 guaranteed by Android and the UI says so. Retention is configurable by count and age.
 Partial failures are reported per file, never summarised as success.
 

@@ -148,16 +148,27 @@ business decision, not an architectural one.
 
 | Tier | Price (USD) | Unlocks |
 |---|---|---|
-| — | Free | Add/edit/delete/duplicate all directives · journal · **account balances list** · raw editing of every file with highlighting, search, validation · first import of an existing project · **all export** · manual backup archive · safe mode · diagnostics |
-| **T1 Reports** | $9.99 | Full Fava report surface: balance sheet, income statement, trial balance, holdings, commodities, account/payee/tag/link views, charts and graphs, **BQL queries** |
-| **T2 Capture** | $14.99 | T1 + external documents, camera, PDF assembly, OCR (when it ships), home-screen widgets |
-| **T3 Power** | $19.99 | T2 + auto-mirror to SAF, scheduled backups, remote mode, statement importers, scripts, **Beancount plugins and Fava extensions** |
+| — | Free | Add/edit/delete/duplicate all directives · journal · **account balances list** · raw editing of every file with highlighting, search, validation · multiple projects · **all manual import, export, backup and restore** · safe mode · diagnostics |
+| **T1 Insight** | $9.99 | Full Fava report surface: balance sheet, income statement, trial balance, holdings, commodities, account/payee/tag/link views, charts and graphs, **BQL queries** |
+| **T2 Workflow** | $14.99 | T1 + external documents, camera, PDF assembly, OCR (when it ships), home-screen widgets, **auto-mirror to a SAF folder, scheduled backups** |
+| **T3 Power** | $19.99 | T2 + remote mode, statement importers (beangulp), scripts, **Beancount plugins and Fava extensions** |
+
+The organising principle: **free is fully functional but manual; paid is automated and
+analytical.** A free user can do every accounting operation, edit every file by hand, and
+move data in and out as often as they like — it simply takes more taps.
 
 Upgrades are handled by issuing a replacement key at the price difference — a manual
 step on the website, with no in-app mechanism at all.
 
-**Data-out is never paywalled.** Export and manual backup creation are free in every
-edition, forever.
+**Data-out is never paywalled, and neither is data-in or recovery.** Manual import, export,
+backup creation and restore are free in every edition, forever, with no count limits.
+
+Two reasons this is not merely generosity. First, the free tier includes the raw editor, so
+a determined user can already copy ledger text out by hand — gating export would be a weak
+lock that mostly inconveniences honest users while contradicting the plain-text promise.
+Second, an earlier draft gated "imports after the first", which is unworkable: *first* per
+project, per install, or per reinstall? It also placed a paywall at the exact moment a new
+user is judging whether the app is worth anything.
 
 Tier 3 behaves identically in both editions except for D1/D2 above: Play users can load
 pure-Python plugins and extensions without the Android bridge; Expert users can load
