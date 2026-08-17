@@ -183,14 +183,39 @@ Rules:
 
 ### 7.1 GPL-2.0 and Apache-2.0
 
-Apache-2.0 is incompatible with GPL-2.0-only. This constrains dependency choice
-(notably: `tesseract4android` is Apache-2.0 and would be a problem; ML Kit is proprietary).
-Because monetization uses **external contribution keys with no billing SDK**, the Play
-Billing library — previously the main proprietary dependency — is not present at all, and
-the licensing question narrows to future OCR only. The resolution there, if needed, is an
-explicit **GPL linking exception** granted by us as copyright holder of our own code,
-leaving Beancount's terms untouched. Tracked as a licensing task before OCR ships; it does
-not block v1, which has no OCR.
+**Correction (M5).** An earlier version of this section claimed the Apache-2.0 problem
+"narrows to future OCR only". That was wrong, and the mistake matters.
+
+Apache-2.0 is incompatible with GPL-2.0-**only**, and *AndroidX itself is Apache-2.0* —
+`core-ktx`, Compose, `lifecycle`, `documentfile`, the test libraries, all of it. So the
+incompatibility is not a corner case about OCR; it sits in the middle of the dependency
+graph of any modern Android app. Dropping Play Billing removed one proprietary dependency
+but changed nothing here.
+
+We cannot grant an exception for Beancount's code: it is GPL-2.0-only, copyright Martin
+Blais (as are beanquery and beangulp). We can only grant one for our own.
+
+Three realistic resolutions, in the order they should be considered:
+
+1. **Separate the processes.** Run CPython + Beancount + Fava in their own Android process
+   (`android:process=":engine"`), talking to the Kotlin app only over the loopback HTTP
+   interface it already exposes. Beancount then runs as an independent program that the
+   app communicates with at arm's length, rather than as a library linked into an
+   Apache-2.0-laden process. This is the strongest structural answer and is *almost the
+   present design already* — Fava is an HTTP server; the only coupling is that Chaquopy
+   currently hosts the interpreter in the app's own process. Costs: a second process's
+   memory, IPC for the non-HTTP calls (`ledger.inspect`, `writer.validate`), and a
+   lifecycle to manage.
+2. **Ask upstream for a linking exception.** A short, specific request to the Beancount
+   maintainer covering Android platform and AndroidX libraries. Cheap to ask; outside our
+   control.
+3. **Accept and document the risk.** Many GPL Android apps ship against AndroidX. The
+   practical exposure is that a copyright holder objects; the honest position is that this
+   is a real incompatibility under the strict reading, not a solved problem.
+
+**This is unresolved and must be decided before the first public release.** It is recorded
+here rather than in a footnote because it can change the process architecture, and doing
+that after M6–M13 would be expensive. Tracked as risk R9.
 
 ### 7.2 Expert plugins are not sandboxed
 

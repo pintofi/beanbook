@@ -54,6 +54,7 @@ class BeancountApplication : Application() {
         // The engine follows the *process* lifecycle, not an activity's: it must survive
         // rotation but must not keep serving once the app is in the background
         // (docs/architecture.md §5).
+        dev.beancount.app.storage.ContextHolder.install(this)
         ProcessLifecycleOwner.get().lifecycle.addObserver(engineManager)
     }
 
