@@ -34,3 +34,8 @@ secrets.properties
 # Spike-local machine paths
 spikes/**/local.properties
 spikes/**/.gradle/
+
+# Build outputs and local machine config
+/build/
+/*/build/
+/local.properties

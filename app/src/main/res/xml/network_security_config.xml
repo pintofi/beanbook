@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext is permitted for the loopback address only, because the embedded Fava server
+  is plain HTTP on 127.0.0.1. Everything else is HTTPS-only, with no exceptions and no
+  user-facing override: remote mode must never fall back to cleartext.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
