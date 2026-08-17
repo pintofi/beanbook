@@ -8,6 +8,10 @@ import dev.beancount.core.data.ProjectWorkspace
 import dev.beancount.core.data.ProjectWriter
 import dev.beancount.core.data.WriteJournal
 import dev.beancount.core.engine.PluginPolicy
+import dev.beancount.core.entitlement.Entitlement
+import dev.beancount.core.entitlement.Entitlements
+import dev.beancount.core.entitlement.FileEntitlementStorage
+import java.time.Instant
 import dev.beancount.engine.local.BeancountEditor
 import dev.beancount.engine.local.BeancountValidator
 import dev.beancount.engine.local.LedgerReader
@@ -39,6 +43,22 @@ class BeancountApplication : Application() {
 
     val journal: WriteJournal by lazy { WriteJournal(workspace) }
 
+    /**
+     * Trial and contribution keys. Stored in app-private storage *outside* the project
+     * tree, so entitlement state is never exported or backed up with a ledger.
+     */
+    val entitlements: Entitlements by lazy {
+        Entitlements(FileEntitlementStorage(filesDir.resolve("entitlement")))
+    }
+
+    /**
+     * Re-read on each start rather than cached for the process lifetime: a trial that
+     * expires while the app is open should take effect at the next launch, not silently
+     * mid-session.
+     */
+    var entitlement: Entitlement = Entitlement.FREE
+        private set
+
     val editor: BeancountEditor by lazy { BeancountEditor(this) }
 
     /**
@@ -55,6 +75,8 @@ class BeancountApplication : Application() {
         // rotation but must not keep serving once the app is in the background
         // (docs/architecture.md §5).
         dev.beancount.app.storage.ContextHolder.install(this)
+        // Starts the 30-day trial on first launch and records that the app was seen now.
+        entitlement = entitlements.onAppStart(Instant.now())
         ProcessLifecycleOwner.get().lifecycle.addObserver(engineManager)
     }
 

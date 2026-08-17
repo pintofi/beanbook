@@ -146,6 +146,31 @@ business decision, not an architectural one.
 
 ### 4.4 Tiers (identical in both editions)
 
+### 4.4.1 The 30-day trial
+
+Every fresh install begins a **30-day trial with all three tiers unlocked** — the model My
+Expenses uses. It needs no account, no network call and no card: the app records the
+install date locally and counts down.
+
+When it ends, **nothing is taken away except the paid features**:
+
+- the ledger is untouched, and every file stays exactly where it was;
+- adding, editing, deleting and duplicating entries keeps working;
+- the journal, the account balances list and raw file editing keep working;
+- **all manual import, export, backup and restore keep working** — data-in, data-out and
+  recovery are never gated, during the trial or after it;
+- a contribution key entered later applies immediately and behaves exactly as documented
+  below.
+
+The trial and any key are resolved to the **better** of the two, so an expiring trial can
+never downgrade someone who has already contributed.
+
+Clock changes: winding the device clock backwards does not extend the trial (the app
+records the furthest time it has seen). Winding it forwards ends the trial early, which is
+the user's own doing and not worth fighting. A reinstall starts a new trial — there is no
+device fingerprinting to prevent that, and adding some would contradict the privacy
+position in [threat-model.md](threat-model.md) §4.
+
 | Tier | Price (USD) | Unlocks |
 |---|---|---|
 | — | Free | Add/edit/delete/duplicate all directives · journal · **account balances list** · raw editing of every file with highlighting, search, validation · multiple projects · **all manual import, export, backup and restore** · safe mode · diagnostics |

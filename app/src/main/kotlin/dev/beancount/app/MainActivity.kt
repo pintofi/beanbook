@@ -40,6 +40,9 @@ import dev.beancount.core.domain.LedgerSnapshot
 import dev.beancount.core.engine.EngineStatus
 import dev.beancount.core.engine.OriginAllowlist
 import dev.beancount.core.engine.ReportPath
+import dev.beancount.core.entitlement.Entitlement
+import dev.beancount.core.entitlement.Feature
+import dev.beancount.core.entitlement.Grant
 
 /**
  * M3 shell: three surfaces over one ledger — the native journal and balances (free tier)
@@ -90,6 +93,7 @@ class MainActivity : ComponentActivity() {
                         engineStatus = engineStatus,
                         ledger = ledger,
                         editionName = app.pluginPolicy.name,
+                        entitlement = app.entitlement,
                         token = app.engine.sessionToken,
                         debuggingAllowed = BuildConfig.DEBUG,
                         onOpenExternally = ::openInBrowser,
@@ -150,6 +154,7 @@ internal fun LedgerApp(
     engineStatus: EngineStatus,
     ledger: LedgerSnapshot?,
     editionName: String,
+    entitlement: Entitlement,
     token: String?,
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
@@ -175,6 +180,35 @@ internal fun LedgerApp(
             }
         },
     ) { padding ->
+        Column(modifier = Modifier.padding(padding)) {
+            TrialBanner(entitlement)
+            SurfaceContent(
+                selected = selected,
+                engineStatus = engineStatus,
+                ledger = ledger,
+                editionName = editionName,
+                entitlement = entitlement,
+                token = token,
+                debuggingAllowed = debuggingAllowed,
+                onOpenExternally = onOpenExternally,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SurfaceContent(
+    selected: Surface,
+    engineStatus: EngineStatus,
+    ledger: LedgerSnapshot?,
+    editionName: String,
+    entitlement: Entitlement,
+    token: String?,
+    debuggingAllowed: Boolean,
+    onOpenExternally: (Uri) -> Unit,
+) {
+    val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+    run {
         when (selected) {
             Surface.JOURNAL, Surface.BALANCES -> {
                 if (ledger == null) {
@@ -188,7 +222,15 @@ internal fun LedgerApp(
 
             Surface.REPORTS -> {
                 val serving = engineStatus as? EngineStatus.Serving
-                if (serving == null) {
+                if (!entitlement.allows(Feature.FAVA_REPORTS)) {
+                    // Tier 1. The journal, balances and raw editing stay free, and the
+                    // ledger is untouched — only this surface is locked.
+                    LockedFeature(
+                        title = "Reports and charts",
+                        tier = Feature.FAVA_REPORTS.required.label,
+                        modifier = Modifier.padding(padding),
+                    )
+                } else if (serving == null) {
                     LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
                 } else {
                     if (token != null) installSessionToken(serving.origin, token)
@@ -203,6 +245,47 @@ internal fun LedgerApp(
             }
         }
     }
+}
+
+/**
+ * A locked feature says what it is, which tier unlocks it, and nothing else. No countdown,
+ * no modal, no nagging (docs/ux.md §10) — and the user's data is never involved.
+ */
+@Composable
+private fun LockedFeature(title: String, tier: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.headlineSmall)
+        Text("Unlocked by the $tier contribution key.")
+        Text(
+            "Your ledger, the journal, balances, raw editing, and import and export all " +
+                "stay free. This app is open source: you can also build it yourself.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+/** One quiet line about the trial. Shown while it runs, and once when it has ended. */
+@Composable
+internal fun TrialBanner(entitlement: Entitlement, modifier: Modifier = Modifier) {
+    val text = when (val grant = entitlement.grant) {
+        is Grant.Trial -> {
+            val days = entitlement.trialDaysRemaining ?: 0
+            if (days <= 1) "Trial: last day — everything is unlocked"
+            else "Trial: $days days left — everything is unlocked"
+        }
+        is Grant.TrialEnded ->
+            "Trial ended. Your ledger is untouched and stays fully editable."
+        is Grant.Key -> "${'$'}{grant.tier.label} key · ${'$'}{grant.email}"
+        Grant.Free -> return
+    }
+    Text(
+        text = text,
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        style = MaterialTheme.typography.bodySmall,
+    )
 }
 
 @Composable

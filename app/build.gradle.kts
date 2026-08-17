@@ -103,6 +103,7 @@ dependencies {
     implementation(project(":core-domain"))
     implementation(project(":core-data"))
     implementation(project(":core-engine"))
+    implementation(project(":core-entitlement"))
     implementation(project(":engine-local"))
 
     implementation(libs.androidx.core.ktx)
