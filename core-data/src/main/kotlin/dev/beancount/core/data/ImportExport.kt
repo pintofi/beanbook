@@ -19,12 +19,19 @@ interface ImportSource {
 }
 
 data class SourceEntry(
+    /**
+     * Where the file lands in the project. Usually the same as [sourcePath]; they differ
+     * when a shared wrapper directory is stripped, and the source must still be read by its
+     * own name.
+     */
     val path: String,
     val size: Long,
     /** Compressed size where the container reports one; used for zip-bomb detection. */
     val compressedSize: Long = size,
     val isSymlink: Boolean = false,
     val isDirectory: Boolean = false,
+    /** The name this entry has inside the archive or folder. */
+    val sourcePath: String = path,
 )
 
 /** Where an export writes to: a SAF tree, a directory, a zip stream. */
@@ -162,14 +169,30 @@ class ProjectImporter(
                 problems += ImportProblem.TooLarge(path, totalBytes); break
             }
 
-            accepted += entry.copy(path = path)
+            accepted += entry.copy(path = path, sourcePath = entry.path)
         }
 
+        // Archives are usually made by zipping a folder, so everything sits under one
+        // directory. Keeping that wrapper means the root ledger has to be *copied* to
+        // main.beancount, leaving the project holding the same ledger twice — and edits to
+        // the nested copy silently do nothing. Stripping a shared wrapper is uniform, so
+        // relative includes and document links keep resolving.
+        val unwrapped = stripSharedWrapper(accepted)
+
         return ImportPlan(
-            files = accepted,
+            files = unwrapped,
             problems = problems,
-            ledgerCandidates = findLedgerCandidates(accepted.map { it.path }),
+            ledgerCandidates = findLedgerCandidates(unwrapped.map { it.path }),
         )
+    }
+
+    private fun stripSharedWrapper(entries: List<SourceEntry>): List<SourceEntry> {
+        if (entries.isEmpty()) return entries
+        val wrapper = entries.first().path.substringBefore('/', missingDelimiterValue = "")
+        if (wrapper.isEmpty()) return entries
+        val prefix = "$wrapper/"
+        if (!entries.all { it.path.startsWith(prefix) }) return entries
+        return entries.map { it.copy(path = it.path.removePrefix(prefix), sourcePath = it.sourcePath) }
     }
 
     /**
@@ -294,8 +317,8 @@ class ZipImportSource(private val archive: File) : ImportSource, AutoCloseable {
         }.toList()
 
     override fun open(entry: SourceEntry): InputStream {
-        val found = zip.getEntry(entry.path)
-            ?: error("entry disappeared from the archive: ${entry.path}")
+        val found = zip.getEntry(entry.sourcePath)
+            ?: error("entry disappeared from the archive: ${entry.sourcePath}")
         return zip.getInputStream(found)
     }
 
@@ -317,7 +340,7 @@ class DirectoryImportSource(private val root: File) : ImportSource {
             }
             .toList()
 
-    override fun open(entry: SourceEntry): InputStream = File(root, entry.path).inputStream()
+    override fun open(entry: SourceEntry): InputStream = File(root, entry.sourcePath).inputStream()
 }
 
 /** Writes a project into a plain directory. */

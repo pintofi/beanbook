@@ -304,6 +304,44 @@ class ImportExportTest {
     }
 
     @Test
+    fun `an archive wrapped in one folder is unwrapped, not duplicated`() {
+        // What `zip -r ledger.zip ledger` produces, and what the emulator import of
+        // zipped-ledger.zip produced before this: main.beancount at the root *and* a second
+        // copy under the wrapper, where editing the copy does nothing.
+        val archive = zipOf(
+            "zipped-ledger/main.beancount" to "include \"transactions.beancount\"\n",
+            "zipped-ledger/transactions.beancount" to "; entries\n",
+        )
+
+        val result = importer.import(ZipImportSource(archive), "unwrapped")
+
+        assertTrue(result is ImportResult.Imported, "import failed: $result")
+        val dir = workspace.projectDir("unwrapped")
+        val files = dir.walkTopDown().filter { it.isFile }.map { it.relativeTo(dir).path }.toSet()
+        assertEquals(setOf("main.beancount", "transactions.beancount"), files)
+        assertTrue(
+            dir.resolve("main.beancount").readText().contains("include"),
+            "the wrapper's ledger must be the project root, not a fresh file",
+        )
+    }
+
+    @Test
+    fun `two top-level folders are kept as they are`() {
+        // Only a *shared* wrapper is stripped: here the layout is the author's own.
+        val archive = zipOf(
+            "personal/main.beancount" to "; personal\n",
+            "business/ledger.beancount" to "; business\n",
+        )
+
+        val result = importer.import(ZipImportSource(archive), "two-roots")
+
+        assertTrue(result is ImportResult.Imported, "import failed: $result")
+        val dir = workspace.projectDir("two-roots")
+        assertTrue(dir.resolve("personal/main.beancount").isFile)
+        assertTrue(dir.resolve("business/ledger.beancount").isFile)
+    }
+
+    @Test
     fun `export contains no journal, snapshot or cache files`() {
         val projectId = "clean"
         workspace.createProject(projectId, title = "Clean")
