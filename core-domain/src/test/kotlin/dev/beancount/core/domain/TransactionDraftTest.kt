@@ -221,3 +221,52 @@ class LedgerVocabularyTest {
         assertEquals(listOf("USD"), v.currencies)
     }
 }
+
+/** "Use what I used last time" — the cheapest useful form of templates. */
+class RecentValuesTest {
+
+    private fun entry(payee: String, account: String, amount: String) = JournalEntry(
+        date = "2026-09-01",
+        flag = "*",
+        payee = payee,
+        narration = "Shop",
+        tags = emptyList(),
+        links = emptyList(),
+        postings = listOf(
+            JournalPosting(account, Amount.parse(amount, "USD")),
+            JournalPosting("Assets:Cash", Amount.parse("-$amount", "USD")),
+        ),
+        file = null,
+        line = null,
+    )
+
+    private val vocabulary = LedgerVocabulary(
+        accounts = listOf("Expenses:Food:Groceries", "Assets:Cash"),
+        payees = listOf("Grocer", "Bakery"),
+        narrations = emptyList(),
+        currencies = listOf("USD"),
+        tags = emptyList(),
+        recentEntries = listOf(
+            entry("Grocer", "Expenses:Food:Groceries", "42.30"),
+            entry("Bakery", "Expenses:Food:Restaurant", "3.50"),
+            entry("Grocer", "Expenses:Food:Groceries", "39.10"),
+        ),
+    )
+
+    @Test
+    fun `the newest entry for a payee is offered back`() {
+        val last = vocabulary.lastEntryFor("Grocer")
+        assertEquals("42.30", last?.postings?.first()?.amount?.number?.toPlainString())
+        assertEquals("Expenses:Food:Groceries", last?.postings?.first()?.account)
+    }
+
+    @Test
+    fun `payee matching ignores case, because people type in a hurry`() {
+        assertEquals("Grocer", vocabulary.lastEntryFor("grocer")?.payee)
+    }
+
+    @Test
+    fun `an unknown payee offers nothing rather than the wrong thing`() {
+        assertEquals(null, vocabulary.lastEntryFor("Someone New"))
+    }
+}

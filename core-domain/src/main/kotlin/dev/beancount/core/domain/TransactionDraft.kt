@@ -163,6 +163,8 @@ data class LedgerVocabulary(
     val narrations: List<String>,
     val currencies: List<String>,
     val tags: List<String>,
+    /** Newest first, for offering back what was used last time. */
+    val recentEntries: List<JournalEntry> = emptyList(),
 ) {
     fun accountsMatching(prefix: String): List<String> = match(accounts, prefix)
     fun payeesMatching(prefix: String): List<String> = match(payees, prefix)
@@ -178,6 +180,17 @@ data class LedgerVocabulary(
         return (starts + contains).take(SUGGESTION_LIMIT)
     }
 
+    /**
+     * The last transaction recorded for [payee], newest first.
+     *
+     * "Recent values" in the sense that helps: someone who shops at the same grocer every
+     * week wants last week's accounts back, not a template they had to define first.
+     * Nothing is filled in automatically — the UI offers it and the user chooses, because
+     * silently reusing an old amount would be a way to record the wrong number.
+     */
+    fun lastEntryFor(payee: String): JournalEntry? =
+        recentEntries.firstOrNull { it.payee.equals(payee, ignoreCase = true) }
+
     companion object {
         const val SUGGESTION_LIMIT = 12
 
@@ -189,6 +202,7 @@ data class LedgerVocabulary(
                 .flatMap { account -> account.positions.map { it.currency } }
                 .distinct().sorted(),
             tags = snapshot.journal.flatMap { it.tags }.distinct().sorted(),
+            recentEntries = snapshot.journal,
         )
     }
 }

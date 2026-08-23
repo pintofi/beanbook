@@ -1,11 +1,11 @@
 package dev.beancount.app.ui
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -18,10 +18,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
@@ -34,16 +37,20 @@ import dev.beancount.core.domain.TransactionDraft
 import java.math.BigDecimal
 import java.time.LocalDate
 
+/** One editable posting row. Empty amount means elided — Beancount works it out. */
+private class PostingRow(account: String = "", amount: String = "") {
+    var account by mutableStateOf(account)
+    var amount by mutableStateOf(amount)
+}
+
 /**
- * Quick-add: the fast path for the common case — one amount, two accounts.
+ * Transaction entry: fast for the common case, complete for the rest.
  *
- * Two product rules are visible in the code:
- *
- *  * **The generated text is shown before it is written** (docs/ux.md §4). What the user
- *    approves is exactly what lands in the file.
- *  * **Nothing is silently balanced.** The second posting is left elided so Beancount works
- *    out the counter-amount, which is the honest way to do it — the app does not compute a
- *    number and pretend Beancount did.
+ * The first two rows are prefilled so a shop purchase is amount-plus-two-taps, but any
+ * number of postings can be added — a split bill, a paycheque with deductions, a transfer
+ * with a fee. The running imbalance is shown as you type, and **the app never balances the
+ * transaction for you**: it shows the residual and offers an elided posting, which is how
+ * you ask Beancount to compute it (docs/ux.md §4).
  */
 @Composable
 fun QuickAddScreen(
@@ -56,36 +63,35 @@ fun QuickAddScreen(
     var date by remember { mutableStateOf(today.toString()) }
     var payee by remember { mutableStateOf("") }
     var narration by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    var currency by remember {
-        mutableStateOf(vocabulary.currencies.firstOrNull() ?: "USD")
-    }
-    var fromAccount by remember {
-        mutableStateOf(vocabulary.accounts.firstOrNull { it.startsWith("Assets") }.orEmpty())
-    }
-    var toAccount by remember {
-        mutableStateOf(vocabulary.accounts.firstOrNull { it.startsWith("Expenses") }.orEmpty())
-    }
+    var currency by remember { mutableStateOf(vocabulary.currencies.firstOrNull() ?: "USD") }
 
-    val parsedAmount = remember(amount, currency) {
-        runCatching { Amount(BigDecimal(amount.trim()), currency) }.getOrNull()
+    val rows = remember {
+        mutableStateListOf(
+            PostingRow(vocabulary.accounts.firstOrNull { it.startsWith("Expenses") }.orEmpty()),
+            // The second posting is elided by default: the counter-amount is Beancount's
+            // to compute, not ours to guess.
+            PostingRow(vocabulary.accounts.firstOrNull { it.startsWith("Assets") }.orEmpty()),
+        )
     }
 
     val draft = TransactionDraft(
         date = date.trim(),
         payee = payee.trim().ifBlank { null },
         narration = narration.trim().ifBlank { null },
-        postings = listOfNotNull(
-            parsedAmount?.let { PostingDraft(toAccount.trim(), it) },
-            PostingDraft(fromAccount.trim()),
-        ),
+        postings = rows.filter { it.account.isNotBlank() }.map { row ->
+            PostingDraft(
+                account = row.account.trim(),
+                amount = row.amount.trim().takeIf { it.isNotBlank() }?.let { value ->
+                    runCatching { Amount(BigDecimal(value), currency.trim()) }.getOrNull()
+                },
+            )
+        },
     )
     val problems = draft.validate()
+    val residuals = draft.residuals()
 
     Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         OutlinedTextField(
@@ -95,6 +101,7 @@ fun QuickAddScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+
         OutlinedTextField(
             value = payee,
             onValueChange = { payee = it },
@@ -104,6 +111,32 @@ fun QuickAddScreen(
         )
         Suggestions(vocabulary.payeesMatching(payee), "payee") { payee = it }
 
+        // "Use what you used last time" — offered, never applied silently, because reusing
+        // an old amount without being asked is a way to record the wrong number.
+        vocabulary.lastEntryFor(payee.trim())?.let { last ->
+            AssistChip(
+                onClick = {
+                    narration = last.narration.orEmpty()
+                    // Grow to fit: reusing a three-posting entry into two rows would drop a
+                    // posting silently, which is exactly the kind of quiet loss the app
+                    // must not do.
+                    while (rows.size < last.postings.size) rows.add(PostingRow())
+                    last.postings.forEachIndexed { index, posting ->
+                        rows[index].account = posting.account
+                        rows[index].amount =
+                            posting.amount?.number?.abs()?.toPlainString().orEmpty()
+                    }
+                    // Only the first posting keeps an amount; the rest stay elided, so
+                    // Beancount recomputes them rather than us reusing stale numbers.
+                    rows.drop(1).forEach { it.amount = "" }
+                },
+                label = { Text("Use last: ${last.postings.firstOrNull()?.account?.substringAfterLast(':')}") },
+                modifier = Modifier.semantics {
+                    contentDescription = "Reuse the last entry for ${payee.trim()}"
+                },
+            )
+        }
+
         OutlinedTextField(
             value = narration,
             onValueChange = { narration = it },
@@ -112,46 +145,100 @@ fun QuickAddScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = amount,
-                onValueChange = { amount = it },
-                label = { Text("Amount") },
-                singleLine = true,
-                // Decimal keyboard, never a float anywhere in the path: the text is parsed
-                // straight into BigDecimal (invariant 1).
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.weight(2f),
-            )
-            OutlinedTextField(
-                value = currency,
-                onValueChange = { currency = it.uppercase() },
-                label = { Text("Currency") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
+        OutlinedTextField(
+            value = currency,
+            onValueChange = { currency = it.uppercase() },
+            label = { Text("Currency") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Text("Postings", style = MaterialTheme.typography.titleSmall)
+
+        // Side by side, an account and an amount stop fitting once the text is large: at
+        // 200% font the amount field is narrow enough that its own label wraps mid-word.
+        // Above 130% they stack instead, which costs a line and keeps both readable.
+        val stacked = LocalDensity.current.fontScale > 1.3f
+
+        rows.forEachIndexed { index, row ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                val accountField: @Composable (Modifier) -> Unit = { fieldModifier ->
+                    OutlinedTextField(
+                        value = row.account,
+                        onValueChange = { row.account = it },
+                        label = { Text("Account ${index + 1}") },
+                        singleLine = true,
+                        modifier = fieldModifier,
+                    )
+                }
+                val amountField: @Composable (Modifier) -> Unit = { fieldModifier ->
+                    OutlinedTextField(
+                        value = row.amount,
+                        onValueChange = { row.amount = it },
+                        label = { Text(if (index == 0) "Amount" else "Amount (optional)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = fieldModifier,
+                    )
+                }
+                val removeButton: @Composable () -> Unit = {
+                    if (rows.size > 2) {
+                        TextButton(
+                            onClick = { rows.removeAt(index) },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Remove posting ${index + 1}"
+                            },
+                        ) { Text("×") }
+                    }
+                }
+
+                if (stacked) {
+                    accountField(Modifier.fillMaxWidth())
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        amountField(Modifier.weight(1f))
+                        removeButton()
+                    }
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        accountField(Modifier.weight(2f))
+                        amountField(Modifier.weight(1f))
+                        removeButton()
+                    }
+                }
+                Suggestions(vocabulary.accountsMatching(row.account), "account") {
+                    row.account = it
+                }
+            }
+        }
+
+        TextButton(onClick = { rows.add(PostingRow()) }) { Text("Add posting") }
+
+        // The imbalance is information, not an error: an elided posting is the normal way
+        // to let Beancount finish the arithmetic.
+        if (residuals.isNotEmpty()) {
+            val elided = draft.postings.count { it.isElided }
+            Text(
+                text = if (elided == 1) {
+                    "Beancount will put ${residuals.joinToString(", ") { it.format() }} on the " +
+                        "posting with no amount."
+                } else {
+                    "Does not balance: ${residuals.joinToString(", ") { it.format() }}"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (elided == 1) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.error
+                },
             )
         }
 
-        OutlinedTextField(
-            value = toAccount,
-            onValueChange = { toAccount = it },
-            label = { Text("Category (debit)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Suggestions(vocabulary.accountsMatching(toAccount), "category") { toAccount = it }
-
-        OutlinedTextField(
-            value = fromAccount,
-            onValueChange = { fromAccount = it },
-            label = { Text("Paid from (credit)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Suggestions(vocabulary.accountsMatching(fromAccount), "account") { fromAccount = it }
-
-        // The preview is not decoration: it is the contract with the user about what will
-        // be written.
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {
                 Text("Will be written as", style = MaterialTheme.typography.labelMedium)
@@ -178,13 +265,9 @@ fun QuickAddScreen(
             onClick = { onSave(draft) },
             enabled = problems.isEmpty(),
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Save entry")
-        }
+        ) { Text("Save entry") }
 
-        saveState?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall)
-        }
+        saveState?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
     }
 }
 
@@ -192,9 +275,7 @@ fun QuickAddScreen(
 internal fun Suggestions(values: List<String>, kind: String, onPick: (String) -> Unit) {
     if (values.isEmpty()) return
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         values.take(6).forEach { value ->

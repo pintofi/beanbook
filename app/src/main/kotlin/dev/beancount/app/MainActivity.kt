@@ -13,12 +13,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.beancount.app.engine.RecoveryOnStart
@@ -307,17 +313,37 @@ internal fun LedgerApp(
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            NavigationBar {
-                Surface.entries.forEach { surface ->
-                    NavigationBarItem(
-                        selected = selected == surface,
-                        onClick = { selected = surface },
-                        label = { Text(surface.label) },
-                        icon = {},
-                        modifier = Modifier.semantics {
-                            contentDescription = surface.label
-                        },
-                    )
+            // Six text-only destinations fit across a phone at normal text size and do not
+            // at 200%: a NavigationBar there wrapped the labels mid-word and clipped
+            // "Projects" off the screen edge. Below 130% the bar stays as it was; above it,
+            // scrolling tabs keep every label whole and every destination reachable.
+            if (LocalDensity.current.fontScale > 1.3f) {
+                PrimaryScrollableTabRow(
+                    selectedTabIndex = Surface.entries.indexOf(selected),
+                    edgePadding = 0.dp,
+                ) {
+                    Surface.entries.forEach { surface ->
+                        Tab(
+                            selected = selected == surface,
+                            onClick = { selected = surface },
+                            text = { Text(surface.label, softWrap = false) },
+                            modifier = Modifier.semantics { contentDescription = surface.label },
+                        )
+                    }
+                }
+            } else {
+                NavigationBar {
+                    Surface.entries.forEach { surface ->
+                        NavigationBarItem(
+                            selected = selected == surface,
+                            onClick = { selected = surface },
+                            label = { Text(surface.label) },
+                            icon = {},
+                            modifier = Modifier.semantics {
+                                contentDescription = surface.label
+                            },
+                        )
+                    }
                 }
             }
         },

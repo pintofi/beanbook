@@ -1,8 +1,11 @@
 package dev.beancount.app.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,9 +46,12 @@ fun OnboardingScreen(
 ) {
     var title by remember { mutableStateOf("My Ledger") }
 
+    // Scrollable, not just tall: at 200% font the "Start a new project" card falls below
+    // the fold, and without this it cannot be reached at all.
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -64,7 +70,13 @@ fun OnboardingScreen(
                         "storage. Free, and as often as you like.",
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Wraps rather than squeezing: side by side these two buttons stop fitting
+                // at large font sizes, and a button squashed until its label breaks
+                // mid-word is not a usable control.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     OutlinedButton(onClick = onOpenFolder) { Text("Choose folder") }
                     OutlinedButton(onClick = onOpenArchive) { Text("Choose .zip") }
                 }
