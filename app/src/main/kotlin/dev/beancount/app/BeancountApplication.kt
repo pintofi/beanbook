@@ -4,6 +4,9 @@ import android.app.Application
 import androidx.lifecycle.ProcessLifecycleOwner
 import dev.beancount.app.engine.EngineManager
 import dev.beancount.app.engine.LedgerState
+import dev.beancount.app.engine.ProjectsState
+import dev.beancount.core.data.ProjectImporter
+import dev.beancount.core.data.ProjectRegistry
 import dev.beancount.core.data.ProjectWorkspace
 import dev.beancount.core.data.ProjectWriter
 import dev.beancount.core.data.WriteJournal
@@ -52,6 +55,15 @@ class BeancountApplication : Application() {
     }
 
     val journal: WriteJournal by lazy { WriteJournal(workspace) }
+
+    /** Runtime state, kept outside the project tree so it is never exported with a ledger. */
+    val registry: ProjectRegistry by lazy {
+        ProjectRegistry(workspace, filesDir.resolve("state"))
+    }
+
+    val projectsState: ProjectsState by lazy {
+        ProjectsState(workspace, registry, ProjectImporter(workspace), appScope)
+    }
 
     /**
      * Trial and contribution keys. Stored in app-private storage *outside* the project

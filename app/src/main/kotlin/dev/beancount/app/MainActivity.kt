@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import dev.beancount.core.data.WriteJournal
 import java.io.File
@@ -34,7 +35,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.beancount.app.engine.RecoveryOnStart
 import dev.beancount.app.ui.BalancesScreen
 import dev.beancount.app.ui.JournalScreen
+import dev.beancount.app.ui.OnboardingScreen
+import dev.beancount.app.ui.ProjectPickerScreen
 import dev.beancount.app.ui.QuickAddScreen
+import dev.beancount.core.data.ProjectSummary
 import dev.beancount.core.domain.LedgerVocabulary
 import dev.beancount.core.domain.TransactionDraft
 import dev.beancount.app.web.FavaWebView
@@ -59,31 +63,64 @@ class MainActivity : ComponentActivity() {
     private var recoveryMessage: String? = null
     private var saveMessage: String? by mutableStateOf(null)
 
+    /**
+     * SAF pickers. These are the only way a project enters the app, and every byte they
+     * hand over is validated before anything is written (docs/storage-and-backup.md §4).
+     */
+    private val folderPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        val app = application as BeancountApplication
+        uri?.let {
+            contentResolver.takePersistableUriPermission(
+                it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+            app.projectsState.importFolder(contentResolver, it) { id -> openProject(app, id) }
+        }
+    }
+
+    private val archivePicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        val app = application as BeancountApplication
+        uri?.let {
+            app.projectsState.importArchive(contentResolver, it, cacheDir) { id ->
+                openProject(app, id)
+            }
+        }
+    }
+
+    /** Opens a project: engine, ledger, and the active-project record all move together. */
+    private fun openProject(app: BeancountApplication, projectId: String) {
+        val ledgerPath = app.workspace.mainFile(projectId).absolutePath
+        app.projectsState.open(projectId)
+        app.engineManager.start(ledgerPath)
+        app.ledgerState.load(ledgerPath)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val app = application as BeancountApplication
 
-        val projectId = STARTER_PROJECT
-        if (!app.workspace.exists(projectId)) {
-            app.workspace.createProject(projectId, title = "My Ledger")
-        }
-        val ledgerPath = app.workspace.mainFile(projectId).absolutePath
+        app.projectsState.refresh()
 
         lifecycleScope.launch {
             // Recovery first: an interrupted write is resolved before the ledger is shown
             // or served, never after (docs/architecture.md 5).
-            val report = RecoveryOnStart(app.writer).run(projectId)
-            if (!report.isClean) {
-                recoveryMessage = report.describe()
+            app.projectsState.activeId.value?.let { active ->
+                val report = RecoveryOnStart(app.writer).run(active)
+                if (!report.isClean) recoveryMessage = report.describe()
+                openProject(app, active)
             }
-            app.engineManager.start(ledgerPath)
-            app.ledgerState.load(ledgerPath)
 
             // Debug-only: begin a write and stall before committing, so a process kill
             // can be timed to land mid-write (docs/milestones/m4.md, process-death test).
             val stall = intent.getStringExtra("m4_test")
-            if (BuildConfig.DEBUG && stall != null && stall.startsWith("stall_mid_write")) {
-                stallMidWrite(app, projectId, introducesErrors = stall.endsWith("_bad"))
+            val active = app.projectsState.activeId.value
+            if (BuildConfig.DEBUG && active != null && stall != null &&
+                stall.startsWith("stall_mid_write")
+            ) {
+                stallMidWrite(app, active, introducesErrors = stall.endsWith("_bad"))
             }
         }
 
@@ -92,6 +129,22 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val engineStatus by app.engineManager.status.collectAsStateWithLifecycle()
                     val ledger by app.ledgerState.snapshot.collectAsStateWithLifecycle()
+                    val projects by app.projectsState.projects.collectAsStateWithLifecycle()
+                    val activeId by app.projectsState.activeId.collectAsStateWithLifecycle()
+                    val projectMessage by app.projectsState.message.collectAsStateWithLifecycle()
+
+                    if (activeId == null) {
+                        // No project yet: onboarding, not an empty ledger screen.
+                        OnboardingScreen(
+                            onCreateNew = { title ->
+                                app.projectsState.createNew(title) { openProject(app, it) }
+                            },
+                            onOpenFolder = { folderPicker.launch(null) },
+                            onOpenArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
+                            busyMessage = projectMessage,
+                        )
+                        return@Surface
+                    }
 
                     LedgerApp(
                         engineStatus = engineStatus,
@@ -101,8 +154,18 @@ class MainActivity : ComponentActivity() {
                         token = app.engine.sessionToken,
                         debuggingAllowed = BuildConfig.DEBUG,
                         onOpenExternally = ::openInBrowser,
-                        onSaveEntry = { draft -> saveEntry(app, projectId, ledgerPath, draft) },
+                        onSaveEntry = { draft -> saveEntry(app, activeId!!, draft) },
                         saveState = saveMessage,
+                        projects = projects,
+                        activeProjectId = activeId,
+                        projectMessage = projectMessage,
+                        onOpenProject = { id -> openProject(app, id) },
+                        onCreateProject = { title ->
+                            app.projectsState.createNew(title) { openProject(app, it) }
+                        },
+                        onImportFolder = { folderPicker.launch(null) },
+                        onImportArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
+                        onDeleteProject = { id -> app.projectsState.delete(id) },
                     )
                 }
             }
@@ -148,9 +211,9 @@ class MainActivity : ComponentActivity() {
     private fun saveEntry(
         app: BeancountApplication,
         projectId: String,
-        ledgerPath: String,
         draft: TransactionDraft,
     ) {
+        val ledgerPath = app.workspace.mainFile(projectId).absolutePath
         lifecycleScope.launch {
             saveMessage = "Saving…"
             val file = app.workspace.projectDir(projectId).resolve("files/transactions.beancount")
@@ -173,9 +236,6 @@ class MainActivity : ComponentActivity() {
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
     }
 
-    private companion object {
-        const val STARTER_PROJECT = "my-ledger"
-    }
 }
 
 private enum class Surface(val label: String) {
@@ -183,6 +243,7 @@ private enum class Surface(val label: String) {
     JOURNAL("Journal"),
     BALANCES("Balances"),
     REPORTS("Reports"),
+    PROJECTS("Projects"),
 }
 
 @Composable
@@ -196,6 +257,14 @@ internal fun LedgerApp(
     onOpenExternally: (Uri) -> Unit,
     onSaveEntry: (TransactionDraft) -> Unit,
     saveState: String?,
+    projects: List<ProjectSummary>,
+    activeProjectId: String?,
+    projectMessage: String?,
+    onOpenProject: (String) -> Unit,
+    onCreateProject: (String) -> Unit,
+    onImportFolder: () -> Unit,
+    onImportArchive: () -> Unit,
+    onDeleteProject: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selected by remember { mutableStateOf(Surface.JOURNAL) }
@@ -224,6 +293,14 @@ internal fun LedgerApp(
                 selected = selected,
                 onSaveEntry = onSaveEntry,
                 saveState = saveState,
+                projects = projects,
+                activeProjectId = activeProjectId,
+                projectMessage = projectMessage,
+                onOpenProject = onOpenProject,
+                onCreateProject = onCreateProject,
+                onImportFolder = onImportFolder,
+                onImportArchive = onImportArchive,
+                onDeleteProject = onDeleteProject,
                 engineStatus = engineStatus,
                 ledger = ledger,
                 editionName = editionName,
@@ -241,6 +318,14 @@ private fun SurfaceContent(
     selected: Surface,
     onSaveEntry: (TransactionDraft) -> Unit,
     saveState: String?,
+    projects: List<ProjectSummary>,
+    activeProjectId: String?,
+    projectMessage: String?,
+    onOpenProject: (String) -> Unit,
+    onCreateProject: (String) -> Unit,
+    onImportFolder: () -> Unit,
+    onImportArchive: () -> Unit,
+    onDeleteProject: (String) -> Unit,
     engineStatus: EngineStatus,
     ledger: LedgerSnapshot?,
     editionName: String,
@@ -265,6 +350,17 @@ private fun SurfaceContent(
                     )
                 }
             }
+
+            Surface.PROJECTS -> ProjectPickerScreen(
+                projects = projects,
+                activeId = activeProjectId,
+                onOpen = onOpenProject,
+                onCreateNew = onCreateProject,
+                onOpenFolder = onImportFolder,
+                onOpenArchive = onImportArchive,
+                onDelete = onDeleteProject,
+                busyMessage = projectMessage,
+            )
 
             Surface.JOURNAL, Surface.BALANCES -> {
                 if (ledger == null) {
