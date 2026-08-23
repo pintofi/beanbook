@@ -17,15 +17,13 @@ import org.json.JSONObject
 class BeancountValidator(
     private val context: Context,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val connection: EngineConnection = EngineConnection(context),
 ) : LedgerValidator {
 
     override suspend fun validate(mainFile: String): Result<List<String>> =
         withContext(io) {
-            runCatching {
-                val json = PythonRuntime.ensureStarted(context)
-                    .getModule("writer")
-                    .callAttr("validate", mainFile)
-                    .toString()
+            connection.withEngine { it.validate(mainFile) }.mapCatching { json ->
+                if (json.startsWith("error: ")) error(json.removePrefix("error: "))
                 val root = JSONObject(json)
                 val errors = root.optJSONArray("errors")
                 val messages = (0 until (errors?.length() ?: 0)).map { index ->
@@ -65,14 +63,13 @@ data class EntrySlice(
 class BeancountEditor(
     private val context: Context,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val connection: EngineConnection = EngineConnection(context),
 ) {
 
     suspend fun sliceAt(mainFile: String, file: String, line: Int): EntrySlice? =
         withContext(io) {
-            val json = PythonRuntime.ensureStarted(context)
-                .getModule("writer")
-                .callAttr("entry_slice", mainFile, file, line)
-                .toString()
+            val json = connection.withEngine { it.entrySlice(mainFile, file, line) }
+                .getOrElse { error("engine unavailable: ${it.message}") }
             val root = JSONObject(json)
             if (!root.optBoolean("found")) return@withContext null
             EntrySlice(
@@ -85,26 +82,28 @@ class BeancountEditor(
         }
 
     suspend fun contentWithReplacement(file: String, from: Int, to: Int, newText: String): String =
-        transform("replace_lines", file, from, to, newText)
+        transform("replace", file, from, to, newText)
 
     suspend fun contentWithDeletion(file: String, from: Int, to: Int): String =
-        transform("delete_lines", file, from, to, null)
+        transform("delete", file, from, to, null)
 
+    /**
+     * The edited content comes back through a file in the app's cache, not through Binder:
+     * a 7.7 MB ledger would exceed the ~1 MB transaction limit
+     * (docs/milestones/m5.5-process-split-analysis.md).
+     */
     private suspend fun transform(
-        function: String,
+        op: String,
         file: String,
         from: Int,
         to: Int,
         newText: String?,
     ): String = withContext(io) {
-        val module = PythonRuntime.ensureStarted(context).getModule("writer")
-        val json = if (newText == null) {
-            module.callAttr(function, file, from, to).toString()
-        } else {
-            module.callAttr(function, file, from, to, newText).toString()
-        }
-        val root = JSONObject(json)
-        check(root.optBoolean("ok")) { root.optString("error") }
-        root.getString("content")
+        val payload = connection.payloadFile(op)
+        val result = connection
+            .withEngine { it.transformToFile(op, file, from, to, newText, payload.absolutePath) }
+            .getOrElse { error("engine unavailable: ${it.message}") }
+        check(result == "ok") { result.removePrefix("error: ") }
+        payload.consumeText()
     }
 }

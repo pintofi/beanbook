@@ -13,6 +13,7 @@ import dev.beancount.core.entitlement.Entitlements
 import dev.beancount.core.entitlement.FileEntitlementStorage
 import java.time.Instant
 import dev.beancount.engine.local.BeancountEditor
+import dev.beancount.engine.local.EngineConnection
 import dev.beancount.engine.local.BeancountValidator
 import dev.beancount.engine.local.LedgerReader
 import dev.beancount.engine.local.LocalEngineClient
@@ -35,11 +36,20 @@ class BeancountApplication : Application() {
 
     val workspace: ProjectWorkspace by lazy { ProjectWorkspace(filesDir) }
 
-    val engine: LocalEngineClient by lazy { LocalEngineClient(this) }
+    /**
+     * One binding to the engine process, shared by everything that talks to it. Each
+     * client defaulting to its own connection meant four bindings to the same service —
+     * visible on device as "engine process connected" logged repeatedly.
+     */
+    val engineConnection: EngineConnection by lazy { EngineConnection(this) }
+
+    val engine: LocalEngineClient by lazy { LocalEngineClient(this, connection = engineConnection) }
 
     val engineManager: EngineManager by lazy { EngineManager(engine, appScope) }
 
-    val ledgerState: LedgerState by lazy { LedgerState(LedgerReader(this), appScope) }
+    val ledgerState: LedgerState by lazy {
+        LedgerState(LedgerReader(this, connection = engineConnection), appScope)
+    }
 
     val journal: WriteJournal by lazy { WriteJournal(workspace) }
 
@@ -59,14 +69,14 @@ class BeancountApplication : Application() {
     var entitlement: Entitlement = Entitlement.FREE
         private set
 
-    val editor: BeancountEditor by lazy { BeancountEditor(this) }
+    val editor: BeancountEditor by lazy { BeancountEditor(this, connection = engineConnection) }
 
     /**
      * Every write goes through here: lock, snapshot, journal, atomic rename, re-parse
      * with Beancount, and only then report success (CLAUDE.md, write protocol).
      */
     val writer: ProjectWriter by lazy {
-        ProjectWriter(workspace, journal, BeancountValidator(this))
+        ProjectWriter(workspace, journal, BeancountValidator(this, connection = engineConnection))
     }
 
     override fun onCreate() {
@@ -84,6 +94,7 @@ class BeancountApplication : Application() {
         // Only called by the framework in tests, but leaving the engine running would
         // keep non-daemon cheroot threads alive (Phase 0 finding C7).
         engineManager.stopNow()
+        engineConnection.release()
         appScope.cancel()
         super.onTerminate()
     }

@@ -3,7 +3,6 @@ package dev.beancount.engine.local
 import android.content.Context
 import android.util.Base64
 import android.util.Log
-import com.chaquo.python.Python
 import dev.beancount.core.engine.EngineClient
 import dev.beancount.core.engine.EngineStatus
 import dev.beancount.core.engine.ReportPath
@@ -26,6 +25,7 @@ import kotlinx.coroutines.withContext
 class LocalEngineClient(
     private val context: Context,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val connection: EngineConnection = EngineConnection(context),
 ) : EngineClient {
 
     private val _status = MutableStateFlow<EngineStatus>(EngineStatus.Stopped)
@@ -43,18 +43,15 @@ class LocalEngineClient(
         (status.value as? EngineStatus.Serving)?.let { return it }
 
         _status.value = EngineStatus.Starting
+        val newToken = newToken()
+        val started = System.currentTimeMillis()
         val result = withContext(io) {
-            runCatching {
-                val python = PythonRuntime.ensureStarted(context)
-                val newToken = newToken()
-                val started = System.currentTimeMillis()
-                val report = python
-                    .getModule(PYTHON_MODULE)
-                    .callAttr("start", projectPath, newToken)
-                    .toString()
-                token = newToken
-                parseStatus(report, System.currentTimeMillis() - started)
-            }
+            connection.withEngine { engine -> engine.startEngine(projectPath, newToken) }
+                .mapCatching { report ->
+                    if (report.startsWith("error: ")) error(report.removePrefix("error: "))
+                    token = newToken
+                    parseStatus(report, System.currentTimeMillis() - started)
+                }
         }
 
         val status = result.getOrElse { error ->
@@ -73,15 +70,9 @@ class LocalEngineClient(
 
     override suspend fun stop() = lifecycleLock.withLock {
         withContext(io) {
-            runCatching {
-                if (Python.isStarted()) {
-                    val report = Python.getInstance()
-                        .getModule(PYTHON_MODULE)
-                        .callAttr("stop")
-                        .toString()
-                    Log.i(TAG, report)
-                }
-            }.onFailure { Log.w(TAG, "engine stop failed", it) }
+            connection.withEngine { it.stopEngine() }
+                .onSuccess { Log.i(TAG, it) }
+                .onFailure { Log.w(TAG, "engine stop failed", it) }
         }
         token = null
         _status.value = EngineStatus.Stopped
@@ -123,7 +114,6 @@ class LocalEngineClient(
 
     private companion object {
         const val TAG = "LocalEngine"
-        const val PYTHON_MODULE = "engine"
         const val TOKEN_BYTES = 32
     }
 }

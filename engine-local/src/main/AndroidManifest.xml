@@ -1,9 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
     <!--
       Required even though local mode makes no outbound connection: Android refuses socket
       creation without it, so binding the loopback Fava server fails with EPERM
-      (docs/feasibility/s4-loopback-webview.md 1, docs/threat-model.md 4).
+      (docs/feasibility/s4-loopback-webview.md §1, docs/threat-model.md §4).
     -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <application>
+        <!--
+          The engine runs in its own process (risk R9 and crash isolation — see
+          EngineService). Not exported: nothing outside this app may bind to it.
+        -->
+        <service
+            android:name="dev.beancount.engine.local.EngineService"
+            android:process=":engine"
+            android:exported="false" />
+    </application>
 </manifest>

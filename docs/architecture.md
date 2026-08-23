@@ -135,7 +135,11 @@ Detailed adversary analysis: [threat-model.md](threat-model.md).
 
 ## 5. Process and lifecycle model
 
-- The engine lives in a **foreground-less bound `Service`** in the main process (Chaquopy
+- The engine lives in a bound `Service` running in **its own process** (`:engine`), for the
+  licensing reason in §7.1 and for crash isolation — Expert plugins are unsandboxed by
+  design, and a plugin that kills the interpreter must not take the UI with it. Large
+  payloads cross via files in the app's cache, never Binder, whose ~1 MB limit a 7.7 MB
+  ledger would exceed. Superseded note: an earlier draft said the engine lives in the main process (Chaquopy
   initialises one interpreter per process; a second process would double memory and
   complicate wheel loading). Engine state is authoritative on disk, never in memory.
 - **Process death is assumed, not exceptional.** Every mutation goes through a

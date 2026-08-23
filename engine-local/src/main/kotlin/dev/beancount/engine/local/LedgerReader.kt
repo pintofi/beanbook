@@ -21,24 +21,28 @@ import org.json.JSONObject
  * (docs/milestones/m3.md), so every entry point here is `suspend` and dispatches to IO —
  * the main thread never parses.
  *
- * JSON is the wire format across the Chaquopy boundary; it is decoded with the platform's
- * own `org.json`, which keeps a GPL-incompatible JSON library out of the dependency graph
+ * JSON is the wire format from the engine *process*; it is decoded with the platform's own
+ * `org.json`, which keeps a GPL-incompatible JSON library out of the dependency graph
  * (docs/architecture.md §7.1).
  */
 class LedgerReader(
     private val context: Context,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val connection: EngineConnection = EngineConnection(context),
 ) {
 
     suspend fun read(ledgerPath: String, journalLimit: Int = 200): Result<LedgerSnapshot> =
         withContext(io) {
-            runCatching {
-                val json = PythonRuntime.ensureStarted(context)
-                    .getModule("ledger")
-                    .callAttr("inspect", ledgerPath, journalLimit)
-                    .toString()
-                parse(JSONObject(json))
-            }
+            // The summary comes back through a cache file: for a large ledger the JSON
+            // (every account, plus the journal window) is not safely inside Binder's ~1 MB
+            // transaction budget.
+            val payload = connection.payloadFile("inspect")
+            connection
+                .withEngine { it.inspectToFile(ledgerPath, journalLimit, payload.absolutePath) }
+                .mapCatching { result ->
+                    check(result == "ok") { result.removePrefix("error: ") }
+                    parse(JSONObject(payload.consumeText()))
+                }
         }
 
     private fun parse(root: JSONObject): LedgerSnapshot = LedgerSnapshot(
