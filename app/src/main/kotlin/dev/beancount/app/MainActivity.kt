@@ -36,7 +36,9 @@ import dev.beancount.app.engine.RecoveryOnStart
 import dev.beancount.app.ui.BalancesScreen
 import dev.beancount.app.ui.JournalScreen
 import dev.beancount.app.ui.OnboardingScreen
+import dev.beancount.app.ui.EditableFile
 import dev.beancount.app.ui.ProjectPickerScreen
+import dev.beancount.app.ui.RawEditorScreen
 import dev.beancount.app.ui.QuickAddScreen
 import dev.beancount.core.data.ProjectSummary
 import dev.beancount.core.domain.LedgerVocabulary
@@ -132,6 +134,8 @@ class MainActivity : ComponentActivity() {
                     val projects by app.projectsState.projects.collectAsStateWithLifecycle()
                     val activeId by app.projectsState.activeId.collectAsStateWithLifecycle()
                     val projectMessage by app.projectsState.message.collectAsStateWithLifecycle()
+                    val editorState by app.editorController.state.collectAsStateWithLifecycle()
+                    val editorMessage by app.editorController.message.collectAsStateWithLifecycle()
 
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
@@ -166,6 +170,23 @@ class MainActivity : ComponentActivity() {
                         onImportFolder = { folderPicker.launch(null) },
                         onImportArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
                         onDeleteProject = { id -> app.projectsState.delete(id) },
+                        editorState = editorState,
+                        editorMessage = editorMessage,
+                        editorFiles = app.editorController.filesFor(
+                            activeId!!,
+                            ledger?.includedFiles.orEmpty(),
+                        ),
+                        onOpenFile = { file -> app.editorController.open(activeId!!, file) },
+                        onCloseFile = { app.editorController.close(activeId!!) },
+                        onEditorTextChanged = { text ->
+                            app.editorController.updateText(activeId!!, text)
+                        },
+                        onSaveFile = {
+                            app.editorController.save(activeId!!) {
+                                app.ledgerState.load(app.workspace.mainFile(activeId!!).absolutePath)
+                            }
+                        },
+                        onDiscardDraft = { app.editorController.discardDraft(activeId!!) },
                     )
                 }
             }
@@ -243,6 +264,7 @@ private enum class Surface(val label: String) {
     JOURNAL("Journal"),
     BALANCES("Balances"),
     REPORTS("Reports"),
+    FILES("Files"),
     PROJECTS("Projects"),
 }
 
@@ -265,6 +287,14 @@ internal fun LedgerApp(
     onImportFolder: () -> Unit,
     onImportArchive: () -> Unit,
     onDeleteProject: (String) -> Unit,
+    editorState: dev.beancount.app.ui.EditorState,
+    editorMessage: String?,
+    editorFiles: List<EditableFile>,
+    onOpenFile: (EditableFile) -> Unit,
+    onCloseFile: () -> Unit,
+    onEditorTextChanged: (String) -> Unit,
+    onSaveFile: () -> Unit,
+    onDiscardDraft: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selected by remember { mutableStateOf(Surface.JOURNAL) }
@@ -308,6 +338,14 @@ internal fun LedgerApp(
                 token = token,
                 debuggingAllowed = debuggingAllowed,
                 onOpenExternally = onOpenExternally,
+                editorState = editorState,
+                editorMessage = editorMessage,
+                editorFiles = editorFiles,
+                onOpenFile = onOpenFile,
+                onCloseFile = onCloseFile,
+                onEditorTextChanged = onEditorTextChanged,
+                onSaveFile = onSaveFile,
+                onDiscardDraft = onDiscardDraft,
             )
         }
     }
@@ -333,6 +371,14 @@ private fun SurfaceContent(
     token: String?,
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
+    editorState: dev.beancount.app.ui.EditorState,
+    editorMessage: String?,
+    editorFiles: List<EditableFile>,
+    onOpenFile: (EditableFile) -> Unit,
+    onCloseFile: () -> Unit,
+    onEditorTextChanged: (String) -> Unit,
+    onSaveFile: () -> Unit,
+    onDiscardDraft: () -> Unit,
 ) {
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
     run {
@@ -350,6 +396,18 @@ private fun SurfaceContent(
                     )
                 }
             }
+
+            Surface.FILES -> RawEditorScreen(
+                files = editorFiles,
+                state = editorState,
+                errors = ledger?.errors.orEmpty(),
+                message = editorMessage,
+                onOpen = onOpenFile,
+                onClose = onCloseFile,
+                onTextChanged = onEditorTextChanged,
+                onSave = onSaveFile,
+                onDiscardDraft = onDiscardDraft,
+            )
 
             Surface.PROJECTS -> ProjectPickerScreen(
                 projects = projects,

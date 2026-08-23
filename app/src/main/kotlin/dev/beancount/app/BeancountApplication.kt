@@ -3,8 +3,10 @@ package dev.beancount.app
 import android.app.Application
 import androidx.lifecycle.ProcessLifecycleOwner
 import dev.beancount.app.engine.EngineManager
+import dev.beancount.app.engine.EditorController
 import dev.beancount.app.engine.LedgerState
 import dev.beancount.app.engine.ProjectsState
+import dev.beancount.core.data.DraftStore
 import dev.beancount.core.data.ProjectImporter
 import dev.beancount.core.data.ProjectRegistry
 import dev.beancount.core.data.ProjectWorkspace
@@ -59,6 +61,12 @@ class BeancountApplication : Application() {
     /** Runtime state, kept outside the project tree so it is never exported with a ledger. */
     val registry: ProjectRegistry by lazy {
         ProjectRegistry(workspace, filesDir.resolve("state"))
+    }
+
+    val drafts: DraftStore by lazy { DraftStore(workspace) }
+
+    val editorController: EditorController by lazy {
+        EditorController(workspace, writer, drafts, appScope)
     }
 
     val projectsState: ProjectsState by lazy {
