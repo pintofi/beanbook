@@ -1,0 +1,362 @@
+{
+  "schema": 1,
+  "note": "Curated candidates for the Expert (GitHub) edition only. Downloading and installing these is not available in the Play build: fetching executable code from a non-Play source is prohibited by the Device and Network Abuse policy (docs/distribution.md 2.1, D1). The Play build may list them for reference, and first-party plugins may be bundled in the APK instead.",
+  "status_meaning": {
+    "untested": "listed only; no compatibility claim is made",
+    "supported": "install, import, execute, UI and round-trip all passed on a supported ABI",
+    "partial": "some steps passed; the failing step is recorded",
+    "unsupported": "a step failed; the reason is recorded"
+  },
+  "entries": [
+    {
+      "id": "autobean.include",
+      "name": "autobean.include",
+      "kind": "beancount-plugin",
+      "repo": "SEIAROTg/autobean",
+      "description": "Includes external ledgers without disabling their plugins",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "autobean.narration",
+      "name": "autobean.narration",
+      "kind": "beancount-plugin",
+      "repo": "SEIAROTg/autobean",
+      "description": "Generates transaction narration from posting narration and comments",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "autobean.share",
+      "name": "autobean.share",
+      "kind": "beancount-plugin",
+      "repo": "SEIAROTg/autobean",
+      "description": "Expense split, joint bookkeeping and debt management",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "autobean.sorted",
+      "name": "autobean.sorted",
+      "kind": "beancount-plugin",
+      "repo": "SEIAROTg/autobean",
+      "description": "Checks transactions are in non-descending order per file",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "autobean.truelayer",
+      "name": "autobean.truelayer",
+      "kind": "beancount-plugin",
+      "repo": "SEIAROTg/autobean",
+      "description": "Imports transactions via the TrueLayer bank API aggregator",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "autobean.xcheck",
+      "name": "autobean.xcheck",
+      "kind": "beancount-plugin",
+      "repo": "SEIAROTg/autobean",
+      "description": "Cross-checks against external ledgers",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "beancount-balancechange",
+      "name": "beancount-balancechange",
+      "kind": "beancount-plugin",
+      "repo": "",
+      "description": "Checks change in balance between two dates",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "beancount-balexpr",
+      "name": "beancount-balexpr",
+      "kind": "beancount-plugin",
+      "repo": "",
+      "description": "Checks balances against expressions combining accounts",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "beancount-checkclosed",
+      "name": "beancount-checkclosed",
+      "kind": "beancount-plugin",
+      "repo": "",
+      "description": "Inserts a zero balance check for closed balance-sheet accounts",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "lazy.filter_map",
+      "name": "beancount-lazy-plugins.filter_map",
+      "kind": "beancount-plugin",
+      "repo": "",
+      "description": "Applies operations to groups of transactions selected by Fava filters",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "lazy.valuation",
+      "name": "beancount-lazy-plugins.valuation",
+      "kind": "beancount-plugin",
+      "repo": "",
+      "description": "Tracks total value of an opaque fund over time",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "lazy.tag_from_continuous_events",
+      "name": "beancount-lazy-plugins.tag_from_continuous_events",
+      "kind": "beancount-plugin",
+      "repo": "",
+      "description": "Tags transactions based on Events",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "lazy.balance_extended",
+      "name": "beancount-lazy-plugins.balance_extended",
+      "kind": "beancount-plugin",
+      "repo": "",
+      "description": "Extended balance assertions (full, padded, full-padded)",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "beangrow",
+      "name": "beangrow",
+      "kind": "beancount-plugin",
+      "repo": "beancount/beangrow",
+      "description": "Computes investment returns across asset types",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "metadata-spray",
+      "name": "metadata-spray",
+      "kind": "beancount-plugin",
+      "repo": "",
+      "description": "Uses a regex pattern to add metadata to entries",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "portfolio_allocation",
+      "name": "portfolio_allocation",
+      "kind": "beancount-plugin",
+      "repo": "",
+      "description": "Reports portfolio asset allocation for risk analysis and rebalancing",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "portfolio-returns",
+      "name": "portfolio-returns",
+      "kind": "beancount-plugin",
+      "repo": "",
+      "description": "Money-weighted and time-weighted portfolio returns",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "reds.capital_gains_classifier",
+      "name": "reds capital_gains_classifier",
+      "kind": "beancount-plugin",
+      "repo": "redstreet/beancount_reds_plugins",
+      "description": "Rebooks capital gains into long/short and gain/loss accounts",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "reds.effective_date",
+      "name": "reds effective_date",
+      "kind": "beancount-plugin",
+      "repo": "redstreet/beancount_reds_plugins",
+      "description": "Per-posting dates",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "reds.opengroup",
+      "name": "reds opengroup",
+      "kind": "beancount-plugin",
+      "repo": "redstreet/beancount_reds_plugins",
+      "description": "Inserts open statements for sets of accounts by rule",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "reds.rename_accounts",
+      "name": "reds rename_accounts",
+      "kind": "beancount-plugin",
+      "repo": "redstreet/beancount_reds_plugins",
+      "description": "Renames arbitrary accounts on the fly",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "reds.zerosum",
+      "name": "reds zerosum",
+      "kind": "beancount-plugin",
+      "repo": "redstreet/beancount_reds_plugins",
+      "description": "Finds matching posting pairs summing to zero",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "beancount-mortgage",
+      "name": "beancount-mortgage",
+      "kind": "beancount-plugin",
+      "repo": "",
+      "description": "Simulates loan/mortgage schedule and payments",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "beancount-zakat",
+      "name": "beancount-zakat",
+      "kind": "beancount-plugin",
+      "repo": "WildeBeast2521/beancount-zakat",
+      "description": "Zakat calculation (first-party)",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "fava-envelope",
+      "name": "fava-envelope",
+      "kind": "fava-extension",
+      "repo": "",
+      "description": "Envelope budgeting",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "fava-dashboards",
+      "name": "fava-dashboards",
+      "kind": "fava-extension",
+      "repo": "",
+      "description": "Fully custom dashboards",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "fava-portfolio-returns",
+      "name": "fava-portfolio-returns",
+      "kind": "fava-extension",
+      "repo": "andreasgerstmayr/fava-portfolio-returns",
+      "description": "Portfolio returns",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "fava-portfolio-summary",
+      "name": "fava-portfolio-summary",
+      "kind": "fava-extension",
+      "repo": "",
+      "description": "Grouped portfolio view with MWRR/TWRR",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "fava-classy-portfolio",
+      "name": "fava-classy-portfolio",
+      "kind": "fava-extension",
+      "repo": "",
+      "description": "Portfolio breakdowns using metadata labels",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "fava_investor",
+      "name": "fava_investor",
+      "kind": "fava-extension",
+      "repo": "redstreet/fava_investor",
+      "description": "Investment reports, analyses and tools",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "fava_budget_freedom",
+      "name": "fava_budget_freedom",
+      "kind": "fava-extension",
+      "repo": "",
+      "description": "Budget management and visualisation",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "fava-currency-tracker",
+      "name": "fava-currency-tracker",
+      "kind": "fava-extension",
+      "repo": "",
+      "description": "Currency exchange rate dashboard",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "fava-git",
+      "name": "fava-git",
+      "kind": "fava-extension",
+      "repo": "",
+      "description": "Simple Git integration for Fava",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "beantab",
+      "name": "beantab",
+      "kind": "fava-extension",
+      "repo": "",
+      "description": "Balances editing visualisation",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    },
+    {
+      "id": "beancount-plugin-tax-uk",
+      "name": "beancount-plugin-tax-uk",
+      "kind": "fava-extension",
+      "repo": "",
+      "description": "UK capital gains and tax reporting",
+      "license": "unverified",
+      "status": "untested",
+      "tested": null
+    }
+  ]
+}

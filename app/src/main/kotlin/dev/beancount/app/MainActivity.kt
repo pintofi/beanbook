@@ -34,6 +34,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.beancount.app.engine.RecoveryOnStart
 import dev.beancount.app.ui.BalancesScreen
 import dev.beancount.app.ui.JournalScreen
+import dev.beancount.app.ui.QuickAddScreen
+import dev.beancount.core.domain.LedgerVocabulary
+import dev.beancount.core.domain.TransactionDraft
 import dev.beancount.app.web.FavaWebView
 import dev.beancount.app.web.installSessionToken
 import dev.beancount.core.domain.LedgerSnapshot
@@ -54,6 +57,7 @@ import dev.beancount.core.entitlement.Grant
 class MainActivity : ComponentActivity() {
 
     private var recoveryMessage: String? = null
+    private var saveMessage: String? by mutableStateOf(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,6 +101,8 @@ class MainActivity : ComponentActivity() {
                         token = app.engine.sessionToken,
                         debuggingAllowed = BuildConfig.DEBUG,
                         onOpenExternally = ::openInBrowser,
+                        onSaveEntry = { draft -> saveEntry(app, projectId, ledgerPath, draft) },
+                        saveState = saveMessage,
                     )
                 }
             }
@@ -134,6 +140,35 @@ class MainActivity : ComponentActivity() {
         delay(10 * 60 * 1000)
     }
 
+    /**
+     * Saves through the M4 protocol: snapshot, journal, atomic rename, re-parse with
+     * Beancount, and only then report success. A generated entry that introduces errors is
+     * rolled back rather than kept, because broken output from guided entry is our bug.
+     */
+    private fun saveEntry(
+        app: BeancountApplication,
+        projectId: String,
+        ledgerPath: String,
+        draft: TransactionDraft,
+    ) {
+        lifecycleScope.launch {
+            saveMessage = "Saving…"
+            val file = app.workspace.projectDir(projectId).resolve("files/transactions.beancount")
+            val result = app.writer.append(projectId, file, draft.render(), operation = "quick-add")
+            saveMessage = when (result) {
+                is dev.beancount.core.data.WriteResult.Committed ->
+                    if (result.warnings.isEmpty()) "Saved."
+                    else "Saved, with ${'$'}{result.warnings.size} ledger error(s) to review."
+                is dev.beancount.core.data.WriteResult.RolledBack ->
+                    "Not saved: ${'$'}{result.reason}. Your ledger is unchanged."
+                is dev.beancount.core.data.WriteResult.Refused ->
+                    "Not saved: ${'$'}{result.reason}"
+            }
+            // Re-read so the journal and balances show the new entry.
+            app.ledgerState.load(ledgerPath)
+        }
+    }
+
     private fun openInBrowser(uri: Uri) {
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
     }
@@ -144,6 +179,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Surface(val label: String) {
+    ADD("Add"),
     JOURNAL("Journal"),
     BALANCES("Balances"),
     REPORTS("Reports"),
@@ -158,6 +194,8 @@ internal fun LedgerApp(
     token: String?,
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
+    onSaveEntry: (TransactionDraft) -> Unit,
+    saveState: String?,
     modifier: Modifier = Modifier,
 ) {
     var selected by remember { mutableStateOf(Surface.JOURNAL) }
@@ -184,6 +222,8 @@ internal fun LedgerApp(
             TrialBanner(entitlement)
             SurfaceContent(
                 selected = selected,
+                onSaveEntry = onSaveEntry,
+                saveState = saveState,
                 engineStatus = engineStatus,
                 ledger = ledger,
                 editionName = editionName,
@@ -199,6 +239,8 @@ internal fun LedgerApp(
 @Composable
 private fun SurfaceContent(
     selected: Surface,
+    onSaveEntry: (TransactionDraft) -> Unit,
+    saveState: String?,
     engineStatus: EngineStatus,
     ledger: LedgerSnapshot?,
     editionName: String,
@@ -210,6 +252,20 @@ private fun SurfaceContent(
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
     run {
         when (selected) {
+            Surface.ADD -> {
+                // Entry is free, always: adding transactions is never gated
+                // (docs/distribution.md 4.4).
+                if (ledger == null) {
+                    LoadingOrError(engineStatus, editionName)
+                } else {
+                    QuickAddScreen(
+                        vocabulary = LedgerVocabulary.from(ledger),
+                        onSave = onSaveEntry,
+                        saveState = saveState,
+                    )
+                }
+            }
+
             Surface.JOURNAL, Surface.BALANCES -> {
                 if (ledger == null) {
                     LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
