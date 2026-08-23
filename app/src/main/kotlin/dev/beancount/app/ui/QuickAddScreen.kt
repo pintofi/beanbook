@@ -189,7 +189,7 @@ fun QuickAddScreen(
 }
 
 @Composable
-private fun Suggestions(values: List<String>, kind: String, onPick: (String) -> Unit) {
+internal fun Suggestions(values: List<String>, kind: String, onPick: (String) -> Unit) {
     if (values.isEmpty()) return
     Row(
         modifier = Modifier

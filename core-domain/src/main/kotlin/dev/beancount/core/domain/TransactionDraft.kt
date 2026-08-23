@@ -114,14 +114,13 @@ data class TransactionDraft(
     }
 
     private companion object {
-        val DATE = Regex("""\d{4}-\d{2}-\d{2}""")
-        val ACCOUNT = Regex("""[A-Z][A-Za-z0-9\-]*(:[A-Z0-9][A-Za-z0-9\-]*)+""")
-        val TAG = Regex("""[A-Za-z0-9\-_/.]+""")
+        // Shared with every other directive type, so escaping cannot drift between them.
+        val DATE = BeancountText.DATE
+        val ACCOUNT = BeancountText.ACCOUNT
+        val TAG = BeancountText.TAG
         val VALID_FLAGS = setOf("*", "!")
 
-        /** Beancount strings are double-quoted; quotes and backslashes must be escaped. */
-        fun quote(value: String): String =
-            "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+        fun quote(value: String): String = BeancountText.quote(value)
     }
 }
 
@@ -134,6 +133,10 @@ sealed interface DraftProblem {
     data class DoesNotBalance(val residuals: List<Amount>) : DraftProblem
     data class InvalidTag(val tag: String) : DraftProblem
     data class InvalidLink(val link: String) : DraftProblem
+    data class InvalidCurrency(val currency: String) : DraftProblem
+    data class MissingText(val what: String) : DraftProblem
+    data class PathOutsideProject(val path: String) : DraftProblem
+    data object MissingAmount : DraftProblem
 
     /** Wording the user sees. Says what is wrong, never "invalid input". */
     fun describe(): String = when (this) {
@@ -145,6 +148,11 @@ sealed interface DraftProblem {
         is DoesNotBalance -> "does not balance: " + residuals.joinToString(", ") { it.format() }
         is InvalidTag -> "\"$tag\" is not a valid tag"
         is InvalidLink -> "\"$link\" is not a valid link"
+        is InvalidCurrency -> "\"$currency\" is not a valid currency or commodity"
+        is MissingText -> "the $what is empty"
+        is PathOutsideProject ->
+            "\"$path\" points outside the project; document links must stay inside it"
+        MissingAmount -> "an amount is required"
     }
 }
 

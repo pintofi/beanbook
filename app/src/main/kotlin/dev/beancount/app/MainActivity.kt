@@ -158,7 +158,10 @@ class MainActivity : ComponentActivity() {
                         token = app.engine.sessionToken,
                         debuggingAllowed = BuildConfig.DEBUG,
                         onOpenExternally = ::openInBrowser,
-                        onSaveEntry = { draft -> saveEntry(app, activeId!!, draft) },
+                        onSaveEntry = { draft -> saveText(app, activeId!!, draft.render(), "quick-add") },
+                        onSaveDirective = { draft ->
+                            saveText(app, activeId!!, draft.render(), "add-directive")
+                        },
                         saveState = saveMessage,
                         projects = projects,
                         activeProjectId = activeId,
@@ -229,16 +232,17 @@ class MainActivity : ComponentActivity() {
      * Beancount, and only then report success. A generated entry that introduces errors is
      * rolled back rather than kept, because broken output from guided entry is our bug.
      */
-    private fun saveEntry(
+    private fun saveText(
         app: BeancountApplication,
         projectId: String,
-        draft: TransactionDraft,
+        text: String,
+        operation: String,
     ) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
         lifecycleScope.launch {
             saveMessage = "Saving…"
             val file = app.workspace.projectDir(projectId).resolve("files/transactions.beancount")
-            val result = app.writer.append(projectId, file, draft.render(), operation = "quick-add")
+            val result = app.writer.append(projectId, file, text, operation = operation)
             saveMessage = when (result) {
                 is dev.beancount.core.data.WriteResult.Committed ->
                     if (result.warnings.isEmpty()) "Saved."
@@ -278,6 +282,7 @@ internal fun LedgerApp(
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
     onSaveEntry: (TransactionDraft) -> Unit,
+    onSaveDirective: (dev.beancount.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
     projects: List<ProjectSummary>,
     activeProjectId: String?,
@@ -322,6 +327,7 @@ internal fun LedgerApp(
             SurfaceContent(
                 selected = selected,
                 onSaveEntry = onSaveEntry,
+                onSaveDirective = onSaveDirective,
                 saveState = saveState,
                 projects = projects,
                 activeProjectId = activeProjectId,
@@ -355,6 +361,7 @@ internal fun LedgerApp(
 private fun SurfaceContent(
     selected: Surface,
     onSaveEntry: (TransactionDraft) -> Unit,
+    onSaveDirective: (dev.beancount.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
     projects: List<ProjectSummary>,
     activeProjectId: String?,
@@ -384,16 +391,44 @@ private fun SurfaceContent(
     run {
         when (selected) {
             Surface.ADD -> {
-                // Entry is free, always: adding transactions is never gated
+                // Entry is free, always: adding entries is never gated
                 // (docs/distribution.md 4.4).
                 if (ledger == null) {
                     LoadingOrError(engineStatus, editionName)
                 } else {
-                    QuickAddScreen(
-                        vocabulary = LedgerVocabulary.from(ledger),
-                        onSave = onSaveEntry,
-                        saveState = saveState,
-                    )
+                    var otherDirectives by androidx.compose.runtime.saveable.rememberSaveable {
+                        androidx.compose.runtime.mutableStateOf(false)
+                    }
+                    androidx.compose.foundation.layout.Column {
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            androidx.compose.material3.FilterChip(
+                                selected = !otherDirectives,
+                                onClick = { otherDirectives = false },
+                                label = { Text("Transaction") },
+                            )
+                            androidx.compose.material3.FilterChip(
+                                selected = otherDirectives,
+                                onClick = { otherDirectives = true },
+                                label = { Text("Other directives") },
+                            )
+                        }
+                        if (otherDirectives) {
+                            dev.beancount.app.ui.DirectiveEntryScreen(
+                                vocabulary = LedgerVocabulary.from(ledger),
+                                onSave = onSaveDirective,
+                                saveState = saveState,
+                            )
+                        } else {
+                            QuickAddScreen(
+                                vocabulary = LedgerVocabulary.from(ledger),
+                                onSave = onSaveEntry,
+                                saveState = saveState,
+                            )
+                        }
+                    }
                 }
             }
 
