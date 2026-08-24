@@ -114,14 +114,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * The passphrase for the backup being written, if the user asked for one.
+     *
+     * Held only between tapping "Back up" and the picker returning a destination, then
+     * wiped: a passphrase in a field for longer than it is needed is a passphrase in a heap
+     * dump.
+     */
+    private var pendingBackupPassphrase: CharArray? = null
+
     private val backupWriter = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream"),
     ) { uri ->
         val app = application as BeancountApplication
         val projectId = app.projectsState.activeId.value
+        val passphrase = pendingBackupPassphrase
+        pendingBackupPassphrase = null
         if (uri != null && projectId != null) {
-            app.backupController.backupTo(contentResolver, uri, projectId)
+            app.backupController.backupTo(contentResolver, uri, projectId, passphrase)
         }
+        passphrase?.fill('\u0000')
     }
 
     private val backupReader = registerForActivityResult(
@@ -229,6 +241,8 @@ class MainActivity : ComponentActivity() {
                         app.backupController.pendingRestore.collectAsStateWithLifecycle()
                     val backupMessage by
                         app.backupController.message.collectAsStateWithLifecycle()
+                    val passphraseNeeded by
+                        app.backupController.passphraseNeeded.collectAsStateWithLifecycle()
                     val mirrorConflicts by app.mirror.conflicts.collectAsStateWithLifecycle()
                     val mirrorMessage by app.mirror.message.collectAsStateWithLifecycle()
 
@@ -274,14 +288,20 @@ class MainActivity : ComponentActivity() {
                         },
                         onShareDocument = { path -> shareDocument(app, activeId!!, path) },
                         pendingRestore = pendingRestore,
+                        passphraseNeeded = passphraseNeeded,
+                        onUnlockRestore = { typed ->
+                            app.backupController.retryRestoreWithPassphrase(activeId!!, typed)
+                        },
+                        onBackUpNowWithPassphrase = { typed ->
+                            // Held only until the save-file picker comes back with a target.
+                            pendingBackupPassphrase = typed
+                            backupWriter.launch(app.backupController.suggestedName(activeId!!))
+                        },
                         backupMessage = backupMessage,
                         scheduleEnabled = scheduleEnabled,
                         scheduleFolder = backupFolder,
                         lastBackupRun = app.backupSettings.lastRun(),
                         rollbackPoints = app.backupController.rollbackPoints(activeId!!),
-                        onBackUpNow = {
-                            backupWriter.launch(app.backupController.suggestedName(activeId!!))
-                        },
                         onChooseRestoreFile = {
                             backupReader.launch(arrayOf("application/octet-stream", "*/*"))
                         },
@@ -576,12 +596,14 @@ internal fun LedgerApp(
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,
     pendingRestore: RestoreStaged.Ready?,
+    passphraseNeeded: Boolean,
+    onUnlockRestore: (CharArray) -> Unit,
+    onBackUpNowWithPassphrase: (CharArray?) -> Unit,
     backupMessage: String?,
     scheduleEnabled: Boolean,
     scheduleFolder: String?,
     lastBackupRun: String?,
     rollbackPoints: List<String>,
-    onBackUpNow: () -> Unit,
     onChooseRestoreFile: () -> Unit,
     onAcceptRestore: () -> Unit,
     onDiscardRestore: () -> Unit,
@@ -691,12 +713,14 @@ internal fun LedgerApp(
                 onDeleteDocumentFile = onDeleteDocumentFile,
                 onShareDocument = onShareDocument,
                 pendingRestore = pendingRestore,
+                passphraseNeeded = passphraseNeeded,
+                onUnlockRestore = onUnlockRestore,
+                onBackUpNowWithPassphrase = onBackUpNowWithPassphrase,
                 backupMessage = backupMessage,
                 scheduleEnabled = scheduleEnabled,
                 scheduleFolder = scheduleFolder,
                 lastBackupRun = lastBackupRun,
                 rollbackPoints = rollbackPoints,
-                onBackUpNow = onBackUpNow,
                 onChooseRestoreFile = onChooseRestoreFile,
                 onAcceptRestore = onAcceptRestore,
                 onDiscardRestore = onDiscardRestore,
@@ -763,12 +787,14 @@ private fun SurfaceContent(
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,
     pendingRestore: RestoreStaged.Ready?,
+    passphraseNeeded: Boolean,
+    onUnlockRestore: (CharArray) -> Unit,
+    onBackUpNowWithPassphrase: (CharArray?) -> Unit,
     backupMessage: String?,
     scheduleEnabled: Boolean,
     scheduleFolder: String?,
     lastBackupRun: String?,
     rollbackPoints: List<String>,
-    onBackUpNow: () -> Unit,
     onChooseRestoreFile: () -> Unit,
     onAcceptRestore: () -> Unit,
     onDiscardRestore: () -> Unit,
@@ -926,11 +952,13 @@ private fun SurfaceContent(
                             projectTitle = projects.firstOrNull { it.id == activeProjectId }
                                 ?.title.orEmpty(),
                             pendingRestore = pendingRestore,
+                            passphraseNeeded = passphraseNeeded,
+                            onUnlockRestore = onUnlockRestore,
                             scheduleEnabled = scheduleEnabled,
                             scheduleFolder = scheduleFolder,
                             lastRun = lastBackupRun,
                             rollbackPoints = rollbackPoints,
-                            onBackUpNow = onBackUpNow,
+                            onBackUpNow = onBackUpNowWithPassphrase,
                             onChooseRestoreFile = onChooseRestoreFile,
                             onAcceptRestore = onAcceptRestore,
                             onDiscardRestore = onDiscardRestore,

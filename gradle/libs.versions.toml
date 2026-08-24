@@ -26,6 +26,9 @@ documentFile = "1.1.0"
 camerax = "1.5.0"
 # WorkManager for scheduled backups (M9). Apache-2.0, like the rest of AndroidX.
 work = "2.11.0"
+# Argon2id for backup encryption (M9). Apache-2.0, ~1 MB of native code across both ABIs —
+# Bouncy Castle would have been ~8 MB for the same one function.
+argon2kt = "1.6.0"
 junit = "4.13.2"
 kotlinxCoroutines = "1.11.0"
 androidxTestJunit = "1.3.0"
@@ -45,6 +48,7 @@ camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = 
 camera-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
 
 androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+argon2kt = { module = "com.lambdapioneer.argon2kt:argon2kt", version.ref = "argon2kt" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycle" }

@@ -62,11 +62,16 @@ class RestorePlan(private val workspace: ProjectWorkspace) {
      * Verifies [archive] and extracts it to a staging directory, then reports what applying
      * it would change. Live data is untouched whatever the outcome.
      */
-    fun stage(projectId: String, archive: File): RestoreStaged {
+    fun stage(
+        projectId: String,
+        archive: File,
+        passphrase: CharArray? = null,
+        derivation: KeyDerivation? = null,
+    ): RestoreStaged {
         val staging = stagingDir(projectId)
         staging.deleteRecursively()
 
-        val problems = archives.extract(archive, staging)
+        val problems = archives.extract(archive, staging, passphrase, derivation)
         if (problems.isNotEmpty()) {
             staging.deleteRecursively()
             return RestoreStaged.Refused(problems)

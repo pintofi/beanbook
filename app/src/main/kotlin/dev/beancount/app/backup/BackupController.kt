@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import dev.beancount.app.storage.ContextHolder
+import dev.beancount.core.data.ArchiveEncryption
 import dev.beancount.core.data.ArchiveProblem
 import dev.beancount.core.data.BackupArchive
 import dev.beancount.core.data.BackupManifest
@@ -42,6 +43,14 @@ class BackupController(
 ) {
     private val archives = BackupArchive(workspace)
     private val restores = RestorePlan(workspace)
+    private val derivation = Argon2idKeyDerivation()
+
+    /** Set when a restore stopped because the archive is encrypted and needs a passphrase. */
+    private val _passphraseNeeded = MutableStateFlow(false)
+    val passphraseNeeded: StateFlow<Boolean> = _passphraseNeeded.asStateFlow()
+
+    /** The archive a passphrase is being asked for, kept so the retry has something to open. */
+    private var pendingArchive: File? = null
 
     /** A restore waiting for the user to accept or discard it. */
     private val _pendingRestore = MutableStateFlow<RestoreStaged.Ready?>(null)
@@ -64,9 +73,21 @@ class BackupController(
      * Partial failure is reported as failure: if the write throws part-way, the message says
      * so rather than claiming a backup exists (docs/storage-and-backup.md §7).
      */
-    fun backupTo(resolver: ContentResolver, uri: Uri, projectId: String) {
+    fun backupTo(
+        resolver: ContentResolver,
+        uri: Uri,
+        projectId: String,
+        passphrase: CharArray? = null,
+    ) {
+        // Copied synchronously, before the coroutine starts. The caller is entitled to wipe
+        // its own array the moment this returns — and does — so reading it later would derive
+        // a key from a wiped buffer and produce an archive nobody can open. That is exactly
+        // what happened the first time this ran on a device.
+        val ownPassphrase = passphrase?.copyOf()
+
         scope.launch {
-            _message.value = "Backing up…"
+            _message.value =
+                if (passphrase == null) "Backing up…" else "Encrypting and backing up…"
             val result = withContext(Dispatchers.IO) {
                 runCatching {
                     val title = registry.summarise(projectId).title
@@ -78,10 +99,13 @@ class BackupController(
                             appVersion = appVersion,
                             engineVersions = engines,
                             projectTitle = title,
+                            passphrase = ownPassphrase,
+                            derivation = if (ownPassphrase == null) null else derivation,
                         )
                     } ?: error("the provider refused to write there")
                 }
             }
+            ownPassphrase?.fill('\u0000')
             _message.value = result.fold(
                 onSuccess = { manifest -> describe(manifest) },
                 onFailure = { failure ->
@@ -98,7 +122,8 @@ class BackupController(
             manifest.totalBytes >= 1_000 -> "${manifest.totalBytes / 1000} KB"
             else -> "${manifest.totalBytes} B"
         }
-        return "Backed up ${manifest.files.size} file(s), $size."
+        val sealed = if (manifest.encryption is ArchiveEncryption.None) "" else ", encrypted"
+        return "Backed up ${manifest.files.size} file(s), $size$sealed."
     }
 
     /**
@@ -107,7 +132,13 @@ class BackupController(
      * Nothing live is touched here: the user sees the diff first and decides
      * ([acceptRestore] / [discardRestore]).
      */
-    fun stageRestore(resolver: ContentResolver, uri: Uri, projectId: String) {
+    fun stageRestore(
+        resolver: ContentResolver,
+        uri: Uri,
+        projectId: String,
+        passphrase: CharArray? = null,
+    ) {
+        val ownStagePassphrase = passphrase?.copyOf()
         scope.launch {
             _message.value = "Checking the backup…"
             val staged = withContext(Dispatchers.IO) {
@@ -118,7 +149,8 @@ class BackupController(
                     resolver.openInputStream(uri)?.use { input ->
                         local.outputStream().use { output -> input.copyTo(output) }
                     } ?: error("the provider refused to open that file")
-                    restores.stage(projectId, local)
+                    pendingArchive = local
+                    restores.stage(projectId, local, ownStagePassphrase, derivation)
                 }
             }
 
@@ -127,10 +159,17 @@ class BackupController(
                     when (outcome) {
                         is RestoreStaged.Ready -> {
                             _pendingRestore.value = outcome
+                            _passphraseNeeded.value = false
                             _message.value = outcome.diff.describe()
                         }
                         is RestoreStaged.Refused -> {
                             _pendingRestore.value = null
+                            // An encrypted archive is not a failure — it is a question.
+                            _passphraseNeeded.value =
+                                outcome.problems.any {
+                                    it is ArchiveProblem.PassphraseNeeded ||
+                                        it is ArchiveProblem.WrongPassphrase
+                                }
                             _message.value = outcome.problems.first().describe()
                         }
                     }
@@ -141,6 +180,35 @@ class BackupController(
                         .Unreadable(it.message ?: it.javaClass.simpleName)
                         .describe()
                 },
+            )
+        }
+    }
+
+    /** Retries a staged restore with the passphrase the user has now typed. */
+    fun retryRestoreWithPassphrase(projectId: String, passphrase: CharArray) {
+        val archive = pendingArchive ?: return
+        val ownPassphrase = passphrase.copyOf()
+        scope.launch {
+            _message.value = "Opening the backup…"
+            val staged = withContext(Dispatchers.IO) {
+                runCatching { restores.stage(projectId, archive, ownPassphrase, derivation) }
+            }
+            ownPassphrase.fill('\u0000')
+            staged.fold(
+                onSuccess = { outcome ->
+                    when (outcome) {
+                        is RestoreStaged.Ready -> {
+                            _pendingRestore.value = outcome
+                            _passphraseNeeded.value = false
+                            _message.value = outcome.diff.describe()
+                        }
+                        is RestoreStaged.Refused -> {
+                            _passphraseNeeded.value = true
+                            _message.value = outcome.problems.first().describe()
+                        }
+                    }
+                },
+                onFailure = { _message.value = "Could not open that backup: ${it.message}" },
             )
         }
     }

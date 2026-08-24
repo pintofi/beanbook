@@ -1,5 +1,6 @@
 package dev.beancount.core.data
 
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -24,7 +25,7 @@ data class BackupManifest(
     val projectId: String,
     val projectTitle: String,
     val files: List<Entry>,
-    val encryption: String = NONE,
+    val encryption: ArchiveEncryption = ArchiveEncryption.None,
 ) {
     data class Entry(val path: String, val size: Long, val sha256: String)
 
@@ -37,7 +38,7 @@ data class BackupManifest(
         "created_at" to Json.of(createdAt.toString()),
         "project_id" to Json.of(projectId),
         "project_title" to Json.of(projectTitle),
-        "encryption" to Json.of(encryption),
+        "encryption" to encryption.toJson(),
         "files" to Json.arr(
             files.map {
                 Json.obj(
@@ -51,9 +52,11 @@ data class BackupManifest(
 
     companion object {
         const val SCHEMA_VERSION = 1
-        const val NONE = "none"
         const val MANIFEST_NAME = "manifest.json"
         const val PROJECT_PREFIX = "project/"
+
+        /** The single sealed blob that replaces `project/…` when a passphrase is set. */
+        const val PAYLOAD_NAME = "project.enc"
 
         fun fromJson(json: Json?): BackupManifest? {
             val root = json as? Json.Obj ?: return null
@@ -78,7 +81,7 @@ data class BackupManifest(
                 projectId = root.string("project_id") ?: return null,
                 projectTitle = root.string("project_title") ?: return null,
                 files = files,
-                encryption = root.string("encryption") ?: NONE,
+                encryption = ArchiveEncryption.fromJson(root["encryption"]) ?: return null,
             )
         }
     }
@@ -93,6 +96,8 @@ sealed interface ArchiveProblem {
     data class SizeMismatch(val path: String, val expected: Long, val actual: Long) : ArchiveProblem
     data class UnexpectedFile(val path: String) : ArchiveProblem
     data class Unreadable(val reason: String) : ArchiveProblem
+    data object PassphraseNeeded : ArchiveProblem
+    data object WrongPassphrase : ArchiveProblem
 
     fun describe(): String = when (this) {
         NotAnArchive ->
@@ -113,6 +118,11 @@ sealed interface ArchiveProblem {
             "The archive contains \"$path\", which its manifest does not list. Nothing has " +
                 "been restored."
         is Unreadable -> "The backup could not be read: $reason. Nothing has been restored."
+        PassphraseNeeded ->
+            "This backup is encrypted. Enter the passphrase it was made with — nobody, " +
+                "including us, can open it without one."
+        WrongPassphrase ->
+            "That passphrase does not open this backup. Nothing has been restored."
     }
 }
 
@@ -142,6 +152,11 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         engineVersions: Map<String, String> = emptyMap(),
         projectTitle: String = projectId,
         now: Instant = Instant.now(),
+        /** Set to encrypt the payload. The manifest stays readable either way. */
+        passphrase: CharArray? = null,
+        derivation: KeyDerivation? = null,
+        cost: KdfCost = KdfCost(),
+        kdf: String = ArchiveEncryption.ARGON2ID,
     ): BackupManifest {
         val root = workspace.projectDir(projectId)
         require(root.isDirectory) { "no such project: $projectId" }
@@ -158,28 +173,67 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
             BackupManifest.Entry(path, file.length(), sha256(file))
         }
 
-        val manifest = BackupManifest(
+        fun manifestWith(encryption: ArchiveEncryption) = BackupManifest(
             schemaVersion = BackupManifest.SCHEMA_VERSION,
             appVersion = appVersion,
             engineVersions = engineVersions,
             createdAt = now,
             projectId = projectId,
             projectTitle = projectTitle,
+            // Checksums are always of the *plaintext* files, so verifying a restored archive
+            // is the same check whether or not it was encrypted.
             files = entries,
+            encryption = encryption,
         )
 
+        if (passphrase == null) {
+            val manifest = manifestWith(ArchiveEncryption.None)
+            ZipOutputStream(out).use { zip ->
+                // The manifest goes in first, so a partially readable archive still says
+                // what it was meant to contain.
+                zip.putNextEntry(ZipEntry(BackupManifest.MANIFEST_NAME))
+                zip.write(manifest.toJson().write().toByteArray())
+                zip.closeEntry()
+
+                files.forEach { path ->
+                    zip.putNextEntry(ZipEntry(BackupManifest.PROJECT_PREFIX + path))
+                    File(root, path).inputStream().use { it.copyTo(zip) }
+                    zip.closeEntry()
+                }
+            }
+            return manifest
+        }
+
+        requireNotNull(derivation) { "encrypting needs a key derivation" }
+
+        // The project is packed into an inner zip and that whole blob is sealed. One payload
+        // rather than per-file encryption: file names, sizes and the shape of someone's
+        // accounts are as revealing as the amounts inside them.
+        val payload = ByteArrayOutputStream()
+        ZipOutputStream(payload).use { inner ->
+            files.forEach { path ->
+                inner.putNextEntry(ZipEntry(path))
+                File(root, path).inputStream().use { it.copyTo(inner) }
+                inner.closeEntry()
+            }
+        }
+
+        val (ciphertext, encryption) = PayloadCipher.encrypt(
+            plaintext = payload.toByteArray(),
+            passphrase = passphrase,
+            derivation = derivation,
+            kdf = kdf,
+            cost = cost,
+        )
+        val manifest = manifestWith(encryption)
+
         ZipOutputStream(out).use { zip ->
-            // The manifest goes in first and uncompressed, so a partially readable archive
-            // still tells someone what it was meant to contain.
             zip.putNextEntry(ZipEntry(BackupManifest.MANIFEST_NAME))
             zip.write(manifest.toJson().write().toByteArray())
             zip.closeEntry()
-
-            files.forEach { path ->
-                zip.putNextEntry(ZipEntry(BackupManifest.PROJECT_PREFIX + path))
-                File(root, path).inputStream().use { it.copyTo(zip) }
-                zip.closeEntry()
-            }
+            zip.putNextEntry(ZipEntry(BackupManifest.PAYLOAD_NAME))
+            zip.write(ciphertext)
+            zip.closeEntry()
         }
         return manifest
     }
@@ -197,53 +251,37 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
      * understands, every listed file is present at the right size and checksum, and nothing
      * unlisted is hiding inside.
      */
-    fun verify(archive: File): List<ArchiveProblem> = runCatching {
-        ZipFile(archive).use { zip ->
-            val manifestEntry = zip.getEntry(BackupManifest.MANIFEST_NAME)
-                ?: return listOf(ArchiveProblem.NotAnArchive)
-            val manifest = BackupManifest.fromJson(
-                Json.parse(zip.getInputStream(manifestEntry).readBytes().decodeToString()),
-            ) ?: return listOf(ArchiveProblem.NotAnArchive)
+    fun verify(
+        archive: File,
+        passphrase: CharArray? = null,
+        derivation: KeyDerivation? = null,
+    ): List<ArchiveProblem> = withPayload(archive, passphrase, derivation) { manifest, payload ->
+        val problems = mutableListOf<ArchiveProblem>()
+        val listed = manifest.files.associateBy { it.path }
 
-            if (manifest.schemaVersion > BackupManifest.SCHEMA_VERSION) {
-                return listOf(ArchiveProblem.UnsupportedSchema(manifest.schemaVersion))
+        manifest.files.forEach { entry ->
+            val bytes = payload.read(entry.path)
+            if (bytes == null) {
+                problems += ArchiveProblem.MissingFile(entry.path)
+                return@forEach
             }
-
-            val problems = mutableListOf<ArchiveProblem>()
-            val listed = manifest.files.associateBy { it.path }
-
-            manifest.files.forEach { entry ->
-                val zipEntry = zip.getEntry(BackupManifest.PROJECT_PREFIX + entry.path)
-                if (zipEntry == null) {
-                    problems += ArchiveProblem.MissingFile(entry.path)
-                    return@forEach
-                }
-                val bytes = zip.getInputStream(zipEntry).readBytes()
-                if (bytes.size.toLong() != entry.size) {
-                    problems += ArchiveProblem.SizeMismatch(entry.path, entry.size, bytes.size.toLong())
-                    return@forEach
-                }
-                if (sha256(bytes) != entry.sha256) {
-                    problems += ArchiveProblem.ChecksumMismatch(entry.path)
-                }
+            if (bytes.size.toLong() != entry.size) {
+                problems += ArchiveProblem.SizeMismatch(entry.path, entry.size, bytes.size.toLong())
+                return@forEach
             }
-
-            // Anything in the archive the manifest does not vouch for is refused rather than
-            // extracted: an archive is only trustworthy to the extent the manifest covers it.
-            zip.entries().asSequence()
-                .filterNot { it.isDirectory }
-                .map { it.name }
-                .filterNot { it == BackupManifest.MANIFEST_NAME }
-                .forEach { name ->
-                    val path = name.removePrefix(BackupManifest.PROJECT_PREFIX)
-                    if (!name.startsWith(BackupManifest.PROJECT_PREFIX) || path !in listed) {
-                        problems += ArchiveProblem.UnexpectedFile(name)
-                    }
-                }
-
-            problems
+            if (sha256(bytes) != entry.sha256) {
+                problems += ArchiveProblem.ChecksumMismatch(entry.path)
+            }
         }
-    }.getOrElse { listOf(ArchiveProblem.Unreadable(it.message ?: it.javaClass.simpleName)) }
+
+        // Anything present that the manifest does not vouch for is refused rather than
+        // extracted: an archive is only trustworthy to the extent its manifest covers it.
+        payload.names().forEach { name ->
+            if (name !in listed) problems += ArchiveProblem.UnexpectedFile(name)
+        }
+
+        problems
+    }
 
     /**
      * Extracts a verified archive into [target], which must not exist.
@@ -252,39 +290,121 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
      * never damage a live project — activating the result is a separate, explicit step
      * (see `RestorePlan`).
      */
-    fun extract(archive: File, target: File): List<ArchiveProblem> {
-        val problems = verify(archive)
+    fun extract(
+        archive: File,
+        target: File,
+        passphrase: CharArray? = null,
+        derivation: KeyDerivation? = null,
+    ): List<ArchiveProblem> {
+        val problems = verify(archive, passphrase, derivation)
         if (problems.isNotEmpty()) return problems
         require(!target.exists()) { "restore target already exists: $target" }
 
-        return runCatching<List<ArchiveProblem>> {
-            ZipFile(archive).use { zip ->
-                val manifest = BackupManifest.fromJson(
-                    Json.parse(
-                        zip.getInputStream(zip.getEntry(BackupManifest.MANIFEST_NAME))
-                            .readBytes()
-                            .decodeToString(),
-                    ),
-                )!!
-                manifest.files.forEach { entry ->
-                    val destination = File(target, entry.path)
-                    // Belt and braces: the manifest is ours, but a path in it is still input.
-                    check(
-                        destination.canonicalPath.startsWith(target.canonicalFile.path + File.separator),
-                    ) { "refusing to write outside the restore target: ${entry.path}" }
-                    destination.parentFile?.mkdirs()
-                    zip.getInputStream(zip.getEntry(BackupManifest.PROJECT_PREFIX + entry.path))
-                        .use { input ->
-                            destination.outputStream().use { output -> input.copyTo(output) }
-                        }
-                }
+        val outcome = withPayload(archive, passphrase, derivation) { manifest, payload ->
+            manifest.files.forEach { entry ->
+                val destination = File(target, entry.path)
+                // Belt and braces: the manifest is ours, but a path in it is still input.
+                check(
+                    destination.canonicalPath.startsWith(target.canonicalFile.path + File.separator),
+                ) { "refusing to write outside the restore target: ${entry.path}" }
+                destination.parentFile?.mkdirs()
+                destination.writeBytes(payload.read(entry.path) ?: error("missing ${entry.path}"))
             }
             emptyList()
+        }
+        if (outcome.isNotEmpty()) target.deleteRecursively()
+        return outcome
+    }
+
+    /** The project files inside an archive, however they happen to be stored. */
+    private interface Payload {
+        fun read(path: String): ByteArray?
+        fun names(): Set<String>
+    }
+
+    /**
+     * Opens an archive's payload — plain entries, or the decrypted blob — and hands it to
+     * [block], so both kinds are then checked by exactly the same code.
+     */
+    private fun withPayload(
+        archive: File,
+        passphrase: CharArray?,
+        derivation: KeyDerivation?,
+        block: (BackupManifest, Payload) -> List<ArchiveProblem>,
+    ): List<ArchiveProblem> {
+        var decrypted: File? = null
+        return runCatching {
+            ZipFile(archive).use { zip ->
+                val manifestEntry = zip.getEntry(BackupManifest.MANIFEST_NAME)
+                    ?: return listOf(ArchiveProblem.NotAnArchive)
+                val manifest = BackupManifest.fromJson(
+                    Json.parse(zip.getInputStream(manifestEntry).readBytes().decodeToString()),
+                ) ?: return listOf(ArchiveProblem.NotAnArchive)
+
+                if (manifest.schemaVersion > BackupManifest.SCHEMA_VERSION) {
+                    return listOf(ArchiveProblem.UnsupportedSchema(manifest.schemaVersion))
+                }
+
+                when (val encryption = manifest.encryption) {
+                    ArchiveEncryption.None -> block(manifest, plainPayload(zip))
+
+                    is ArchiveEncryption.Encrypted -> {
+                        if (passphrase == null || derivation == null) {
+                            return listOf(ArchiveProblem.PassphraseNeeded)
+                        }
+                        val sealed = zip.getEntry(BackupManifest.PAYLOAD_NAME)
+                            ?: return listOf(ArchiveProblem.NotAnArchive)
+
+                        val plaintext = try {
+                            PayloadCipher.decrypt(
+                                ciphertext = zip.getInputStream(sealed).readBytes(),
+                                passphrase = passphrase,
+                                derivation = derivation,
+                                encryption = encryption,
+                            )
+                        } catch (wrong: PayloadCipher.WrongPassphrase) {
+                            return listOf(ArchiveProblem.WrongPassphrase)
+                        }
+
+                        // The decrypted payload goes to a temporary file rather than staying
+                        // in memory: a project with documents can be larger than a heap.
+                        val temp = File.createTempFile("payload", ".zip", archive.parentFile)
+                        decrypted = temp
+                        temp.writeBytes(plaintext)
+
+                        ZipFile(temp).use { inner -> block(manifest, innerPayload(inner)) }
+                    }
+                }
+            }
         }.getOrElse { failure ->
-            target.deleteRecursively()
             listOf(ArchiveProblem.Unreadable(failure.message ?: failure.javaClass.simpleName))
+        }.also {
+            decrypted?.delete()
         }
     }
+
+    private fun plainPayload(zip: ZipFile) = object : Payload {
+        override fun read(path: String): ByteArray? =
+            zip.getEntry(BackupManifest.PROJECT_PREFIX + path)
+                ?.let { zip.getInputStream(it).readBytes() }
+
+        override fun names(): Set<String> =
+            zip.entries().asSequence()
+                .filterNot { it.isDirectory }
+                .map { it.name }
+                .filterNot { it == BackupManifest.MANIFEST_NAME }
+                .map { it.removePrefix(BackupManifest.PROJECT_PREFIX) }
+                .toSet()
+    }
+
+    private fun innerPayload(zip: ZipFile) = object : Payload {
+        override fun read(path: String): ByteArray? =
+            zip.getEntry(path)?.let { zip.getInputStream(it).readBytes() }
+
+        override fun names(): Set<String> =
+            zip.entries().asSequence().filterNot { it.isDirectory }.map { it.name }.toSet()
+    }
+
 
     companion object {
         /**
