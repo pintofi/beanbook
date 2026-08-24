@@ -147,6 +147,24 @@ def stop() -> str:
     return f"stop=ok ms={(time.monotonic() - started) * 1000:.0f} thread_alive={alive}"
 
 
+def versions() -> str:
+    """What is actually running, for the backup manifest and diagnostics.
+
+    Read from the installed packages rather than hard-coded, so an archive records the
+    engine that wrote it even after an upgrade changes the pins.
+    """
+    import platform
+
+    parts = [f"python={platform.python_version()}"]
+    for name in ("beancount", "fava", "beanquery"):
+        try:
+            module = __import__(name)
+            parts.append(f"{name}={getattr(module, '__version__', 'unknown')}")
+        except Exception:  # noqa: BLE001 - a missing package is information, not a failure
+            parts.append(f"{name}=absent")
+    return " ".join(parts)
+
+
 def stats() -> str:
     """Gate counters, for diagnostics. Never includes the token itself."""
     gate = _state.get("gate")

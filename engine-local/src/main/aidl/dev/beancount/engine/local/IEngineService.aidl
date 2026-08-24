@@ -17,6 +17,9 @@ interface IEngineService {
     /** Stops the server and joins its non-daemon threads. */
     String stopEngine();
 
+    /** "python=3.13.1 beancount=3.2.3 fava=1.30.15 …", for manifests and diagnostics. */
+    String engineVersions();
+
     /** Writes the ledger summary as JSON to outPath. Returns "ok" or "error: …". */
     String inspectToFile(String ledgerPath, int journalLimit, String outPath);
 

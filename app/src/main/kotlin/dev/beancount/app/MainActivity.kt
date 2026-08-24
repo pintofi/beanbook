@@ -47,7 +47,10 @@ import dev.beancount.app.ui.EditableFile
 import dev.beancount.app.ui.ProjectPickerScreen
 import dev.beancount.app.ui.RawEditorScreen
 import dev.beancount.app.ui.ContributeScreen
+import dev.beancount.app.backup.ScheduledBackupWorker
+import dev.beancount.app.ui.BackupScreen
 import dev.beancount.app.ui.DocumentsScreen
+import dev.beancount.core.data.RestoreStaged
 import dev.beancount.core.domain.CapturedPages
 import dev.beancount.core.domain.DirectiveDraft
 import java.io.File as JavaFile
@@ -109,6 +112,44 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val backupWriter = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
+    ) { uri ->
+        val app = application as BeancountApplication
+        val projectId = app.projectsState.activeId.value
+        if (uri != null && projectId != null) {
+            app.backupController.backupTo(contentResolver, uri, projectId)
+        }
+    }
+
+    private val backupReader = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        val app = application as BeancountApplication
+        val projectId = app.projectsState.activeId.value
+        if (uri != null && projectId != null) {
+            app.backupController.stageRestore(contentResolver, uri, projectId)
+        }
+    }
+
+    /** The folder scheduled backups are written into. Persisted, so the schedule survives. */
+    private val backupFolderPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        val app = application as BeancountApplication
+        uri?.let {
+            contentResolver.takePersistableUriPermission(
+                it,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+            app.backupSettings.setFolder(it.toString())
+            backupFolder = it.toString()
+        }
+    }
+
+    private var backupFolder: String? by mutableStateOf(null)
+    private var scheduleEnabled: Boolean by mutableStateOf(false)
+
     /** Opens a project: engine, ledger, and the active-project record all move together. */
     private fun openProject(app: BeancountApplication, projectId: String) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
@@ -124,6 +165,7 @@ class MainActivity : ComponentActivity() {
         val app = application as BeancountApplication
 
         app.projectsState.refresh()
+        backupFolder = app.backupSettings.folderUri()
 
         lifecycleScope.launch {
             // Recovery first: an interrupted write is resolved before the ledger is shown
@@ -162,6 +204,10 @@ class MainActivity : ComponentActivity() {
                     val documentPages by app.documentCapture.pages.collectAsStateWithLifecycle()
                     val documentMessage by
                         app.documentCapture.message.collectAsStateWithLifecycle()
+                    val pendingRestore by
+                        app.backupController.pendingRestore.collectAsStateWithLifecycle()
+                    val backupMessage by
+                        app.backupController.message.collectAsStateWithLifecycle()
 
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
@@ -204,6 +250,33 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onShareDocument = { path -> shareDocument(app, activeId!!, path) },
+                        pendingRestore = pendingRestore,
+                        backupMessage = backupMessage,
+                        scheduleEnabled = scheduleEnabled,
+                        scheduleFolder = backupFolder,
+                        lastBackupRun = app.backupSettings.lastRun(),
+                        rollbackPoints = app.backupController.rollbackPoints(activeId!!),
+                        onBackUpNow = {
+                            backupWriter.launch(app.backupController.suggestedName(activeId!!))
+                        },
+                        onChooseRestoreFile = {
+                            backupReader.launch(arrayOf("application/octet-stream", "*/*"))
+                        },
+                        onAcceptRestore = {
+                            app.backupController.acceptRestore(activeId!!) {
+                                openProject(app, activeId!!)
+                            }
+                        },
+                        onDiscardRestore = { app.backupController.discardRestore(activeId!!) },
+                        onChooseScheduleFolder = { backupFolderPicker.launch(null) },
+                        onScheduleChanged = { enabled ->
+                            scheduleEnabled = enabled
+                            if (enabled) {
+                                ScheduledBackupWorker.schedule(this@MainActivity)
+                            } else {
+                                ScheduledBackupWorker.cancel(this@MainActivity)
+                            }
+                        },
                         onApplyKey = { app.entitlementState.applyKey(it) },
                         onRemoveKey = { app.entitlementState.removeKey() },
                         onClearEntitlementMessage = { app.entitlementState.clearMessage() },
@@ -419,6 +492,7 @@ class MainActivity : ComponentActivity() {
 private enum class MoreSection(val label: String) {
     PROJECTS("Projects"),
     DOCUMENTS("Documents"),
+    BACKUP("Backup"),
 }
 
 private enum class Surface(val label: String) {
@@ -462,6 +536,18 @@ internal fun LedgerApp(
     onUnlinkDocument: (String) -> Unit,
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,
+    pendingRestore: RestoreStaged.Ready?,
+    backupMessage: String?,
+    scheduleEnabled: Boolean,
+    scheduleFolder: String?,
+    lastBackupRun: String?,
+    rollbackPoints: List<String>,
+    onBackUpNow: () -> Unit,
+    onChooseRestoreFile: () -> Unit,
+    onAcceptRestore: () -> Unit,
+    onDiscardRestore: () -> Unit,
+    onChooseScheduleFolder: () -> Unit,
+    onScheduleChanged: (Boolean) -> Unit,
     onSaveDirective: (dev.beancount.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
     projects: List<ProjectSummary>,
@@ -556,6 +642,18 @@ internal fun LedgerApp(
                 onUnlinkDocument = onUnlinkDocument,
                 onDeleteDocumentFile = onDeleteDocumentFile,
                 onShareDocument = onShareDocument,
+                pendingRestore = pendingRestore,
+                backupMessage = backupMessage,
+                scheduleEnabled = scheduleEnabled,
+                scheduleFolder = scheduleFolder,
+                lastBackupRun = lastBackupRun,
+                rollbackPoints = rollbackPoints,
+                onBackUpNow = onBackUpNow,
+                onChooseRestoreFile = onChooseRestoreFile,
+                onAcceptRestore = onAcceptRestore,
+                onDiscardRestore = onDiscardRestore,
+                onChooseScheduleFolder = onChooseScheduleFolder,
+                onScheduleChanged = onScheduleChanged,
                 onSaveEntry = onSaveEntry,
                 templates = templates,
                 onSaveTemplate = onSaveTemplate,
@@ -607,6 +705,18 @@ private fun SurfaceContent(
     onUnlinkDocument: (String) -> Unit,
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,
+    pendingRestore: RestoreStaged.Ready?,
+    backupMessage: String?,
+    scheduleEnabled: Boolean,
+    scheduleFolder: String?,
+    lastBackupRun: String?,
+    rollbackPoints: List<String>,
+    onBackUpNow: () -> Unit,
+    onChooseRestoreFile: () -> Unit,
+    onAcceptRestore: () -> Unit,
+    onDiscardRestore: () -> Unit,
+    onChooseScheduleFolder: () -> Unit,
+    onScheduleChanged: (Boolean) -> Unit,
     onSaveEntry: (TransactionDraft) -> Unit,
     templates: List<EntryTemplate>,
     onSaveTemplate: (EntryTemplate) -> Unit,
@@ -723,6 +833,23 @@ private fun SurfaceContent(
                             onOpenArchive = onImportArchive,
                             onDelete = onDeleteProject,
                             busyMessage = projectMessage,
+                        )
+
+                        MoreSection.BACKUP -> BackupScreen(
+                            projectTitle = projects.firstOrNull { it.id == activeProjectId }
+                                ?.title.orEmpty(),
+                            pendingRestore = pendingRestore,
+                            scheduleEnabled = scheduleEnabled,
+                            scheduleFolder = scheduleFolder,
+                            lastRun = lastBackupRun,
+                            rollbackPoints = rollbackPoints,
+                            onBackUpNow = onBackUpNow,
+                            onChooseRestoreFile = onChooseRestoreFile,
+                            onAcceptRestore = onAcceptRestore,
+                            onDiscardRestore = onDiscardRestore,
+                            onChooseScheduleFolder = onChooseScheduleFolder,
+                            onScheduleChanged = onScheduleChanged,
+                            message = backupMessage,
                         )
 
                         MoreSection.DOCUMENTS ->

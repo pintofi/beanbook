@@ -39,6 +39,25 @@ class LocalEngineClient(
     /** The per-process token, valid only while the engine is serving. */
     val sessionToken: String? get() = token
 
+    /**
+     * What the engine is running: Python, Beancount, Fava, Beanquery.
+     *
+     * Read from the engine rather than from our version catalogue, so a backup manifest
+     * records what actually wrote the archive.
+     */
+    suspend fun versions(): Map<String, String> = withContext(io) {
+        connection.withEngine { it.engineVersions() }
+            .getOrNull()
+            ?.split(' ')
+            ?.mapNotNull { pair ->
+                val (name, value) = pair.split('=', limit = 2).takeIf { it.size == 2 }
+                    ?: return@mapNotNull null
+                name to value
+            }
+            ?.toMap()
+            .orEmpty()
+    }
+
     override suspend fun start(projectPath: String): EngineStatus = lifecycleLock.withLock {
         (status.value as? EngineStatus.Serving)?.let { return it }
 

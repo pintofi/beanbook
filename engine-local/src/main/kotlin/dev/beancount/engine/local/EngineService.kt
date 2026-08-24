@@ -39,6 +39,10 @@ class EngineService : Service() {
             python().getModule("engine").callAttr("stop").toString()
         }
 
+        override fun engineVersions(): String = guarded {
+            python().getModule("engine").callAttr("versions").toString()
+        }
+
         override fun inspectToFile(ledgerPath: String, journalLimit: Int, outPath: String): String =
             guarded {
                 val json = python().getModule("ledger")

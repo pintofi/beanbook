@@ -2,6 +2,8 @@ package dev.beancount.app
 
 import android.app.Application
 import androidx.lifecycle.ProcessLifecycleOwner
+import dev.beancount.app.backup.BackupController
+import dev.beancount.app.backup.BackupSettings
 import dev.beancount.app.engine.EngineManager
 import dev.beancount.app.engine.EntitlementState
 import dev.beancount.app.engine.EditorController
@@ -85,6 +87,22 @@ class BeancountApplication : Application() {
     val documentCapture: DocumentCapture by lazy {
         DocumentCapture(this, workspace, DocumentStore(workspace), appScope)
     }
+
+    /** Where scheduled backups go, and what happened on the last run. */
+    val backupSettings: BackupSettings by lazy { BackupSettings(filesDir.resolve("state")) }
+
+    val backupController: BackupController by lazy {
+        BackupController(
+            workspace = workspace,
+            registry = registry,
+            scope = appScope,
+            appVersion = appVersion,
+            engineVersions = { engine.versions() },
+        )
+    }
+
+    /** Recorded in every backup manifest, so an archive says which app wrote it. */
+    val appVersion: String get() = BuildConfig.VERSION_NAME
 
     val projectsState: ProjectsState by lazy {
         ProjectsState(workspace, registry, ProjectImporter(workspace), appScope)
