@@ -5,6 +5,8 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import dev.beancount.app.backup.BackupController
 import dev.beancount.app.backup.BackupSettings
 import dev.beancount.app.engine.EngineManager
+import dev.beancount.app.mirror.MirrorController
+import dev.beancount.app.mirror.MirrorSettings
 import dev.beancount.app.engine.EntitlementState
 import dev.beancount.app.engine.EditorController
 import dev.beancount.app.engine.LedgerState
@@ -103,6 +105,13 @@ class BeancountApplication : Application() {
 
     /** Recorded in every backup manifest, so an archive says which app wrote it. */
     val appVersion: String get() = BuildConfig.VERSION_NAME
+
+    /** Auto-mirror to a folder the user chose (Tier 2). Off until they turn it on. */
+    val mirrorSettings: MirrorSettings by lazy { MirrorSettings(filesDir.resolve("state")) }
+
+    val mirror: MirrorController by lazy {
+        MirrorController(this, workspace, journal, appScope, mirrorSettings)
+    }
 
     val projectsState: ProjectsState by lazy {
         ProjectsState(workspace, registry, ProjectImporter(workspace), appScope)

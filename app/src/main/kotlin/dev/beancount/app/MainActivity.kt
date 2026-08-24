@@ -49,6 +49,8 @@ import dev.beancount.app.ui.RawEditorScreen
 import dev.beancount.app.ui.ContributeScreen
 import dev.beancount.app.backup.ScheduledBackupWorker
 import dev.beancount.app.ui.BackupScreen
+import dev.beancount.app.ui.MirrorScreen
+import dev.beancount.core.data.MirrorAction
 import dev.beancount.app.ui.DocumentsScreen
 import dev.beancount.core.data.RestoreStaged
 import dev.beancount.core.domain.CapturedPages
@@ -149,6 +151,23 @@ class MainActivity : ComponentActivity() {
 
     private var backupFolder: String? by mutableStateOf(null)
     private var scheduleEnabled: Boolean by mutableStateOf(false)
+    private var mirrorFolder: String? by mutableStateOf(null)
+    private var mirrorEnabled: Boolean by mutableStateOf(false)
+
+    /** The folder the project is mirrored into. Persisted so mirroring survives a restart. */
+    private val mirrorFolderPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        val app = application as BeancountApplication
+        uri?.let {
+            contentResolver.takePersistableUriPermission(
+                it,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+            app.mirror.setFolder(it.toString())
+            mirrorFolder = it.toString()
+        }
+    }
 
     /** Opens a project: engine, ledger, and the active-project record all move together. */
     private fun openProject(app: BeancountApplication, projectId: String) {
@@ -166,6 +185,8 @@ class MainActivity : ComponentActivity() {
 
         app.projectsState.refresh()
         backupFolder = app.backupSettings.folderUri()
+        mirrorFolder = app.mirror.folderUri
+        mirrorEnabled = app.mirror.enabled
 
         lifecycleScope.launch {
             // Recovery first: an interrupted write is resolved before the ledger is shown
@@ -208,6 +229,8 @@ class MainActivity : ComponentActivity() {
                         app.backupController.pendingRestore.collectAsStateWithLifecycle()
                     val backupMessage by
                         app.backupController.message.collectAsStateWithLifecycle()
+                    val mirrorConflicts by app.mirror.conflicts.collectAsStateWithLifecycle()
+                    val mirrorMessage by app.mirror.message.collectAsStateWithLifecycle()
 
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
@@ -268,6 +291,19 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onDiscardRestore = { app.backupController.discardRestore(activeId!!) },
+                        mirrorEnabled = mirrorEnabled,
+                        mirrorFolder = mirrorFolder,
+                        mirrorConflicts = mirrorConflicts,
+                        mirrorMessage = mirrorMessage,
+                        onChooseMirrorFolder = { mirrorFolderPicker.launch(null) },
+                        onMirrorEnabledChanged = { on ->
+                            mirrorEnabled = on
+                            app.mirror.setEnabled(on)
+                            if (on) app.mirror.sync(activeId!!)
+                        },
+                        onMirrorNow = { app.mirror.sync(activeId!!) },
+                        onKeepMine = { path -> app.mirror.keepMine(activeId!!, path) },
+                        onKeepTheirs = { path -> app.mirror.keepTheirs(activeId!!, path) },
                         onChooseScheduleFolder = { backupFolderPicker.launch(null) },
                         onScheduleChanged = { enabled ->
                             scheduleEnabled = enabled
@@ -384,8 +420,10 @@ class MainActivity : ComponentActivity() {
                         "Not saved: ${result.reason}"
                 },
             )
-            // Re-read so the journal and balances show the new entry.
+            // Re-read so the journal and balances show the new entry, then mirror: a pass
+            // only ever runs after a commit has landed (docs/storage-and-backup.md 6).
             app.ledgerState.load(ledgerPath)
+            app.mirror.syncAfterCommit(projectId)
         }
     }
 
@@ -493,6 +531,7 @@ private enum class MoreSection(val label: String) {
     PROJECTS("Projects"),
     DOCUMENTS("Documents"),
     BACKUP("Backup"),
+    MIRROR("Mirror"),
 }
 
 private enum class Surface(val label: String) {
@@ -548,6 +587,15 @@ internal fun LedgerApp(
     onDiscardRestore: () -> Unit,
     onChooseScheduleFolder: () -> Unit,
     onScheduleChanged: (Boolean) -> Unit,
+    mirrorEnabled: Boolean,
+    mirrorFolder: String?,
+    mirrorConflicts: List<MirrorAction.Conflict>,
+    mirrorMessage: String?,
+    onChooseMirrorFolder: () -> Unit,
+    onMirrorEnabledChanged: (Boolean) -> Unit,
+    onMirrorNow: () -> Unit,
+    onKeepMine: (String) -> Unit,
+    onKeepTheirs: (String) -> Unit,
     onSaveDirective: (dev.beancount.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
     projects: List<ProjectSummary>,
@@ -654,6 +702,15 @@ internal fun LedgerApp(
                 onDiscardRestore = onDiscardRestore,
                 onChooseScheduleFolder = onChooseScheduleFolder,
                 onScheduleChanged = onScheduleChanged,
+                mirrorEnabled = mirrorEnabled,
+                mirrorFolder = mirrorFolder,
+                mirrorConflicts = mirrorConflicts,
+                mirrorMessage = mirrorMessage,
+                onChooseMirrorFolder = onChooseMirrorFolder,
+                onMirrorEnabledChanged = onMirrorEnabledChanged,
+                onMirrorNow = onMirrorNow,
+                onKeepMine = onKeepMine,
+                onKeepTheirs = onKeepTheirs,
                 onSaveEntry = onSaveEntry,
                 templates = templates,
                 onSaveTemplate = onSaveTemplate,
@@ -717,6 +774,15 @@ private fun SurfaceContent(
     onDiscardRestore: () -> Unit,
     onChooseScheduleFolder: () -> Unit,
     onScheduleChanged: (Boolean) -> Unit,
+    mirrorEnabled: Boolean,
+    mirrorFolder: String?,
+    mirrorConflicts: List<MirrorAction.Conflict>,
+    mirrorMessage: String?,
+    onChooseMirrorFolder: () -> Unit,
+    onMirrorEnabledChanged: (Boolean) -> Unit,
+    onMirrorNow: () -> Unit,
+    onKeepMine: (String) -> Unit,
+    onKeepTheirs: (String) -> Unit,
     onSaveEntry: (TransactionDraft) -> Unit,
     templates: List<EntryTemplate>,
     onSaveTemplate: (EntryTemplate) -> Unit,
@@ -834,6 +900,27 @@ private fun SurfaceContent(
                             onDelete = onDeleteProject,
                             busyMessage = projectMessage,
                         )
+
+                        MoreSection.MIRROR ->
+                            if (!entitlement.allows(Feature.AUTO_MIRROR)) {
+                                LockedFeature(
+                                    title = "Mirror to a folder",
+                                    tier = Feature.AUTO_MIRROR.required.label,
+                                    onContribute = onContribute,
+                                )
+                            } else {
+                                MirrorScreen(
+                                    enabled = mirrorEnabled,
+                                    folder = mirrorFolder,
+                                    conflicts = mirrorConflicts,
+                                    onChooseFolder = onChooseMirrorFolder,
+                                    onEnabledChanged = onMirrorEnabledChanged,
+                                    onSyncNow = onMirrorNow,
+                                    onKeepMine = onKeepMine,
+                                    onKeepTheirs = onKeepTheirs,
+                                    message = mirrorMessage,
+                                )
+                            }
 
                         MoreSection.BACKUP -> BackupScreen(
                             projectTitle = projects.firstOrNull { it.id == activeProjectId }
