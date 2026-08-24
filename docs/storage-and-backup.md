@@ -18,6 +18,7 @@ limitation we hide.
 ├── snapshots/<project-id>/           ← pre-write snapshots for rollback
 ├── journal/<project-id>.wal          ← write-ahead journal
 ├── drafts/<project-id>/              ← unsaved editor buffers
+├── templates/<project-id>.templates  ← named entry templates (prefill, not directives)
 ├── cache/<project-id>/               ← parse cache, widget cache (never backed up)
 └── runtime/                          ← Python runtime state (never in a project tree)
 ```

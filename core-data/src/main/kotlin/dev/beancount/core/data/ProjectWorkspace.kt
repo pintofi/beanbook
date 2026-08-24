@@ -15,6 +15,7 @@ import java.time.LocalDate
  * <root>/snapshots/<id>/    pre-write snapshots (M4)
  * <root>/journal/<id>.wal   write-ahead journal (M4)
  * <root>/drafts/<id>/       unsaved editor buffers
+ * <root>/templates/<id>     named entry templates
  * <root>/cache/<id>/        parse and widget caches, never backed up
  * ```
  */
@@ -24,6 +25,13 @@ class ProjectWorkspace(private val root: File) {
     val snapshotsDir: File get() = root.resolve("snapshots")
     val journalDir: File get() = root.resolve("journal")
     val draftsDir: File get() = root.resolve("drafts")
+
+    /**
+     * Entry templates. App state rather than ledger data: they are prefill for the entry
+     * form, not directives, so they stay out of the portable tree and out of exports. A
+     * backup (M9) carries them; an exported ledger folder does not.
+     */
+    val templatesDir: File get() = root.resolve("templates")
     val cacheDir: File get() = root.resolve("cache")
 
     fun projectDir(id: String): File = projectsDir.resolve(requireValidId(id))

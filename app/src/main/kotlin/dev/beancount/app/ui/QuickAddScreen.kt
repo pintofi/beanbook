@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -31,6 +33,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.beancount.core.domain.Amount
+import dev.beancount.core.domain.DraftProblem
+import dev.beancount.core.domain.EntryTemplate
 import dev.beancount.core.domain.LedgerVocabulary
 import dev.beancount.core.domain.PostingDraft
 import dev.beancount.core.domain.TransactionDraft
@@ -59,6 +63,9 @@ fun QuickAddScreen(
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
     saveState: String? = null,
+    templates: List<EntryTemplate> = emptyList(),
+    onSaveTemplate: (EntryTemplate) -> Unit = {},
+    onDeleteTemplate: (String) -> Unit = {},
 ) {
     var date by remember { mutableStateOf(today.toString()) }
     var payee by remember { mutableStateOf("") }
@@ -90,10 +97,53 @@ fun QuickAddScreen(
     val problems = draft.validate()
     val residuals = draft.residuals()
 
+    var namingTemplate by remember { mutableStateOf(false) }
+
+    /**
+     * Applies a template through the same domain call the tests exercise, so there is one
+     * definition of what a template becomes. The date stays as typed when it is a date at
+     * all; a half-typed one falls back to today rather than being carried into the form.
+     */
+    fun applyTemplate(template: EntryTemplate) {
+        val applied = template.apply(
+            runCatching { LocalDate.parse(date.trim()) }.getOrDefault(today),
+        )
+        date = applied.date
+        payee = applied.payee.orEmpty()
+        narration = applied.narration.orEmpty()
+        currency = template.currency
+        rows.clear()
+        applied.postings.forEach { posting ->
+            rows.add(PostingRow(posting.account, posting.amount?.number?.toPlainString().orEmpty()))
+        }
+    }
+
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Templates come first because that is when they are useful: before anything has
+        // been typed. Applying one fills the form and stops there — the entry is still
+        // previewed and validated like any other, so a template cannot write anything the
+        // user has not seen (docs/ux.md 4).
+        if (templates.isNotEmpty()) {
+            Text("Templates", style = MaterialTheme.typography.titleSmall)
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                templates.forEach { template ->
+                    AssistChip(
+                        onClick = { applyTemplate(template) },
+                        label = { Text(template.name) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Start from the template ${template.name}"
+                        },
+                    )
+                }
+            }
+        }
+
         OutlinedTextField(
             value = date,
             onValueChange = { date = it },
@@ -267,6 +317,25 @@ fun QuickAddScreen(
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Save entry") }
 
+        TextButton(
+            onClick = { namingTemplate = true },
+            enabled = rows.any { it.account.isNotBlank() },
+        ) { Text("Save as template") }
+
+        if (namingTemplate) {
+            TemplateDialog(
+                draft = draft,
+                fallbackCurrency = currency.trim(),
+                existing = templates,
+                onSave = { template ->
+                    onSaveTemplate(template)
+                    namingTemplate = false
+                },
+                onDelete = onDeleteTemplate,
+                onDismiss = { namingTemplate = false },
+            )
+        }
+
         saveState?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
     }
 }
@@ -286,4 +355,88 @@ internal fun Suggestions(values: List<String>, kind: String, onPick: (String) ->
             )
         }
     }
+}
+
+/**
+ * Names a template, and manages the ones already saved.
+ *
+ * Deleting is here rather than behind a long-press because a destructive action has to name
+ * its scope (CLAUDE.md, invariant 7): the row says which template goes, and nothing else in
+ * the app is touched — a template is prefill, so removing one cannot affect the ledger.
+ */
+@Composable
+private fun TemplateDialog(
+    draft: TransactionDraft,
+    fallbackCurrency: String,
+    existing: List<EntryTemplate>,
+    onSave: (EntryTemplate) -> Unit,
+    onDelete: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    val candidate = EntryTemplate.from(name, draft, fallbackCurrency)
+    val problems = candidate.validate()
+    val replaces = existing.any { it.name.equals(name.trim(), ignoreCase = true) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Save as template") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "The accounts, payee, description and any amounts on the form are kept. " +
+                        "The date is not: a template is applied to the date you are entering.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Template name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (replaces) {
+                    Text(
+                        "Replaces the template already called \"${name.trim()}\".",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                // Shown while typing rather than on save: a template that could never
+                // produce a valid entry is refused now, not on the day it is used.
+                problems.filterNot { it is DraftProblem.MissingText }.forEach { problem ->
+                    Text(
+                        problem.describe(),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (existing.isNotEmpty()) {
+                    HorizontalDivider()
+                    Text("Saved templates", style = MaterialTheme.typography.titleSmall)
+                    existing.forEach { template ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(template.name, style = MaterialTheme.typography.bodyMedium)
+                            TextButton(
+                                onClick = { onDelete(template.name) },
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Delete the template ${template.name}"
+                                },
+                            ) { Text("Delete") }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(candidate) },
+                enabled = problems.isEmpty(),
+            ) { Text("Save template") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }

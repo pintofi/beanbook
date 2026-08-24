@@ -6,11 +6,13 @@ import dev.beancount.app.engine.EngineManager
 import dev.beancount.app.engine.EditorController
 import dev.beancount.app.engine.LedgerState
 import dev.beancount.app.engine.ProjectsState
+import dev.beancount.app.engine.TemplatesState
 import dev.beancount.core.data.DraftStore
 import dev.beancount.core.data.ProjectImporter
 import dev.beancount.core.data.ProjectRegistry
 import dev.beancount.core.data.ProjectWorkspace
 import dev.beancount.core.data.ProjectWriter
+import dev.beancount.core.data.TemplateStore
 import dev.beancount.core.data.WriteJournal
 import dev.beancount.core.engine.PluginPolicy
 import dev.beancount.core.entitlement.Entitlement
@@ -67,6 +69,11 @@ class BeancountApplication : Application() {
 
     val editorController: EditorController by lazy {
         EditorController(workspace, writer, drafts, appScope)
+    }
+
+    /** Entry templates for the open project; app state, never part of the ledger. */
+    val templatesState: TemplatesState by lazy {
+        TemplatesState(TemplateStore(workspace), appScope)
     }
 
     val projectsState: ProjectsState by lazy {

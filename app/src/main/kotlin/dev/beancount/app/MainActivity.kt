@@ -46,6 +46,7 @@ import dev.beancount.app.ui.EditableFile
 import dev.beancount.app.ui.ProjectPickerScreen
 import dev.beancount.app.ui.RawEditorScreen
 import dev.beancount.app.ui.QuickAddScreen
+import dev.beancount.core.domain.EntryTemplate
 import dev.beancount.core.data.ProjectSummary
 import dev.beancount.core.domain.LedgerVocabulary
 import dev.beancount.core.domain.TransactionDraft
@@ -102,6 +103,7 @@ class MainActivity : ComponentActivity() {
     private fun openProject(app: BeancountApplication, projectId: String) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
         app.projectsState.open(projectId)
+        app.templatesState.open(projectId)
         app.engineManager.start(ledgerPath)
         app.ledgerState.load(ledgerPath)
     }
@@ -142,6 +144,7 @@ class MainActivity : ComponentActivity() {
                     val projectMessage by app.projectsState.message.collectAsStateWithLifecycle()
                     val editorState by app.editorController.state.collectAsStateWithLifecycle()
                     val editorMessage by app.editorController.message.collectAsStateWithLifecycle()
+                    val templates by app.templatesState.templates.collectAsStateWithLifecycle()
 
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
@@ -165,6 +168,9 @@ class MainActivity : ComponentActivity() {
                         debuggingAllowed = BuildConfig.DEBUG,
                         onOpenExternally = ::openInBrowser,
                         onSaveEntry = { draft -> saveText(app, activeId!!, draft.render(), "quick-add") },
+                        templates = templates,
+                        onSaveTemplate = { app.templatesState.save(it) },
+                        onDeleteTemplate = { app.templatesState.delete(it) },
                         onSaveDirective = { draft ->
                             saveText(app, activeId!!, draft.render(), "add-directive")
                         },
@@ -288,6 +294,9 @@ internal fun LedgerApp(
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
     onSaveEntry: (TransactionDraft) -> Unit,
+    templates: List<EntryTemplate>,
+    onSaveTemplate: (EntryTemplate) -> Unit,
+    onDeleteTemplate: (String) -> Unit,
     onSaveDirective: (dev.beancount.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
     projects: List<ProjectSummary>,
@@ -353,6 +362,9 @@ internal fun LedgerApp(
             SurfaceContent(
                 selected = selected,
                 onSaveEntry = onSaveEntry,
+                templates = templates,
+                onSaveTemplate = onSaveTemplate,
+                onDeleteTemplate = onDeleteTemplate,
                 onSaveDirective = onSaveDirective,
                 saveState = saveState,
                 projects = projects,
@@ -387,6 +399,9 @@ internal fun LedgerApp(
 private fun SurfaceContent(
     selected: Surface,
     onSaveEntry: (TransactionDraft) -> Unit,
+    templates: List<EntryTemplate>,
+    onSaveTemplate: (EntryTemplate) -> Unit,
+    onDeleteTemplate: (String) -> Unit,
     onSaveDirective: (dev.beancount.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
     projects: List<ProjectSummary>,
@@ -452,6 +467,9 @@ private fun SurfaceContent(
                                 vocabulary = LedgerVocabulary.from(ledger),
                                 onSave = onSaveEntry,
                                 saveState = saveState,
+                                templates = templates,
+                                onSaveTemplate = onSaveTemplate,
+                                onDeleteTemplate = onDeleteTemplate,
                             )
                         }
                     }
