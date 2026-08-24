@@ -11,6 +11,7 @@ import dev.beancount.core.data.WriteJournal
 import java.io.File
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,6 +46,7 @@ import dev.beancount.app.ui.OnboardingScreen
 import dev.beancount.app.ui.EditableFile
 import dev.beancount.app.ui.ProjectPickerScreen
 import dev.beancount.app.ui.RawEditorScreen
+import dev.beancount.app.ui.ContributeScreen
 import dev.beancount.app.ui.QuickAddScreen
 import dev.beancount.core.domain.EntryTemplate
 import dev.beancount.core.data.ProjectSummary
@@ -145,6 +147,9 @@ class MainActivity : ComponentActivity() {
                     val editorState by app.editorController.state.collectAsStateWithLifecycle()
                     val editorMessage by app.editorController.message.collectAsStateWithLifecycle()
                     val templates by app.templatesState.templates.collectAsStateWithLifecycle()
+                    val entitlement by app.entitlementState.entitlement.collectAsStateWithLifecycle()
+                    val entitlementMessage by
+                        app.entitlementState.message.collectAsStateWithLifecycle()
 
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
@@ -163,11 +168,15 @@ class MainActivity : ComponentActivity() {
                         engineStatus = engineStatus,
                         ledger = ledger,
                         editionName = app.pluginPolicy.name,
-                        entitlement = app.entitlement,
+                        entitlement = entitlement,
                         token = app.engine.sessionToken,
                         debuggingAllowed = BuildConfig.DEBUG,
                         onOpenExternally = ::openInBrowser,
                         onSaveEntry = { draft -> saveText(app, activeId!!, draft.render(), "quick-add") },
+                        onApplyKey = { app.entitlementState.applyKey(it) },
+                        onRemoveKey = { app.entitlementState.removeKey() },
+                        onClearEntitlementMessage = { app.entitlementState.clearMessage() },
+                        entitlementMessage = entitlementMessage,
                         templates = templates,
                         onSaveTemplate = { app.templatesState.save(it) },
                         onDeleteTemplate = { app.templatesState.delete(it) },
@@ -297,6 +306,10 @@ internal fun LedgerApp(
     templates: List<EntryTemplate>,
     onSaveTemplate: (EntryTemplate) -> Unit,
     onDeleteTemplate: (String) -> Unit,
+    onApplyKey: (String) -> Unit,
+    onRemoveKey: () -> Unit,
+    onClearEntitlementMessage: () -> Unit,
+    entitlementMessage: String?,
     onSaveDirective: (dev.beancount.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
     projects: List<ProjectSummary>,
@@ -318,6 +331,7 @@ internal fun LedgerApp(
     modifier: Modifier = Modifier,
 ) {
     var selected by remember { mutableStateOf(Surface.JOURNAL) }
+    var showContribute by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier,
@@ -357,10 +371,26 @@ internal fun LedgerApp(
             }
         },
     ) { padding ->
+        if (showContribute) {
+            ContributeScreen(
+                entitlement = entitlement,
+                onApplyKey = onApplyKey,
+                onRemoveKey = onRemoveKey,
+                onClose = {
+                    showContribute = false
+                    onClearEntitlementMessage()
+                },
+                message = entitlementMessage,
+                modifier = Modifier.padding(padding),
+            )
+            return@Scaffold
+        }
+
         Column(modifier = Modifier.padding(padding)) {
-            TrialBanner(entitlement)
+            TrialBanner(entitlement, onClick = { showContribute = true })
             SurfaceContent(
                 selected = selected,
+                onContribute = { showContribute = true },
                 onSaveEntry = onSaveEntry,
                 templates = templates,
                 onSaveTemplate = onSaveTemplate,
@@ -398,6 +428,7 @@ internal fun LedgerApp(
 @Composable
 private fun SurfaceContent(
     selected: Surface,
+    onContribute: () -> Unit,
     onSaveEntry: (TransactionDraft) -> Unit,
     templates: List<EntryTemplate>,
     onSaveTemplate: (EntryTemplate) -> Unit,
@@ -517,6 +548,7 @@ private fun SurfaceContent(
                     LockedFeature(
                         title = "Reports and charts",
                         tier = Feature.FAVA_REPORTS.required.label,
+                        onContribute = onContribute,
                         modifier = Modifier.padding(padding),
                     )
                 } else if (serving == null) {
@@ -541,7 +573,12 @@ private fun SurfaceContent(
  * no modal, no nagging (docs/ux.md §10) — and the user's data is never involved.
  */
 @Composable
-private fun LockedFeature(title: String, tier: String, modifier: Modifier = Modifier) {
+private fun LockedFeature(
+    title: String,
+    tier: String,
+    onContribute: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier.padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -553,12 +590,25 @@ private fun LockedFeature(title: String, tier: String, modifier: Modifier = Modi
                 "stay free. This app is open source: you can also build it yourself.",
             style = MaterialTheme.typography.bodySmall,
         )
+        androidx.compose.material3.TextButton(onClick = onContribute) {
+            Text(dev.beancount.core.entitlement.PurchaseRoute.EnterKeyOnly.label)
+        }
     }
 }
 
-/** One quiet line about the trial. Shown while it runs, and once when it has ended. */
+/**
+ * One quiet line about the trial, and the way to the Contribute screen.
+ *
+ * A line of text rather than a banner with a button: the trial ending is not an emergency,
+ * and a countdown that demands attention every launch is the dark pattern this app promised
+ * not to have (docs/distribution.md §4.7).
+ */
 @Composable
-internal fun TrialBanner(entitlement: Entitlement, modifier: Modifier = Modifier) {
+internal fun TrialBanner(
+    entitlement: Entitlement,
+    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     val text = when (val grant = entitlement.grant) {
         is Grant.Trial -> {
             val days = entitlement.trialDaysRemaining ?: 0
@@ -567,12 +617,18 @@ internal fun TrialBanner(entitlement: Entitlement, modifier: Modifier = Modifier
         }
         is Grant.TrialEnded ->
             "Trial ended. Your ledger is untouched and stays fully editable."
-        is Grant.Key -> "${'$'}{grant.tier.label} key · ${'$'}{grant.email}"
+        // The tier, not the email: this line is on screen in every screenshot the user ever
+        // shares, and the address a key was issued to belongs on the Contribute screen
+        // (docs/distribution.md §4.5), not above the ledger.
+        is Grant.Key -> "${grant.tier.label} key · tap to manage"
         Grant.Free -> return
     }
     Text(
         text = text,
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .semantics { contentDescription = "$text. Opens Contribute." },
         style = MaterialTheme.typography.bodySmall,
     )
 }

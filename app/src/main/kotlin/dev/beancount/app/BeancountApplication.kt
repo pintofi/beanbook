@@ -3,6 +3,7 @@ package dev.beancount.app
 import android.app.Application
 import androidx.lifecycle.ProcessLifecycleOwner
 import dev.beancount.app.engine.EngineManager
+import dev.beancount.app.engine.EntitlementState
 import dev.beancount.app.engine.EditorController
 import dev.beancount.app.engine.LedgerState
 import dev.beancount.app.engine.ProjectsState
@@ -15,7 +16,6 @@ import dev.beancount.core.data.ProjectWriter
 import dev.beancount.core.data.TemplateStore
 import dev.beancount.core.data.WriteJournal
 import dev.beancount.core.engine.PluginPolicy
-import dev.beancount.core.entitlement.Entitlement
 import dev.beancount.core.entitlement.Entitlements
 import dev.beancount.core.entitlement.FileEntitlementStorage
 import java.time.Instant
@@ -89,12 +89,12 @@ class BeancountApplication : Application() {
     }
 
     /**
-     * Re-read on each start rather than cached for the process lifetime: a trial that
-     * expires while the app is open should take effect at the next launch, not silently
-     * mid-session.
+     * The live entitlement, and the only place a key is applied. Held as state rather than a
+     * value read once, so entering a key takes effect immediately instead of at next launch.
      */
-    var entitlement: Entitlement = Entitlement.FREE
-        private set
+    val entitlementState: EntitlementState by lazy {
+        EntitlementState(entitlements, appScope)
+    }
 
     val editor: BeancountEditor by lazy { BeancountEditor(this, connection = engineConnection) }
 
@@ -113,7 +113,7 @@ class BeancountApplication : Application() {
         // (docs/architecture.md §5).
         dev.beancount.app.storage.ContextHolder.install(this)
         // Starts the 30-day trial on first launch and records that the app was seen now.
-        entitlement = entitlements.onAppStart(Instant.now())
+        entitlementState.start(Instant.now())
         ProcessLifecycleOwner.get().lifecycle.addObserver(engineManager)
     }
 

@@ -6,6 +6,8 @@ plugins {
 // unlocks. Pure Kotlin and free of any billing or payment dependency — there is no billing
 // SDK in this project (docs/distribution.md §4.1).
 dependencies {
+    implementation(libs.eddsa)
+
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit)
 }

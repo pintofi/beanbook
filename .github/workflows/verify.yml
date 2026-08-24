@@ -64,8 +64,14 @@ jobs:
 
       - name: No hard-coded signing keys
         run: |
-          if git ls-files | grep -E '\.(pem|jks|keystore|p12)$'; then
+          if git ls-files | grep -E '\.(pem|jks|keystore|p12|der)$'; then
             echo "::error::key material committed to the repository"
+            exit 1
+          fi
+          # The contribution-key signing key lives in the private issuance repo and must
+          # never be pasted into a source file here (docs/distribution.md 4.6).
+          if git grep -nE 'BEGIN [A-Z ]*PRIVATE KEY' -- . ; then
+            echo "::error::a private key is embedded in a tracked file"
             exit 1
           fi
           echo "no key material committed"

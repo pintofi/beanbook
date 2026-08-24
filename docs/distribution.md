@@ -211,6 +211,11 @@ payload = { "v":1, "kid":"k1", "tier":3,
 - Verified offline against Ed25519 public keys compiled into the app; several trusted keys
   ship so a compromised signing key is a rotation (`kid`), not a catastrophe. Old `kid`s
   keep verifying forever, so issued keys never stop working.
+- **The signature covers the encoded payload segment exactly as it appears in the key**, not
+  the JSON it decodes to: re-serialising to verify is how signer and verifier come to
+  disagree about whitespace and field order (implemented in M7, `KeyVerifier`).
+- Ed25519 comes from `net.i2p.crypto:eddsa` (public domain, ~90 KB), because `java.security`
+  only gained Ed25519 in API 33 and minSdk is 28.
 - **Soft binding to email, unlimited devices.** The email is shown in Settings as a mild
   social deterrent. No device lock, no activation counter, no reissue support burden.
 - Stored in app-private storage; the raw key is retained so the user can re-display it.
@@ -229,7 +234,9 @@ does not exist and cannot be used to hide a secret.
 3. Issuance is a `workflow_dispatch` job: inputs `email`, `tier`, `order`; output is the
    signed key, mailed to the buyer and appended to an issuance log.
 4. Offline fallback: the same CLI runs locally from a hardware-backed key backup, so
-   issuance survives GitHub being unavailable.
+   issuance survives GitHub being unavailable. **This is what exists today**: `issue-key.sh`
+   and the `k1` private key live outside this repository; CI fails the build if key material
+   or a `BEGIN … PRIVATE KEY` block is ever committed here.
 5. Rotation: bump `kid`, add the new public key to the app, keep the old ones trusted.
 
 **Developer self-unlock:** you hold the private key and issue yourself a Tier 3 key like
