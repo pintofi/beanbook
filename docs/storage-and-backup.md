@@ -15,6 +15,7 @@ limitation we hide.
 ```
 <app-private files>/
 ├── projects/<project-id>/            ← canonical portable project tree
+│     └── documents/<Account>/…       ← receipts, in Beancount's own documents layout
 ├── snapshots/<project-id>/           ← pre-write snapshots for rollback
 ├── journal/<project-id>.wal          ← write-ahead journal
 ├── drafts/<project-id>/              ← unsaved editor buffers

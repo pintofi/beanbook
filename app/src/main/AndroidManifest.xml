@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Receipt capture (M8). Optional hardware: a tablet without a camera still runs the
+         whole app, so this must not narrow the device list on Play. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application
         android:name=".BeancountApplication"
         android:label="@string/app_name"
@@ -18,5 +23,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Sharing a receipt hands out a temporary content:// URI for that one file. The
+             app's own storage is never exposed as a path, and the allowlist in
+             document_paths.xml covers project documents only. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.documents"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/document_paths" />
+        </provider>
     </application>
 </manifest>

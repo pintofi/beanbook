@@ -62,6 +62,17 @@ jobs:
           fi
           echo "no TLS bypass found"
 
+      - name: No escaped string templates in user-facing text
+        # "${'$'}{value}" prints the template literally instead of interpolating it. It has
+        # shipped twice in this app — a key banner and three save messages — and is invisible
+        # until the exact state that renders it occurs (docs/milestones/m7.md, m8.md).
+        run: |
+          if git grep -nF -- "\${'\$'}" -- '*.kt' ; then
+            echo "::error::escaped string template found; it will print literally"
+            exit 1
+          fi
+          echo "no escaped string templates"
+
       - name: No hard-coded signing keys
         run: |
           if git ls-files | grep -E '\.(pem|jks|keystore|p12|der)$'; then

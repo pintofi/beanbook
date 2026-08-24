@@ -47,6 +47,11 @@ import dev.beancount.app.ui.EditableFile
 import dev.beancount.app.ui.ProjectPickerScreen
 import dev.beancount.app.ui.RawEditorScreen
 import dev.beancount.app.ui.ContributeScreen
+import dev.beancount.app.ui.DocumentsScreen
+import dev.beancount.core.domain.CapturedPages
+import dev.beancount.core.domain.DirectiveDraft
+import java.io.File as JavaFile
+import java.time.LocalDate
 import dev.beancount.app.ui.QuickAddScreen
 import dev.beancount.core.domain.EntryTemplate
 import dev.beancount.core.data.ProjectSummary
@@ -73,6 +78,9 @@ class MainActivity : ComponentActivity() {
 
     private var recoveryMessage: String? = null
     private var saveMessage: String? by mutableStateOf(null)
+
+    /** The documents already filed in the open project; refreshed after every change. */
+    private var documents: List<String> by mutableStateOf(emptyList())
 
     /**
      * SAF pickers. These are the only way a project enters the app, and every byte they
@@ -106,6 +114,7 @@ class MainActivity : ComponentActivity() {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
         app.projectsState.open(projectId)
         app.templatesState.open(projectId)
+        refreshDocuments(app, projectId)
         app.engineManager.start(ledgerPath)
         app.ledgerState.load(ledgerPath)
     }
@@ -150,6 +159,9 @@ class MainActivity : ComponentActivity() {
                     val entitlement by app.entitlementState.entitlement.collectAsStateWithLifecycle()
                     val entitlementMessage by
                         app.entitlementState.message.collectAsStateWithLifecycle()
+                    val documentPages by app.documentCapture.pages.collectAsStateWithLifecycle()
+                    val documentMessage by
+                        app.documentCapture.message.collectAsStateWithLifecycle()
 
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
@@ -173,6 +185,25 @@ class MainActivity : ComponentActivity() {
                         debuggingAllowed = BuildConfig.DEBUG,
                         onOpenExternally = ::openInBrowser,
                         onSaveEntry = { draft -> saveText(app, activeId!!, draft.render(), "quick-add") },
+                        documentPages = documentPages,
+                        documents = documents,
+                        documentMessage = documentMessage,
+                        captureFile = { app.documentCapture.nextCaptureFile() },
+                        onCapture = { file, _ ->
+                            if (file.length() > 0) app.documentCapture.add(file)
+                        },
+                        onRotatePage = { app.documentCapture.rotate(it) },
+                        onMovePage = { from, to -> app.documentCapture.move(from, to) },
+                        onRemovePage = { app.documentCapture.remove(it) },
+                        onSaveDocument = { account -> attachDocument(app, activeId!!, account) },
+                        onDiscardPages = { app.documentCapture.reset(discardCaptures = true) },
+                        onUnlinkDocument = { path -> unlinkDocument(app, activeId!!, path) },
+                        onDeleteDocumentFile = { path ->
+                            app.documentCapture.deleteFile(activeId!!, path) {
+                                refreshDocuments(app, activeId!!)
+                            }
+                        },
+                        onShareDocument = { path -> shareDocument(app, activeId!!, path) },
                         onApplyKey = { app.entitlementState.applyKey(it) },
                         onRemoveKey = { app.entitlementState.removeKey() },
                         onClearEntitlementMessage = { app.entitlementState.clearMessage() },
@@ -258,24 +289,124 @@ class MainActivity : ComponentActivity() {
         projectId: String,
         text: String,
         operation: String,
+        // Which file the text is appended to. Entries go to the transactions file; a
+        // `document` directive goes to the main file, because its path is relative to the
+        // file that holds it and the documents directory sits beside the main file.
+        target: java.io.File = app.workspace.projectDir(projectId).resolve("files/transactions.beancount"),
+        onResult: (String) -> Unit = { saveMessage = it },
     ) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
         lifecycleScope.launch {
             saveMessage = "Saving…"
-            val file = app.workspace.projectDir(projectId).resolve("files/transactions.beancount")
+            val file = target
             val result = app.writer.append(projectId, file, text, operation = operation)
-            saveMessage = when (result) {
-                is dev.beancount.core.data.WriteResult.Committed ->
-                    if (result.warnings.isEmpty()) "Saved."
-                    else "Saved, with ${'$'}{result.warnings.size} ledger error(s) to review."
-                is dev.beancount.core.data.WriteResult.RolledBack ->
-                    "Not saved: ${'$'}{result.reason}. Your ledger is unchanged."
-                is dev.beancount.core.data.WriteResult.Refused ->
-                    "Not saved: ${'$'}{result.reason}"
-            }
+            onResult(
+                when (result) {
+                    is dev.beancount.core.data.WriteResult.Committed ->
+                        if (result.warnings.isEmpty()) "Saved."
+                        else "Saved, with ${result.warnings.size} ledger error(s) to review."
+                    is dev.beancount.core.data.WriteResult.RolledBack ->
+                        "Not saved: ${result.reason}. Your ledger is unchanged."
+                    is dev.beancount.core.data.WriteResult.Refused ->
+                        "Not saved: ${result.reason}"
+                },
+            )
             // Re-read so the journal and balances show the new entry.
             app.ledgerState.load(ledgerPath)
         }
+    }
+
+    private fun refreshDocuments(app: BeancountApplication, projectId: String) {
+        lifecycleScope.launch { documents = app.documentCapture.existing(projectId) }
+    }
+
+    /**
+     * Files the captured pages as a PDF, then writes the `document` directive that points at
+     * it — in that order, so the ledger never names a file that does not exist yet
+     * (CLAUDE.md, invariant 5).
+     */
+    private fun attachDocument(app: BeancountApplication, projectId: String, account: String) {
+        app.documentCapture.save(projectId, account) { relativePath ->
+            val directive = DirectiveDraft.Document(
+                date = LocalDate.now().toString(),
+                account = account,
+                path = relativePath,
+            )
+            saveText(
+                app,
+                projectId,
+                directive.render(),
+                operation = "attach-document",
+                target = app.workspace.mainFile(projectId),
+            ) { outcome ->
+                saveMessage = outcome
+                // Said where the user is standing, not on a screen they have left.
+                app.documentCapture.report("Filed ${relativePath.substringAfterLast('/')}. $outcome")
+            }
+            app.documentCapture.reset()
+            refreshDocuments(app, projectId)
+        }
+    }
+
+    /**
+     * Removes the link, not the file.
+     *
+     * The directive is deleted from whichever included file holds it and the write goes
+     * through the ordinary protocol, so an unlink is snapshotted and undoable like any other
+     * edit. The PDF stays exactly where it was.
+     */
+    private fun unlinkDocument(app: BeancountApplication, projectId: String, path: String) {
+        lifecycleScope.launch {
+            val projectDir = app.workspace.projectDir(projectId)
+            val candidates = projectDir.walkTopDown()
+                .filter { it.isFile && (it.extension == "beancount" || it.extension == "bean") }
+                .toList()
+
+            val holder = candidates.firstOrNull { it.readText().contains(path) }
+            if (holder == null) {
+                saveMessage = "Nothing in the ledger links to $path."
+                return@launch
+            }
+
+            val kept = holder.readLines().filterNot { line ->
+                line.contains(path) && line.contains("document")
+            }
+            val result = app.writer.replace(
+                projectId = projectId,
+                file = holder,
+                expectedSha = dev.beancount.core.data.WriteJournal.sha256(holder),
+                newContent = kept.joinToString("\n").let { if (it.endsWith("\n")) it else it + "\n" },
+                operation = "unlink-document",
+            )
+            saveMessage = when (result) {
+                is dev.beancount.core.data.WriteResult.Committed ->
+                    "Unlinked $path. The file is still in the project."
+                is dev.beancount.core.data.WriteResult.RolledBack ->
+                    "Not unlinked: ${result.reason}. Your ledger is unchanged."
+                is dev.beancount.core.data.WriteResult.Refused -> "Not unlinked: ${result.reason}"
+            }
+            app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
+        }
+    }
+
+    /** Hands one document to another app as a temporary read-only URI, and nothing else. */
+    private fun shareDocument(app: BeancountApplication, projectId: String, path: String) {
+        val file = app.workspace.projectDir(projectId).resolve(path)
+        if (!file.isFile) {
+            saveMessage = "That document is not in the project any more."
+            return
+        }
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            this,
+            "${BuildConfig.APPLICATION_ID}.documents",
+            file,
+        )
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "application/pdf"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        runCatching { startActivity(Intent.createChooser(send, "Share document")) }
     }
 
     private fun openInBrowser(uri: Uri) {
@@ -284,13 +415,21 @@ class MainActivity : ComponentActivity() {
 
 }
 
+/** The sections of the More hub. Projects first: it is the one people look for. */
+private enum class MoreSection(val label: String) {
+    PROJECTS("Projects"),
+    DOCUMENTS("Documents"),
+}
+
 private enum class Surface(val label: String) {
     ADD("Add"),
     JOURNAL("Journal"),
     BALANCES("Balances"),
     REPORTS("Reports"),
     FILES("Files"),
-    PROJECTS("Projects"),
+    // The hub docs/ux.md 2 asks for: documents now, backup and settings as they arrive.
+    // Projects lives here rather than in the bar so six destinations still fit a phone.
+    MORE("More"),
 }
 
 @Composable
@@ -310,6 +449,19 @@ internal fun LedgerApp(
     onRemoveKey: () -> Unit,
     onClearEntitlementMessage: () -> Unit,
     entitlementMessage: String?,
+    documentPages: CapturedPages,
+    documents: List<String>,
+    documentMessage: String?,
+    onCapture: (JavaFile, (Boolean) -> Unit) -> Unit,
+    captureFile: () -> JavaFile,
+    onRotatePage: (Int) -> Unit,
+    onMovePage: (Int, Int) -> Unit,
+    onRemovePage: (Int) -> Unit,
+    onSaveDocument: (String) -> Unit,
+    onDiscardPages: () -> Unit,
+    onUnlinkDocument: (String) -> Unit,
+    onDeleteDocumentFile: (String) -> Unit,
+    onShareDocument: (String) -> Unit,
     onSaveDirective: (dev.beancount.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
     projects: List<ProjectSummary>,
@@ -391,6 +543,19 @@ internal fun LedgerApp(
             SurfaceContent(
                 selected = selected,
                 onContribute = { showContribute = true },
+                documentPages = documentPages,
+                documents = documents,
+                documentMessage = documentMessage,
+                onCapture = onCapture,
+                captureFile = captureFile,
+                onRotatePage = onRotatePage,
+                onMovePage = onMovePage,
+                onRemovePage = onRemovePage,
+                onSaveDocument = onSaveDocument,
+                onDiscardPages = onDiscardPages,
+                onUnlinkDocument = onUnlinkDocument,
+                onDeleteDocumentFile = onDeleteDocumentFile,
+                onShareDocument = onShareDocument,
                 onSaveEntry = onSaveEntry,
                 templates = templates,
                 onSaveTemplate = onSaveTemplate,
@@ -429,6 +594,19 @@ internal fun LedgerApp(
 private fun SurfaceContent(
     selected: Surface,
     onContribute: () -> Unit,
+    documentPages: CapturedPages,
+    documents: List<String>,
+    documentMessage: String?,
+    onCapture: (JavaFile, (Boolean) -> Unit) -> Unit,
+    captureFile: () -> JavaFile,
+    onRotatePage: (Int) -> Unit,
+    onMovePage: (Int, Int) -> Unit,
+    onRemovePage: (Int) -> Unit,
+    onSaveDocument: (String) -> Unit,
+    onDiscardPages: () -> Unit,
+    onUnlinkDocument: (String) -> Unit,
+    onDeleteDocumentFile: (String) -> Unit,
+    onShareDocument: (String) -> Unit,
     onSaveEntry: (TransactionDraft) -> Unit,
     templates: List<EntryTemplate>,
     onSaveTemplate: (EntryTemplate) -> Unit,
@@ -519,16 +697,68 @@ private fun SurfaceContent(
                 onDiscardDraft = onDiscardDraft,
             )
 
-            Surface.PROJECTS -> ProjectPickerScreen(
-                projects = projects,
-                activeId = activeProjectId,
-                onOpen = onOpenProject,
-                onCreateNew = onCreateProject,
-                onOpenFolder = onImportFolder,
-                onOpenArchive = onImportArchive,
-                onDelete = onDeleteProject,
-                busyMessage = projectMessage,
-            )
+            Surface.MORE -> {
+                var section by remember { mutableStateOf(MoreSection.PROJECTS) }
+                Column(modifier = Modifier.padding(padding)) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        MoreSection.entries.forEach { entry ->
+                            androidx.compose.material3.FilterChip(
+                                selected = section == entry,
+                                onClick = { section = entry },
+                                label = { Text(entry.label) },
+                            )
+                        }
+                    }
+
+                    when (section) {
+                        MoreSection.PROJECTS -> ProjectPickerScreen(
+                            projects = projects,
+                            activeId = activeProjectId,
+                            onOpen = onOpenProject,
+                            onCreateNew = onCreateProject,
+                            onOpenFolder = onImportFolder,
+                            onOpenArchive = onImportArchive,
+                            onDelete = onDeleteProject,
+                            busyMessage = projectMessage,
+                        )
+
+                        MoreSection.DOCUMENTS ->
+                            if (!entitlement.allows(Feature.DOCUMENTS)) {
+                                // Tier 2. The ledger, and any document already filed, stay
+                                // readable and exportable — only capturing new ones is gated.
+                                LockedFeature(
+                                    title = "Documents and receipt capture",
+                                    tier = Feature.DOCUMENTS.required.label,
+                                    onContribute = onContribute,
+                                )
+                            } else {
+                                DocumentsScreen(
+                                    pages = documentPages,
+                                    documents = documents,
+                                    vocabulary = ledger?.let { LedgerVocabulary.from(it) }
+                                        ?: LedgerVocabulary(
+                                            emptyList(), emptyList(), emptyList(),
+                                            emptyList(), emptyList(),
+                                        ),
+                                    onCapture = onCapture,
+                                    captureFile = captureFile,
+                                    onRotate = onRotatePage,
+                                    onMove = onMovePage,
+                                    onRemovePage = onRemovePage,
+                                    onSave = onSaveDocument,
+                                    onDiscard = onDiscardPages,
+                                    onUnlink = onUnlinkDocument,
+                                    onDeleteFile = onDeleteDocumentFile,
+                                    onShare = onShareDocument,
+                                    message = documentMessage,
+                                )
+                            }
+                    }
+                }
+            }
 
             Surface.JOURNAL, Surface.BALANCES -> {
                 if (ledger == null) {

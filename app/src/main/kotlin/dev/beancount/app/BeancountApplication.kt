@@ -8,6 +8,8 @@ import dev.beancount.app.engine.EditorController
 import dev.beancount.app.engine.LedgerState
 import dev.beancount.app.engine.ProjectsState
 import dev.beancount.app.engine.TemplatesState
+import dev.beancount.app.documents.DocumentCapture
+import dev.beancount.core.data.DocumentStore
 import dev.beancount.core.data.DraftStore
 import dev.beancount.core.data.ProjectImporter
 import dev.beancount.core.data.ProjectRegistry
@@ -74,6 +76,14 @@ class BeancountApplication : Application() {
     /** Entry templates for the open project; app state, never part of the ledger. */
     val templatesState: TemplatesState by lazy {
         TemplatesState(TemplateStore(workspace), appScope)
+    }
+
+    /**
+     * Receipt capture and the documents already filed. Documents live inside the project
+     * tree, so an export carries them (docs/storage-and-backup.md).
+     */
+    val documentCapture: DocumentCapture by lazy {
+        DocumentCapture(this, workspace, DocumentStore(workspace), appScope)
     }
 
     val projectsState: ProjectsState by lazy {

@@ -20,6 +20,10 @@ activityCompose = "1.13.0"
 lifecycle = "2.11.0"
 coreKtx = "1.19.0"
 documentFile = "1.1.0"
+# CameraX for receipt capture (M8). Apache-2.0, like the rest of AndroidX: the engine runs
+# in its own process, which is what keeps that compatible with a GPL-2.0-only app
+# (docs/architecture.md 7.1).
+camerax = "1.5.0"
 junit = "4.13.2"
 kotlinxCoroutines = "1.11.0"
 androidxTestJunit = "1.3.0"
@@ -32,6 +36,11 @@ eddsa = "0.3.0"
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentFile" }
+
+camera-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
+camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
+camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
+camera-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycle" }

@@ -26,6 +26,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.compose.ui.test.onNodeWithContentDescription
+import dev.beancount.core.domain.CapturedPages
 import dev.beancount.core.domain.LedgerVocabulary
 import java.time.LocalDate
 import org.junit.Assert.assertThrows
@@ -145,6 +147,44 @@ class AccessibilityTest {
         }
         compose.onNodeWithText("Will be written as").performScrollTo().assertExists()
         compose.onNodeWithText("Save ", substring = true).performScrollTo().assertExists()
+        assertAccessible()
+    }
+
+    /**
+     * The documents screen, without a camera. Every control it offers — rotate, reorder,
+     * remove, share, unlink, delete — has to announce *which page or file* it acts on, since
+     * "Delete" on its own is exactly the announcement that loses someone a receipt.
+     */
+    @Test fun documentsScreenIsLabelledAndFitsAtDoubleFontScale() {
+        render(widthDp = 320, fontScale = 2f) {
+            DocumentsScreen(
+                pages = CapturedPages().add("page-1.jpg").add("page-2.jpg"),
+                documents = listOf("documents/Assets/Cash/2026-08-24.abcdef123456.pdf"),
+                vocabulary = vocabulary,
+                onCapture = { _, _ -> },
+                captureFile = { java.io.File("unused") },
+                onRotate = {},
+                onMove = { _, _ -> },
+                onRemovePage = {},
+                onSave = {},
+                onDiscard = {},
+                onUnlink = {},
+                onDeleteFile = {},
+                onShare = {},
+                hasCamera = false,
+            )
+        }
+
+        listOf(
+            "Rotate page 1",
+            "Move page 2 up",
+            "Remove page 1",
+            "Share documents/Assets/Cash/2026-08-24.abcdef123456.pdf",
+            "Unlink documents/Assets/Cash/2026-08-24.abcdef123456.pdf from its entry",
+            "Delete the file documents/Assets/Cash/2026-08-24.abcdef123456.pdf",
+        ).forEach { label ->
+            compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
+        }
         assertAccessible()
     }
 

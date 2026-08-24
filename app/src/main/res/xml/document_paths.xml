@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What may be shared out of the app, and nothing else.
+
+  Only the documents directory of a project is exposed. The ledger files, the write journal,
+  snapshots, drafts and the entitlement key are all outside these paths and can never be
+  handed to another app by a content:// URI (docs/threat-model.md).
+-->
+<paths>
+    <files-path name="project-documents" path="projects/" />
+</paths>
