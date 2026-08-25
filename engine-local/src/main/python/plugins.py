@@ -20,6 +20,7 @@ from __future__ import annotations
 import builtins
 import importlib
 import io
+import os
 import sys
 import time
 import traceback
@@ -207,7 +208,40 @@ def _module_names(modules) -> list:
     return [str(name) for name in modules]
 
 
-def load_plugins(plugin_dir: str, modules, allow_bridge: bool, secrets=()) -> dict:
+def _mark_loading(journal_path, module_name: str, label: str = "") -> None:
+    """Records which plugin is about to be imported, durably.
+
+    A plugin that raises is caught and reported. A plugin that calls `os._exit`, aborts, or
+    segfaults in a C extension takes the whole process with it, and nothing in this function
+    runs afterwards to say what happened. The marker is written *before* the import and
+    flushed to disk, so after such a crash it is still there, naming the culprit — which is
+    the only reason the app can disable the right plugin instead of all of them.
+    """
+    if not journal_path:
+        return
+    with open(journal_path, "w") as handle:
+        # Two lines: the plugin the app can disable, then the module that was being
+        # imported. The first is what the recovery acts on, the second is what it tells the
+        # user. Deriving one from the other after the fact needs a mapping that the crashed
+        # process took with it.
+        handle.write(label + "\n" + module_name)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def _clear_loading(journal_path) -> None:
+    if journal_path and os.path.exists(journal_path):
+        os.remove(journal_path)
+
+
+def load_plugins(
+    plugin_dir: str,
+    modules,
+    allow_bridge: bool,
+    secrets=(),
+    journal_path=None,
+    journal_label: str = "",
+) -> dict:
     """Imports each module in `modules` from `plugin_dir`, one at a time.
 
     `modules` is a comma-separated string when called from Kotlin, or any iterable of names
@@ -227,6 +261,7 @@ def load_plugins(plugin_dir: str, modules, allow_bridge: bool, secrets=()) -> di
     try:
         for module_name in _module_names(modules):
             run = PluginRun(module_name)
+            _mark_loading(journal_path, module_name, journal_label)
             captured = io.StringIO()
             started = time.monotonic()
             try:
@@ -244,6 +279,9 @@ def load_plugins(plugin_dir: str, modules, allow_bridge: bool, secrets=()) -> di
                 run.duration_ms = (time.monotonic() - started) * 1000
                 run.output = redact(captured.getvalue(), secrets)[:4000]
             runs.append(run.as_dict())
+        # Only once every plugin has been through: reaching here at all means the process
+        # survived the whole set.
+        _clear_loading(journal_path)
     finally:
         if added and root in sys.path:
             sys.path.remove(root)
@@ -281,3 +319,117 @@ def probe_bridge(allow_bridge: bool) -> dict:
         if guard is not None:
             guard.remove()
     return results
+
+
+# --- running a script on demand ---------------------------------------------------------
+
+class ScriptStopped(BaseException):
+    """Raised inside a running script to stop it.
+
+    Deliberately a `BaseException` and not an `Exception`. Scripts are full of
+    `try: ... except Exception:` and a stop that could be swallowed by ordinary error
+    handling is not a stop — the script would carry on and the user would be told it had
+    ended.
+    """
+
+
+class ScriptTimedOut(ScriptStopped):
+    pass
+
+
+_CANCELLED: set = set()
+
+
+def cancel_script(handle: str) -> None:
+    """Asks a running script to stop. Safe to call from another thread."""
+    _CANCELLED.add(str(handle))
+
+
+def run_script(
+    script_path: str,
+    ledger_path: str = "",
+    timeout_seconds: float = 30.0,
+    allow_bridge: bool = False,
+    secrets=(),
+    handle: str = "",
+) -> dict:
+    """Runs one user script with a deadline, and a way to stop it early.
+
+    Stopping works by installing a trace function that raises between bytecode lines. That
+    covers the case this is really for — a loop that will not end — but it has a limit worth
+    being honest about: **a script blocked inside a single C call cannot be interrupted**.
+    `time.sleep(600)`, a socket read, or a pathological regular expression will run to
+    completion and the deadline will only be noticed afterwards. `timed_out` says what
+    happened; `overran_by_ms` says by how much, so the app can tell the user the script
+    ignored the deadline rather than pretending it did not.
+
+    There is no way to do better in-process. Killing a Python thread is not something CPython
+    supports, and the alternative — a separate process — cannot share the loaded ledger,
+    which is the entire reason a script is worth running here.
+    """
+    handle = str(handle)
+    _CANCELLED.discard(handle)
+
+    started = time.monotonic()
+    deadline = started + float(timeout_seconds)
+    guard = None if allow_bridge else BridgeGuard().install()
+    captured = io.StringIO()
+
+    result = {
+        "ok": False,
+        "output": "",
+        "error": "",
+        "error_type": "",
+        "cancelled": False,
+        "timed_out": False,
+        "duration_ms": 0.0,
+        "overran_by_ms": 0.0,
+    }
+
+    def tracer(frame, event, arg):
+        if handle in _CANCELLED:
+            raise ScriptStopped("stopped at your request")
+        if time.monotonic() > deadline:
+            raise ScriptTimedOut(f"stopped after {timeout_seconds:g} seconds")
+        return tracer
+
+    scope = {
+        "__name__": "__beancount_script__",
+        "__file__": script_path,
+        "ledger_path": ledger_path,
+    }
+
+    try:
+        source = Path(script_path).read_text()
+        code = compile(source, script_path, "exec")
+        with redirect_stdout(captured), redirect_stderr(captured):
+            sys.settrace(tracer)
+            try:
+                exec(code, scope)
+            finally:
+                sys.settrace(None)
+        result["ok"] = True
+    except ScriptTimedOut as stop:
+        result["timed_out"] = True
+        result["error_type"] = "ScriptTimedOut"
+        result["error"] = str(stop)
+    except ScriptStopped as stop:
+        result["cancelled"] = True
+        result["error_type"] = "ScriptStopped"
+        result["error"] = str(stop)
+    except BaseException as exc:
+        result["error_type"] = type(exc).__name__
+        result["error"] = redact(
+            "".join(traceback.format_exception_only(type(exc), exc)).strip(), secrets
+        )
+    finally:
+        sys.settrace(None)
+        _CANCELLED.discard(handle)
+        if guard is not None:
+            guard.remove()
+        elapsed = (time.monotonic() - started) * 1000
+        result["duration_ms"] = round(elapsed, 1)
+        result["overran_by_ms"] = round(max(0.0, elapsed - timeout_seconds * 1000), 1)
+        result["output"] = redact(captured.getvalue(), secrets)[:4000]
+
+    return result

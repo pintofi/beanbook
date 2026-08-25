@@ -10,7 +10,9 @@ import androidx.lifecycle.lifecycleScope
 import dev.beancount.core.data.WriteJournal
 import java.io.File
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +23,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -84,7 +89,15 @@ import dev.beancount.core.entitlement.Grant
  */
 class MainActivity : ComponentActivity() {
 
-    private var recoveryMessage: String? = null
+    /**
+     * What had to be put right at startup — an interrupted write, or a plugin that stopped
+     * the app last time.
+     *
+     * `mutableStateOf`, and actually rendered. It was a plain field until M11: computed on
+     * every launch, assigned, and never read by anything, so the app silently recovered from
+     * an interrupted write and told nobody.
+     */
+    private var recoveryMessage: String? by mutableStateOf(null)
     private var saveMessage: String? by mutableStateOf(null)
 
     /** The documents already filed in the open project; refreshed after every change. */
@@ -210,6 +223,10 @@ class MainActivity : ComponentActivity() {
                 val report = RecoveryOnStart(app.writer).run(active)
                 if (!report.isClean) recoveryMessage = report.describe()
                 openProject(app, active)
+
+                // A plugin that stopped the app last time is turned off before anything
+                // tries to load it again, or the app never gets far enough to be told to.
+                recoverFromPluginCrash(app, active)
             }
 
             // Debug-only: begin a write and stall before committing, so a process kill
@@ -220,6 +237,14 @@ class MainActivity : ComponentActivity() {
                 stall.startsWith("stall_mid_write")
             ) {
                 stallMidWrite(app, active, introducesErrors = stall.endsWith("_bad"))
+            }
+
+            // Debug-only: stall *inside* a plugin load, so a process kill lands in the
+            // window safe mode has to survive (docs/milestones/m11-part2.md).
+            if (BuildConfig.DEBUG && active != null &&
+                intent.getStringExtra("m11_test") == "stall_mid_plugin_load"
+            ) {
+                stallMidPluginLoad(app, active)
             }
         }
 
@@ -347,6 +372,8 @@ class MainActivity : ComponentActivity() {
                         savedRemoteUsername = app.remoteState.savedUsername,
                         remotePendingRetry = remotePending != null,
                         remoteMessage = remoteMessage,
+                        recoveryNotice = recoveryMessage,
+                        onDismissRecovery = { recoveryMessage = null },
                         remoteReports = (remoteStatus as? EngineStatus.Serving)?.let {
                             val url = app.remoteState.reportUrl(ReportPath.INCOME_STATEMENT)
                             val origins = app.remoteState.allowedOrigins()
@@ -433,6 +460,64 @@ class MainActivity : ComponentActivity() {
      * record on disk. Debug builds only — this exists so `adb shell am kill` can be
      * timed to land in the window the write protocol has to survive.
      */
+    /**
+     * Writes a plugin that never finishes importing, then loads it.
+     *
+     * Debug builds only. The point is to be killed: a plugin that hangs or crashes the
+     * process leaves the app unable to start, and the marker Python writes before each
+     * import is the only thing that survives to say which plugin it was. Stalling rather
+     * than crashing outright means the kill can be timed from outside, exactly as the M4
+     * process-death test does.
+     */
+    /**
+     * Turns off whatever was mid-load when the app last died, and says so.
+     *
+     * Runs before any plugin is loaded. The marker it reads is written from Python
+     * immediately before each import and flushed, so it survives a kill that gives the app
+     * no chance to clean up (docs/milestones/m11-part2.md).
+     */
+    private suspend fun recoverFromPluginCrash(app: BeancountApplication, projectId: String) {
+        withContext(Dispatchers.IO) {
+            val projectRoot = app.workspace.projectDir(projectId)
+            val recovery = dev.beancount.core.data.PluginSafeMode(projectRoot)
+                .recoverFromCrash(dev.beancount.core.data.PluginStore(projectRoot))
+                ?: return@withContext
+            recoveryMessage = listOfNotNull(recoveryMessage, recovery.describe())
+                .joinToString("\n\n")
+        }
+    }
+
+    private suspend fun stallMidPluginLoad(app: BeancountApplication, projectId: String) {
+        withContext(Dispatchers.IO) {
+            val projectRoot = app.workspace.projectDir(projectId)
+            val store = dev.beancount.core.data.PluginStore(projectRoot)
+            val safeMode = dev.beancount.core.data.PluginSafeMode(projectRoot)
+            safeMode.beginLoad()
+
+            // Installed through the store, exactly as a user's own plugin would be, so the
+            // recovery has a real registered plugin to turn off rather than a stray folder.
+            val candidate = java.io.File(cacheDir, "stalls_forever.py").apply {
+                writeText("import time\nwhile True:\n    time.sleep(1)\n")
+            }
+            val installed = store.install(
+                candidate = candidate,
+                policy = currentPluginPolicy(),
+                sourceLabel = "debug harness",
+            ) as? dev.beancount.core.data.InstallResult.Installed ?: return@withContext
+            store.setEnabled(installed.plugin.id, true)
+
+            android.util.Log.i("M11", "stalling inside a plugin load; kill me now")
+            dev.beancount.engine.local.PluginLoader.load(
+                context = this@MainActivity,
+                pluginDir = store.directoryFor(installed.plugin).absolutePath,
+                modules = "stalls_forever",
+                allowBridge = currentPluginPolicy().allowsAndroidBridge,
+                journalPath = safeMode.journalPath(),
+                journalLabel = installed.plugin.id,
+            )
+        }
+    }
+
     private suspend fun stallMidWrite(
         app: BeancountApplication,
         projectId: String,
@@ -690,6 +775,8 @@ internal fun LedgerApp(
     remotePendingRetry: Boolean,
     remoteMessage: String?,
     remoteReports: RemoteReports?,
+    recoveryNotice: String?,
+    onDismissRecovery: () -> Unit,
     onRemoteConnect: (String, String?, CharArray?) -> Unit,
     onRemoteDisconnect: () -> Unit,
     onRemoteForget: () -> Unit,
@@ -772,6 +859,9 @@ internal fun LedgerApp(
         }
 
         Column(modifier = Modifier.padding(padding)) {
+            recoveryNotice?.let { notice ->
+                RecoveryBanner(notice, onDismiss = onDismissRecovery)
+            }
             TrialBanner(entitlement, onClick = { showContribute = true })
             SurfaceContent(
                 selected = selected,
@@ -819,6 +909,8 @@ internal fun LedgerApp(
                 remotePendingRetry = remotePendingRetry,
                 remoteMessage = remoteMessage,
                 remoteReports = remoteReports,
+                recoveryNotice = recoveryNotice,
+                onDismissRecovery = onDismissRecovery,
                 onRemoteConnect = onRemoteConnect,
                 onRemoteDisconnect = onRemoteDisconnect,
                 onRemoteForget = onRemoteForget,
@@ -905,6 +997,8 @@ private fun SurfaceContent(
     remotePendingRetry: Boolean,
     remoteMessage: String?,
     remoteReports: RemoteReports?,
+    recoveryNotice: String?,
+    onDismissRecovery: () -> Unit,
     onRemoteConnect: (String, String?, CharArray?) -> Unit,
     onRemoteDisconnect: () -> Unit,
     onRemoteForget: () -> Unit,
@@ -1235,6 +1329,42 @@ private fun LockedFeature(
         )
         androidx.compose.material3.TextButton(onClick = onContribute) {
             Text(dev.beancount.core.entitlement.PurchaseRoute.EnterKeyOnly.label)
+        }
+    }
+}
+
+/**
+ * Something had to be put right before the app could start, and the user is told what.
+ *
+ * Dismissible, and only ever shown when something actually happened: a banner that appears
+ * on every launch is a banner nobody reads. It is not a dialog either — the app has already
+ * recovered by the time this is on screen, so there is nothing to decide.
+ */
+@Composable
+private fun RecoveryBanner(message: String, onDismiss: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        ),
+    ) {
+        Column(
+            Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                message,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics {
+                    contentDescription = "Something was put right at startup: $message"
+                },
+            )
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.semantics { contentDescription = "Dismiss this notice" },
+            ) { Text("Got it") }
         }
     }
 }

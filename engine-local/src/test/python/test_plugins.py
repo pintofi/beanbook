@@ -320,6 +320,63 @@ class LoadPluginsTest(unittest.TestCase):
         self.assertEqual(before, sys.meta_path)
 
 
+class LoadJournalTest(unittest.TestCase):
+    """The marker that survives a plugin taking the process down with it."""
+
+    def setUp(self):
+        import tempfile
+
+        self.dir = tempfile.mkdtemp(prefix="journal-test-")
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.dir, ignore_errors=True))
+        self.journal = str(Path(self.dir, "loading.marker"))
+
+    def write(self, name, body):
+        Path(self.dir, name + ".py").write_text(body)
+        sys.modules.pop(name, None)
+        self.addCleanup(sys.modules.pop, name, None)
+
+    def test_the_marker_is_gone_after_a_clean_run(self):
+        self.write("fine", "value = 1\n")
+
+        plugins.load_plugins(self.dir, "fine", allow_bridge=True, journal_path=self.journal)
+
+        self.assertFalse(Path(self.journal).exists())
+
+    def test_the_marker_is_gone_even_when_a_plugin_raises(self):
+        # An exception is caught and reported, so the process is fine and the plugin is not
+        # to blame for a crash. Leaving the marker would disable a plugin that merely failed.
+        self.write("broken", "raise RuntimeError('boom')\n")
+
+        plugins.load_plugins(self.dir, "broken", allow_bridge=True, journal_path=self.journal)
+
+        self.assertFalse(Path(self.journal).exists())
+
+    def test_the_marker_names_the_plugin_being_imported_when_the_process_dies(self):
+        # os._exit skips every finally block, atexit handler and buffer flush — the closest
+        # thing to a segfault that can be arranged on purpose. Run in a child so the test
+        # survives it.
+        import subprocess
+        import textwrap
+
+        Path(self.dir, "fine.py").write_text("value = 1\n")
+        Path(self.dir, "killer.py").write_text("import os\nos._exit(9)\n")
+
+        script = textwrap.dedent(
+            f"""
+            import sys
+            sys.path.insert(0, {str(Path(__file__).resolve().parents[2] / "main" / "python")!r})
+            import plugins
+            plugins.load_plugins({self.dir!r}, "fine,killer", allow_bridge=True,
+                                 journal_path={self.journal!r}, journal_label="tidy-up")
+            """
+        )
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True)
+
+        self.assertEqual(9, result.returncode, "the child was supposed to die")
+        self.assertTrue(Path(self.journal).exists(), "no marker survived the crash")
+        self.assertEqual(["tidy-up", "killer"], Path(self.journal).read_text().split("\n"))
+
+
 class RedactTest(unittest.TestCase):
     def test_a_named_secret_never_survives_into_the_log(self):
         text = "connecting with token sk-live-abcdef and finishing"
@@ -332,6 +389,120 @@ class RedactTest(unittest.TestCase):
     def test_redaction_of_nothing_changes_nothing(self):
         self.assertEqual("plain", plugins.redact("plain", secrets=[]))
         self.assertEqual("plain", plugins.redact("plain", secrets=[""]))
+
+
+class ScriptRunnerTest(unittest.TestCase):
+    """Running a user script with a deadline, and stopping one that will not stop itself."""
+
+    def setUp(self):
+        import tempfile
+
+        self.dir = tempfile.mkdtemp(prefix="script-test-")
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.dir, ignore_errors=True))
+
+    def script(self, body):
+        path = Path(self.dir, "script.py")
+        path.write_text(body)
+        return str(path)
+
+    def test_a_script_that_finishes_reports_its_output(self):
+        path = self.script("print('total:', 2 + 2)\n")
+
+        result = plugins.run_script(path, timeout_seconds=5)
+
+        self.assertTrue(result["ok"], result["error"])
+        self.assertIn("total: 4", result["output"])
+        self.assertFalse(result["timed_out"])
+
+    def test_the_ledger_path_is_available_to_the_script(self):
+        path = self.script("print('ledger is', ledger_path)\n")
+
+        result = plugins.run_script(path, ledger_path="/tmp/main.beancount", timeout_seconds=5)
+
+        self.assertIn("/tmp/main.beancount", result["output"])
+
+    def test_an_endless_loop_is_stopped_by_the_deadline(self):
+        path = self.script("while True:\n    pass\n")
+
+        result = plugins.run_script(path, timeout_seconds=0.4)
+
+        self.assertTrue(result["timed_out"])
+        self.assertFalse(result["ok"])
+        self.assertLess(result["duration_ms"], 3000, "the deadline was not enforced promptly")
+
+    def test_a_script_cannot_swallow_its_own_deadline(self):
+        # `except Exception` is everywhere in real scripts. If the stop were an Exception,
+        # this loop would keep running and the app would report a clean finish.
+        path = self.script(
+            "while True:\n"
+            "    try:\n"
+            "        pass\n"
+            "    except Exception:\n"
+            "        pass\n"
+        )
+
+        result = plugins.run_script(path, timeout_seconds=0.4)
+
+        self.assertTrue(result["timed_out"])
+        self.assertLess(result["duration_ms"], 3000)
+
+    def test_a_script_can_be_cancelled_from_another_thread(self):
+        import threading
+
+        path = self.script("while True:\n    pass\n")
+        handle = "run-1"
+        threading.Timer(0.3, plugins.cancel_script, args=(handle,)).start()
+
+        result = plugins.run_script(path, timeout_seconds=30, handle=handle)
+
+        self.assertTrue(result["cancelled"], result)
+        self.assertFalse(result["timed_out"])
+        self.assertLess(result["duration_ms"], 5000)
+
+    def test_a_cancelled_handle_does_not_stop_the_next_run(self):
+        plugins.cancel_script("run-2")
+        path = self.script("value = 1\n")
+
+        result = plugins.run_script(path, timeout_seconds=5, handle="run-2")
+
+        self.assertTrue(result["ok"], result)
+        self.assertFalse(result["cancelled"])
+
+    def test_a_script_blocked_in_a_c_call_overruns_and_the_result_says_so(self):
+        # The honest limit. A trace function fires between bytecode lines, so a single long
+        # C call cannot be interrupted. This asserts the documented behaviour rather than
+        # pretending the deadline is a guarantee.
+        path = self.script("import time\ntime.sleep(1.0)\n")
+
+        result = plugins.run_script(path, timeout_seconds=0.2)
+
+        self.assertGreater(result["duration_ms"], 900, "sleep was somehow interrupted")
+        self.assertGreater(
+            result["overran_by_ms"], 0, "an overrun must be reported, not hidden"
+        )
+
+    def test_a_failing_script_reports_the_error_without_raising(self):
+        path = self.script("raise ValueError('nope')\n")
+
+        result = plugins.run_script(path, timeout_seconds=5)
+
+        self.assertFalse(result["ok"])
+        self.assertEqual("ValueError", result["error_type"])
+        self.assertIn("nope", result["error"])
+
+    def test_a_script_cannot_reach_the_bridge_unless_the_edition_allows_it(self):
+        path = self.script("import java\n")
+
+        result = plugins.run_script(path, timeout_seconds=5, allow_bridge=False)
+
+        self.assertEqual("BridgeBlocked", result["error_type"])
+
+    def test_tracing_is_off_again_afterwards(self):
+        # A trace function left installed would slow every later import in the process to a
+        # crawl, and would keep raising on a deadline that has long since passed.
+        plugins.run_script(self.script("value = 1\n"), timeout_seconds=5)
+
+        self.assertIsNone(sys.gettrace())
 
 
 if __name__ == "__main__":
