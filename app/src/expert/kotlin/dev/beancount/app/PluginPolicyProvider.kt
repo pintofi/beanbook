@@ -1,6 +1,6 @@
 package dev.beancount.app
 
-import dev.beancount.core.engine.PluginPolicy
+import dev.beancount.core.domain.PluginPolicy
 
 /**
  * Sideloaded expert edition: arbitrary user Python, including packages with native code,

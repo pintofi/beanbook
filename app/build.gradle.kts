@@ -36,17 +36,13 @@ android {
             dimension = "edition"
             // Feature parity with expert except where Play policy forbids it; the three
             // differences are enforced by :verifyPlayFlavorBoundaries, not by convention.
-            buildConfigField("boolean", "ALLOWS_NATIVE_PLUGIN_CODE", "false")
-            buildConfigField("boolean", "ALLOWS_ANDROID_BRIDGE", "false")
-            buildConfigField("boolean", "ALLOWS_SELF_UPDATE", "false")
+            // The values themselves live in the per-flavor PluginPolicyProvider and only
+            // there — a second copy in BuildConfig was read by nothing and could drift.
         }
         create("expert") {
             dimension = "edition"
             applicationIdSuffix = ".expert"
             versionNameSuffix = "-expert"
-            buildConfigField("boolean", "ALLOWS_NATIVE_PLUGIN_CODE", "true")
-            buildConfigField("boolean", "ALLOWS_ANDROID_BRIDGE", "true")
-            buildConfigField("boolean", "ALLOWS_SELF_UPDATE", "true")
         }
     }
 

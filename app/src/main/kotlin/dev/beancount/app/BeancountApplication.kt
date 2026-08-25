@@ -22,7 +22,7 @@ import dev.beancount.core.data.ProjectWorkspace
 import dev.beancount.core.data.ProjectWriter
 import dev.beancount.core.data.TemplateStore
 import dev.beancount.core.data.WriteJournal
-import dev.beancount.core.engine.PluginPolicy
+import dev.beancount.core.domain.PluginPolicy
 import dev.beancount.core.entitlement.Entitlements
 import dev.beancount.core.entitlement.FileEntitlementStorage
 import java.time.Instant

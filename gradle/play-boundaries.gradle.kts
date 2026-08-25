@@ -31,6 +31,20 @@ val forbiddenPlaySourcePatterns = listOf(
     Regex("""allowsAndroidBridge\s*=\s*true"""), // D2
 )
 
+/**
+ * Statements the play edition must actually make.
+ *
+ * The forbidden-pattern rules above catch a boundary flipped to `true`. They do not catch a
+ * boundary that stops being stated at all — deleting `PluginPolicyProvider.kt` from the play
+ * source set passed every check while removing the restriction entirely. A boundary has to be
+ * asserted, not merely not-contradicted.
+ */
+val requiredPlaySourcePatterns = listOf(
+    Regex("""allowsNativeCode\s*=\s*false"""),    // D1
+    Regex("""allowsAndroidBridge\s*=\s*false"""), // D2
+    Regex("""allowsSelfUpdate\s*=\s*false"""),    // D3
+)
+
 /** Permissions the play edition must never request. */
 val forbiddenPlayPermissions = listOf(
     "android.permission.REQUEST_INSTALL_PACKAGES",
@@ -91,6 +105,20 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
                 }
         }
 
+        // --- required-statement check ------------------------------------------------
+        val playOnlySource = file("src/play").takeIf { it.exists() }
+            ?.walkTopDown()
+            ?.filter { it.isFile && (it.extension == "kt" || it.extension == "java") }
+            ?.joinToString("\n") { it.readText() }
+            .orEmpty()
+
+        for (pattern in requiredPlaySourcePatterns) {
+            if (!pattern.containsMatchIn(playOnlySource)) {
+                violations += "the play source set no longer states /${pattern.pattern}/; " +
+                    "a Play boundary must be asserted, not merely absent"
+            }
+        }
+
         // --- manifest check ---------------------------------------------------------
         for (manifest in manifestFiles) {
             if (!manifest.exists()) continue
@@ -116,7 +144,8 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
         logger.lifecycle(
             "verifyPlayFlavorBoundaries: OK " +
                 "(${forbiddenPlayDependencies.size} dependency rules, " +
-                "${forbiddenPlaySourcePatterns.size} source rules, " +
+                "${forbiddenPlaySourcePatterns.size} forbidden + " +
+                "${requiredPlaySourcePatterns.size} required source rules, " +
                 "${forbiddenPlayPermissions.size} permission rules)"
         )
     }
