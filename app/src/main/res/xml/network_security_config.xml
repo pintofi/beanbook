@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Cleartext is permitted for the loopback address only, because the embedded Fava server
-  is plain HTTP on 127.0.0.1. Everything else is HTTPS-only, with no exceptions and no
-  user-facing override: remote mode must never fall back to cleartext.
+  Cleartext is permitted, because remote mode accepts http:// addresses for people who host
+  Fava on a home LAN or behind a VPN, where a certificate for 192.168.1.5 is not a realistic
+  thing to ask for.
+
+  What this does NOT do is make the app casual about it. The only cleartext requests the app
+  ever makes are to 127.0.0.1 (the embedded Fava) and to an address the user typed in full,
+  http:// and all. Nothing infers cleartext, nothing falls back to it after an https failure,
+  and the remote screen says plainly what an http address means. Local mode still makes no
+  network requests at all.
+
+  Certificate handling is unchanged and unrelated: when an address is https, verification is
+  strict, a certificate error is fatal, and there is no override anywhere in the app.
 -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">127.0.0.1</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

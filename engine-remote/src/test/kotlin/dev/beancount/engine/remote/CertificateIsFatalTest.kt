@@ -57,7 +57,7 @@ class CertificateIsFatalTest {
     @Test
     fun `a self-signed certificate is refused, and the failure says why`() {
         val port = startServer()
-        val transport = HttpsTransport(connectTimeoutMillis = 5_000, readTimeoutMillis = 5_000)
+        val transport = PlatformTransport(connectTimeoutMillis = 5_000, readTimeoutMillis = 5_000)
 
         val thrown = assertFailsWith<RemoteException> {
             transport.request("https://127.0.0.1:$port/")
@@ -78,7 +78,7 @@ class CertificateIsFatalTest {
         // weaken TLS. If a TrustManager, a HostnameVerifier or an SSLSocketFactory ever
         // appears in its signature or its fields, this fails — which is the point, because
         // by then someone would be one line away from "accept anyway".
-        val java = HttpsTransport::class.java
+        val java = PlatformTransport::class.java
         val dangerous = listOf("TrustManager", "HostnameVerifier", "SSLSocketFactory", "SSLContext")
 
         val signatures = buildList {
@@ -91,18 +91,41 @@ class CertificateIsFatalTest {
         }
 
         val found = signatures.filter { type -> dangerous.any { type.contains(it) } }
-        assertTrue(found.isEmpty(), "HttpsTransport gained a way to weaken TLS: $found")
+        assertTrue(found.isEmpty(), "PlatformTransport gained a way to weaken TLS: $found")
     }
 
     @Test
-    fun `a plain http url is refused before a single byte leaves the device`() {
-        val transport = HttpsTransport()
+    fun `a scheme that is not http or https is refused before a single byte leaves the device`() {
+        val transport = PlatformTransport()
 
         // Not a certificate failure — it never gets that far.
         val thrown = assertFailsWith<IllegalStateException> {
-            transport.request("http://fava.example.com/probe/api/query")
+            transport.request("ftp://fava.example.com/probe/api/query")
         }
-        assertTrue(thrown.message!!.contains("refusing a non-HTTPS request"), thrown.message!!)
+        assertTrue(thrown.message!!.contains("refusing a ftp request"), thrown.message!!)
+    }
+
+    @Test
+    fun `a failed handshake is never retried in the clear`() {
+        // The one thing allowing cleartext must not turn into. If an https address could
+        // quietly become an http one after a certificate error, then "https" would mean
+        // nothing at all and the refusal above would be theatre.
+        val port = startServer()
+        val transport = PlatformTransport(connectTimeoutMillis = 5_000, readTimeoutMillis = 5_000)
+
+        val thrown = assertFailsWith<RemoteException> {
+            transport.request("https://127.0.0.1:$port/")
+        }
+
+        assertIs<RemoteFailure.CertificateRejected>(thrown.failure)
+        // Nothing in the transport knows how to rewrite a URL, which is why this holds.
+        val source = java.io.File(
+            "src/main/kotlin/dev/beancount/engine/remote/PlatformTransport.kt",
+        ).readText()
+        assertTrue(
+            !source.contains("replace(\"https\"") && !source.contains("\"http://\" +"),
+            "the transport gained a way to rewrite a scheme",
+        )
     }
 
 }

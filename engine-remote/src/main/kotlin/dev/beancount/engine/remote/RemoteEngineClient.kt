@@ -28,7 +28,7 @@ import kotlinx.coroutines.withContext
 class RemoteEngineClient(
     private val address: RemoteAddress,
     private val credentials: BasicCredentials? = null,
-    private val transport: Transport = HttpsTransport(),
+    private val transport: Transport = PlatformTransport(),
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : EngineClient {
 

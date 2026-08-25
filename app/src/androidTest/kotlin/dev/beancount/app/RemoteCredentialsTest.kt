@@ -116,13 +116,25 @@ class RemoteCredentialsTest {
         assertFalse("the server address reached the log", log.contains("ledger.private.invalid"))
     }
 
-    @Test fun anHttpAddressIsRefusedAndNeverSaved() = runBlocking {
+    @Test fun anHttpAddressIsAcceptedAndSavedExactlyAsTyped() = runBlocking {
+        // Cleartext is allowed for LAN and VPN hosting. What must not happen is the scheme
+        // being quietly rewritten: if the user typed http, the app connects to http, and if
+        // they typed https it never silently becomes http.
         val state = RemoteState(directory, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
 
-        state.connect("http://fava.example.com", null, null)
+        state.connect("http://192.168.213.4:5000", null, null)
+        withTimeout(30_000) { state.message.first { it != null } }
+
+        assertEquals("http://192.168.213.4:5000", state.savedAddress)
+    }
+
+    @Test fun anAddressWithAnUnusableSchemeIsRefusedAndNeverSaved() = runBlocking {
+        val state = RemoteState(directory, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+
+        state.connect("ftp://fava.example.com", null, null)
         val message = withTimeout(20_000) { state.message.first { it != null } }
 
-        assertTrue("expected a refusal, got: $message", message!!.contains("not encrypted"))
+        assertTrue("expected a refusal, got: $message", message!!.contains("not an address"))
         assertNull("a refused address must not be saved", state.savedAddress)
     }
 

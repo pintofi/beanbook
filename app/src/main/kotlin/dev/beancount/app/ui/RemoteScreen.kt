@@ -26,7 +26,46 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.beancount.core.engine.EngineStatus
+import dev.beancount.engine.remote.RemoteAddress
 import dev.beancount.engine.remote.ServerCapabilities
+
+/**
+ * What an `http://` address actually means, said plainly and before the fact.
+ *
+ * Cleartext is allowed because LAN and VPN hosting are real and a certificate for
+ * `192.168.1.5` is not a realistic thing to ask for. Allowed is not the same as unremarkable,
+ * and a warning that appears only after the ledger has been sent is not a warning. It is
+ * stated in terms of what happens to the user's data, not as a security abstraction.
+ */
+@Composable
+private fun CleartextWarning(hasPassword: Boolean) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "Warning about an unencrypted address" },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+        ),
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("This address is not encrypted", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "With http://, everything between this device and your server can be read " +
+                    "and changed by anything on the way — your whole ledger, and any entry " +
+                    "you add. On your own home network or a VPN that may be a fair trade. " +
+                    "On shared or public Wi-Fi it is not.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            if (hasPassword) {
+                Text(
+                    "The password you have typed would also be sent in the clear, on every " +
+                        "single request.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
 
 /**
  * Remote mode: point the app at your own Fava (SPEC.md J4, Tier 3).
@@ -34,6 +73,8 @@ import dev.beancount.engine.remote.ServerCapabilities
  * Two things this screen must never do, and does not: offer a way past a certificate error,
  * and imply the app keeps a copy of a remote ledger. Remote is a viewer plus quick-add — the
  * ledger stays on the server, which is the point of self-hosting it.
+ *
+ * `http://` is accepted, and saying so is this screen's job: see [CleartextWarning].
  */
 @Composable
 fun RemoteScreen(
@@ -53,6 +94,12 @@ fun RemoteScreen(
     var address by remember(savedAddress) { mutableStateOf(savedAddress.orEmpty()) }
     var username by remember(savedUsername) { mutableStateOf(savedUsername.orEmpty()) }
     var secret by remember { mutableStateOf("") }
+
+    // Derived from what is in the field right now, so the warning is there while the user is
+    // still deciding rather than after they have already sent a ledger over the wire.
+    val cleartext = remember(address) {
+        RemoteAddress.parse(address).getOrNull()?.isCleartext == true
+    }
 
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
@@ -76,10 +123,15 @@ fun RemoteScreen(
                 .semantics { contentDescription = "Server address" },
         )
         Text(
-            "https only. There is no option to accept an untrusted certificate — if the " +
-                "connection cannot be verified, it stops.",
+            "https:// is checked strictly — if the certificate cannot be verified the " +
+                "connection stops, and there is no way to continue past that. http:// works " +
+                "too, for a server on your own network.",
             style = MaterialTheme.typography.bodySmall,
         )
+
+        if (cleartext) {
+            CleartextWarning(hasPassword = secret.isNotEmpty())
+        }
 
         Text(
             "If your server is behind a login (Fava has none of its own), enter it here.",

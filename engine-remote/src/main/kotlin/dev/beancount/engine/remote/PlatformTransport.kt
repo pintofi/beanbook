@@ -1,9 +1,9 @@
 package dev.beancount.engine.remote
 
 import java.io.IOException
+import java.net.HttpURLConnection
 import java.net.URI
 import java.util.Base64
-import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLException
 
 /** One HTTP exchange, reduced to what this app needs. */
@@ -66,7 +66,7 @@ data class BasicCredentials(val username: String, val password: CharArray) {
  * One request, however it is carried.
  *
  * This exists so tests can drive a loopback fixture without weakening anything: the only
- * implementation shipped is [HttpsTransport], `FavaClient` defaults to it, and
+ * implementation shipped is [PlatformTransport], `FavaClient` defaults to it, and
  * [RemoteAddress] cannot express a cleartext address in the first place. A test double lives
  * in the test source set and never reaches a build.
  */
@@ -82,15 +82,23 @@ interface Transport {
 }
 
 /**
- * HTTPS, through the platform's own stack.
+ * HTTP and HTTPS, through the platform's own stack.
  *
  * **There is no `TrustManager` here, no `HostnameVerifier`, and no way to add one.** That
- * is not an omission: the default verification is the strict one, and every mechanism for
- * weakening it is simply absent from this class, so no future call site can pass a flag that
- * turns it off. A certificate that does not verify raises [RemoteFailure.CertificateRejected]
- * and the request ends there (CLAUDE.md, security rules; docs/threat-model.md §3.5).
+ * is not an omission: when a request is `https`, the default verification is the strict one,
+ * and every mechanism for weakening it is simply absent from this class, so no future call
+ * site can pass a flag that turns it off. A certificate that does not verify raises
+ * [RemoteFailure.CertificateRejected] and the request ends there (CLAUDE.md, security rules;
+ * docs/threat-model.md §3.5).
+ *
+ * Cleartext is a separate matter and a separate decision. `http` is carried because a user
+ * may deliberately choose it for a LAN or VPN host, and the app shows what that means rather
+ * than pretending otherwise. What it must never become is a *fallback*: nothing here retries
+ * an `https` address over `http`, and a failed handshake stays a failed handshake. Choosing
+ * cleartext is the user's decision to make once, not something the app can arrive at on
+ * their behalf after something went wrong.
  */
-class HttpsTransport(
+class PlatformTransport(
     private val connectTimeoutMillis: Int = 15_000,
     private val readTimeoutMillis: Int = 30_000,
 ) : Transport {
@@ -104,13 +112,15 @@ class HttpsTransport(
         followRedirect: Boolean,
     ): RemoteResponse {
         val parsed = URI(url).toURL()
-        check(parsed.protocol.equals("https", ignoreCase = true)) {
+        val scheme = parsed.protocol.lowercase()
+        check(scheme == "https" || scheme == "http") {
             // Belt and braces behind RemoteAddress: nothing constructs a URL here by hand,
-            // and if something ever does, it does not get to be cleartext.
-            "refusing a non-HTTPS request to $url"
+            // and if something ever does, it does not get to be a `file:` or `jar:` URL with
+            // an HTTP-shaped name.
+            "refusing a $scheme request to $url"
         }
 
-        val connection = (parsed.openConnection() as HttpsURLConnection).apply {
+        val connection = (parsed.openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = connectTimeoutMillis
             readTimeout = readTimeoutMillis

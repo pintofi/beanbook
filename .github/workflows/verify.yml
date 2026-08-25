@@ -62,6 +62,19 @@ jobs:
           fi
           echo "no TLS bypass found"
 
+      - name: No silent downgrade from https to cleartext
+        # Cleartext is allowed in remote mode, but only when the user typed http:// in full.
+        # A scheme rewrite anywhere in the transport or client would turn "https" into a
+        # suggestion, and it would look like ordinary string handling in review
+        # (docs/threat-model.md 3.5).
+        run: |
+          if grep -rnE '"https".*(replace|removePrefix).*"http"|replace\(\s*"https"|"http://" *\+ *(host|origin|address)' \
+              --include='*.kt' engine-remote/src/main app/src/main ; then
+            echo "::error::something rewrites an https address into a cleartext one"
+            exit 1
+          fi
+          echo "no scheme downgrade found"
+
       - name: No way past a certificate error in the WebView
         # onReceivedSslError must cancel, never proceed. A single proceed() call there is a
         # working "accept anyway" button, and it looks like ordinary error handling in review

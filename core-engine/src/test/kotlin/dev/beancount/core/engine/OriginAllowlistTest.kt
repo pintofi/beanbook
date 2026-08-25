@@ -53,12 +53,40 @@ class OriginAllowlistTest {
     }
 
     @Test
-    fun `a remote host may not use the loopback exemption`() {
-        val mixed = OriginAllowlist(
-            setOf("http://127.0.0.1:41234", "https://fava.example.com:443")
+    fun `an https allowlist cannot be satisfied by the cleartext version of the same host`() {
+        // Remote mode accepts cleartext addresses now, so this is no longer enforced by a
+        // rule about schemes — it is enforced by the origins being different strings. That
+        // is the property worth testing, because it is the one a downgrade would need.
+        val secure = OriginAllowlist(setOf("https://fava.example.com:443"))
+
+        assertTrue(secure.isAllowed("https://fava.example.com/journal/"))
+        assertFalse(secure.isAllowed("http://fava.example.com/journal/"))
+        assertFalse(secure.isAllowed("http://fava.example.com:443/journal/"))
+    }
+
+    @Test
+    fun `a cleartext origin the user chose is allowed, and only that origin`() {
+        val lan = OriginAllowlist(setOf("http://192.168.1.5:5000"))
+
+        assertTrue(lan.isAllowed("http://192.168.1.5:5000/live/journal/"))
+        assertFalse(lan.isAllowed("http://192.168.1.6:5000/live/journal/"), )
+        assertFalse(lan.isAllowed("http://192.168.1.5:5001/live/journal/"))
+        assertFalse(lan.isAllowed("https://192.168.1.5:5000/live/journal/"))
+    }
+
+    @Test
+    fun `schemes that are not http or https are refused whatever the allowlist says`() {
+        val anything = OriginAllowlist(
+            setOf("http://127.0.0.1:41234", "https://fava.example.com:443"),
         )
-        assertTrue(mixed.isAllowed("http://127.0.0.1:41234/"))
-        assertFalse(mixed.isAllowed("http://fava.example.com/"))
+
+        listOf(
+            "file:///data/data/dev.beancount.app/files/projects/main.beancount",
+            "content://media/external/images/1",
+            "javascript:alert(document.cookie)",
+            "intent://evil/#Intent;scheme=http;end",
+            "ftp://127.0.0.1:41234/",
+        ).forEach { assertFalse(anything.isAllowed(it), "let through: $it") }
     }
 
     @Test

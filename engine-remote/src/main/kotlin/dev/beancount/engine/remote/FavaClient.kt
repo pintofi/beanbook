@@ -41,7 +41,7 @@ sealed interface SubmitResult {
  */
 class FavaClient(
     private val address: RemoteAddress,
-    private val transport: Transport = HttpsTransport(),
+    private val transport: Transport = PlatformTransport(),
     private val credentials: BasicCredentials? = null,
 ) {
 

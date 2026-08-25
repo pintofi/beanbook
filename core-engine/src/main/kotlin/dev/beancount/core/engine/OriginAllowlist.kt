@@ -8,10 +8,20 @@ import java.net.URI
  * was never negatively tested.
  *
  * Rules:
- *  - the origin (scheme, host, port) must match an allowed origin exactly;
- *  - loopback is only ever allowed over http, and only for 127.0.0.1;
- *  - everything remote must be https;
- *  - no userinfo, because `https://evil.com@127.0.0.1/` style URLs must not slip through.
+ *  - the scheme must be http or https, so `file:`, `content:`, `javascript:` and `intent:`
+ *    URLs are refused before anything else is considered;
+ *  - no userinfo, because `https://evil.com@127.0.0.1/` style URLs must not slip through;
+ *  - the origin (scheme, host, port) must then match an allowed origin **exactly**.
+ *
+ * Exact matching is what makes this safe rather than the scheme rules. An allowlist built
+ * from `https://fava.example.com` cannot be satisfied by `http://fava.example.com`: they are
+ * different strings, so downgrading the scheme is refused by the same check that refuses a
+ * different host.
+ *
+ * An earlier version also hard-coded "everything remote must be https". That was removed
+ * when remote mode began accepting cleartext addresses for LAN and VPN hosting: it made
+ * `http://192.168.1.5:5000` unusable even when the user had explicitly chosen it, and it was
+ * belt-and-braces over an exact string match that already did the work.
  */
 class OriginAllowlist(private val allowed: Set<String>) {
 
@@ -21,13 +31,8 @@ class OriginAllowlist(private val allowed: Set<String>) {
         val host = uri.host?.lowercase() ?: return false
         if (uri.userInfo != null) return false
 
+        if (scheme != "http" && scheme != "https") return false
         val port = if (uri.port != -1) uri.port else defaultPort(scheme) ?: return false
-
-        if (host == LOOPBACK_V4 || host == LOOPBACK_V6) {
-            if (scheme != "http") return false
-        } else if (scheme != "https") {
-            return false
-        }
 
         return "$scheme://$host:$port" in allowed
     }
@@ -58,7 +63,6 @@ class OriginAllowlist(private val allowed: Set<String>) {
 
     companion object {
         private const val LOOPBACK_V4 = "127.0.0.1"
-        private const val LOOPBACK_V6 = "[::1]"
 
         fun loopback(port: Int): OriginAllowlist =
             OriginAllowlist(setOf("http://$LOOPBACK_V4:$port"))

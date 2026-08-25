@@ -88,10 +88,33 @@ the WebView are intercepted and routed through the app's own document handling.
 
 ### 3.5 Remote mode (T5, T7)
 
-HTTPS only. Certificate errors are **fatal** — there is no "trust anyway" affordance in
-any build, and no `trustAll` code may exist in the repository (enforced by a secret/pattern
-scan in CI). Cleartext traffic is disabled in the release manifest. Credentials and tokens
-are stored via `EncryptedSharedPreferences`/Keystore. Write operations carry an
+`https` and `http` are both accepted. Certificate errors are **fatal** — there is no "trust
+anyway" affordance in any build, and no `trustAll` code may exist in the repository
+(enforced by a secret/pattern scan in CI).
+
+**Cleartext (revised, M11).** `http` was refused outright until M11. The refusal was
+well-intentioned and, for a self-hoster, frequently unworkable: Fava on a home LAN or behind
+a VPN has no name a public CA will certify, and `192.168.1.5` cannot be given a certificate
+at all without running a private CA and installing it on the device. In practice the rule did
+not prevent cleartext, it pushed people towards worse arrangements, and the app has no way to
+tell a home LAN from a hotel network anyway.
+
+So cleartext is now the user's decision, made explicitly, with these properties:
+
+- It is never inferred. A bare hostname is still assumed to be `https`; typing `http://` is
+  the only way to get it.
+- It is never a fallback. Nothing retries an `https` address over `http` after a failure, and
+  the transport contains no code that can rewrite a scheme (asserted in
+  `CertificateIsFatalTest` and scanned in CI).
+- It is never silent. The remote screen shows what an `http` address means, in terms of the
+  user's ledger, while they are still typing — and says so more sharply when a password has
+  been entered, because that would go in the clear on every request.
+- The WebView origin allowlist still matches origins **exactly**, so an `https` allowlist
+  cannot be satisfied by the `http` version of the same host.
+
+The residual risk is real and accepted: on a hostile network an `http` remote is readable and
+modifiable, including the entries the app writes. We do not claim otherwise. Credentials and
+tokens are stored via Keystore. Write operations carry an
 idempotency key so a retry after a timeout cannot duplicate an entry. Server version is
 detected and mismatches produce an understandable message rather than silent breakage.
 

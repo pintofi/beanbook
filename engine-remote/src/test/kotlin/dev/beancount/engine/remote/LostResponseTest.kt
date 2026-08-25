@@ -24,7 +24,7 @@ import kotlin.test.assertIs
  * whole request when the connection dies before the response arrives, and Fava does not
  * deduplicate (docs/feasibility/s12-fava-api.md). The app reported one success.
  *
- * The fix is that [HttpsTransport] streams the body, which makes it unreplayable. This test
+ * The fix is that [PlatformTransport] streams the body, which makes it unreplayable. This test
  * is the proof: the server accepts the request and then drops the connection without
  * answering — the exact "did it land?" case — and the assertion is that the server saw the
  * request **once**.
@@ -92,7 +92,7 @@ class LostResponseTest {
         val keystore = SelfSigned.keystore()
         trustOnly(keystore)
         val port = startServerThatNeverAnswers(keystore)
-        val transport = HttpsTransport(connectTimeoutMillis = 5_000, readTimeoutMillis = 5_000)
+        val transport = PlatformTransport(connectTimeoutMillis = 5_000, readTimeoutMillis = 5_000)
 
         val thrown = assertFailsWith<RemoteException> {
             transport.request(

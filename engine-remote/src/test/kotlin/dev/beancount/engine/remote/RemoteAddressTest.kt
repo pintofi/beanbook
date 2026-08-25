@@ -2,6 +2,7 @@ package dev.beancount.engine.remote
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -21,23 +22,50 @@ class RemoteAddressTest {
     @Test
     fun `a bare host is assumed to be https, never cleartext`() {
         // Typing "fava.example.com" is common. Assuming HTTPS can only fail the handshake;
-        // assuming HTTP would silently send a ledger in the clear.
+        // assuming HTTP would silently send a ledger in the clear because someone left six
+        // characters off. Cleartext has to be asked for.
         assertEquals("https://fava.example.com", RemoteAddress.parse("fava.example.com").getOrThrow().base)
     }
 
     @Test
-    fun `http is refused, and the message says there is no way around it`() {
-        val problem = problemOf("http://fava.example.com")
+    fun `http is accepted, and the address knows it is cleartext`() {
+        // Allowed for LAN and VPN hosting, where a certificate for 192.168.1.5 is not a
+        // realistic ask. Accepting it is not the same as hiding it: every surface that shows
+        // an address can ask whether it is cleartext, so nothing has to infer it from a
+        // string.
+        val address = RemoteAddress.parse("http://192.168.1.5:5000").getOrThrow()
 
-        assertEquals(RemoteAddress.Companion.Problem.NotHttps("http"), problem)
-        assertTrue(
-            problem.describe().contains("no option to connect anyway"),
-            problem.describe(),
+        assertEquals("http://192.168.1.5:5000", address.base)
+        assertTrue(address.isCleartext)
+        assertEquals("http", address.scheme)
+    }
+
+    @Test
+    fun `an https address is not cleartext`() {
+        val address = RemoteAddress.parse("https://fava.example.com").getOrThrow()
+
+        assertFalse(address.isCleartext)
+        assertEquals("https", address.scheme)
+    }
+
+    @Test
+    fun `the allowlist origin carries the right default port for each scheme`() {
+        assertEquals(
+            "http://192.168.1.5:80",
+            RemoteAddress.parse("http://192.168.1.5").getOrThrow().allowlistOrigin,
+        )
+        assertEquals(
+            "https://fava.example.com:443",
+            RemoteAddress.parse("https://fava.example.com").getOrThrow().allowlistOrigin,
+        )
+        assertEquals(
+            "http://192.168.1.5:5000",
+            RemoteAddress.parse("http://192.168.1.5:5000").getOrThrow().allowlistOrigin,
         )
     }
 
     @Test
-    fun `every other scheme is refused too`() {
+    fun `every scheme that is not http or https is still refused`() {
         listOf("ftp://host", "file:///etc/passwd", "ws://host", "javascript:alert(1)")
             .forEach { hostile ->
                 assertTrue(
@@ -45,6 +73,10 @@ class RemoteAddressTest {
                     "accepted \"$hostile\"",
                 )
             }
+        assertEquals(
+            RemoteAddress.Companion.Problem.UnsupportedScheme("ftp"),
+            problemOf("ftp://host"),
+        )
     }
 
     @Test
