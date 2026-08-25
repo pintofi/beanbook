@@ -165,7 +165,7 @@ Detailed adversary analysis: [threat-model.md](threat-model.md).
                         ├──> :core-data      ← workspace, SAF, journal, backup
                         ├──> :core-engine    ← EngineClient interface
                         │       ├──> :engine-local   (Chaquopy, Python assets)
-                        │       └──> :engine-remote  (OkHttp, TLS)
+                        │       └──> :engine-remote  (platform HTTPS, strict TLS)
                         └──> :core-entitlement ← Ed25519 verification (no billing dep)
 ```
 

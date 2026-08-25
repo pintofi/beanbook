@@ -29,4 +29,5 @@ include(":core-data")      // workspace layout and project files
 include(":core-entitlement") // trial, contribution keys, feature gating
 include(":core-engine")     // EngineClient boundary + flavor policy types
 include(":engine-local")    // Chaquopy + Beancount/Fava, loopback server
+include(":engine-remote")   // hardened HTTPS client for a self-hosted Fava
 include(":app")             // Compose shell, play/expert flavors
