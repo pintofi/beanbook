@@ -12,6 +12,7 @@ import java.io.File
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,6 +51,7 @@ import dev.beancount.app.ui.ContributeScreen
 import dev.beancount.app.backup.ScheduledBackupWorker
 import dev.beancount.app.ui.BackupScreen
 import dev.beancount.app.ui.MirrorScreen
+import dev.beancount.app.ui.RemoteScreen
 import dev.beancount.core.data.MirrorAction
 import dev.beancount.app.ui.DocumentsScreen
 import dev.beancount.core.data.RestoreStaged
@@ -62,6 +64,7 @@ import dev.beancount.core.domain.EntryTemplate
 import dev.beancount.core.data.ProjectSummary
 import dev.beancount.core.domain.LedgerVocabulary
 import dev.beancount.core.domain.TransactionDraft
+import dev.beancount.app.web.AllowlistWebViewClient
 import dev.beancount.app.web.FavaWebView
 import dev.beancount.app.web.installSessionToken
 import dev.beancount.core.domain.LedgerSnapshot
@@ -245,6 +248,11 @@ class MainActivity : ComponentActivity() {
                         app.backupController.passphraseNeeded.collectAsStateWithLifecycle()
                     val mirrorConflicts by app.mirror.conflicts.collectAsStateWithLifecycle()
                     val mirrorMessage by app.mirror.message.collectAsStateWithLifecycle()
+                    val remoteStatus by app.remoteState.status.collectAsStateWithLifecycle()
+                    val remoteCapabilities by
+                        app.remoteState.capabilities.collectAsStateWithLifecycle()
+                    val remoteMessage by app.remoteState.message.collectAsStateWithLifecycle()
+                    val remotePending by app.remoteState.pendingRetry.collectAsStateWithLifecycle()
 
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
@@ -267,7 +275,16 @@ class MainActivity : ComponentActivity() {
                         token = app.engine.sessionToken,
                         debuggingAllowed = BuildConfig.DEBUG,
                         onOpenExternally = ::openInBrowser,
-                        onSaveEntry = { draft -> saveText(app, activeId!!, draft.render(), "quick-add") },
+                        onSaveEntry = { draft ->
+                            // Connected to a remote server means the ledger is over there.
+                            // Writing to the local project instead would put the entry
+                            // somewhere the user is not looking and cannot see it.
+                            if (remoteStatus is EngineStatus.Serving) {
+                                app.remoteState.submit(draft)
+                            } else {
+                                saveText(app, activeId!!, draft.render(), "quick-add")
+                            }
+                        },
                         documentPages = documentPages,
                         documents = documents,
                         documentMessage = documentMessage,
@@ -324,6 +341,33 @@ class MainActivity : ComponentActivity() {
                         onMirrorNow = { app.mirror.sync(activeId!!) },
                         onKeepMine = { path -> app.mirror.keepMine(activeId!!, path) },
                         onKeepTheirs = { path -> app.mirror.keepTheirs(activeId!!, path) },
+                        remoteStatus = remoteStatus,
+                        remoteCapabilities = remoteCapabilities,
+                        savedRemoteAddress = app.remoteState.savedAddress,
+                        savedRemoteUsername = app.remoteState.savedUsername,
+                        remotePendingRetry = remotePending != null,
+                        remoteMessage = remoteMessage,
+                        remoteReports = (remoteStatus as? EngineStatus.Serving)?.let {
+                            val url = app.remoteState.reportUrl(ReportPath.INCOME_STATEMENT)
+                            val origins = app.remoteState.allowedOrigins()
+                            if (url == null || origins.isEmpty()) {
+                                null
+                            } else {
+                                RemoteReports(url, origins) {
+                                    app.remoteState.httpAuth()?.let { (user, secret) ->
+                                        AllowlistWebViewClient.HttpAuth(user, secret)
+                                    }
+                                }
+                            }
+                        },
+                        onRemoteConnect = { address, username, secret ->
+                            app.remoteState.connect(address, username, secret)
+                            secret?.fill(' ')
+                        },
+                        onRemoteDisconnect = { app.remoteState.disconnect() },
+                        onRemoteForget = { app.remoteState.forget() },
+                        onRemoteRetry = { app.remoteState.retryPending() },
+                        onRemoteDiscard = { app.remoteState.discardPending() },
                         onChooseScheduleFolder = { backupFolderPicker.launch(null) },
                         onScheduleChanged = { enabled ->
                             scheduleEnabled = enabled
@@ -343,7 +387,14 @@ class MainActivity : ComponentActivity() {
                         onSaveDirective = { draft ->
                             saveText(app, activeId!!, draft.render(), "add-directive")
                         },
-                        saveState = saveMessage,
+                        // In remote mode the outcome of a save comes from the server, so
+                        // that is what the Add screen has to report — otherwise a remote
+                        // save looks like nothing happened at all.
+                        saveState = if (remoteStatus is EngineStatus.Serving) {
+                            remoteMessage
+                        } else {
+                            saveMessage
+                        },
                         projects = projects,
                         activeProjectId = activeId,
                         projectMessage = projectMessage,
@@ -552,7 +603,21 @@ private enum class MoreSection(val label: String) {
     DOCUMENTS("Documents"),
     BACKUP("Backup"),
     MIRROR("Mirror"),
+    REMOTE("Remote"),
 }
+
+/**
+ * Everything the Reports surface needs to show a *remote* Fava instead of the embedded one.
+ *
+ * Non-null exactly when a remote server is connected, so the Reports tab does not have to
+ * reason about connection state — if this is here, remote is what the user is looking at.
+ */
+class RemoteReports(
+    val url: String,
+    val origins: Set<String>,
+    val auth: () -> AllowlistWebViewClient.HttpAuth?,
+)
+
 
 private enum class Surface(val label: String) {
     ADD("Add"),
@@ -618,6 +683,18 @@ internal fun LedgerApp(
     onMirrorNow: () -> Unit,
     onKeepMine: (String) -> Unit,
     onKeepTheirs: (String) -> Unit,
+    remoteStatus: EngineStatus,
+    remoteCapabilities: dev.beancount.engine.remote.ServerCapabilities?,
+    savedRemoteAddress: String?,
+    savedRemoteUsername: String?,
+    remotePendingRetry: Boolean,
+    remoteMessage: String?,
+    remoteReports: RemoteReports?,
+    onRemoteConnect: (String, String?, CharArray?) -> Unit,
+    onRemoteDisconnect: () -> Unit,
+    onRemoteForget: () -> Unit,
+    onRemoteRetry: () -> Unit,
+    onRemoteDiscard: () -> Unit,
     onSaveDirective: (dev.beancount.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
     projects: List<ProjectSummary>,
@@ -735,6 +812,18 @@ internal fun LedgerApp(
                 onMirrorNow = onMirrorNow,
                 onKeepMine = onKeepMine,
                 onKeepTheirs = onKeepTheirs,
+                remoteStatus = remoteStatus,
+                remoteCapabilities = remoteCapabilities,
+                savedRemoteAddress = savedRemoteAddress,
+                savedRemoteUsername = savedRemoteUsername,
+                remotePendingRetry = remotePendingRetry,
+                remoteMessage = remoteMessage,
+                remoteReports = remoteReports,
+                onRemoteConnect = onRemoteConnect,
+                onRemoteDisconnect = onRemoteDisconnect,
+                onRemoteForget = onRemoteForget,
+                onRemoteRetry = onRemoteRetry,
+                onRemoteDiscard = onRemoteDiscard,
                 onSaveEntry = onSaveEntry,
                 templates = templates,
                 onSaveTemplate = onSaveTemplate,
@@ -809,6 +898,18 @@ private fun SurfaceContent(
     onMirrorNow: () -> Unit,
     onKeepMine: (String) -> Unit,
     onKeepTheirs: (String) -> Unit,
+    remoteStatus: EngineStatus,
+    remoteCapabilities: dev.beancount.engine.remote.ServerCapabilities?,
+    savedRemoteAddress: String?,
+    savedRemoteUsername: String?,
+    remotePendingRetry: Boolean,
+    remoteMessage: String?,
+    remoteReports: RemoteReports?,
+    onRemoteConnect: (String, String?, CharArray?) -> Unit,
+    onRemoteDisconnect: () -> Unit,
+    onRemoteForget: () -> Unit,
+    onRemoteRetry: () -> Unit,
+    onRemoteDiscard: () -> Unit,
     onSaveEntry: (TransactionDraft) -> Unit,
     templates: List<EntryTemplate>,
     onSaveTemplate: (EntryTemplate) -> Unit,
@@ -903,7 +1004,11 @@ private fun SurfaceContent(
                 var section by remember { mutableStateOf(MoreSection.PROJECTS) }
                 Column(modifier = Modifier.padding(padding)) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        // Scrollable: five sections already overflow a phone's width, and a
+                        // clipped chip is a section nobody can reach.
+                        modifier = Modifier
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         MoreSection.entries.forEach { entry ->
@@ -926,6 +1031,29 @@ private fun SurfaceContent(
                             onDelete = onDeleteProject,
                             busyMessage = projectMessage,
                         )
+
+                        MoreSection.REMOTE ->
+                            if (!entitlement.allows(Feature.REMOTE_MODE)) {
+                                LockedFeature(
+                                    title = "Your own Fava server",
+                                    tier = Feature.REMOTE_MODE.required.label,
+                                    onContribute = onContribute,
+                                )
+                            } else {
+                                RemoteScreen(
+                                    status = remoteStatus,
+                                    capabilities = remoteCapabilities,
+                                    savedAddress = savedRemoteAddress,
+                                    savedUsername = savedRemoteUsername,
+                                    pendingRetry = remotePendingRetry,
+                                    onConnect = onRemoteConnect,
+                                    onDisconnect = onRemoteDisconnect,
+                                    onForget = onRemoteForget,
+                                    onRetryPending = onRemoteRetry,
+                                    onDiscardPending = onRemoteDiscard,
+                                    message = remoteMessage,
+                                )
+                            }
 
                         MoreSection.MIRROR ->
                             if (!entitlement.allows(Feature.AUTO_MIRROR)) {
@@ -1023,6 +1151,24 @@ private fun SurfaceContent(
                         onContribute = onContribute,
                         modifier = Modifier.padding(padding),
                     )
+                } else if (remoteReports != null) {
+                    // Remote mode wins when it is connected: the user pointed the app at
+                    // their own server, and showing the local ledger's reports instead
+                    // would be showing them someone else's numbers.
+                    var problem by remember(remoteReports.url) { mutableStateOf<String?>(null) }
+                    if (problem != null) {
+                        RemoteReportProblem(problem!!, Modifier.padding(padding))
+                    } else {
+                        FavaWebView(
+                            url = remoteReports.url,
+                            allowlist = OriginAllowlist(remoteReports.origins),
+                            modifier = Modifier.fillMaxSize().padding(padding),
+                            debuggingAllowed = debuggingAllowed,
+                            onExternalLink = onOpenExternally,
+                            httpAuth = remoteReports.auth,
+                            onLoadProblem = { problem = it },
+                        )
+                    }
                 } else if (serving == null) {
                     LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
                 } else {
@@ -1037,6 +1183,31 @@ private fun SurfaceContent(
                 }
             }
         }
+    }
+}
+
+/**
+ * Why the remote reports are not on screen.
+ *
+ * A WebView that refuses a load shows a blank white page, which is indistinguishable from a
+ * server with nothing to say. This is the difference.
+ */
+@Composable
+private fun RemoteReportProblem(message: String, modifier: Modifier = Modifier) {
+    androidx.compose.foundation.layout.Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+    ) {
+        androidx.compose.material3.Text(
+            "Reports could not be loaded",
+            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+        )
+        androidx.compose.material3.Text(
+            message,
+            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 

@@ -87,7 +87,7 @@ class RemoteEngineClient(
      * The one origin this WebView may load. Not the base path — an allowlist is about
      * authority, and a path prefix would let `https://host/anything-else` through.
      */
-    override fun allowedOrigins(): Set<String> = setOf(address.origin)
+    override fun allowedOrigins(): Set<String> = setOf(address.allowlistOrigin)
 
     /**
      * Submits an entry, exactly once.

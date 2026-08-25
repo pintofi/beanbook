@@ -4,6 +4,10 @@ import android.annotation.SuppressLint
 import android.net.Uri
 import android.util.Log
 import android.webkit.CookieManager
+import android.net.http.SslError
+import android.webkit.HttpAuthHandler
+import android.webkit.SslErrorHandler
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -28,7 +32,15 @@ class AllowlistWebViewClient(
     private val onBlocked: (String) -> Unit = {},
     private val onPageLoaded: (String) -> Unit = {},
     private val onExternalLink: (Uri) -> Unit = {},
+    private val httpAuth: (() -> HttpAuth?)? = null,
+    private val onLoadProblem: (String) -> Unit = {},
 ) : WebViewClient() {
+
+    /** Credentials for a server that sits behind a reverse proxy's login. */
+    class HttpAuth(val username: String, val password: CharArray) {
+        // A credential that prints itself is a credential in a bug report.
+        override fun toString(): String = "HttpAuth(username=<redacted>, password=<redacted>)"
+    }
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val url = request.url.toString()
@@ -53,6 +65,69 @@ class AllowlistWebViewClient(
         onBlocked(url)
         // An empty response, not null: null would let the request proceed.
         return WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", emptyMap(), null)
+    }
+
+    /**
+     * Answers the reverse proxy's Basic-auth challenge, and only that proxy's.
+     *
+     * Fava has no login of its own, so a challenge can only come from something in front of
+     * it. The check is the same allowlist the rest of this class uses: a redirect to another
+     * host that asks for a password must get nothing, because handing credentials to
+     * whoever asks is how they end up somewhere else.
+     */
+    override fun onReceivedHttpAuthRequest(
+        view: WebView,
+        handler: HttpAuthHandler,
+        host: String,
+        realm: String?,
+    ) {
+        val credentials = httpAuth?.invoke()
+        if (credentials == null || !allowlist.allowsHost(host)) {
+            Log.i(TAG, "auth challenge not answered for an unexpected host")
+            handler.cancel()
+            return
+        }
+        handler.proceed(credentials.username, String(credentials.password))
+    }
+
+    /**
+     * Refuses a certificate that does not check out, and says so.
+     *
+     * The default `WebViewClient` already cancels, which is the safe half. The missing half
+     * was telling anyone: a cancelled load leaves a blank white page and no explanation, so
+     * a server with an expired certificate looked identical to a server with no reports.
+     * There is deliberately no `proceed()` anywhere in this file.
+     */
+    override fun onReceivedSslError(
+        view: WebView,
+        handler: SslErrorHandler,
+        error: SslError,
+    ) {
+        handler.cancel()
+        onLoadProblem(
+            "The server's certificate could not be verified, so nothing was loaded " +
+                "(${describe(error)}). There is no way to continue past this — a " +
+                "certificate that does not check out means something is between you and " +
+                "your server.",
+        )
+    }
+
+    override fun onReceivedError(
+        view: WebView,
+        request: WebResourceRequest,
+        error: WebResourceError,
+    ) {
+        if (!request.isForMainFrame) return
+        onLoadProblem("The server could not be reached (${error.description}).")
+    }
+
+    private fun describe(error: SslError): String = when (error.primaryError) {
+        SslError.SSL_UNTRUSTED -> "the certificate was not issued by an authority this device trusts"
+        SslError.SSL_EXPIRED -> "the certificate has expired"
+        SslError.SSL_IDMISMATCH -> "the certificate is for a different server name"
+        SslError.SSL_NOTYETVALID -> "the certificate is not valid yet"
+        SslError.SSL_DATE_INVALID -> "the certificate's dates are not valid"
+        else -> "the certificate was rejected"
     }
 
     override fun onPageFinished(view: WebView, url: String) {
@@ -122,6 +197,8 @@ fun FavaWebView(
     debuggingAllowed: Boolean = false,
     onBlocked: (String) -> Unit = {},
     onExternalLink: (Uri) -> Unit = {},
+    httpAuth: (() -> AllowlistWebViewClient.HttpAuth?)? = null,
+    onLoadProblem: (String) -> Unit = {},
 ) {
     AndroidView(
         modifier = modifier,
@@ -132,6 +209,8 @@ fun FavaWebView(
                     allowlist = allowlist,
                     onBlocked = onBlocked,
                     onExternalLink = onExternalLink,
+                    httpAuth = httpAuth,
+                    onLoadProblem = onLoadProblem,
                 )
             }
         },

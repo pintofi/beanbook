@@ -120,6 +120,16 @@ class HttpsTransport(
             if (body != null) {
                 doOutput = true
                 setRequestProperty("Content-Type", contentType)
+                // Streaming mode, and it is load-bearing for data invariant 6.
+                //
+                // With a buffered body the platform stack is free to re-send the whole
+                // request when a connection dies before the response arrives — silently,
+                // inside a single call. Against a Fava that does not deduplicate, that puts
+                // the entry in the ledger twice while the app reports one success. Seen
+                // happening on a device (docs/milestones/m10.md). A streamed body cannot be
+                // replayed, so the stack raises an IOException instead and the retry becomes
+                // the caller's decision, made with the idempotency key.
+                setFixedLengthStreamingMode(body.toByteArray().size)
             }
         }
 

@@ -32,6 +32,24 @@ class OriginAllowlist(private val allowed: Set<String>) {
         return "$scheme://$host:$port" in allowed
     }
 
+    /**
+     * Whether [host] is the host of an allowed origin.
+     *
+     * Used for one thing only: deciding whether to answer an HTTP auth challenge. Android
+     * hands `onReceivedHttpAuthRequest` a bare host with no scheme and no port, so [isAllowed]
+     * cannot be asked directly — and inventing a scheme to make it fit is how the check ends
+     * up passing loopback through `https://` and silently refusing every challenge.
+     *
+     * Host granularity is the right granularity here: browsers scope Basic credentials by
+     * host and realm too, and a port on the same host is the same trust boundary.
+     */
+    fun allowsHost(host: String): Boolean {
+        val wanted = host.lowercase()
+        return allowed.any { origin ->
+            runCatching { URI(origin).host?.lowercase() }.getOrNull() == wanted
+        }
+    }
+
     private fun defaultPort(scheme: String): Int? = when (scheme) {
         "https" -> 443
         "http" -> 80

@@ -86,7 +86,20 @@ class FavaClient(
         checkFirst: Boolean = false,
     ): SubmitResult {
         try {
-            if (checkFirst && isPresent(slug, key)) return SubmitResult.AlreadyPresent(key)
+            if (checkFirst) {
+                when (isPresent(slug, key)) {
+                    Presence.PRESENT -> return SubmitResult.AlreadyPresent(key)
+                    // Sending now could duplicate the entry, and a duplicate in someone's
+                    // ledger is worse than a retry they have to press again.
+                    Presence.UNKNOWN -> return SubmitResult.Failed(
+                        RemoteFailure.Unexpected(
+                            "the server could not say whether the entry is already there, " +
+                                "so nothing was sent",
+                        ),
+                    )
+                    Presence.ABSENT -> Unit
+                }
+            }
 
             val response = transport.request(
                 url = address.resolve("/$slug/api/add_entries"),
@@ -113,16 +126,51 @@ class FavaClient(
     fun retry(slug: String, draft: TransactionDraft, key: String): SubmitResult =
         submit(slug, draft, key, checkFirst = true)
 
-    /** Whether an entry carrying [key] is already on the server. */
-    fun isPresent(slug: String, key: String): Boolean {
+    /** The three answers to "is it already there?" — including the honest one. */
+    enum class Presence { PRESENT, ABSENT, UNKNOWN }
+
+    /**
+     * Whether an entry carrying [key] is already on the server.
+     *
+     * Two things here are not obvious and were both learned the hard way on a device.
+     *
+     * First, [refresh]: Fava answers queries from the ledger it has **in memory**, and it
+     * only re-reads the file when a request makes it check. An entry written a moment ago is
+     * on disk and invisible to a query until then — so the check said "not there", the retry
+     * sent it again, and the ledger ended up with two.
+     *
+     * Second, [Presence.UNKNOWN]: a query that fails is not evidence of absence. Treating it
+     * as absence is the same duplicate by another route.
+     */
+    fun isPresent(slug: String, key: String): Presence {
+        refresh(slug)
         val query = "SELECT narration WHERE any_meta('$META_KEY') = '${escape(key)}'"
-        val response = transport.request(
-            url = address.resolve("/$slug/api/query?query_string=" + urlEncode(query)),
-            credentials = credentials,
-        )
-        if (!response.isSuccess) return false
+        val response = try {
+            transport.request(
+                url = address.resolve("/$slug/api/query?query_string=" + urlEncode(query)),
+                credentials = credentials,
+            )
+        } catch (remote: RemoteException) {
+            return Presence.UNKNOWN
+        }
+        if (!response.isSuccess) return Presence.UNKNOWN
         // Rows are the only thing that matters, and any row means it is there.
-        return ROWS.find(response.body)?.groupValues?.get(1)?.isNotBlank() == true
+        val rows = ROWS.find(response.body)?.groupValues?.get(1)
+            ?: return Presence.UNKNOWN
+        return if (rows.isNotBlank()) Presence.PRESENT else Presence.ABSENT
+    }
+
+    /**
+     * Makes the server re-read its ledger if the file changed underneath it.
+     *
+     * Best effort on purpose: if this fails the query below still runs, and a stale answer
+     * comes back as [Presence.ABSENT] rather than as a wrong [Presence.PRESENT] — the
+     * direction that costs a retry rather than a duplicate.
+     */
+    private fun refresh(slug: String) {
+        runCatching {
+            transport.request(address.resolve("/$slug/api/changed"), credentials = credentials)
+        }
     }
 
     /** The JSON Fava expects, with the idempotency key carried as entry metadata. */

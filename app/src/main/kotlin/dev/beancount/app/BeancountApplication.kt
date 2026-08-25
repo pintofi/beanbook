@@ -7,6 +7,7 @@ import dev.beancount.app.backup.BackupSettings
 import dev.beancount.app.engine.EngineManager
 import dev.beancount.app.mirror.MirrorController
 import dev.beancount.app.mirror.MirrorSettings
+import dev.beancount.app.remote.RemoteState
 import dev.beancount.app.engine.EntitlementState
 import dev.beancount.app.engine.EditorController
 import dev.beancount.app.engine.LedgerState
@@ -111,6 +112,11 @@ class BeancountApplication : Application() {
 
     val mirror: MirrorController by lazy {
         MirrorController(this, workspace, journal, appScope, mirrorSettings)
+    }
+
+    /** Remote mode (Tier 3): a self-hosted Fava, its credentials, and the connection. */
+    val remoteState: RemoteState by lazy {
+        RemoteState(filesDir.resolve("state"), appScope)
     }
 
     val projectsState: ProjectsState by lazy {

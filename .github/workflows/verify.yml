@@ -62,6 +62,17 @@ jobs:
           fi
           echo "no TLS bypass found"
 
+      - name: No way past a certificate error in the WebView
+        # onReceivedSslError must cancel, never proceed. A single proceed() call there is a
+        # working "accept anyway" button, and it looks like ordinary error handling in review
+        # (CLAUDE.md, security rules).
+        run: |
+          if grep -rn -A20 'onReceivedSslError' --include='*.kt' . | grep -E 'handler\.proceed|\bproceed\(\)' ; then
+            echo "::error::an SSL error handler proceeds past a bad certificate"
+            exit 1
+          fi
+          echo "no SSL error is proceeded past"
+
       - name: No escaped string templates in user-facing text
         # "${'$'}{value}" prints the template literally instead of interpolating it. It has
         # shipped twice in this app — a key banner and three save messages — and is invisible

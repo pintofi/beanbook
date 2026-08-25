@@ -25,6 +25,18 @@ class RemoteAddress private constructor(
     /** `https://fava.example.com` or `https://host/fava`, without a trailing slash. */
     val base: String get() = origin + basePath
 
+    /**
+     * The origin in the form [dev.beancount.core.engine.OriginAllowlist] compares against:
+     * the port is always explicit.
+     *
+     * [origin] leaves out `:443`, because that is how a person writes an address and how it
+     * should be shown back to them. The allowlist normalises the other way, always adding
+     * the default port, so handing it [origin] silently blocked every server on 443 — which
+     * is very nearly all of them.
+     */
+    val allowlistOrigin: String
+        get() = if (":" in origin.removePrefix("https://")) origin else "$origin:443"
+
     fun resolve(path: String): String =
         base + "/" + path.removePrefix("/")
 

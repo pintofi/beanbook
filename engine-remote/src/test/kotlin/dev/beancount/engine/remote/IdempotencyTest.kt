@@ -35,6 +35,7 @@ class IdempotencyTest {
     private val requests = mutableListOf<String>()
 
     private var addEntriesStatus = 200
+    private var queryStatus = 200
 
     private fun start(): RemoteAddress {
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
@@ -49,6 +50,10 @@ class IdempotencyTest {
                 }
 
                 exchange.requestURI.path.endsWith("/api/query") -> {
+                    if (queryStatus != 200) {
+                        respond(exchange, queryStatus, """{"error":"no"}""")
+                        return@createContext
+                    }
                     val query = exchange.requestURI.rawQuery.orEmpty()
                     val key = KEY_IN_QUERY.find(java.net.URLDecoder.decode(query, "UTF-8"))
                         ?.groupValues?.get(1)
@@ -181,6 +186,37 @@ class IdempotencyTest {
         assertTrue(body.contains("""\"The Grocer\""""), body)
         // It must still be parseable JSON, which is the whole point of escaping it.
         assertTrue(body.startsWith("{\"entries\":[{"), body)
+    }
+
+    @Test
+    fun `a retry makes the server re-read its file before believing the answer`() {
+        // Fava answers queries from the ledger it holds in memory and only re-reads the file
+        // when a request makes it check. Without this the query says "not there" about an
+        // entry that is already on disk, and the retry writes a second copy — which is
+        // exactly what happened on a device (docs/milestones/m10.md).
+        val client = clientFor(start())
+        client.submit("probe", draft, key = "key-1")
+        requests.clear()
+
+        client.retry("probe", draft, "key-1")
+
+        val changedAt = requests.indexOfFirst { it.contains("/api/changed") }
+        val queryAt = requests.indexOfFirst { it.contains("/api/query") }
+        assertTrue(changedAt >= 0, "the server was never asked to re-read: $requests")
+        assertTrue(queryAt > changedAt, "the query ran before the re-read: $requests")
+    }
+
+    @Test
+    fun `a retry sends nothing when the server cannot say whether the entry is there`() {
+        val client = clientFor(start())
+        client.submit("probe", draft, key = "key-1")
+        queryStatus = 500
+
+        val result = client.retry("probe", draft, "key-1")
+
+        // A query that fails is not evidence of absence. Sending anyway is a duplicate.
+        assertIs<SubmitResult.Failed>(result)
+        assertEquals(1, stored.size, "the entry was sent again on an unanswerable check: $stored")
     }
 
     private companion object {

@@ -105,6 +105,7 @@ dependencies {
     implementation(project(":core-engine"))
     implementation(project(":core-entitlement"))
     implementation(project(":engine-local"))
+    implementation(project(":engine-remote"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.documentfile)

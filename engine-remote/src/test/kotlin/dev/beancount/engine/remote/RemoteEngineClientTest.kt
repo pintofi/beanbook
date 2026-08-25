@@ -2,12 +2,14 @@ package dev.beancount.engine.remote
 
 import com.sun.net.httpserver.HttpServer
 import dev.beancount.core.engine.EngineStatus
+import dev.beancount.core.engine.OriginAllowlist
 import dev.beancount.core.engine.ReportPath
 import java.net.InetSocketAddress
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.test.runTest
@@ -119,7 +121,36 @@ class RemoteEngineClientTest {
 
         // The base path is not part of it: an allowlist is about authority. Including the
         // path would let https://fava.example.com/anything-else load just as happily.
-        assertEquals(setOf("https://fava.example.com"), client.allowedOrigins())
+        assertEquals(setOf("https://fava.example.com:443"), client.allowedOrigins())
+    }
+
+    @Test
+    fun `the allowlist actually admits the server's own pages`() = runTest {
+        // The earlier test compared strings, which is why it did not notice that
+        // allowedOrigins() said "https://host" while OriginAllowlist normalises to
+        // "https://host:443" — so every server on the default port had its own reports
+        // blocked. Assert against the real allowlist, not against a string.
+        val address = RemoteAddress.parse("https://fava.example.com").getOrThrow()
+        val allowlist = OriginAllowlist(
+            RemoteEngineClient(address, transport = PlainTransportForTests()).allowedOrigins(),
+        )
+
+        assertTrue(allowlist.isAllowed("https://fava.example.com/live/journal/"))
+        assertTrue(allowlist.isAllowed("https://fava.example.com:443/static/app.js"))
+        assertFalse(allowlist.isAllowed("https://fava.example.com:8443/live/journal/"))
+        assertFalse(allowlist.isAllowed("https://elsewhere.example.com/live/journal/"))
+        assertFalse(allowlist.isAllowed("http://fava.example.com/live/journal/"))
+    }
+
+    @Test
+    fun `an explicit port stays explicit and does not gain a second one`() = runTest {
+        val address = RemoteAddress.parse("https://fava.example.com:8443").getOrThrow()
+        val allowlist = OriginAllowlist(
+            RemoteEngineClient(address, transport = PlainTransportForTests()).allowedOrigins(),
+        )
+
+        assertTrue(allowlist.isAllowed("https://fava.example.com:8443/live/journal/"))
+        assertFalse(allowlist.isAllowed("https://fava.example.com/live/journal/"))
     }
 
     @Test

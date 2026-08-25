@@ -67,4 +67,24 @@ class OriginAllowlistTest {
         assertFalse(loopback.isAllowed("not a url"))
         assertFalse(loopback.isAllowed("http://"))
     }
+
+    // allowsHost decides whether an HTTP auth challenge gets answered, so a wrong answer
+    // either hands a password to a stranger or makes every protected server unusable.
+
+    @Test
+    fun `allowsHost recognises the host of an allowed origin, whatever its scheme`() {
+        assertTrue(loopback.allowsHost("127.0.0.1"))
+        assertTrue(OriginAllowlist(setOf("https://fava.example.com")).allowsHost("fava.example.com"))
+        assertTrue(OriginAllowlist(setOf("https://fava.example.com:8443")).allowsHost("FAVA.example.com"))
+    }
+
+    @Test
+    fun `allowsHost refuses a host that is merely similar`() {
+        val remote = OriginAllowlist(setOf("https://fava.example.com"))
+        assertFalse(remote.allowsHost("evil.example.com"))
+        assertFalse(remote.allowsHost("fava.example.com.evil.test"))
+        assertFalse(remote.allowsHost("example.com"))
+        assertFalse(remote.allowsHost(""))
+        assertFalse(OriginAllowlist(emptySet()).allowsHost("fava.example.com"))
+    }
 }
