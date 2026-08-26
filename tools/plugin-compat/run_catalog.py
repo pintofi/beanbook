@@ -129,7 +129,15 @@ def run_one(root: Path, module: str, work: Path, config: str | None = None) -> d
     return {"crashed": (done.stderr or "no result")[-300:]}
 
 
-NEEDS_CONFIG = re.compile(r"missing 1 required positional argument: 'config'")
+# Two shapes of the same thing: Beancount calls a plugin with no config argument, and the
+# plugin says so. reds.* raise TypeError from the call itself; autobean raises a ValueError
+# of its own. Matching only the first mislabelled autobean.share as broken when it merely
+# wanted configuring.
+NEEDS_CONFIG = re.compile(
+    r"missing 1 required positional argument: 'config'"
+    r"|expects an argument"
+    r"|takes exactly 2 arguments"
+)
 
 
 def sanitise(text: str) -> str:
@@ -244,6 +252,14 @@ def main() -> int:
                 reason = (
                     "works, but the plugin directive must carry a configuration string; "
                     "loaded cleanly once given one"
+                )
+            elif "SyntaxError" in json.dumps(retried) or "literal_eval" in json.dumps(retried):
+                # The plugin parses its config as a Python literal, and "" is not one. That
+                # says nothing about the plugin beyond "it needs a real configuration".
+                status = "needs-config"
+                reason = (
+                    "works, but the plugin directive must carry a real configuration — it "
+                    "parses the argument as a Python literal, so an empty one is rejected"
                 )
             else:
                 status, reason = retried_status, "with an empty config: " + retried_reason

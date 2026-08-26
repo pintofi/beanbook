@@ -51,7 +51,7 @@
       "tested": {
         "on": "2026-08-26",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "Error applying plugin \"autobean.share\": Traceback (most recent call last):\n  ...\n    File \"<repo>/build/plugin-sources/autobean/autobean-0.2.3/autobean/utils/plugin_lib.py\"",
+        "reason": "with an empty config: directives disappeared: {'Open': 3, 'Note': 1}",
         "version": "0.2.3"
       }
     },
@@ -302,11 +302,11 @@
       "repo": "redstreet/beancount_reds_plugins",
       "description": "Inserts open statements for sets of accounts by rule",
       "license": "GPL-3.0",
-      "status": "partial",
+      "status": "needs-config",
       "tested": {
         "on": "2026-08-26",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "with an empty config: Error applying plugin \"beancount_reds_plugins.opengroup.opengroup\": Traceback (most recent call last):\n  ...\n                     _feature_version=feature_version, optimize=optimize)\n    File \"<unknow",
+        "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
         "version": "0.4.0"
       }
     },
@@ -317,11 +317,11 @@
       "repo": "redstreet/beancount_reds_plugins",
       "description": "Renames arbitrary accounts on the fly",
       "license": "GPL-3.0",
-      "status": "partial",
+      "status": "needs-config",
       "tested": {
         "on": "2026-08-26",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "with an empty config: Error applying plugin \"beancount_reds_plugins.rename_accounts.rename_accounts\": Traceback (most recent call last):\n  ...\n                     _feature_version=feature_version, optimize=optimize)\n    F",
+        "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
         "version": "0.4.0"
       }
     },
@@ -332,11 +332,11 @@
       "repo": "redstreet/beancount_reds_plugins",
       "description": "Finds matching posting pairs summing to zero",
       "license": "GPL-3.0",
-      "status": "partial",
+      "status": "needs-config",
       "tested": {
         "on": "2026-08-26",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "with an empty config: Error applying plugin \"beancount_reds_plugins.zerosum.zerosum\": Traceback (most recent call last):\n  ...\n                     _feature_version=feature_version, optimize=optimize)\n    File \"<unknown>\",",
+        "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
         "version": "0.4.0"
       }
     },
