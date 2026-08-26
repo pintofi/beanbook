@@ -26,6 +26,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -42,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -734,7 +737,7 @@ class MainActivity : ComponentActivity() {
 }
 
 /** The sections of the More hub. Projects first: it is the one people look for. */
-private enum class MoreSection(val label: String) {
+internal enum class MoreSection(val label: String) {
     PROJECTS("Projects"),
     DOCUMENTS("Documents"),
     BACKUP("Backup"),
@@ -869,9 +872,43 @@ internal fun LedgerApp(
     var selected by remember { mutableStateOf(Surface.JOURNAL) }
     var showContribute by remember { mutableStateOf(false) }
 
+    // null means "show the list of sections". Hoisted out of the More branch so the app bar
+    // can send the user straight to Projects.
+    var moreSection by remember { mutableStateOf<MoreSection?>(null) }
+
+    // Breakpoints from docs/ux.md §7. Measured from the window, not the device: a phone in
+    // landscape, a foldable half-open and a freeform window are all "how wide is the window
+    // right now", and asking the device instead gets every one of them wrong.
+    val windowWidth = LocalConfiguration.current.screenWidthDp
+    val layout = when {
+        windowWidth < 600 -> PaneLayout.COMPACT
+        windowWidth < 840 -> PaneLayout.MEDIUM
+        else -> PaneLayout.EXPANDED
+    }
+
+    Row(modifier = modifier) {
+        if (layout != PaneLayout.COMPACT) {
+            LedgerNavigationRail(selected = selected, onSelect = { selected = it })
+        }
+
     Scaffold(
-        modifier = modifier,
+        modifier = Modifier.weight(1f),
+        topBar = {
+            LedgerTopBar(
+                projectName = projects.firstOrNull { it.id == activeProjectId }?.title
+                    ?: ledger?.title
+                    ?: "Beancount",
+                health = ledgerHealth(engineStatus, ledger),
+                sectionTitle = if (selected == Surface.MORE) moreSection?.label else null,
+                onBack = { moreSection = null },
+                onSwitchProject = {
+                    selected = Surface.MORE
+                    moreSection = MoreSection.PROJECTS
+                },
+            )
+        },
         bottomBar = {
+            if (layout != PaneLayout.COMPACT) return@Scaffold
             // Six text-only destinations fit across a phone at normal text size and do not
             // at 200%: a NavigationBar there wrapped the labels mid-word and clipped
             // "Projects" off the screen edge. Below 130% the bar stays as it was; above it,
@@ -929,6 +966,9 @@ internal fun LedgerApp(
             TrialBanner(entitlement, onClick = { showContribute = true })
             SurfaceContent(
                 selected = selected,
+                moreSection = moreSection,
+                onMoreSection = { moreSection = it },
+                twoPane = layout == PaneLayout.EXPANDED,
                 onContribute = { showContribute = true },
                 documentPages = documentPages,
                 documents = documents,
@@ -1023,6 +1063,7 @@ internal fun LedgerApp(
             )
         }
     }
+    }
 }
 
 @Composable
@@ -1072,6 +1113,9 @@ private fun SurfaceContent(
     remotePendingRetry: Boolean,
     remoteMessage: String?,
     remoteReports: RemoteReports?,
+    moreSection: MoreSection?,
+    onMoreSection: (MoreSection?) -> Unit,
+    twoPane: Boolean,
     themeChoice: dev.beancount.app.ui.theme.ThemeChoice,
     dynamicColour: Boolean,
     onThemeChoice: (dev.beancount.app.ui.theme.ThemeChoice) -> Unit,
@@ -1169,6 +1213,7 @@ private fun SurfaceContent(
             }
 
             Surface.FILES -> RawEditorScreen(
+                twoPane = twoPane,
                 files = editorFiles,
                 state = editorState,
                 errors = ledger?.errors.orEmpty(),
@@ -1181,23 +1226,15 @@ private fun SurfaceContent(
             )
 
             Surface.MORE -> {
-                var section by remember { mutableStateOf(MoreSection.PROJECTS) }
+                val section = moreSection
                 Column(modifier = Modifier.padding(padding)) {
-                    Row(
-                        // Scrollable: five sections already overflow a phone's width, and a
-                        // clipped chip is a section nobody can reach.
-                        modifier = Modifier
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        MoreSection.entries.forEach { entry ->
-                            androidx.compose.material3.FilterChip(
-                                selected = section == entry,
-                                onClick = { section = entry },
-                                label = { Text(entry.label) },
-                            )
-                        }
+                    // A list, not a row of chips. Seven sections never fitted across a phone,
+                    // so the row scrolled horizontally and the last two were off-screen —
+                    // reaching Plugins took three swipes, every time, and nothing on screen
+                    // suggested they were there at all.
+                    if (section == null) {
+                        MoreMenu(onOpen = onMoreSection)
+                        return@Column
                     }
 
                     when (section) {
@@ -1445,6 +1482,141 @@ private fun LockedFeature(
         )
         androidx.compose.material3.TextButton(onClick = onContribute) {
             Text(dev.beancount.core.entitlement.PurchaseRoute.EnterKeyOnly.label)
+        }
+    }
+}
+
+/** Which of the three layouts in docs/ux.md §7 the current window calls for. */
+private enum class PaneLayout { COMPACT, MEDIUM, EXPANDED }
+
+/**
+ * The navigation rail, for windows too wide for a bottom bar.
+ *
+ * At 600dp and up a bottom bar wastes the shape of the screen: it puts the destinations
+ * along the short edge of a landscape window and leaves a strip of empty space under a
+ * ledger that would rather be taller. The rail moves them to the side, which is also where
+ * a hand holding a tablet already is.
+ */
+@Composable
+private fun LedgerNavigationRail(selected: Surface, onSelect: (Surface) -> Unit) {
+    androidx.compose.material3.NavigationRail {
+        Surface.entries.forEach { surface ->
+            androidx.compose.material3.NavigationRailItem(
+                selected = selected == surface,
+                onClick = { onSelect(surface) },
+                // The label goes in the icon slot. These destinations have no icons, and with
+                // an empty icon slot the selection indicator draws around nothing while the
+                // label sits outside it — the pill floated above the wrong word.
+                icon = { Text(surface.label) },
+                modifier = Modifier
+                    .padding(vertical = 6.dp)
+                    .semantics { contentDescription = surface.label },
+            )
+        }
+    }
+}
+
+/**
+ * The app bar: whose ledger this is, and whether it is healthy.
+ *
+ * ux.md §2 asks for project name and health here, and the reason is that neither was
+ * anywhere before — the open project's name appeared only inside the Projects screen, so
+ * anyone with two ledgers had no way to tell at a glance which one they were adding an
+ * entry to.
+ *
+ * Inside More it doubles as a section header with a back arrow, because a list you cannot
+ * get back to is a list you visit once.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun LedgerTopBar(
+    projectName: String,
+    health: String?,
+    sectionTitle: String?,
+    onBack: () -> Unit,
+    onSwitchProject: () -> Unit,
+) {
+    androidx.compose.material3.TopAppBar(
+        title = {
+            Column {
+                Text(
+                    sectionTitle ?: projectName,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                )
+                if (sectionTitle == null && health != null) {
+                    Text(health, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                }
+            }
+        },
+        navigationIcon = {
+            if (sectionTitle != null) {
+                // Text rather than an arrow icon: androidx.compose.material.icons is a
+                // whole artifact for one glyph, and "Back" needs no legend.
+                TextButton(
+                    onClick = onBack,
+                    modifier = Modifier.semantics { contentDescription = "Back to More" },
+                ) { Text("Back") }
+            }
+        },
+        actions = {
+            if (sectionTitle == null) {
+                TextButton(
+                    onClick = onSwitchProject,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Switch project. Currently open: $projectName"
+                    },
+                ) { Text("Switch") }
+            }
+        },
+    )
+}
+
+/**
+ * One line saying whether the ledger is in good order.
+ *
+ * Parse errors are an ordinary state for a plain-text ledger, not a failure — you get them
+ * halfway through typing an entry in the raw editor — so they are reported as a count, in
+ * the same quiet line as everything else, and never as an error screen (docs/ux.md §2).
+ */
+private fun ledgerHealth(status: EngineStatus, ledger: LedgerSnapshot?): String? = when {
+    ledger == null && status is EngineStatus.Failed -> "Engine unavailable"
+    ledger == null -> "Loading…"
+    ledger.errors.isEmpty() -> "${ledger.entryCount} entries · no errors"
+    ledger.errors.size == 1 -> "${ledger.entryCount} entries · 1 error"
+    else -> "${ledger.entryCount} entries · ${ledger.errors.size} errors"
+}
+
+/**
+ * The sections behind More, as a list.
+ *
+ * Each carries a line of explanation: "Mirror" and "Remote" mean nothing on their own, and a
+ * list of bare nouns makes people open things to find out what they are.
+ */
+@Composable
+private fun MoreMenu(onOpen: (MoreSection) -> Unit) {
+    val descriptions = mapOf(
+        MoreSection.PROJECTS to "Open, create, import or delete a ledger",
+        MoreSection.DOCUMENTS to "Receipts and statements filed against entries",
+        MoreSection.BACKUP to "Write a backup, restore one, or schedule them",
+        MoreSection.MIRROR to "Keep a copy in a folder you choose, kept in step",
+        MoreSection.REMOTE to "Use a Fava server you host yourself",
+        MoreSection.PLUGINS to "Extra checks and transformations, from files you supply",
+        MoreSection.APPEARANCE to "Theme, dark mode and colours",
+    )
+
+    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        MoreSection.entries.forEach { entry ->
+            androidx.compose.material3.ListItem(
+                headlineContent = { Text(entry.label) },
+                supportingContent = descriptions[entry]?.let { { Text(it) } },
+                modifier = Modifier
+                    .clickable { onOpen(entry) }
+                    .semantics {
+                        contentDescription = "${entry.label}. ${descriptions[entry].orEmpty()}"
+                    },
+            )
+            HorizontalDivider()
         }
     }
 }

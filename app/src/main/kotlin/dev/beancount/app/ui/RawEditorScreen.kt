@@ -3,6 +3,7 @@ package dev.beancount.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -78,7 +79,38 @@ fun RawEditorScreen(
     onSave: () -> Unit,
     onDiscardDraft: () -> Unit,
     modifier: Modifier = Modifier,
+    twoPane: Boolean = false,
 ) {
+    if (twoPane) {
+        // List and editor side by side. On a wide window the one-at-a-time flow means
+        // closing the file you are editing to see which other files exist, which is exactly
+        // the comparison someone editing a ledger across several files wants to make.
+        Row(modifier) {
+            FileList(files, errors, message, onOpen, Modifier.weight(0.38f))
+            androidx.compose.material3.VerticalDivider()
+            Box(Modifier.weight(0.62f)) {
+                when (state) {
+                    EditorState.Idle -> Text(
+                        "Choose a file to edit.",
+                        modifier = Modifier.padding(24.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    is EditorState.Editing -> Editor(
+                        state = state,
+                        errors = errors,
+                        message = message,
+                        onClose = onClose,
+                        onTextChanged = onTextChanged,
+                        onSave = onSave,
+                        onDiscardDraft = onDiscardDraft,
+                        modifier = Modifier,
+                    )
+                }
+            }
+        }
+        return
+    }
+
     when (state) {
         EditorState.Idle -> FileList(files, errors, message, onOpen, modifier)
         is EditorState.Editing -> Editor(
