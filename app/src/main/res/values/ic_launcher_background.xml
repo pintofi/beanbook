@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app's primary teal, so the icon matches the brand palette in ui/theme/Colour.kt.
+     Deliberately fixed rather than dynamic: a launcher icon that changed with the wallpaper
+     would be one users could not learn to find. -->
+<resources>
+    <color name="ic_launcher_background">#006A6A</color>
+</resources>

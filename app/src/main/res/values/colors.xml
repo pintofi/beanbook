@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Matches ui/theme/Colour.kt LightColours.background, so the startup window and the first
+     composed frame are the same colour and there is no flash between them. -->
+<resources>
+    <color name="window_background">#FAFDFC</color>
+</resources>

@@ -130,6 +130,14 @@ class BeancountApplication : Application() {
         dev.beancount.app.plugins.PluginsState(this, currentPluginPolicy(), appScope)
     }
 
+    /**
+     * How the app should look. Outside the project tree: a display preference belongs to the
+     * device, not to a ledger, and must not travel in a backup or a mirror.
+     */
+    val themeSettings: dev.beancount.app.ui.theme.ThemeSettings by lazy {
+        dev.beancount.app.ui.theme.ThemeSettings(filesDir.resolve("state"))
+    }
+
     val projectsState: ProjectsState by lazy {
         ProjectsState(workspace, registry, ProjectImporter(workspace), appScope)
     }

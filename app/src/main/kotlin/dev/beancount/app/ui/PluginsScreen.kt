@@ -104,7 +104,9 @@ fun PluginsScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column(Modifier.padding(end = 12.dp)) {
+            // weight(1f) so the switch cannot be pushed off the right edge by the text
+            // beside it — see AppearanceScreen for the same fix.
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
                 Text("Safe mode", style = MaterialTheme.typography.titleSmall)
                 Text(
                     "Load no plugins at all, without forgetting which ones you had on. " +

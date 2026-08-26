@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The platform theme is only responsible for what is on screen *before* Compose is: the
+  window background during startup. Compose owns everything after that
+  (ui/theme/Theme.kt).
+
+  Light here, dark in values-night/. The platform has no `Theme.Material.DayNight` — that
+  one lives in AppCompat, which this app does not depend on — so the night variant is
+  selected by resource qualifier instead. Without it the app flashed white on launch for
+  anyone using their phone in dark mode: the one moment it is on screen and Compose is not
+  yet running.
+-->
 <resources>
-    <style name="Theme.Beancount" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Beancount" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>

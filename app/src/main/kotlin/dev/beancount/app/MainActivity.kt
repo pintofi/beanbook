@@ -57,7 +57,9 @@ import dev.beancount.app.ui.ContributeScreen
 import dev.beancount.app.backup.ScheduledBackupWorker
 import dev.beancount.app.ui.BackupScreen
 import dev.beancount.app.ui.MirrorScreen
+import dev.beancount.app.ui.AppearanceScreen
 import dev.beancount.app.ui.PluginsScreen
+import dev.beancount.app.ui.theme.BeancountTheme
 import dev.beancount.app.ui.RemoteScreen
 import dev.beancount.core.data.MirrorAction
 import dev.beancount.app.ui.DocumentsScreen
@@ -282,7 +284,9 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            MaterialTheme {
+            val themeChoice by app.themeSettings.choice.collectAsStateWithLifecycle()
+            val dynamicColour by app.themeSettings.dynamicColour.collectAsStateWithLifecycle()
+            BeancountTheme(choice = themeChoice, dynamicColour = dynamicColour) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val engineStatus by app.engineManager.status.collectAsStateWithLifecycle()
                     val ledger by app.ledgerState.snapshot.collectAsStateWithLifecycle()
@@ -408,6 +412,10 @@ class MainActivity : ComponentActivity() {
                         savedRemoteUsername = app.remoteState.savedUsername,
                         remotePendingRetry = remotePending != null,
                         remoteMessage = remoteMessage,
+                        themeChoice = themeChoice,
+                        dynamicColour = dynamicColour,
+                        onThemeChoice = { app.themeSettings.setChoice(it) },
+                        onDynamicColour = { app.themeSettings.setDynamicColour(it) },
                         pluginRows = pluginRows,
                         pluginSafeMode = pluginSafeMode,
                         pluginMessage = pluginMessage,
@@ -733,6 +741,7 @@ private enum class MoreSection(val label: String) {
     MIRROR("Mirror"),
     REMOTE("Remote"),
     PLUGINS("Plugins"),
+    APPEARANCE("Appearance"),
 }
 
 /**
@@ -819,6 +828,10 @@ internal fun LedgerApp(
     remotePendingRetry: Boolean,
     remoteMessage: String?,
     remoteReports: RemoteReports?,
+    themeChoice: dev.beancount.app.ui.theme.ThemeChoice,
+    dynamicColour: Boolean,
+    onThemeChoice: (dev.beancount.app.ui.theme.ThemeChoice) -> Unit,
+    onDynamicColour: (Boolean) -> Unit,
     pluginRows: List<dev.beancount.app.plugins.PluginRow>,
     pluginSafeMode: Boolean,
     pluginMessage: String?,
@@ -960,6 +973,10 @@ internal fun LedgerApp(
                 remotePendingRetry = remotePendingRetry,
                 remoteMessage = remoteMessage,
                 remoteReports = remoteReports,
+                themeChoice = themeChoice,
+                dynamicColour = dynamicColour,
+                onThemeChoice = onThemeChoice,
+                onDynamicColour = onDynamicColour,
                 pluginRows = pluginRows,
                 pluginSafeMode = pluginSafeMode,
                 pluginMessage = pluginMessage,
@@ -1055,6 +1072,10 @@ private fun SurfaceContent(
     remotePendingRetry: Boolean,
     remoteMessage: String?,
     remoteReports: RemoteReports?,
+    themeChoice: dev.beancount.app.ui.theme.ThemeChoice,
+    dynamicColour: Boolean,
+    onThemeChoice: (dev.beancount.app.ui.theme.ThemeChoice) -> Unit,
+    onDynamicColour: (Boolean) -> Unit,
     pluginRows: List<dev.beancount.app.plugins.PluginRow>,
     pluginSafeMode: Boolean,
     pluginMessage: String?,
@@ -1190,6 +1211,16 @@ private fun SurfaceContent(
                             onDelete = onDeleteProject,
                             busyMessage = projectMessage,
                         )
+
+                        MoreSection.APPEARANCE ->
+                            AppearanceScreen(
+                                choice = themeChoice,
+                                dynamicColour = dynamicColour,
+                                dynamicColourSupported =
+                                    android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S,
+                                onChoice = onThemeChoice,
+                                onDynamicColour = onDynamicColour,
+                            )
 
                         MoreSection.PLUGINS ->
                             if (!entitlement.allows(Feature.PLUGINS)) {

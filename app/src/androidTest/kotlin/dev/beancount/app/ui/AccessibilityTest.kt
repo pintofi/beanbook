@@ -241,6 +241,27 @@ class AccessibilityTest {
     }
 
     /**
+     * An ordinary phone width with an ordinary font.
+     *
+     * The rest of this suite tests 320dp at 200%, which is the hard case for *text*. This is
+     * the width an actual phone uses, which nothing else here covered — worth having on its
+     * own merits, though note it did **not** catch the clipped switch that prompted it; see
+     * `assertAccessible` for why.
+     */
+    @Test fun theAppearanceScreenIsAccessibleAtAnOrdinaryPhoneWidth() {
+        render(widthDp = 411, fontScale = 1f) {
+            AppearanceScreen(
+                choice = dev.beancount.app.ui.theme.ThemeChoice.SYSTEM,
+                dynamicColour = true,
+                dynamicColourSupported = true,
+                onChoice = {},
+                onDynamicColour = {},
+            )
+        }
+        assertAccessible()
+    }
+
+    /**
      * The negative control. A green accessibility suite means nothing unless a violation
      * actually fails it, so this composes a 20dp unlabelled clickable box — no speakable
      * text, and under the 48dp touch-target minimum — and requires both checks to reject it.
@@ -276,19 +297,41 @@ class AccessibilityTest {
         val nodes = compose
             .onAllNodes(SemanticsMatcher("any node") { true })
             .fetchSemanticsNodes()
+        // The unmerged tree as well, for the overflow scan: a Switch inside a toggleable row
+        // is merged into that row and is not a node in the merged tree at all.
+        val unmerged = compose
+            .onAllNodes(SemanticsMatcher("any node") { true }, useUnmergedTree = true)
+            .fetchSemanticsNodes()
         assertTrue("expected a non-empty semantics tree", nodes.isNotEmpty())
         val windowWidth = compose.onRoot().fetchSemanticsNode().size.width
 
         val problems = buildList {
+            // Labels are only meaningful for things a screen reader will stop on.
             nodes.filter { it.isActionable() }.forEach { node ->
                 if (node.label().isNullOrBlank()) {
                     add("${node.describe()}: no label a screen reader can announce")
                 }
+            }
+
+            // Overflow is checked on every node, not only actionable ones.
+            //
+            // Know what this does **not** catch. It finds a node whose layout bounds fall
+            // outside the window. It does not find a child that Compose lays out *inside*
+            // its parent and then draws clipped — which is what a Switch does when the text
+            // beside it in a SpaceBetween row takes the whole width. That bug shipped in two
+            // screens, was plainly visible in a screenshot, and stayed green here through
+            // three attempts to make this check see it: the switch's reported bounds are
+            // inside the window, because only the painting is cut off. Catching it needs
+            // pixel comparison, which is the screenshot-diff gate M13 owns.
+            unmerged.forEach { node ->
                 // A control scrolled out of the viewport has empty bounds; it is brought on
                 // screen first. If it cannot be scrolled to there is nothing to measure.
                 val bounds = node.boundsInRoot.takeIf { !it.isEmpty }
                     ?: runCatching {
-                        compose.onNode(SemanticsMatcher("node ${node.id}") { it.id == node.id })
+                        compose.onNode(
+                            SemanticsMatcher("node ${node.id}") { it.id == node.id },
+                            useUnmergedTree = true,
+                        )
                             .performScrollTo()
                             .fetchSemanticsNode()
                             .boundsInRoot
