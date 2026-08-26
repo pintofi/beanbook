@@ -6,6 +6,8 @@ name: verify
 # listing jobs that do not exist yet.
 
 on:
+  # Callable so a release runs exactly the same gates as a push.
+  workflow_call:
   push:
     branches: [main]
   pull_request:
@@ -44,6 +46,19 @@ jobs:
 
       - name: Android Lint
         run: ./gradlew :app:lintPlayDebug :app:lintExpertDebug
+
+  workflows:
+    name: Workflows are valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every workflow parses and has runnable jobs
+        # verify.yml was malformed from the day it was written and nobody noticed for
+        # thirteen milestones: GitHub never loaded it, so none of these gates ever ran.
+        # A gate that has never executed is not a gate.
+        run: |
+          pip install --quiet pyyaml
+          python3 tools/check-workflows.py
 
   secrets:
     name: Secret and TLS-bypass scan
@@ -128,7 +143,8 @@ jobs:
       - name: Fetch prebuilt Android wheels
         # beancount and watchfiles have no upstream Android wheels; they are cross-built
         # with cibuildwheel (tools/build-wheels.sh) and published as a release artifact.
-        run: echo "TODO(M13): download pinned wheels; local builds use -Pbeancount.wheelDir"
+        run: >-
+          echo 'TODO: download pinned wheels; local builds use -Pbeancount.wheelDir'
 
       - name: Assemble debug, both editions
         run: ./gradlew :app:assemblePlayDebug :app:assembleExpertDebug

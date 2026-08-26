@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -62,6 +64,52 @@ android {
         }
     }
 
+    /**
+     * Release signing.
+     *
+     * The keystore is never in this repository — `*.jks`, `*.keystore` and
+     * `keystore.properties` are all ignored, and CI supplies the same four values as
+     * environment variables. A build without them still succeeds and produces an **unsigned**
+     * APK, because a contributor who cannot sign should still be able to build; what must not
+     * happen is a build that quietly produces something signed with the wrong key, or a
+     * pipeline that fails obscurely three minutes in because a secret was missing.
+     *
+     * `signingReport` will show which of the two happened.
+     */
+    val signingProperties: Properties? =
+        rootProject.file("keystore.properties").takeIf { it.exists() }?.let { file ->
+            Properties().also { properties ->
+                file.inputStream().use { properties.load(it) }
+            }
+        }
+
+    fun secret(name: String, property: String): String? =
+        signingProperties?.getProperty(property) ?: System.getenv(name)
+
+    val releaseStore = secret("BCA_KEYSTORE", "storeFile")
+    val releaseStorePassword = secret("BCA_KEYSTORE_PASSWORD", "storePassword")
+    val releaseKeyAlias = secret("BCA_KEY_ALIAS", "keyAlias")
+    val releaseKeyPassword = secret("BCA_KEY_PASSWORD", "keyPassword")
+    val canSign = listOf(
+        releaseStore, releaseStorePassword, releaseKeyAlias, releaseKeyPassword,
+    ).all { !it.isNullOrBlank() } && file(releaseStore!!).exists()
+
+    signingConfigs {
+        if (canSign) {
+            create("release") {
+                storeFile = file(releaseStore)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+                // AGP picks the schemes from minSdk, and at 28 that is v3 alone — v1 (JAR
+                // signing) is only needed below API 24 and v2 is superseded by v3 from API 28.
+                // Asking for all three and checking afterwards showed `apksigner verify`
+                // reporting v3 true and the rest false, which is correct, not a problem.
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
             // R8 is on. It owns the single largest saving available (26.7 MB of dex before
@@ -70,6 +118,7 @@ android {
             // build time — see proguard-rules.pro for what has to be kept and why.
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = if (canSign) signingConfigs.getByName("release") else null
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {
@@ -143,3 +192,51 @@ dependencies {
 }
 
 apply(from = "$rootDir/gradle/play-boundaries.gradle.kts")
+
+/**
+ * Prints the SHA-256 of every release APK.
+ *
+ * This is the join between the release pipeline and the expert edition's self-update: an
+ * update manifest carries the checksum of the APK it offers, and the app refuses a download
+ * whose bytes do not match (`ApkUpdate`, docs/milestones/m11-part5.md). Publishing a release
+ * therefore means taking these values to `issue-update.sh`.
+ *
+ * The manifest is **not** signed here on purpose. Signing needs the Ed25519 private key,
+ * which lives beside the issuance script outside this repository and does not belong in CI
+ * secrets: a key that CI can use is a key that anyone who can change a workflow file can use.
+ * CI publishes the artifacts and their checksums; a person issues the manifest offline.
+ */
+tasks.register("releaseChecksums") {
+    group = "publishing"
+    description = "SHA-256 of each release APK, for issuing an update manifest."
+
+    val outputsDir = layout.buildDirectory.dir("outputs/apk")
+    doLast {
+        val apks = outputsDir.get().asFile.walkTopDown()
+            .filter { it.isFile && it.extension == "apk" && "release" in it.name }
+            .sortedBy { it.name }
+            .toList()
+
+        if (apks.isEmpty()) {
+            throw GradleException(
+                "no release APKs found — run assembleExpertRelease or assemblePlayRelease first",
+            )
+        }
+
+        val digest = MessageDigest.getInstance("SHA-256")
+        apks.forEach { apk ->
+            digest.reset()
+            apk.inputStream().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read <= 0) break
+                    digest.update(buffer, 0, read)
+                }
+            }
+            val hex = digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+            val signed = if ("unsigned" in apk.name) " (UNSIGNED)" else ""
+            logger.lifecycle("$hex  ${apk.name}$signed")
+        }
+    }
+}
