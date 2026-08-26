@@ -16,6 +16,7 @@ import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.beancount.core.engine.OriginAllowlist
 
@@ -34,6 +35,10 @@ class AllowlistWebViewClient(
     private val onExternalLink: (Uri) -> Unit = {},
     private val httpAuth: (() -> HttpAuth?)? = null,
     private val onLoadProblem: (String) -> Unit = {},
+    // A provider, not a value: the WebViewClient is created once by AndroidView's factory,
+    // so a captured string would freeze the palette at whatever it was then and switching to
+    // dark would not re-skin the reports until the WebView was rebuilt.
+    private val themeScript: () -> String? = { null },
 ) : WebViewClient() {
 
     /** Credentials for a server that sits behind a reverse proxy's login. */
@@ -131,6 +136,9 @@ class AllowlistWebViewClient(
     }
 
     override fun onPageFinished(view: WebView, url: String) {
+        // Applied per page rather than once: Fava serves a fresh document for each report,
+        // so a style injected into one page is gone by the next.
+        themeScript()?.let { view.evaluateJavascript(it, null) }
         onPageLoaded(url)
     }
 }
@@ -200,6 +208,15 @@ fun FavaWebView(
     httpAuth: (() -> AllowlistWebViewClient.HttpAuth?)? = null,
     onLoadProblem: (String) -> Unit = {},
 ) {
+    // Recomputed when the palette changes, so switching theme re-skins the reports on their
+    // next load without restarting anything.
+    val scheme = androidx.compose.material3.MaterialTheme.colorScheme
+    val dark = scheme.background.luminance() < 0.5f
+    val themeScript = androidx.compose.runtime.remember(scheme, dark) {
+        FavaTheme.script(scheme, dark)
+    }
+    val currentTheme = androidx.compose.runtime.rememberUpdatedState(themeScript)
+
     AndroidView(
         modifier = modifier,
         factory = { context ->
@@ -211,10 +228,19 @@ fun FavaWebView(
                     onExternalLink = onExternalLink,
                     httpAuth = httpAuth,
                     onLoadProblem = onLoadProblem,
+                    themeScript = { currentTheme.value },
                 )
             }
         },
-        update = { view -> if (view.url != url) view.loadUrl(url) },
+        update = { view ->
+            if (view.url != url) {
+                view.loadUrl(url)
+            } else {
+                // Same page, new palette: re-skin what is already on screen instead of
+                // waiting for the user to navigate somewhere.
+                view.evaluateJavascript(currentTheme.value, null)
+            }
+        },
     )
 
     DisposableEffect(url) {

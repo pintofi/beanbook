@@ -105,3 +105,13 @@ data class LedgerColours(val positive: Color, val negative: Color) {
         val Dark = LedgerColours(positive = Color(0xFF7FD3A8), negative = Color(0xFFFFB870))
     }
 }
+
+/**
+ * The fallback palettes, exposed for instrumentation tests.
+ *
+ * The tests need a scheme whose values are known and fixed. Reading `MaterialTheme` inside a
+ * test would give whatever dynamic colour the device happened to generate, and an assertion
+ * against that could only be "some colour changed", which is not a test.
+ */
+val LightColoursForTest = LightColours
+val DarkColoursForTest = DarkColours
