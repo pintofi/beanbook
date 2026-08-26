@@ -21,7 +21,14 @@ interface IEngineService {
     String engineVersions();
 
     /** Writes the ledger summary as JSON to outPath. Returns "ok" or "error: …". */
-    String inspectToFile(String ledgerPath, int journalLimit, String outPath);
+    /**
+     * @param pluginDirs comma-separated directories to make importable while Beancount
+     *   loads. Empty means no user plugins, which is also the fast path: the bridge guard
+     *   is only installed when there is user code to guard.
+     * @param allowBridge the edition's policy, decided on the app side.
+     */
+    String inspectToFile(String ledgerPath, int journalLimit, String outPath,
+                         String pluginDirs, boolean allowBridge);
 
     /** Re-parses a project. Returns the validation JSON (bounded: 50 errors max). */
     String validate(String mainFile);

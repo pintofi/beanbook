@@ -43,10 +43,16 @@ class EngineService : Service() {
             python().getModule("engine").callAttr("versions").toString()
         }
 
-        override fun inspectToFile(ledgerPath: String, journalLimit: Int, outPath: String): String =
+        override fun inspectToFile(
+            ledgerPath: String,
+            journalLimit: Int,
+            outPath: String,
+            pluginDirs: String,
+            allowBridge: Boolean,
+        ): String =
             guarded {
                 val json = python().getModule("ledger")
-                    .callAttr("inspect", ledgerPath, journalLimit)
+                    .callAttr("inspect", ledgerPath, journalLimit, pluginDirs, allowBridge)
                     .toString()
                 writeOut(outPath, json)
                 "ok"

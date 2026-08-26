@@ -31,14 +31,32 @@ class LedgerReader(
     private val connection: EngineConnection = EngineConnection(context),
 ) {
 
-    suspend fun read(ledgerPath: String, journalLimit: Int = 200): Result<LedgerSnapshot> =
+    /**
+     * @param pluginDirs the enabled plugins' directories, comma-separated. Beancount imports
+     *   a plugin itself when it reaches a `plugin` directive; all this does is make them
+     *   findable for the duration of the load.
+     */
+    suspend fun read(
+        ledgerPath: String,
+        journalLimit: Int = 200,
+        pluginDirs: String = "",
+        allowBridge: Boolean = true,
+    ): Result<LedgerSnapshot> =
         withContext(io) {
             // The summary comes back through a cache file: for a large ledger the JSON
             // (every account, plus the journal window) is not safely inside Binder's ~1 MB
             // transaction budget.
             val payload = connection.payloadFile("inspect")
             connection
-                .withEngine { it.inspectToFile(ledgerPath, journalLimit, payload.absolutePath) }
+                .withEngine {
+                    it.inspectToFile(
+                        ledgerPath,
+                        journalLimit,
+                        payload.absolutePath,
+                        pluginDirs,
+                        allowBridge,
+                    )
+                }
                 .mapCatching { result ->
                     check(result == "ok") { result.removePrefix("error: ") }
                     parse(JSONObject(payload.consumeText()))

@@ -119,6 +119,17 @@ class BeancountApplication : Application() {
         RemoteState(filesDir.resolve("state"), appScope)
     }
 
+    /**
+     * Installed plugins for the open project.
+     *
+     * Takes the edition's policy from [currentPluginPolicy] once, here, so there is exactly
+     * one place the Play boundary is chosen and the rest of the app cannot pick a different
+     * one by accident.
+     */
+    val pluginsState: dev.beancount.app.plugins.PluginsState by lazy {
+        dev.beancount.app.plugins.PluginsState(this, currentPluginPolicy(), appScope)
+    }
+
     val projectsState: ProjectsState by lazy {
         ProjectsState(workspace, registry, ProjectImporter(workspace), appScope)
     }

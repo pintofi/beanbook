@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.beancount.app.engine.LedgerState
 import dev.beancount.app.engine.RecoveryOnStart
 import dev.beancount.app.ui.BalancesScreen
 import dev.beancount.app.ui.JournalScreen
@@ -56,6 +57,7 @@ import dev.beancount.app.ui.ContributeScreen
 import dev.beancount.app.backup.ScheduledBackupWorker
 import dev.beancount.app.ui.BackupScreen
 import dev.beancount.app.ui.MirrorScreen
+import dev.beancount.app.ui.PluginsScreen
 import dev.beancount.app.ui.RemoteScreen
 import dev.beancount.core.data.MirrorAction
 import dev.beancount.app.ui.DocumentsScreen
@@ -152,6 +154,20 @@ class MainActivity : ComponentActivity() {
         passphrase?.fill('\u0000')
     }
 
+    /**
+     * Picks a plugin to install: a single `.py`, or a `.whl`/`.zip` package.
+     *
+     * `OpenDocument` rather than `OpenDocumentTree`, because a folder grant would give the
+     * app standing access to wherever the user keeps their files, and installing a plugin
+     * needs one read of one thing.
+     */
+    private val pluginPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        val app = application as BeancountApplication
+        uri?.let { app.pluginsState.installFrom(it, displayNameOf(it)) }
+    }
+
     private val backupReader = registerForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -198,11 +214,28 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Opens a project: engine, ledger, and the active-project record all move together. */
+    /** The name the picker shows, so an installed plugin is recognisable later. */
+    private fun displayNameOf(uri: android.net.Uri): String =
+        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val column = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (column >= 0 && cursor.moveToFirst()) cursor.getString(column) else null
+        } ?: uri.lastPathSegment?.substringAfterLast('/').orEmpty()
+
     private fun openProject(app: BeancountApplication, projectId: String) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
         app.projectsState.open(projectId)
         app.templatesState.open(projectId)
+        app.pluginsState.openProject(app.workspace.projectDir(projectId))
         refreshDocuments(app, projectId)
+
+        // Asked at load time, not captured now: which plugins are on can change between
+        // loads, and a stale answer would either run something the user turned off or miss
+        // something they turned on.
+        app.ledgerState.pluginContext = LedgerState.PluginContext {
+            app.pluginsState.enabledDirectories()
+        }
+        app.ledgerState.allowBridge = currentPluginPolicy().allowsAndroidBridge
+
         app.engineManager.start(ledgerPath)
         app.ledgerState.load(ledgerPath)
     }
@@ -278,6 +311,9 @@ class MainActivity : ComponentActivity() {
                         app.remoteState.capabilities.collectAsStateWithLifecycle()
                     val remoteMessage by app.remoteState.message.collectAsStateWithLifecycle()
                     val remotePending by app.remoteState.pendingRetry.collectAsStateWithLifecycle()
+                    val pluginRows by app.pluginsState.rows.collectAsStateWithLifecycle()
+                    val pluginSafeMode by app.pluginsState.safeMode.collectAsStateWithLifecycle()
+                    val pluginMessage by app.pluginsState.message.collectAsStateWithLifecycle()
 
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
@@ -372,6 +408,13 @@ class MainActivity : ComponentActivity() {
                         savedRemoteUsername = app.remoteState.savedUsername,
                         remotePendingRetry = remotePending != null,
                         remoteMessage = remoteMessage,
+                        pluginRows = pluginRows,
+                        pluginSafeMode = pluginSafeMode,
+                        pluginMessage = pluginMessage,
+                        onInstallPlugin = { pluginPicker.launch(arrayOf("*/*")) },
+                        onSetPluginEnabled = { id, on -> app.pluginsState.setEnabled(id, on) },
+                        onRemovePlugin = { app.pluginsState.remove(it) },
+                        onSetPluginSafeMode = { app.pluginsState.setSafeMode(it) },
                         recoveryNotice = recoveryMessage,
                         onDismissRecovery = { recoveryMessage = null },
                         remoteReports = (remoteStatus as? EngineStatus.Serving)?.let {
@@ -689,6 +732,7 @@ private enum class MoreSection(val label: String) {
     BACKUP("Backup"),
     MIRROR("Mirror"),
     REMOTE("Remote"),
+    PLUGINS("Plugins"),
 }
 
 /**
@@ -775,6 +819,13 @@ internal fun LedgerApp(
     remotePendingRetry: Boolean,
     remoteMessage: String?,
     remoteReports: RemoteReports?,
+    pluginRows: List<dev.beancount.app.plugins.PluginRow>,
+    pluginSafeMode: Boolean,
+    pluginMessage: String?,
+    onInstallPlugin: () -> Unit,
+    onSetPluginEnabled: (String, Boolean) -> Unit,
+    onRemovePlugin: (String) -> Unit,
+    onSetPluginSafeMode: (Boolean) -> Unit,
     recoveryNotice: String?,
     onDismissRecovery: () -> Unit,
     onRemoteConnect: (String, String?, CharArray?) -> Unit,
@@ -909,6 +960,13 @@ internal fun LedgerApp(
                 remotePendingRetry = remotePendingRetry,
                 remoteMessage = remoteMessage,
                 remoteReports = remoteReports,
+                pluginRows = pluginRows,
+                pluginSafeMode = pluginSafeMode,
+                pluginMessage = pluginMessage,
+                onInstallPlugin = onInstallPlugin,
+                onSetPluginEnabled = onSetPluginEnabled,
+                onRemovePlugin = onRemovePlugin,
+                onSetPluginSafeMode = onSetPluginSafeMode,
                 recoveryNotice = recoveryNotice,
                 onDismissRecovery = onDismissRecovery,
                 onRemoteConnect = onRemoteConnect,
@@ -997,6 +1055,13 @@ private fun SurfaceContent(
     remotePendingRetry: Boolean,
     remoteMessage: String?,
     remoteReports: RemoteReports?,
+    pluginRows: List<dev.beancount.app.plugins.PluginRow>,
+    pluginSafeMode: Boolean,
+    pluginMessage: String?,
+    onInstallPlugin: () -> Unit,
+    onSetPluginEnabled: (String, Boolean) -> Unit,
+    onRemovePlugin: (String) -> Unit,
+    onSetPluginSafeMode: (Boolean) -> Unit,
     recoveryNotice: String?,
     onDismissRecovery: () -> Unit,
     onRemoteConnect: (String, String?, CharArray?) -> Unit,
@@ -1125,6 +1190,26 @@ private fun SurfaceContent(
                             onDelete = onDeleteProject,
                             busyMessage = projectMessage,
                         )
+
+                        MoreSection.PLUGINS ->
+                            if (!entitlement.allows(Feature.PLUGINS)) {
+                                LockedFeature(
+                                    title = "Plugins",
+                                    tier = Feature.PLUGINS.required.label,
+                                    onContribute = onContribute,
+                                )
+                            } else {
+                                PluginsScreen(
+                                    rows = pluginRows,
+                                    safeMode = pluginSafeMode,
+                                    policy = currentPluginPolicy(),
+                                    onInstall = onInstallPlugin,
+                                    onSetEnabled = onSetPluginEnabled,
+                                    onRemove = onRemovePlugin,
+                                    onSetSafeMode = onSetPluginSafeMode,
+                                    message = pluginMessage,
+                                )
+                            }
 
                         MoreSection.REMOTE ->
                             if (!entitlement.allows(Feature.REMOTE_MODE)) {

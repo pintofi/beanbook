@@ -189,6 +189,58 @@ class AccessibilityTest {
     }
 
     /**
+     * The plugins screen, where every action is about somebody else's code.
+     *
+     * A control that says only "Remove" or "Run" is the announcement that turns off a plugin
+     * the user meant to keep, or runs one they meant to leave alone — so each one names the
+     * plugin it acts on. The unsandboxed warning is checked too: it is the one thing on this
+     * screen that must reach a person who cannot see it.
+     */
+    @Test fun pluginsScreenIsLabelledAndFitsAtDoubleFontScale() {
+        val plugin = dev.beancount.core.data.InstalledPlugin(
+            id = "tag-large",
+            name = "tag_large.py",
+            kind = dev.beancount.core.domain.PluginKind.SOURCE_FILE,
+            sourceSha256 = "a".repeat(64),
+            installedSha256 = "b".repeat(64),
+            sizeBytes = 618,
+            installedAtEpochMs = 1_756_000_000_000,
+            sourceLabel = "tag_large.py",
+            installedUnderPolicy = "expert",
+            enabled = true,
+            modules = listOf("tag_large.py"),
+        )
+
+        render(widthDp = 320, fontScale = 2f) {
+            PluginsScreen(
+                rows = listOf(
+                    dev.beancount.app.plugins.PluginRow(
+                        plugin,
+                        dev.beancount.core.data.PluginIntegrity.Unchanged,
+                    ),
+                ),
+                safeMode = false,
+                policy = dev.beancount.app.currentPluginPolicy(),
+                onInstall = {},
+                onSetEnabled = { _, _ -> },
+                onRemove = {},
+                onSetSafeMode = {},
+            )
+        }
+
+        listOf(
+            "What running a plugin means",
+            "Install a plugin from a file",
+            "Safe mode: hold every plugin back",
+            "Run tag_large.py when the ledger loads",
+            "Remove tag_large.py",
+        ).forEach { label ->
+            compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
+        }
+        assertAccessible()
+    }
+
+    /**
      * The negative control. A green accessibility suite means nothing unless a violation
      * actually fails it, so this composes a 20dp unlabelled clickable box — no speakable
      * text, and under the 48dp touch-target minimum — and requires both checks to reject it.

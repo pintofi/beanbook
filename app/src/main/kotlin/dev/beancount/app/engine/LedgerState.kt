@@ -29,10 +29,24 @@ class LedgerState(
 
     private var job: Job? = null
 
+    /**
+     * Where the enabled plugins live, and whether the bridge is allowed, at the moment of a
+     * load. Supplied by the caller rather than held here: which plugins are on can change
+     * between loads, and a stale answer would either run something the user turned off or
+     * miss something they turned on.
+     */
+    fun interface PluginContext {
+        /** Comma-separated directories, empty when there is nothing to load. */
+        fun directories(): String
+    }
+
+    var pluginContext: PluginContext = PluginContext { "" }
+    var allowBridge: Boolean = true
+
     fun load(ledgerPath: String) {
         job?.cancel()
         job = scope.launch {
-            reader.read(ledgerPath)
+            reader.read(ledgerPath, pluginDirs = pluginContext.directories(), allowBridge = allowBridge)
                 .onSuccess { snapshot ->
                     _failure.value = null
                     _snapshot.value = snapshot
