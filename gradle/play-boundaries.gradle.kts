@@ -45,6 +45,29 @@ val requiredPlaySourcePatterns = listOf(
     Regex("""allowsSelfUpdate\s*=\s*false"""),    // D3
 )
 
+/**
+ * R9: GPL-2.0-only code stays in the engine process.
+ *
+ * The app is GPL-2.0-only because Beancount is, and AndroidX — most of the app process — is
+ * Apache-2.0, which is not compatible with it. The resolution chosen is **separating the
+ * processes**: Beancount, Fava and the whole Python runtime live in `:engine`, and the app
+ * talks to them over a binder rather than linking them (docs/architecture.md 7.1).
+ *
+ * That separation is a property of the code, not of the intent, and it broke once already —
+ * a debug harness called `PluginLoader`, which started an interpreter in whichever process
+ * asked. So it is checked: nothing compiled into the app process may start Python.
+ *
+ * These patterns are matched in `src/main`, `src/play` and `src/expert` — everything that
+ * ends up in the app process. `:engine-local` is deliberately not scanned; it owns both
+ * sides of the boundary, and its service is the one thing that is *supposed* to start an
+ * interpreter.
+ */
+val forbiddenAppProcessPatterns = listOf(
+    Regex("""PythonRuntime"""),
+    Regex("""Python\.start"""),
+    Regex("""com\.chaquo\.python"""),
+)
+
 /** Permissions the play edition must never request. */
 val forbiddenPlayPermissions = listOf(
     "android.permission.REQUEST_INSTALL_PACKAGES",
@@ -119,6 +142,24 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
             }
         }
 
+        // --- R9: no interpreter in the app process ------------------------------------
+        val appProcessDirs = listOf(file("src/main"), file("src/play"), file("src/expert"))
+        for (dir in appProcessDirs) {
+            if (!dir.exists()) continue
+            dir.walkTopDown()
+                .filter { it.isFile && (it.extension == "kt" || it.extension == "java") }
+                .forEach { source ->
+                    val text = source.readText()
+                    for (pattern in forbiddenAppProcessPatterns) {
+                        if (pattern.containsMatchIn(text)) {
+                            violations += "R9: /${pattern.pattern}/ in " +
+                                "${source.relativeTo(projectDir)} would start a Python " +
+                                "interpreter in the app process; go through the engine binder"
+                        }
+                    }
+                }
+        }
+
         // --- manifest check ---------------------------------------------------------
         for (manifest in manifestFiles) {
             if (!manifest.exists()) continue
@@ -145,7 +186,8 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
             "verifyPlayFlavorBoundaries: OK " +
                 "(${forbiddenPlayDependencies.size} dependency rules, " +
                 "${forbiddenPlaySourcePatterns.size} forbidden + " +
-                "${requiredPlaySourcePatterns.size} required source rules, " +
+                "${requiredPlaySourcePatterns.size} required + " +
+                "${forbiddenAppProcessPatterns.size} process-separation source rules, " +
                 "${forbiddenPlayPermissions.size} permission rules)"
         )
     }

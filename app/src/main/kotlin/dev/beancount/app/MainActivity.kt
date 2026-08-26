@@ -640,8 +640,10 @@ class MainActivity : ComponentActivity() {
             store.setEnabled(installed.plugin.id, true)
 
             android.util.Log.i("M11", "stalling inside a plugin load; kill me now")
-            dev.beancount.engine.local.PluginLoader.load(
-                context = this@MainActivity,
+            // Through the binder, like everything else that touches Python. This harness
+            // used to start an interpreter in the app process, which is precisely the hole
+            // the R9 decision closes (docs/architecture.md §7.1).
+            dev.beancount.engine.local.PluginLoader(this@MainActivity).load(
                 pluginDir = store.directoryFor(installed.plugin).absolutePath,
                 modules = "stalls_forever",
                 allowBridge = currentPluginPolicy().allowsAndroidBridge,

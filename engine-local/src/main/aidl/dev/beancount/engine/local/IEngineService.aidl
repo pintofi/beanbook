@@ -31,6 +31,25 @@ interface IEngineService {
                          String pluginDirs, boolean allowBridge);
 
     /** Re-parses a project. Returns the validation JSON (bounded: 50 errors max). */
+    /**
+     * Imports user plugins. Runs here, not in the app process: plugin code is Python, and
+     * Python lives on this side of the boundary (docs/architecture.md 7.1, risk R9).
+     */
+    String loadPlugins(String pluginDir, String modules, boolean allowBridge,
+                       String journalPath, String journalLabel);
+
+    /** Runs one user script with a deadline. [handle] is what cancelScript cancels. */
+    String runScript(String scriptPath, String ledgerPath, double timeoutSeconds,
+                     boolean allowBridge, String handle);
+
+    /**
+     * Asks a running script to stop.
+     *
+     * A separate transaction on purpose: runScript occupies a binder thread for as long as
+     * the script runs, and a cancel queued behind it would arrive after it had finished.
+     */
+    void cancelScript(String handle);
+
     String validate(String mainFile);
 
     /** Locates an entry's source extent. Returns a small JSON object. */

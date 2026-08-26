@@ -58,6 +58,46 @@ class EngineService : Service() {
                 "ok"
             }
 
+        override fun loadPlugins(
+            pluginDir: String,
+            modules: String,
+            allowBridge: Boolean,
+            journalPath: String,
+            journalLabel: String,
+        ): String = guarded {
+            python().getModule("plugins").callAttr(
+                "load_plugins",
+                pluginDir,
+                modules,
+                allowBridge,
+                emptyArray<String>(),
+                journalPath,
+                journalLabel,
+            ).toString()
+        }
+
+        override fun runScript(
+            scriptPath: String,
+            ledgerPath: String,
+            timeoutSeconds: Double,
+            allowBridge: Boolean,
+            handle: String,
+        ): String = guarded {
+            python().getModule("plugins").callAttr(
+                "run_script",
+                scriptPath,
+                ledgerPath,
+                timeoutSeconds,
+                allowBridge,
+                emptyArray<String>(),
+                handle,
+            ).toString()
+        }
+
+        override fun cancelScript(handle: String) {
+            runCatching { python().getModule("plugins").callAttr("cancel_script", handle) }
+        }
+
         override fun validate(mainFile: String): String = guarded {
             python().getModule("writer").callAttr("validate", mainFile).toString()
         }

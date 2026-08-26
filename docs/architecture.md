@@ -217,9 +217,30 @@ Three realistic resolutions, in the order they should be considered:
    practical exposure is that a copyright holder objects; the honest position is that this
    is a real incompatibility under the strict reading, not a solved problem.
 
-**This is unresolved and must be decided before the first public release.** It is recorded
-here rather than in a footnote because it can change the process architecture, and doing
-that after M6–M13 would be expensive. Tracked as risk R9.
+### Decision (M14): option 1, separate the processes
+
+**Resolved.** Beancount, beanquery, Fava and the whole CPython runtime run in `:engine`, a
+separate OS process, reached over a binder. The app process links AndroidX and never links
+GPL-2.0-only code.
+
+This was almost the design already — the AIDL split landed in M5.5 for reliability reasons —
+so the decision was mostly about committing to it and then making it true, because it was
+not quite:
+
+* `PluginLoader` called `PythonRuntime.ensureStarted` directly, starting an interpreter in
+  whichever process called it, and a debug harness in `MainActivity` did exactly that.
+  Plugin loading and script running now go through the same binder as everything else.
+* Separation is a property of the code, not of the intent, so
+  `:verifyPlayFlavorBoundaries` now fails the build if anything compiled into the app
+  process mentions `PythonRuntime`, `Python.start` or `com.chaquo.python`. Verified by
+  re-introducing the call and watching the gate reject it.
+
+What this does **not** claim: that the question is closed as a matter of law. It is the
+strongest structural answer available, it is now enforced rather than asserted, and the
+inventory it would be argued from is [sbom.md](sbom.md). Asking upstream for a linking
+exception (option 2) remains worth doing and costs nothing to ask.
+
+Tracked as risk R9.
 
 ### 7.2 Expert plugins are not sandboxed
 

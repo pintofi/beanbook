@@ -1,74 +1,60 @@
 package dev.beancount.engine.local
 
 import android.content.Context
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 /**
- * Loads user plugins through the embedded interpreter.
+ * Loading user plugins and running user scripts — **in the engine process**.
  *
- * The Kotlin side stays thin on purpose. Everything that decides *what user code may reach*
- * lives in `plugins.py`, because the mechanism it has to work with — Chaquopy's replacement
- * of `builtins.__import__` — is only visible from inside Python
- * (docs/milestones/m11.md, SPEC.md Q8).
+ * This used to call `PythonRuntime.ensureStarted` directly, which started the interpreter in
+ * whichever process asked. That was a hole in the process separation the app depends on: with
+ * R9 resolved by keeping GPL-licensed Beancount and everything Python in `:engine`, an app
+ * process that can start an interpreter is an app process that can load Beancount
+ * (docs/architecture.md §7.1).
+ *
+ * So every entry point here goes through the same binder as the rest of the engine. The class
+ * remains in `:engine-local` because that is the module that owns the boundary; what changed
+ * is which side of it the work happens on.
  */
-object PluginLoader {
+class PluginLoader(
+    context: Context,
+    private val connection: EngineConnection = EngineConnection(context),
+) {
 
     /** One plugin's worth of loading, with a durable marker naming it while it runs. */
     suspend fun load(
-        context: Context,
         pluginDir: String,
         modules: String,
         allowBridge: Boolean,
         journalPath: String,
         journalLabel: String,
-    ): String = withContext(Dispatchers.IO) {
-        PythonRuntime.ensureStarted(context)
-            .getModule("plugins")
-            .callAttr(
-                "load_plugins",
-                pluginDir,
-                modules,
-                allowBridge,
-                emptyArray<String>(),
-                journalPath,
-                journalLabel,
-            )
-            .toString()
+    ): Result<String> = connection.withEngine {
+        it.loadPlugins(pluginDir, modules, allowBridge, journalPath, journalLabel)
     }
 
-    /** Runs one script with a deadline. [handle] is what [cancelScript] cancels. */
+    /** Runs one script with a deadline. [handle] is what [cancel] cancels. */
     suspend fun runScript(
-        context: Context,
         scriptPath: String,
         ledgerPath: String,
         timeoutSeconds: Double,
         allowBridge: Boolean,
         handle: String,
-    ): String = withContext(Dispatchers.IO) {
-        PythonRuntime.ensureStarted(context)
-            .getModule("plugins")
-            .callAttr(
-                "run_script",
-                scriptPath,
-                ledgerPath,
-                timeoutSeconds,
-                allowBridge,
-                emptyArray<String>(),
-                handle,
-            )
-            .toString()
+    ): Result<String> = connection.withEngine {
+        it.runScript(scriptPath, ledgerPath, timeoutSeconds, allowBridge, handle)
     }
 
     /**
      * Asks a running script to stop.
      *
-     * Deliberately not suspending and deliberately not on the IO dispatcher: the script is
-     * occupying a thread, and a cancel that queued behind it would never arrive.
+     * Fire-and-forget on its own coroutine: the caller is usually a button, and the script it
+     * is stopping is holding a binder thread. Waiting for the cancel to be acknowledged would
+     * mean waiting for the thing being cancelled.
      */
-    fun cancelScript(context: Context, handle: String) {
-        PythonRuntime.ensureStarted(context)
-            .getModule("plugins")
-            .callAttr("cancel_script", handle)
+    fun cancel(scope: CoroutineScope, handle: String) {
+        scope.launch(Dispatchers.IO) {
+            connection.withEngine { it.cancelScript(handle) }
+        }
     }
 }
