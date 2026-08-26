@@ -1019,9 +1019,9 @@ internal fun LedgerApp(
                             onClick = { selected = surface },
                             label = { Text(surface.label) },
                             icon = {},
-                            modifier = Modifier.semantics {
-                                contentDescription = surface.label
-                            },
+                            // No contentDescription: the label already supplies one, and
+                            // setting both made TalkBack say "Reports, Reports" on every
+                            // destination.
                         )
                     }
                 }
