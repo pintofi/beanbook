@@ -50,9 +50,6 @@ jobs:
       - name: Play flavor boundaries
         run: ./gradlew :app:verifyPlayFlavorBoundaries
 
-      - name: Android Lint
-        run: ./gradlew :app:lintPlayDebug :app:lintExpertDebug
-
   workflows:
     name: Workflows are valid
     runs-on: ubuntu-latest
@@ -117,6 +114,21 @@ jobs:
             exit 1
           fi
           echo "no escaped string templates"
+
+      - name: Every Python pin carries a hash
+        # pip enforces this during the build, but only for the packages it reaches. A pin
+        # that loses its hash lines in a hand-edit would quietly leave --require-hashes
+        # mode for the whole file, and nothing would say so (docs/milestones/m14-part9.md).
+        run: |
+          python3 - <<'CHECK'
+          import re, sys
+          text = open("engine-local/requirements.lock").read()
+          pins = re.findall(r"^([A-Za-z0-9_.\-]+)==(\S+?)( \\)?$", text, re.M)
+          bare = [n for n, _, cont in pins if not cont]
+          if bare:
+              print("::error::pins with no hash:", ", ".join(bare)); sys.exit(1)
+          print(f"{len(pins)} pins, all hashed, {text.count('--hash=sha256:')} digests")
+          CHECK
 
       - name: No hard-coded signing keys
         run: |
@@ -205,6 +217,10 @@ jobs:
             exit 1
           fi
           ls "$WHEELS"
+          # The cross-built wheels are pinned by hash in a generated file, because their
+          # bytes differ per build and cannot be committed (m14-part9.md). This job is a
+          # fresh checkout, so it writes its own from the wheels it actually has.
+          python3 tools/lock-python.py --refresh-local --wheel-dir "$WHEELS"
           [ -n "${GITHUB_ENV:-}" ] && echo "BCA_WHEEL_DIR=$WHEELS" >> "$GITHUB_ENV"
           true
 
@@ -224,3 +240,11 @@ jobs:
         run: |
           APK=$(find app/build/outputs/apk -name '*expert-arm64-v8a-debug*.apk' | head -1)
           python3 tools/check-build-paths.py "$APK"
+
+      - name: Android Lint
+        # Lives here, not in the jvm job: lint builds the app's assets, which means it needs
+        # the cross-built wheels. In the jvm job it would have failed on a real runner for
+        # exactly the reason N16 describes (docs/milestones/m14-part9.md).
+        run: >-
+          ./gradlew :app:lintPlayDebug :app:lintExpertDebug
+          -Pbeancount.wheelDir="$BCA_WHEEL_DIR"

@@ -5,8 +5,12 @@
 # wrong, a file can be missing, a grep can be malformed. This executes them, which is the
 # only way to find that out short of pushing a tag.
 #
-# It is not a GitHub runner. Steps that need `actions/*`, secrets, or the network are skipped
-# and named, so the gap between "passes here" and "passes there" stays visible.
+# It is not a GitHub runner. Steps that need `actions/*` or secrets do not run at all, and
+# the gap between "passes here" and "passes there" stays visible. What it does model is
+# `$GITHUB_ENV`: a step that exports a variable through it is visible to later steps in the
+# same job, as on a runner, and not to other jobs. Without that, a workflow that is correct
+# on GitHub fails here for a reason that does not exist there — which is worse than useless,
+# because the obvious fix is to damage the workflow.
 #
 #   tools/run-ci-locally.sh .github/workflows/verify.yml
 set -uo pipefail
@@ -14,19 +18,32 @@ set -uo pipefail
 WORKFLOW="${1:-.github/workflows/verify.yml}"
 PASS=0; FAIL=0; SKIP=0
 FAILED_STEPS=()
+STATE="$(mktemp -d)"
+trap 'rm -rf "$STATE"' EXIT
+CURRENT_JOB=""
 
 while IFS=$'\t' read -r job name script; do
     if [ -z "$script" ]; then
         continue
     fi
+    # Each job starts with an empty environment file, as a fresh runner would.
+    if [ "$job" != "$CURRENT_JOB" ]; then
+        CURRENT_JOB="$job"
+        : > "$STATE/env"
+    fi
+
     printf '\n=== [%s] %s\n' "$job" "$name"
     decoded="${script//$'\001'/$'\n'}"
-    if bash -c "$decoded" > /tmp/ci-step.log 2>&1; then
+    if env GITHUB_ENV="$STATE/env" bash -c '
+            set -a; . "$1"; set +a
+            shift
+            eval "$1"
+        ' _ "$STATE/env" "$decoded" > "$STATE/step.log" 2>&1; then
         echo "    PASS"
         PASS=$((PASS + 1))
     else
         echo "    FAIL (exit $?)"
-        tail -6 /tmp/ci-step.log | sed 's/^/    | /'
+        tail -6 "$STATE/step.log" | sed 's/^/    | /'
         FAIL=$((FAIL + 1))
         FAILED_STEPS+=("[$job] $name")
     fi

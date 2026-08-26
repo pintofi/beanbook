@@ -55,6 +55,17 @@ chaquopy {
             // Regenerate with tools/lock-python.py after a deliberate upgrade; CLAUDE.md
             // makes upgrades their own milestone with the golden corpus re-run.
             install("-r", "requirements.lock")
+
+            // The two cross-built wheels are pinned separately, in a generated file, because
+            // their bytes differ on every build and a hash recorded on one machine cannot
+            // match a wheel built on another (docs/milestones/m14-part9.md). Written by
+            // tools/build-wheels.sh; without it there are no wheels to install anyway.
+            val localPins = layout.projectDirectory.file("requirements-local.lock").asFile
+            require(localPins.isFile) {
+                "engine-local/requirements-local.lock is missing. It is generated together " +
+                    "with the wheels themselves: run tools/build-wheels.sh --out $wheelDir"
+            }
+            install("-r", "requirements-local.lock")
         }
     }
 }

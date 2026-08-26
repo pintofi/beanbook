@@ -161,5 +161,12 @@ if ! python3 "$here/tools/check-build-paths.py" "$out"/*.whl; then
     status=1
 fi
 
+# The lockfile pins these two by hash like everything else, but their bytes change on every
+# rebuild, so leaving it alone would make the very next build fail with a tampering warning.
+if [ "$status" -eq 0 ]; then
+    say "refreshing the cross-built hashes in engine-local/requirements.lock"
+    python3 "$here/tools/lock-python.py" --refresh-local --wheel-dir "$out" || status=1
+fi
+
 [ "$status" -eq 0 ] && say "wheels are in $out" || say "FAILED"
 exit "$status"
