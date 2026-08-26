@@ -47,3 +47,6 @@ spikes/**/.gradle/
 
 # Release artefacts, produced by the release workflow
 checksums.txt
+
+# Cross-built Android wheels, produced by tools/build-wheels.sh
+/wheels/

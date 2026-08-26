@@ -1,0 +1,13 @@
+# The two packages with native code that have no Android wheel upstream, so we
+# cross-build them ourselves (docs/feasibility/s2-beancount-wheel.md, s3-fava-closure.md).
+#
+# Everything else in the closure is either pure Python from PyPI or a prebuilt
+# Android wheel from Chaquopy's own repository — see engine-local/requirements.lock.
+#
+# The hash is of the *source distribution*, which is what a build starts from and
+# the only thing a supply-chain check can pin: the wheels this produces are not
+# byte-reproducible (docs/milestones/m14-part8.md).
+#
+# name  version  sdist-sha256
+beancount   3.2.3   f52c4d237bcb092cbf02a29373d3e59d95349c2828a91491818ae437ee220f74
+watchfiles  1.2.0   c995fba777f1ea992f090f9236e9284cf7a5d1a0130dd5a3d82c598cacd76838

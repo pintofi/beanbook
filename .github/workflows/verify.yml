@@ -132,8 +132,51 @@ jobs:
           fi
           echo "no key material committed"
 
+  wheels:
+    name: Cross-build the Android wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Cache the built wheels
+        # Keyed on what determines their content: the sdist pins, the backend pins and the
+        # build script. Change any of the three and they are rebuilt; change nothing and a
+        # runner spends no time on the NDK download.
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: wheels
+          key: android-wheels-${{ hashFiles('engine-local/wheels.lock', 'engine-local/build-backends.lock', 'tools/build-wheels.sh') }}
+
+      - name: Android SDK command-line tools
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: android-actions/setup-android@v3
+
+      - name: Rust with the Android targets
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: rustup target add aarch64-linux-android x86_64-linux-android
+
+      - name: Build
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: tools/build-wheels.sh --out wheels
+
+      - name: No build-machine paths in the wheels
+        # The August wheels carried the maintainer's home directory in 25 strings, from
+        # Rust panic metadata and maturin's SBOM (docs/milestones/m14-part8.md).
+        run: python3 tools/check-build-paths.py wheels/*.whl
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-wheels
+          path: wheels/*.whl
+          retention-days: 7
+
   build:
     name: Build both editions
+    needs: wheels
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -146,27 +189,29 @@ jobs:
           python-version: '3.13'
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Fetch prebuilt Android wheels
-        # beancount and watchfiles have no upstream Android wheels; they are cross-built
-        # with cibuildwheel (tools/build-wheels.sh) and published as a release artifact.
-        # Not a TODO that passes. beancount and watchfiles have no upstream Android
-        # wheels, so a runner without them cannot assemble anything — and a step that
-        # echoes a note and exits 0 lets the build fail later with a confusing message
-        # instead of here with a clear one.
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-wheels
+          path: wheels
+
+      - name: Check the wheels are here
+        # Until M14 this step echoed a TODO and exited 0, so the build failed two steps
+        # later with a confusing error instead of here with a clear one. beancount and
+        # watchfiles have no upstream Android wheels: without them nothing assembles.
         run: |
-          WHEELS="${BCA_WHEEL_DIR:-$HOME/tools/wheels}"
-          if [ ! -d "$WHEELS" ] || [ -z "$(ls -A "$WHEELS" 2>/dev/null)" ]; then
-            echo "::error::no Android wheels at $WHEELS. beancount and watchfiles are"
-            echo "::error::cross-built with tools/build-wheels.sh and are not on PyPI."
-            echo "::error::Publish them as a release artifact and fetch them here, or set"
-            echo "::error::BCA_WHEEL_DIR. Tracked as N16."
+          WHEELS="${BCA_WHEEL_DIR:-${GITHUB_WORKSPACE:-$PWD}/wheels}"
+          if [ -z "$(ls -A "$WHEELS"/*.whl 2>/dev/null)" ]; then
+            echo "::error::no Android wheels at $WHEELS; the wheels job should have built them"
             exit 1
           fi
-          echo "using wheels from $WHEELS"
-          ls "$WHEELS" | head
+          ls "$WHEELS"
+          [ -n "${GITHUB_ENV:-}" ] && echo "BCA_WHEEL_DIR=$WHEELS" >> "$GITHUB_ENV"
+          true
 
       - name: Assemble debug, both editions
-        run: ./gradlew :app:assemblePlayDebug :app:assembleExpertDebug
+        run: >-
+          ./gradlew :app:assemblePlayDebug :app:assembleExpertDebug
+          -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
 
       - name: minSdk symbol gate
         # Fails if any bundled .so needs a symbol newer than minSdk — the failure mode
@@ -174,3 +219,8 @@ jobs:
         run: |
           APK=$(find app/build/outputs/apk -name '*play-arm64-v8a-debug*.apk' | head -1)
           python3 tools/check-minsdk-symbols.py "$APK" --api 28 --abi arm64-v8a
+
+      - name: No build-machine paths in the APK
+        run: |
+          APK=$(find app/build/outputs/apk -name '*expert-arm64-v8a-debug*.apk' | head -1)
+          python3 tools/check-build-paths.py "$APK"

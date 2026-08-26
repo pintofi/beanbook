@@ -1,0 +1,18 @@
+# PEP 517 build backends for the two cross-built wheels.
+#
+# cibuildwheel is pinned in tools/build-wheels.sh, but the *backend* it invokes is
+# resolved fresh from PyPI inside each build-isolation environment, so an unpinned
+# build silently follows upstream. It did: maturin moved 1.14.1 -> 1.15.0 between the
+# August spike build and a rebuild in M14, changing the wheel for no reason of ours
+# (docs/milestones/m14-part8.md). The same class of drift as click 8.4.2 -> 8.5.0.
+#
+# pip honours PIP_CONSTRAINT inside build isolation, which is how these are enforced.
+#
+# beancount (meson-python, C++ with a generated parser)
+meson-python==0.20.0
+meson==1.12.0
+flex-bin==2.6.4.2
+bison-bin==3.8.2.3
+patchelf==0.17.2.4
+# watchfiles (maturin, PyO3/Rust)
+maturin==1.14.1
