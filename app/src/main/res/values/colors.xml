@@ -3,4 +3,10 @@
      composed frame are the same colour and there is no flash between them. -->
 <resources>
     <color name="window_background">#FAFDFC</color>
+    <!-- Widgets run in the home screen's process and cannot read the Compose theme, so
+         their colours are ordinary resources. Light values here, dark in values-night. -->
+    <color name="widget_surface">#FAFDFC</color>
+    <color name="widget_label">#3F4949</color>
+    <color name="widget_value">#191C1C</color>
+    <color name="widget_footnote">#6F7979</color>
 </resources>

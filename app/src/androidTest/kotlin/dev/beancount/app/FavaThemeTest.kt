@@ -55,19 +55,25 @@ class FavaThemeTest {
             while (!socket.isClosed) {
                 val client = runCatching { socket.accept() }.getOrNull() ?: break
                 thread(isDaemon = true) {
-                    client.use {
-                        val reader = BufferedReader(InputStreamReader(it.getInputStream()))
-                        var line = reader.readLine()
-                        while (!line.isNullOrBlank()) line = reader.readLine()
-                        val body = page.toByteArray()
-                        it.getOutputStream().write(
-                            (
-                                "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n" +
-                                    "Content-Length: ${body.size}\r\nConnection: close\r\n\r\n"
-                                ).toByteArray(),
-                        )
-                        it.getOutputStream().write(body)
-                        it.getOutputStream().flush()
+                    // A WebView may close the connection as soon as it has what it needs —
+                    // for a favicon it never asked for, say — and the write then fails with
+                    // a broken pipe. That is the client's prerogative, not a test failure.
+                    runCatching {
+                        client.use {
+                            val reader = BufferedReader(InputStreamReader(it.getInputStream()))
+                            var line = reader.readLine()
+                            while (!line.isNullOrBlank()) line = reader.readLine()
+                            val body = page.toByteArray()
+                            it.getOutputStream().write(
+                                (
+                                    "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n" +
+                                        "Content-Length: ${body.size}\r\n" +
+                                        "Connection: close\r\n\r\n"
+                                    ).toByteArray(),
+                            )
+                            it.getOutputStream().write(body)
+                            it.getOutputStream().flush()
+                        }
                     }
                 }
             }

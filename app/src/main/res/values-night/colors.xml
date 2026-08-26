@@ -2,4 +2,8 @@
 <!-- DarkColours.background. -->
 <resources>
     <color name="window_background">#191C1C</color>
+    <color name="widget_surface">#252929</color>
+    <color name="widget_label">#BEC9C8</color>
+    <color name="widget_value">#E0E3E2</color>
+    <color name="widget_footnote">#899393</color>
 </resources>

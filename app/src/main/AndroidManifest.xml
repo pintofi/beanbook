@@ -38,5 +38,58 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/document_paths" />
         </provider>
+
+        <!--
+          Home-screen widgets. exported="false": nothing outside this app has any reason to
+          broadcast an update to them, and the figures they carry are somebody's finances.
+          Android delivers APPWIDGET_UPDATE to a non-exported receiver perfectly well.
+        -->
+        <receiver
+            android:name=".widget.BalanceWidget"
+            android:label="Account balance"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_balance_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.NetWorthWidget"
+            android:label="Net worth"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_networth_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.PeriodWidget"
+            android:label="In and out"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_period_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.QuickAddWidget"
+            android:label="Add an entry"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_quickadd_info" />
+        </receiver>
     </application>
 </manifest>

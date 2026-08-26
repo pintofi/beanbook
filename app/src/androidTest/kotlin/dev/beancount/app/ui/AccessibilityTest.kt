@@ -256,6 +256,8 @@ class AccessibilityTest {
                 dynamicColourSupported = true,
                 onChoice = {},
                 onDynamicColour = {},
+                hideWidgetAmounts = false,
+                onHideWidgetAmounts = {},
             )
         }
         assertAccessible()

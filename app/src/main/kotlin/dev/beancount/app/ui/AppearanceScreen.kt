@@ -40,6 +40,8 @@ fun AppearanceScreen(
     dynamicColourSupported: Boolean,
     onChoice: (ThemeChoice) -> Unit,
     onDynamicColour: (Boolean) -> Unit,
+    hideWidgetAmounts: Boolean,
+    onHideWidgetAmounts: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -104,6 +106,33 @@ fun AppearanceScreen(
                     "app's own palette.",
                 style = MaterialTheme.typography.bodySmall,
             )
+        }
+
+        HorizontalDivider()
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = hideWidgetAmounts,
+                    onValueChange = onHideWidgetAmounts,
+                    role = Role.Switch,
+                )
+                .semantics { contentDescription = "Hide amounts on the home screen" }
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                Text("Hide amounts in widgets", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "Widgets show a label and a time but no figures. They are hidden on the " +
+                        "lock screen regardless, where anyone who picks up your phone can " +
+                        "read them.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Switch(checked = hideWidgetAmounts, onCheckedChange = null)
         }
 
         HorizontalDivider()

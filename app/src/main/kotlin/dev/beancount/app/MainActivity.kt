@@ -104,6 +104,16 @@ class MainActivity : ComponentActivity() {
      * every launch, assigned, and never read by anything, so the app silently recovered from
      * an interrupted write and told nobody.
      */
+    /**
+     * How many accounts reach the widget cache.
+     *
+     * A cap, not everything: the cache lives outside the project tree so a widget can read
+     * it, and a full chart of accounts is a description of somebody's life.
+     */
+    private val widgetAccountLimit = 12
+
+    private var hideWidgetAmounts: Boolean by mutableStateOf(false)
+
     private var recoveryMessage: String? by mutableStateOf(null)
     private var saveMessage: String? by mutableStateOf(null)
 
@@ -226,6 +236,27 @@ class MainActivity : ComponentActivity() {
             if (column >= 0 && cursor.moveToFirst()) cursor.getString(column) else null
         } ?: uri.lastPathSegment?.substringAfterLast('/').orEmpty()
 
+    /**
+     * The project a widget asked to open, if it may be honoured.
+     *
+     * A widget is long-lived and the intent it carries was built whenever it was last drawn,
+     * possibly before the project it names was deleted. `WidgetLink` checks the id against
+     * the projects that exist rather than taking the intent's word for it.
+     */
+    private fun widgetTarget(app: BeancountApplication): String? {
+        val requested = intent?.getStringExtra(
+            dev.beancount.app.widget.WidgetRenderer.EXTRA_PROJECT,
+        ) ?: return null
+        return dev.beancount.core.data.WidgetLink.resolve(
+            requestedProject = requested,
+            requestedSurface = intent?.getStringExtra(
+                dev.beancount.app.widget.WidgetRenderer.EXTRA_SURFACE,
+            ),
+            knownProjects = app.projectsState.projects.value.map { it.id },
+            activeProject = app.projectsState.activeId.value,
+        )?.projectId
+    }
+
     private fun openProject(app: BeancountApplication, projectId: String) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
         app.projectsState.open(projectId)
@@ -243,6 +274,46 @@ class MainActivity : ComponentActivity() {
 
         app.engineManager.start(ledgerPath)
         app.ledgerState.load(ledgerPath)
+
+        // The widgets' entire refresh mechanism: the app writes what it just parsed and asks
+        // them to redraw. No alarm, no worker, nothing for a background limit to restrict —
+        // there is no background work (docs/ux.md §8).
+        lifecycleScope.launch {
+            app.ledgerState.snapshot.collect { snapshot ->
+                if (snapshot != null) publishWidgets(app, projectId, snapshot)
+            }
+        }
+    }
+
+    /** Writes the widget cache from a parsed ledger, then asks the widgets to redraw. */
+    private suspend fun publishWidgets(
+        app: BeancountApplication,
+        projectId: String,
+        ledger: dev.beancount.core.domain.LedgerSnapshot,
+    ) {
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val entitled = app.entitlementState.entitlement.value.allows(Feature.WIDGETS)
+                dev.beancount.core.data.WidgetCache(filesDir.resolve("state")).write(
+                    dev.beancount.core.data.WidgetCache.from(
+                        projectId = projectId,
+                        ledger = ledger,
+                        entitled = entitled,
+                        nowEpochMs = System.currentTimeMillis(),
+                        // Only what a widget can show. The cache lives outside the project
+                        // tree so the home screen can read it, and a full chart of accounts
+                        // is a description of somebody's life.
+                        accounts = ledger.accounts
+                            .map { it.name }
+                            .filter {
+                                it.startsWith("Assets:") || it.startsWith("Liabilities:")
+                            }
+                            .take(widgetAccountLimit),
+                    ),
+                )
+                dev.beancount.app.widget.WidgetRefresh.refreshAll(this@MainActivity)
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -250,6 +321,7 @@ class MainActivity : ComponentActivity() {
         val app = application as BeancountApplication
 
         app.projectsState.refresh()
+        hideWidgetAmounts = dev.beancount.app.widget.WidgetPreferences(this).hideAmounts()
         backupFolder = app.backupSettings.folderUri()
         mirrorFolder = app.mirror.folderUri
         mirrorEnabled = app.mirror.enabled
@@ -270,7 +342,7 @@ class MainActivity : ComponentActivity() {
             // Debug-only: begin a write and stall before committing, so a process kill
             // can be timed to land mid-write (docs/milestones/m4.md, process-death test).
             val stall = intent.getStringExtra("m4_test")
-            val active = app.projectsState.activeId.value
+            val active = widgetTarget(app) ?: app.projectsState.activeId.value
             if (BuildConfig.DEBUG && active != null && stall != null &&
                 stall.startsWith("stall_mid_write")
             ) {
@@ -419,6 +491,13 @@ class MainActivity : ComponentActivity() {
                         dynamicColour = dynamicColour,
                         onThemeChoice = { app.themeSettings.setChoice(it) },
                         onDynamicColour = { app.themeSettings.setDynamicColour(it) },
+                        hideWidgetAmounts = hideWidgetAmounts,
+                        onHideWidgetAmounts = { hide ->
+                            dev.beancount.app.widget.WidgetPreferences(this@MainActivity)
+                                .setHideAmounts(hide)
+                            hideWidgetAmounts = hide
+                            dev.beancount.app.widget.WidgetRefresh.refreshAll(this@MainActivity)
+                        },
                         pluginRows = pluginRows,
                         pluginSafeMode = pluginSafeMode,
                         pluginMessage = pluginMessage,
@@ -836,6 +915,8 @@ internal fun LedgerApp(
     dynamicColour: Boolean,
     onThemeChoice: (dev.beancount.app.ui.theme.ThemeChoice) -> Unit,
     onDynamicColour: (Boolean) -> Unit,
+    hideWidgetAmounts: Boolean,
+    onHideWidgetAmounts: (Boolean) -> Unit,
     pluginRows: List<dev.beancount.app.plugins.PluginRow>,
     pluginSafeMode: Boolean,
     pluginMessage: String?,
@@ -1018,6 +1099,8 @@ internal fun LedgerApp(
                 dynamicColour = dynamicColour,
                 onThemeChoice = onThemeChoice,
                 onDynamicColour = onDynamicColour,
+                hideWidgetAmounts = hideWidgetAmounts,
+                onHideWidgetAmounts = onHideWidgetAmounts,
                 pluginRows = pluginRows,
                 pluginSafeMode = pluginSafeMode,
                 pluginMessage = pluginMessage,
@@ -1121,6 +1204,8 @@ private fun SurfaceContent(
     dynamicColour: Boolean,
     onThemeChoice: (dev.beancount.app.ui.theme.ThemeChoice) -> Unit,
     onDynamicColour: (Boolean) -> Unit,
+    hideWidgetAmounts: Boolean,
+    onHideWidgetAmounts: (Boolean) -> Unit,
     pluginRows: List<dev.beancount.app.plugins.PluginRow>,
     pluginSafeMode: Boolean,
     pluginMessage: String?,
@@ -1261,6 +1346,8 @@ private fun SurfaceContent(
                                     android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S,
                                 onChoice = onThemeChoice,
                                 onDynamicColour = onDynamicColour,
+                                hideWidgetAmounts = hideWidgetAmounts,
+                                onHideWidgetAmounts = onHideWidgetAmounts,
                             )
 
                         MoreSection.PLUGINS ->

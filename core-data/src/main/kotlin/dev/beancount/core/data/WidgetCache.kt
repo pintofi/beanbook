@@ -1,0 +1,191 @@
+package dev.beancount.core.data
+
+import dev.beancount.core.domain.Amount
+import dev.beancount.core.domain.LedgerSnapshot
+import java.io.File
+import java.math.BigDecimal
+
+/**
+ * Everything the home-screen widgets need, and nothing else.
+ *
+ * This file is the whole reason a widget can exist at all. Rendering one must not start the
+ * Python interpreter or the Fava server — a home screen redrawing several widgets would
+ * otherwise spin up an engine per redraw, on a device that has just woken up, for a number
+ * that was already known (docs/ux.md §8). So the app writes this after every successful
+ * parse, and the widgets read only this.
+ *
+ * It carries [generatedAtEpochMs] so a widget can say *when* rather than implying *now*. A
+ * plausible but outdated number presented as current is the failure mode this whole design
+ * is arranged against: someone glances at a balance to decide whether to buy something.
+ */
+data class WidgetSnapshot(
+    val projectId: String,
+    val projectTitle: String,
+    val generatedAtEpochMs: Long,
+    /** Account name to formatted amount, for the accounts a widget may show. */
+    val balances: Map<String, String>,
+    val netWorth: String?,
+    val periodIncome: String?,
+    val periodExpense: String?,
+    /** True when the ledger parsed with no errors; a widget says so when it did not. */
+    val clean: Boolean,
+    /** Whether the tier that includes widgets is active, so a widget can say so itself. */
+    val entitled: Boolean,
+) {
+    /**
+     * Whether this is too old to show as current.
+     *
+     * Not a fixed rule about correctness — a ledger nobody has edited for a week is not
+     * wrong, it is just old. The widget uses this to change how it *presents* the number,
+     * never to hide it.
+     */
+    fun isStale(nowEpochMs: Long, maxAgeMs: Long = DEFAULT_MAX_AGE_MS): Boolean =
+        nowEpochMs - generatedAtEpochMs > maxAgeMs
+
+    internal fun toJson(): Json.Obj = Json.Obj(
+        buildMap {
+            put("schema", Json.Num(1.0))
+            put("project", Json.Str(projectId))
+            put("title", Json.Str(projectTitle))
+            put("generated_at", Json.Num(generatedAtEpochMs.toDouble()))
+            put("clean", Json.Bool(clean))
+            put("entitled", Json.Bool(entitled))
+            put(
+                "balances",
+                Json.Obj(balances.mapValues { (_, value) -> Json.Str(value) }),
+            )
+            netWorth?.let { put("net_worth", Json.Str(it)) }
+            periodIncome?.let { put("period_income", Json.Str(it)) }
+            periodExpense?.let { put("period_expense", Json.Str(it)) }
+        },
+    )
+
+    companion object {
+        /** Six hours. Long enough that an untouched ledger is not nagging about itself. */
+        const val DEFAULT_MAX_AGE_MS = 6L * 60 * 60 * 1000
+
+        internal fun fromJson(obj: Json.Obj): WidgetSnapshot? {
+            val balances = (obj["balances"] as? Json.Obj)?.fields.orEmpty()
+                .mapNotNull { (name, value) -> (value as? Json.Str)?.let { name to it.value } }
+                .toMap()
+            return WidgetSnapshot(
+                projectId = obj.string("project") ?: return null,
+                projectTitle = obj.string("title") ?: return null,
+                generatedAtEpochMs = obj.long("generated_at") ?: return null,
+                balances = balances,
+                netWorth = obj.string("net_worth"),
+                periodIncome = obj.string("period_income"),
+                periodExpense = obj.string("period_expense"),
+                clean = (obj["clean"] as? Json.Bool)?.value ?: false,
+                entitled = (obj["entitled"] as? Json.Bool)?.value ?: false,
+            )
+        }
+    }
+}
+
+/**
+ * Reads and writes the widget cache.
+ *
+ * Deliberately outside the project tree: a widget must be able to read it after the app has
+ * been killed and without knowing which project is open, and it must never travel in a
+ * backup or a mirror. It is derived data — losing it costs one refresh.
+ */
+class WidgetCache(stateDir: File) {
+
+    private val file = File(stateDir, "widgets.json")
+
+    fun read(): WidgetSnapshot? {
+        if (!file.isFile) return null
+        val root = runCatching { Json.parse(file.readText()) }.getOrNull() as? Json.Obj
+            ?: return null
+        return WidgetSnapshot.fromJson(root)
+    }
+
+    /** Atomic, so a widget reading mid-write sees the old snapshot rather than half of one. */
+    fun write(snapshot: WidgetSnapshot) {
+        file.parentFile?.mkdirs()
+        val tmp = File(file.parentFile, "widgets.json.tmp")
+        tmp.writeText(snapshot.toJson().write() + "\n")
+        if (!tmp.renameTo(file)) {
+            tmp.copyTo(file, overwrite = true)
+            tmp.delete()
+        }
+    }
+
+    fun clear() {
+        file.delete()
+    }
+
+    companion object {
+        /**
+         * Builds a snapshot from a parsed ledger.
+         *
+         * Amounts are formatted **here**, once, rather than in the widget. A widget runs in
+         * the home screen's process with no access to the app's formatting, and rendering a
+         * `BigDecimal` there would mean reimplementing it — which is how two places start
+         * disagreeing about what a number looks like.
+         */
+        fun from(
+            projectId: String,
+            ledger: LedgerSnapshot,
+            entitled: Boolean,
+            nowEpochMs: Long,
+            accounts: Collection<String> = ledger.accounts.map { it.name },
+        ): WidgetSnapshot {
+            val wanted = accounts.toSet()
+            // An account with no positions has nothing to show, and a widget saying nothing
+            // is worse than one the user never added.
+            val balances = ledger.accounts
+                .filter { it.name in wanted }
+                .mapNotNull { account -> format(account.positions)?.let { account.name to it } }
+                .toMap()
+
+            return WidgetSnapshot(
+                projectId = projectId,
+                projectTitle = ledger.title ?: projectId,
+                generatedAtEpochMs = nowEpochMs,
+                balances = balances,
+                // Assets *plus* liabilities, not minus: Beancount already stores what you
+                // owe as a negative balance. Negating it made debt increase net worth, which
+                // is the most cheerful possible way to be wrong about someone's finances.
+                netWorth = format(
+                    sumByCurrency(ledger.totalFor("Assets") + ledger.totalFor("Liabilities")),
+                ),
+                periodIncome = format(sumByCurrency(negated(ledger.totalFor("Income")))),
+                periodExpense = format(sumByCurrency(ledger.totalFor("Expenses"))),
+                clean = ledger.errors.isEmpty(),
+                entitled = entitled,
+            )
+        }
+
+        /**
+         * Income is a credit balance and therefore negative in double-entry terms. A widget
+         * headed "Income" showing a minus sign would be technically right and useless, so it
+         * is flipped once, here, where the reason can be written down.
+         */
+        private fun negated(amounts: List<Amount>): List<Amount> =
+            amounts.map { Amount(it.number.negate(), it.currency) }
+
+        /**
+         * Adds amounts of the same currency together.
+         *
+         * Two lists of totals concatenate rather than add, so net worth came out as
+         * "1240.00 USD  300.00 USD" — two numbers side by side, which reads as a total and
+         * is not one. Currencies are never mixed: a ledger in two currencies gets two
+         * figures, because adding them would require a rate this app does not have.
+         */
+        private fun sumByCurrency(amounts: List<Amount>): List<Amount> =
+            amounts.groupBy { it.currency }
+                .map { (currency, values) ->
+                    Amount(values.fold(BigDecimal.ZERO) { total, a -> total + a.number }, currency)
+                }
+                .sortedBy { it.currency }
+
+        private fun format(amounts: List<Amount>): String? {
+            val shown = amounts.filter { it.number.compareTo(BigDecimal.ZERO) != 0 }
+                .ifEmpty { amounts.take(1) }
+            if (shown.isEmpty()) return null
+            return shown.joinToString("  ") { "${it.number.toPlainString()} ${it.currency}" }
+        }
+    }
+}
