@@ -45,8 +45,16 @@ chaquopy {
             val wheelDir = providers.gradleProperty("beancount.wheelDir")
                 .getOrElse("${System.getProperty("user.home")}/tools/wheels")
             options("--find-links", wheelDir)
-            install("fava==1.30.15")
-            install("beancount==3.2.3")
+
+            // Every version, not just the two direct ones. Naming only fava and beancount
+            // left every transitive dependency free to move: two clean builds of the same
+            // commit resolved click 8.4.2 and click 8.5.0, which is a supply-chain problem
+            // before it is a reproducibility one — a build could pick up a version nobody
+            // reviewed (docs/milestones/m14-part5.md).
+            //
+            // Regenerate with tools/lock-python.py after a deliberate upgrade; CLAUDE.md
+            // makes upgrades their own milestone with the golden corpus re-run.
+            install("-r", "requirements.lock")
         }
     }
 }
