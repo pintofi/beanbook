@@ -71,16 +71,8 @@ class KeyVerifier(private val trusted: List<TrustedSigner> = TrustedSigners.ALL)
         )
     }
 
-    private fun verify(message: ByteArray, signature: ByteArray, publicKey: String): Boolean {
-        val raw = Base64.getUrlDecoder().decode(publicKey)
-        require(raw.size == PUBLIC_KEY_BYTES) { "a trusted key must be $PUBLIC_KEY_BYTES bytes" }
-        val spec = EdDSANamedCurveTable.getByName(EdDSANamedCurveTable.ED_25519)
-        val key = EdDSAPublicKey(EdDSAPublicKeySpec(raw, spec))
-        val engine: Signature = EdDSAEngine(java.security.MessageDigest.getInstance(spec.hashAlgorithm))
-        engine.initVerify(key)
-        engine.update(message)
-        return engine.verify(signature)
-    }
+    private fun verify(message: ByteArray, signature: ByteArray, publicKey: String): Boolean =
+        Ed25519.verify(message, signature, publicKey)
 
     private companion object {
         const val SUPPORTED_VERSION = 1
@@ -104,4 +96,33 @@ object TrustedSigners {
             issuing = true,
         ),
     )
+}
+
+/**
+ * Ed25519 verification, in one place.
+ *
+ * Contribution keys and update manifests are signed by the same key pair, so they must not
+ * each carry their own copy of this — two implementations of a signature check is one more
+ * than can be reviewed.
+ *
+ * From `net.i2p.crypto:eddsa` rather than the platform because `java.security` only gained
+ * Ed25519 in API 33 and this app supports API 28.
+ */
+internal object Ed25519 {
+
+    const val PUBLIC_KEY_BYTES = 32
+
+    fun verify(message: ByteArray, signature: ByteArray, publicKey: String): Boolean {
+        val raw = runCatching { Base64.getUrlDecoder().decode(publicKey) }.getOrNull()
+            ?: return false
+        if (raw.size != PUBLIC_KEY_BYTES) return false
+        val spec = EdDSANamedCurveTable.getByName(EdDSANamedCurveTable.ED_25519)
+        val key = EdDSAPublicKey(EdDSAPublicKeySpec(raw, spec))
+        val engine: Signature =
+            EdDSAEngine(java.security.MessageDigest.getInstance(spec.hashAlgorithm))
+        engine.initVerify(key)
+        engine.update(message)
+        // A malformed signature is a rejection, not a crash: this runs on input from a file.
+        return runCatching { engine.verify(signature) }.getOrDefault(false)
+    }
 }

@@ -84,6 +84,12 @@ android {
         getByName("main") { kotlin.srcDir("src/main/kotlin") }
         getByName("play") { kotlin.srcDir("src/play/kotlin") }
         getByName("expert") { kotlin.srcDir("src/expert/kotlin") }
+        // Flavor-specific instrumentation. Tests for the expert edition's self-update cannot
+        // live in the shared androidTest source set: the classes they exercise do not exist
+        // in the play build, by policy, so the shared set would not compile for it.
+        getByName("androidTestExpert") { kotlin.srcDir("src/androidTestExpert/kotlin") }
+        getByName("androidTestPlay") { kotlin.srcDir("src/androidTestPlay/kotlin") }
+
         getByName("androidTest") {
             kotlin.srcDir("src/androidTest/kotlin")
             // The golden corpus is shipped inside the test APK rather than duplicated:

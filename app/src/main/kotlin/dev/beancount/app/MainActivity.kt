@@ -745,6 +745,7 @@ internal enum class MoreSection(val label: String) {
     REMOTE("Remote"),
     PLUGINS("Plugins"),
     APPEARANCE("Appearance"),
+    UPDATES("Updates"),
 }
 
 /**
@@ -1249,6 +1250,9 @@ private fun SurfaceContent(
                             busyMessage = projectMessage,
                         )
 
+                        MoreSection.UPDATES ->
+                            dev.beancount.app.update.UpdateSection()
+
                         MoreSection.APPEARANCE ->
                             AppearanceScreen(
                                 choice = themeChoice,
@@ -1603,10 +1607,17 @@ private fun MoreMenu(onOpen: (MoreSection) -> Unit) {
         MoreSection.REMOTE to "Use a Fava server you host yourself",
         MoreSection.PLUGINS to "Extra checks and transformations, from files you supply",
         MoreSection.APPEARANCE to "Theme, dark mode and colours",
+        MoreSection.UPDATES to "Check for a signed update to this app",
     )
 
+    // Updates are the one section that is not in both editions: the Play build has no
+    // self-update anything, by policy, so offering the entry would be offering a dead end.
+    val sections = MoreSection.entries.filter {
+        it != MoreSection.UPDATES || currentPluginPolicy().allowsSelfUpdate
+    }
+
     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-        MoreSection.entries.forEach { entry ->
+        sections.forEach { entry ->
             androidx.compose.material3.ListItem(
                 headlineContent = { Text(entry.label) },
                 supportingContent = descriptions[entry]?.let { { Text(it) } },
