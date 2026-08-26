@@ -19,12 +19,13 @@ from __future__ import annotations
 
 import builtins
 import importlib
+import importlib.util
 import io
 import os
 import sys
 import time
 import traceback
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
 
 # Top-level packages that are the bridge, or a way to it.
@@ -35,62 +36,55 @@ class BridgeBlocked(ImportError):
     """Raised in place of importing the Java/Android bridge."""
 
 
-def _loaded_by_java(module) -> bool:
-    """Whether an already-imported module came from Chaquopy's Java importer.
-
-    Checked against the *loader*, not the module object: a Java-backed module is an ordinary
-    module object, so its own type says nothing. What identifies it is what imported it.
-    """
-    spec = getattr(module, "__spec__", None)
-    for candidate in (getattr(spec, "loader", None), getattr(module, "__loader__", None)):
-        if candidate is not None and _is_java_finder(candidate):
-            return True
-    return False
-
-
-def _is_java_finder(finder) -> bool:
-    """Whether a `sys.meta_path` entry is Chaquopy's Java importer."""
-    cls = type(finder)
-    module = (getattr(cls, "__module__", "") or "").lower()
-    return "chaquo" in module or "chaquo" in cls.__name__.lower() or module.split(".")[0] == "java"
-
-
 class BridgeGuard:
     """Withholds the Java/Android bridge while user code is imported.
 
-    **Chaquopy does not use `sys.meta_path` for Java.** It replaces `builtins.__import__`
-    with its own `java.chaquopy.import_override`, and that function resolves Java packages
-    itself without consulting any finder. Measured on a device: with a meta_path finder
-    installed, `importlib.import_module("java")` was refused while the statement
-    `from java.lang import System` sailed straight through, because the statement form
-    compiles to a call to `builtins.__import__`. A meta_path finder alone cannot withhold
-    this bridge, and a version of this class that only did that looked like it worked.
+    Chaquopy's bridge has two halves, and they are reached differently.
 
-    So the guard does three things:
+    `java` is an **ordinary Python package**, shipped in Chaquopy's `bootstrap.imy` and loaded
+    by a plain `zipimporter`. Java *classes* — `com.chaquo.python.Python`, `androidx.core`,
+    `dalvik.system` — come from `java.chaquopy.import_override`, which Chaquopy installs over
+    `builtins.__import__` at startup. `sys.meta_path` is not involved in either.
 
-    1. Replaces `builtins.__import__` with a wrapper that delegates to
-       `importlib.__import__` — the standard implementation — instead of to Chaquopy's
-       override. Every `import` statement goes through this, and the standard implementation
-       has no idea how to resolve a Java package, so none of them resolve. This is the part
-       that actually works, and it needs no list of names to be complete.
-    2. Refuses `java`, `android` and friends **by name**, so the common cases get an error
-       that explains itself rather than `ModuleNotFoundError`.
-    3. Evicts anything already imported from Java, since a cached module is returned without
-       consulting anything.
+    So the guard replaces `builtins.__import__` with a wrapper that **delegates to Chaquopy's
+    override** and refuses two things: names on [BRIDGE_MODULES], which gets `import java` a
+    message that explains itself; and any name Python itself cannot resolve but the import
+    succeeded for anyway, which can only mean Java provided it. That second rule needs no
+    list and covers the whole Java namespace.
 
-    All of it is undone by `remove()`, so the app's own use of Chaquopy is unaffected.
+    An earlier version did two things this one does not: it delegated to
+    `importlib.__import__` rather than to Chaquopy's override, and it removed
+    `ChaquopyPathFinder` from `sys.meta_path`. On the play flavor — where the guard is on for
+    every ledger load — Beancount's parser then failed `assert isinstance(number, Decimal)`
+    on an object whose repr was `Decimal('12.00')`, meaning two `decimal` modules existed at
+    once. Every ledger load with a plugin directory active was corrupted.
 
-    None of this is a security boundary: user code runs in this process and can put
-    `builtins.__import__` back in one line. It is Play policy compliance, and the point is
-    that the app does not offer the bridge and that this is testable on a device rather than
-    asserted in a document (SPEC.md Q8).
+    **The exact cause was not established.** Restoring the old delegation reproduced nothing;
+    nor did restoring the meta_path removal; nor did both together. Something else in the
+    rework — most likely evicting plugin modules after each load, which stops a module from a
+    previous, deleted directory lingering — also mattered. What is certain is that the fault
+    was real, that it is gone, and that `PluginCompatibilityTest` is what found it and would
+    find it again. Guessing at a root cause in a comment would only make the next person
+    trust the guess.
+
+    The rule that follows from it anyway: hand ordinary imports back to whatever
+    `builtins.__import__` already was, and leave `sys.meta_path` alone. Chaquopy knows how to
+    load Chaquopy's packages; this code does not need to.
+
+    Nothing is evicted from `sys.modules`: `java` is Chaquopy's own and the app depends on
+    it. A cached module does not get past the wrapper anyway, because the wrapper runs before
+    the cache is ever consulted.
+
+    None of this is a security boundary. User code runs in this process and can restore
+    `builtins.__import__` in one line. It is Play policy compliance, testable on a device
+    rather than asserted in a document (SPEC.md Q8).
     """
 
     def __init__(self, blocked=BRIDGE_MODULES) -> None:
         self.blocked = tuple(blocked)
         self.refusals: list[str] = []
-        self._detached: list[tuple[int, object]] = []
         self._replaced_import = None
+        self._replaced_import_module = None
 
     def _is_blocked(self, name: str) -> bool:
         return any(name == mod or name.startswith(mod + ".") for mod in self.blocked)
@@ -113,50 +107,72 @@ class BridgeGuard:
         )
 
     def install(self) -> "BridgeGuard":
-        # Drop anything already imported, or an `import java` would be served from the
-        # module cache without consulting any finder at all.
-        for name, module in list(sys.modules.items()):
-            if self._is_blocked(name) or _loaded_by_java(module):
-                del sys.modules[name]
-
-        # Take Chaquopy's Java importer out of the chain. Recorded with its position so the
-        # import system is put back exactly as it was, not merely approximately.
-        self._detached = [
-            (index, finder)
-            for index, finder in enumerate(sys.meta_path)
-            if _is_java_finder(finder)
-        ]
-        for _, finder in self._detached:
-            sys.meta_path.remove(finder)
-
+        # Deliberately no sys.modules eviction. `java` is Chaquopy's own module and the app
+        # needs it; dropping it would give the process two copies of the bridge. A cached
+        # module cannot slip past the wrapper below, because the wrapper is consulted before
+        # the module cache is.
         if self not in sys.meta_path:
+            # Covers importlib.import_module(), which goes through the finders rather than
+            # through builtins.__import__.
             sys.meta_path.insert(0, self)
 
-        # The part that actually closes the door. See the class docstring.
         if self._replaced_import is None:
             self._replaced_import = builtins.__import__
             builtins.__import__ = self._guarded_import
+
+        if self._replaced_import_module is None:
+            # `importlib.import_module` is a separate door into the same room, and it checks
+            # `sys.modules` before it consults a single finder — so with `java` already
+            # imported by the app (it always is), the meta_path finder never even runs and
+            # the call succeeds. Evicting `java` would fix that and break Chaquopy, so the
+            # door gets its own lock.
+            self._replaced_import_module = importlib.import_module
+            importlib.import_module = self._guarded_import_module
         return self
+
+    def _guarded_import_module(self, name, package=None):
+        if not (name or "").startswith(".") and self._is_blocked(name):
+            self._refuse(name)
+        return self._replaced_import_module(name, package)
+
+    @staticmethod
+    def _resolvable_by_python(root: str) -> bool:
+        """Whether ordinary Python could provide this top-level name."""
+        if root in sys.modules:
+            return True
+        try:
+            return importlib.util.find_spec(root) is not None
+        except BaseException:
+            # A parent package that refuses to be inspected is not evidence either way;
+            # assume Python could, so an unrelated failure is never reported as the bridge.
+            return True
 
     def _guarded_import(self, name, globals=None, locals=None, fromlist=(), level=0):
         if level == 0 and self._is_blocked(name):
             self._refuse(name)
-        # importlib.__import__ deliberately, never the function we just replaced: that one
-        # is Chaquopy's, and it is the thing being withheld. The standard implementation
-        # still resolves everything else through sys.meta_path and sys.path, so the app's
-        # own packages and the plugin's own imports are untouched.
-        return importlib.__import__(name, globals, locals, fromlist, level)
+
+        root = name.split(".")[0] if level == 0 else ""
+        resolvable = self._resolvable_by_python(root) if root else True
+
+        # Chaquopy's own override, so every ordinary import takes exactly the path it always
+        # takes and no module is ever imported twice by two different mechanisms.
+        module = self._replaced_import(name, globals, locals, fromlist, level)
+
+        if not resolvable:
+            # Python had no way to provide this and yet it imported. Only Java could have.
+            sys.modules.pop(root, None)
+            self._refuse(name)
+        return module
 
     def remove(self) -> None:
+        if self._replaced_import_module is not None:
+            importlib.import_module = self._replaced_import_module
+            self._replaced_import_module = None
         if self._replaced_import is not None:
             builtins.__import__ = self._replaced_import
             self._replaced_import = None
         if self in sys.meta_path:
             sys.meta_path.remove(self)
-        for index, finder in self._detached:
-            if finder not in sys.meta_path:
-                sys.meta_path.insert(min(index, len(sys.meta_path)), finder)
-        self._detached = []
 
 
 class PluginRun:
@@ -433,3 +449,65 @@ def run_script(
         result["output"] = redact(captured.getvalue(), secrets)[:4000]
 
     return result
+
+
+# --- making installed plugins importable by Beancount ------------------------------------
+
+@contextmanager
+def activated(plugin_dirs, allow_bridge: bool):
+    """Makes installed plugins importable for the duration of a ledger load.
+
+    Beancount imports a plugin itself, when it reaches a `plugin "..."` directive — this app
+    never imports it on Beancount's behalf. So the only thing to arrange is that the module
+    can be found, and that the edition's rules are in force while it is found.
+
+    The guard is installed **only when there is something to guard**: no plugin directories,
+    or an edition that allows the bridge, and this does nothing at all. That matters for more
+    than tidiness — the guard routes every import through `importlib.__import__`, which is
+    the pure-Python implementation, and a ledger load imports a great deal of Beancount. Not
+    paying for that when no user code is involved keeps the common case at full speed
+    (cold start is already over budget: docs/pending-verification.md V3).
+    """
+    directories = _module_names(plugin_dirs)
+    guard = None if (allow_bridge or not directories) else BridgeGuard().install()
+    added = []
+    for directory in directories:
+        resolved = str(Path(directory).resolve())
+        if resolved not in sys.path:
+            sys.path.insert(0, resolved)
+            added.append(resolved)
+    # FileFinder caches what is in a directory. A plugin installed since the last load would
+    # not be found without this.
+    importlib.invalidate_caches()
+
+    try:
+        yield
+    finally:
+        # Evicting is not tidiness, it is correctness. Beancount imports a plugin with
+        # `importlib.import_module`, which returns a cached module without consulting
+        # `sys.path` at all — so once a plugin has been imported, *disabling or uninstalling
+        # it does not stop it running* for the life of the process. Found by the
+        # compatibility harness: a ledger loaded with no plugin directories at all still had
+        # its directives dropped by a plugin from the previous load.
+        #
+        # It also means an edited plugin is picked up on the next load instead of being
+        # stale, which is what anyone editing one would expect.
+        _evict_modules_under(added)
+        for directory in added:
+            if directory in sys.path:
+                sys.path.remove(directory)
+        if guard is not None:
+            guard.remove()
+
+
+def _evict_modules_under(directories) -> list:
+    """Drops every imported module whose file lives under one of `directories`."""
+    if not directories:
+        return []
+    evicted = []
+    for name, module in list(sys.modules.items()):
+        origin = getattr(module, "__file__", None) or ""
+        if any(origin.startswith(directory + os.sep) for directory in directories):
+            del sys.modules[name]
+            evicted.append(name)
+    return evicted

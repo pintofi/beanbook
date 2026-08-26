@@ -1,0 +1,7 @@
+{
+  "id": "standin: transforms entries",
+  "plugin_dir": "tools/plugin-compat/cases/fixtures/tagger",
+  "ledger": "tools/plugin-compat/cases/fixtures/tagger/ledger.beancount",
+  "allow_bridge": true,
+  "expect": {"imports": "passed", "executes": "passed", "preserves": "passed"}
+}

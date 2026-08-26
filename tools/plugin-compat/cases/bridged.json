@@ -1,0 +1,7 @@
+{
+  "id": "standin: imports the bridge, play rules",
+  "plugin_dir": "tools/plugin-compat/cases/fixtures/bridged",
+  "ledger": "tools/plugin-compat/cases/fixtures/bridged/ledger.beancount",
+  "allow_bridge": false,
+  "expect": {"imports": "failed"}
+}

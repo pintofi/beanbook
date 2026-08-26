@@ -1,0 +1,7 @@
+{
+  "id": "standin: raises on import",
+  "plugin_dir": "tools/plugin-compat/cases/fixtures/broken",
+  "ledger": "tools/plugin-compat/cases/fixtures/broken/ledger.beancount",
+  "allow_bridge": true,
+  "expect": {"imports": "failed"}
+}

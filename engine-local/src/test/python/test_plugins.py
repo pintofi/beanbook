@@ -9,6 +9,7 @@ limit: it means they prove the *guard* refuses the import, not that Chaquopy's b
 reachable without it. The device half of that lives in `PluginBridgeTest`.
 """
 
+import importlib
 import sys
 import types
 import unittest
@@ -33,6 +34,27 @@ class BridgeGuardTest(unittest.TestCase):
             with self.assertRaises(plugins.BridgeBlocked, msg=name):
                 __import__(name)
 
+    def test_import_module_is_blocked_even_when_the_module_is_already_cached(self):
+        # importlib.import_module returns straight from sys.modules without consulting a
+        # single finder. On a device `java` is always already imported — the app uses it —
+        # so this was the one path that stayed open once the guard stopped evicting it.
+        sys.modules["java"] = types.ModuleType("java")
+        self.addCleanup(sys.modules.pop, "java", None)
+        self.guard.install()
+
+        with self.assertRaises(plugins.BridgeBlocked):
+            importlib.import_module("java")
+
+    def test_import_module_still_works_for_everything_else(self):
+        self.guard.install()
+        self.assertIsNotNone(importlib.import_module("fractions"))
+
+    def test_import_module_is_restored_afterwards(self):
+        before = importlib.import_module
+        self.guard.install()
+        self.guard.remove()
+        self.assertIs(before, importlib.import_module)
+
     def test_refusal_says_which_module_and_why(self):
         self.guard.install()
         with self.assertRaises(plugins.BridgeBlocked) as caught:
@@ -53,18 +75,20 @@ class BridgeGuardTest(unittest.TestCase):
         self.addCleanup(sys.modules.pop, "javalang", None)
         import javalang  # noqa: F401 — the import itself is the assertion
 
-    def test_a_bridge_already_in_the_module_cache_is_evicted_on_install(self):
-        # Without this, `import java` is served straight from sys.modules and no finder is
-        # ever consulted — the guard would be installed and completely bypassed.
+    def test_a_bridge_already_in_the_module_cache_is_still_refused(self):
+        # `java` is Chaquopy's own module and the app itself needs it, so the guard must not
+        # evict it — two copies of the bridge would be worse than none. It does not need to:
+        # the wrapper around builtins.__import__ runs before the module cache is consulted.
         fake = types.ModuleType("java")
         fake.marker = "the real bridge"
         sys.modules["java"] = fake
+        self.addCleanup(sys.modules.pop, "java", None)
 
         self.guard.install()
 
-        self.assertNotIn("java", sys.modules)
+        self.assertIn("java", sys.modules, "the app's own Chaquopy module was evicted")
         with self.assertRaises(plugins.BridgeBlocked):
-            __import__("java")
+            exec("import java", {})
 
     def test_removing_the_guard_leaves_the_import_system_as_it_was(self):
         before = list(sys.meta_path)
@@ -84,143 +108,73 @@ class BridgeGuardTest(unittest.TestCase):
         import decimal  # noqa: F401
 
 
-class JavaFinderDetachmentTest(unittest.TestCase):
-    """The half the name check cannot do.
+class DelegationTest(unittest.TestCase):
+    """What the guard delegates to, and why it matters more than it looks.
 
-    Chaquopy resolves *any* Java package name, so `com.chaquo.python`, `androidx.…` and
-    `dalvik.system` are all importable and no denylist of names covers them. The guard
-    therefore removes Chaquopy's importer from `sys.meta_path` outright.
-
-    Chaquopy is not on the desktop, so this substitutes a finder that looks like it — same
-    shape, same detection surface — and checks it is taken out and put back. Whether the
-    real one is detected is a device question, answered by `PluginBridgeTest`.
-    """
-
-    class FakeJavaLoader:
-        """A loader that identifies the module as having come from Java, as Chaquopy's does."""
-
-        def create_module(self, spec):
-            return None
-
-        def exec_module(self, module):
-            module.java_backed = True
-
-    FakeJavaLoader.__module__ = "com.chaquo.python.import_hook"
-
-    class FakeChaquopyFinder:
-        """Stands in for Chaquopy's importer: resolves any Java-looking package."""
-
-        def find_spec(self, fullname, path=None, target=None):
-            if fullname.split(".")[0] in ("java", "com", "androidx", "dalvik", "org"):
-                import importlib.util
-
-                loader = JavaFinderDetachmentTest.FakeJavaLoader()
-                spec = importlib.util.spec_from_loader(fullname, loader=loader)
-                spec.submodule_search_locations = []
-                return spec
-            return None
-
-    # Declared so _is_java_finder sees the same thing it would see for the real one.
-    FakeChaquopyFinder.__module__ = "com.chaquo.python.import_hook"
-
-    def setUp(self):
-        self.finder = self.FakeChaquopyFinder()
-        sys.meta_path.append(self.finder)
-        self.addCleanup(
-            lambda: self.finder in sys.meta_path and sys.meta_path.remove(self.finder)
-        )
-        for name in list(sys.modules):
-            if name.split(".")[0] in ("java", "com", "androidx", "dalvik"):
-                del sys.modules[name]
-
-    def test_the_fake_finder_really_does_resolve_java_packages(self):
-        # Without this the rest of the class could pass against a finder that never worked.
-        import androidx  # noqa: F401
-        self.assertIn("androidx", sys.modules)
-        self.assertTrue(getattr(sys.modules["androidx"], "java_backed", False))
-
-    def test_the_java_finder_is_detached_while_the_guard_is_installed(self):
-        guard = plugins.BridgeGuard().install()
-        self.addCleanup(guard.remove)
-
-        self.assertNotIn(self.finder, sys.meta_path, "Chaquopy's importer was left in place")
-        # androidx is not on any denylist. It must still fail, because the thing that
-        # resolved it is gone.
-        with self.assertRaises(ImportError):
-            __import__("androidx")
-
-    def test_the_java_finder_is_put_back_afterwards(self):
-        before = list(sys.meta_path)
-        guard = plugins.BridgeGuard().install()
-        guard.remove()
-
-        self.assertEqual(before, sys.meta_path)
-        import androidx  # noqa: F401 — works again, so the app itself is unaffected
-
-    def test_a_java_module_already_imported_is_evicted_too(self):
-        import androidx  # noqa: F401
-        self.assertIn("androidx", sys.modules)
-
-        guard = plugins.BridgeGuard().install()
-        self.addCleanup(guard.remove)
-
-        self.assertNotIn("androidx", sys.modules, "a cached Java module would bypass the guard")
-
-
-class ImportHookTest(unittest.TestCase):
-    """The `builtins.__import__` half of the guard.
-
-    This is the half that matters. On a device, a `sys.meta_path` finder blocked
-    `importlib.import_module("java")` while the ordinary statement `from java.lang import
-    System` went straight past it, because Chaquopy replaces `builtins.__import__` and the
-    statement form calls that. A guard that only watched meta_path looked like it worked.
+    An earlier version delegated to `importlib.__import__` and also pulled Chaquopy's path
+    finder out of `sys.meta_path`. On a device, Beancount's parser then failed
+    `assert isinstance(number, Decimal)` on an object whose repr was `Decimal('12.00')` —
+    two `decimal` modules in one process. The exact trigger was never isolated (see
+    `BridgeGuard`), which is all the more reason to pin the rule that removed it: hand every
+    ordinary import straight back to whatever `builtins.__import__` already was, and let
+    Chaquopy load Chaquopy's packages.
     """
 
     def setUp(self):
         self.guard = plugins.BridgeGuard()
         self.addCleanup(self.guard.remove)
-        self.original = __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
 
-    def test_the_import_builtin_is_replaced_and_put_back(self):
+    def test_ordinary_imports_are_handed_to_the_import_that_was_already_installed(self):
         import builtins
 
-        before = builtins.__import__
-        self.guard.install()
-        self.assertIsNot(before, builtins.__import__, "builtins.__import__ was not replaced")
-        self.guard.remove()
-        self.assertIs(before, builtins.__import__, "builtins.__import__ was not restored")
+        seen = []
+        original = builtins.__import__
 
-    def test_an_import_statement_is_refused_not_only_import_module(self):
+        def recording_import(name, *args, **kwargs):
+            seen.append(name)
+            return original(name, *args, **kwargs)
+
+        builtins.__import__ = recording_import
+        self.addCleanup(setattr, builtins, "__import__", original)
+
+        self.guard.install()
+        exec("import fractions", {})
+
+        self.assertIn("fractions", seen, "the guard bypassed the installed import")
+
+    def test_a_name_only_java_could_provide_is_refused(self):
+        # Stands in for Chaquopy's import_override: it satisfies names that no Python module
+        # provides. androidx is on no denylist, so the only thing that can catch it is the
+        # rule "Python could not have provided this".
+        import builtins
+
+        original = builtins.__import__
+
+        def java_ish_import(name, *args, **kwargs):
+            root = name.split(".")[0]
+            if root in ("androidx", "dalvik"):
+                module = types.ModuleType(name)
+                sys.modules[name] = module
+                return module
+            return original(name, *args, **kwargs)
+
+        builtins.__import__ = java_ish_import
+        self.addCleanup(setattr, builtins, "__import__", original)
+        self.addCleanup(sys.modules.pop, "androidx", None)
+
         self.guard.install()
 
-        # The statement form compiles to a builtins.__import__ call. This is the exact
-        # shape that slipped through the meta_path-only guard on a device.
         with self.assertRaises(plugins.BridgeBlocked):
-            exec("from java.lang import System", {})
-        with self.assertRaises(plugins.BridgeBlocked):
-            exec("import android.os", {})
+            exec("import androidx.core", {})
+        self.assertNotIn("androidx", sys.modules, "the refused module was left behind")
 
-    def test_ordinary_imports_are_delegated_untouched(self):
+    def test_a_module_that_genuinely_does_not_exist_still_says_so(self):
+        # Reporting a typo as "the bridge is not available" would send someone hunting for
+        # a policy problem they do not have.
         self.guard.install()
 
-        scope = {}
-        exec("import json\nimport xml.etree.ElementTree as ET\nfrom decimal import Decimal", scope)
-        self.assertIn("Decimal", scope)
-
-    def test_a_relative_import_inside_a_plugin_package_still_works(self):
-        import tempfile
-        import shutil
-
-        directory = tempfile.mkdtemp(prefix="relimport-")
-        self.addCleanup(shutil.rmtree, directory, True)
-        pkg = Path(directory, "relpkg")
-        pkg.mkdir()
-        (pkg / "__init__.py").write_text("from . import helper\nVALUE = helper.VALUE\n")
-        (pkg / "helper.py").write_text("VALUE = 7\n")
-
-        result = plugins.load_plugins(directory, "relpkg", allow_bridge=False)
-
-        self.assertEqual(1, result["loaded"], result["runs"])
+        with self.assertRaises(ModuleNotFoundError):
+            exec("import definitely_not_a_real_module_xyz", {})
 
 
 class LoadPluginsTest(unittest.TestCase):
@@ -389,6 +343,87 @@ class RedactTest(unittest.TestCase):
     def test_redaction_of_nothing_changes_nothing(self):
         self.assertEqual("plain", plugins.redact("plain", secrets=[]))
         self.assertEqual("plain", plugins.redact("plain", secrets=[""]))
+
+
+class ActivationTest(unittest.TestCase):
+    """Making installed plugins importable, and — just as important — un-importable again."""
+
+    def setUp(self):
+        import tempfile
+
+        self.dir = tempfile.mkdtemp(prefix="activate-test-")
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.dir, ignore_errors=True))
+        Path(self.dir, "userplug.py").write_text("VALUE = 1\n")
+        sys.modules.pop("userplug", None)
+        self.addCleanup(sys.modules.pop, "userplug", None)
+
+    def test_a_plugin_is_importable_inside_the_block(self):
+        with plugins.activated(self.dir, allow_bridge=True):
+            import userplug
+
+            self.assertEqual(1, userplug.VALUE)
+
+    def test_the_path_is_removed_afterwards(self):
+        before = list(sys.path)
+        with plugins.activated(self.dir, allow_bridge=True):
+            pass
+        self.assertEqual(before, sys.path)
+
+    def test_a_plugin_stops_being_importable_once_it_is_no_longer_activated(self):
+        # The bug this exists for. importlib.import_module returns a cached module without
+        # consulting sys.path, so a plugin that has been imported once keeps working after it
+        # is disabled or uninstalled — for the whole life of the process. A user who turns
+        # off a misbehaving plugin would see it carry on.
+        with plugins.activated(self.dir, allow_bridge=True):
+            importlib.import_module("userplug")
+        self.assertNotIn("userplug", sys.modules)
+
+        with self.assertRaises(ImportError):
+            with plugins.activated("", allow_bridge=True):
+                importlib.import_module("userplug")
+
+    def test_an_edited_plugin_is_picked_up_on_the_next_activation(self):
+        with plugins.activated(self.dir, allow_bridge=True):
+            self.assertEqual(1, importlib.import_module("userplug").VALUE)
+
+        # Longer, not just different: CPython decides a cached .pyc is fresh from the source
+        # file's size and mtime-in-seconds, so an edit that keeps both the same within one
+        # second is served stale. That is a real, if narrow, hole and it is not one this
+        # layer can close — hash-based .pyc files are not the default.
+        Path(self.dir, "userplug.py").write_text("VALUE = 22  # edited\n")
+
+        with plugins.activated(self.dir, allow_bridge=True):
+            self.assertEqual(22, importlib.import_module("userplug").VALUE)
+
+    def test_a_plugin_installed_since_the_last_load_is_found(self):
+        with plugins.activated(self.dir, allow_bridge=True):
+            importlib.import_module("userplug")
+
+        Path(self.dir, "arrived_later.py").write_text("VALUE = 3\n")
+        self.addCleanup(sys.modules.pop, "arrived_later", None)
+
+        # FileFinder caches directory listings, so without invalidate_caches() this raises.
+        with plugins.activated(self.dir, allow_bridge=True):
+            self.assertEqual(3, importlib.import_module("arrived_later").VALUE)
+
+    def test_modules_that_are_not_plugins_are_left_alone(self):
+        import json as before
+
+        with plugins.activated(self.dir, allow_bridge=True):
+            pass
+
+        self.assertIn("json", sys.modules)
+        self.assertIs(before, sys.modules["json"])
+
+    def test_nothing_happens_when_there_are_no_plugin_directories(self):
+        before_path = list(sys.path)
+        before_modules = set(sys.modules)
+
+        with plugins.activated("", allow_bridge=False):
+            pass
+
+        self.assertEqual(before_path, sys.path)
+        self.assertEqual(before_modules, set(sys.modules))
 
 
 class ScriptRunnerTest(unittest.TestCase):

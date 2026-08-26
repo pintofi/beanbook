@@ -32,7 +32,30 @@ def _error_dict(error: Any) -> dict[str, Any]:
     }
 
 
-def inspect(ledger_path: str, journal_limit: int = 200) -> str:
+def _errors_with_plugin_failure(errors: Any, plugin_failure) -> list:
+    """Serialises Beancount's errors, plus the one Beancount could not catch itself."""
+    out = [_error_dict(e) for e in errors]
+    if plugin_failure:
+        out.append(
+            {
+                "message": (
+                    "A plugin stopped the ledger from loading, so it was loaded without "
+                    f"user plugins: {plugin_failure}"
+                ),
+                "file": None,
+                "line": None,
+                "type": "PluginFailure",
+            }
+        )
+    return out
+
+
+def inspect(
+    ledger_path: str,
+    journal_limit: int = 200,
+    plugin_dirs: str = "",
+    allow_bridge: bool = True,
+) -> str:
     """Parse a ledger and return a JSON summary.
 
     JSON rather than a Python object because this crosses the Chaquopy boundary and is
@@ -41,8 +64,26 @@ def inspect(ledger_path: str, journal_limit: int = 200) -> str:
     from beancount import loader
     from beancount.core import data, getters
 
+    import plugins
+
     started = time.monotonic()
-    entries, errors, options_map = loader.load_file(ledger_path)
+    plugin_failure = None
+    # User plugins are imported by Beancount itself, when it reaches a `plugin` directive.
+    # All this does is make them findable, under the edition's rules.
+    try:
+        with plugins.activated(plugin_dirs, allow_bridge):
+            entries, errors, options_map = loader.load_file(ledger_path)
+    except BaseException as exc:
+        # Beancount catches an ImportError from a plugin and records it as an error. Anything
+        # else — a RuntimeError at module level, a SystemExit, an assertion — comes straight
+        # out of load_file and would take the engine down with it. Found with a plugin whose
+        # first line was `raise RuntimeError(...)`.
+        #
+        # A plugin must not be able to make a ledger unreadable. Load it again without user
+        # plugins, so the user still has their data, and report what broke.
+        plugin_failure = f"{type(exc).__name__}: {exc}"
+        with plugins.activated("", allow_bridge):
+            entries, errors, options_map = loader.load_file(ledger_path)
     load_ms = (time.monotonic() - started) * 1000
 
     counts: dict[str, int] = {}
@@ -112,7 +153,7 @@ def inspect(ledger_path: str, journal_limit: int = 200) -> str:
         "entry_count": len(entries),
         "entry_counts": dict(sorted(counts.items())),
         "error_count": len(errors),
-        "errors": [_error_dict(e) for e in errors[:50]],
+        "errors": _errors_with_plugin_failure(errors[:50], plugin_failure),
         "account_count": len(accounts),
         "accounts": account_rows,
         "included_files": sorted(str(f) for f in options_map.get("include", [])),

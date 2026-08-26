@@ -1,0 +1,16 @@
+plugin "bridged"
+
+2026-01-01 open Assets:Bank:Checking
+2026-01-01 open Expenses:Food:Groceries
+2026-01-01 open Income:Salary
+
+2026-02-01 * "Small shop" "under the line"
+  Expenses:Food:Groceries    12.00 USD
+  Assets:Bank:Checking
+
+2026-02-02 * "Big shop" "over the line"
+  Expenses:Food:Groceries   250.00 USD
+  Assets:Bank:Checking
+
+2026-02-03 note Assets:Bank:Checking "a note that must survive"
+2026-02-04 balance Assets:Bank:Checking  -262.00 USD

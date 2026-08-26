@@ -1,0 +1,12 @@
+{
+  "id": "standin: discards directives",
+  "plugin_dir": "tools/plugin-compat/cases/fixtures/dropper",
+  "ledger": "tools/plugin-compat/cases/fixtures/dropper/ledger.beancount",
+  "allow_bridge": true,
+  "expect": {
+    "imports": "passed",
+    "executes": "failed",
+    "preserves": "failed"
+  },
+  "note": "Dropping the Open directives also breaks account validation, so `executes` fails too. That is the real behaviour and is what the case pins."
+}
