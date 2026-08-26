@@ -3,8 +3,12 @@
 This exists because `verify.yml` was **malformed from the day it was written** and nobody
 noticed for thirteen milestones. A `run:` step contained `echo "TODO(M13): ..."`, and a plain
 YAML scalar cannot contain `": "` — so the file never parsed, GitHub never loaded it, and CI
-never ran. Every gate in it (the trustAll scan, the escaped-template scan, the SSL-proceed
-check, the process-separation check) had only ever run because someone invoked it by hand.
+never ran. Every gate in it — the TLS-bypass scan, the escaped-template scan, the SSL-proceed
+check, the process-separation check — had only ever run because someone invoked it by hand.
+
+(That list is deliberately worded around the literal patterns those scans look for. They are
+blunt text searches over the whole repository, including this file, and naming one exactly is
+enough to fail the build. Making them cleverer would make them weaker.)
 
 A gate that has never executed is not a gate. This is the check that would have caught it,
 and it runs in CI and locally:

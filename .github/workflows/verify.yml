@@ -39,7 +39,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests
-        run: ./gradlew :core-domain:test :core-engine:test
+        # Every module with tests, not two of them. This ran :core-domain and
+        # :core-engine only, so :core-data, :core-entitlement and :engine-remote — 242
+        # tests between them — were never going to run in CI even once the workflow
+        # could be loaded at all.
+        run: >-
+          ./gradlew :core-domain:test :core-data:test :core-engine:test
+          :core-entitlement:test :engine-remote:test
 
       - name: Play flavor boundaries
         run: ./gradlew :app:verifyPlayFlavorBoundaries
@@ -143,8 +149,21 @@ jobs:
       - name: Fetch prebuilt Android wheels
         # beancount and watchfiles have no upstream Android wheels; they are cross-built
         # with cibuildwheel (tools/build-wheels.sh) and published as a release artifact.
-        run: >-
-          echo 'TODO: download pinned wheels; local builds use -Pbeancount.wheelDir'
+        # Not a TODO that passes. beancount and watchfiles have no upstream Android
+        # wheels, so a runner without them cannot assemble anything — and a step that
+        # echoes a note and exits 0 lets the build fail later with a confusing message
+        # instead of here with a clear one.
+        run: |
+          WHEELS="${BCA_WHEEL_DIR:-$HOME/tools/wheels}"
+          if [ ! -d "$WHEELS" ] || [ -z "$(ls -A "$WHEELS" 2>/dev/null)" ]; then
+            echo "::error::no Android wheels at $WHEELS. beancount and watchfiles are"
+            echo "::error::cross-built with tools/build-wheels.sh and are not on PyPI."
+            echo "::error::Publish them as a release artifact and fetch them here, or set"
+            echo "::error::BCA_WHEEL_DIR. Tracked as N16."
+            exit 1
+          fi
+          echo "using wheels from $WHEELS"
+          ls "$WHEELS" | head
 
       - name: Assemble debug, both editions
         run: ./gradlew :app:assemblePlayDebug :app:assembleExpertDebug
