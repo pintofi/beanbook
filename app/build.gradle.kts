@@ -64,9 +64,12 @@ android {
 
     buildTypes {
         release {
-            // R8 against Chaquopy is untested (Phase 0 risk R6) and owns ~22 MB of
-            // savings. Turning it on is its own task with evidence, not a default flip.
-            isMinifyEnabled = false
+            // R8 is on. It owns the single largest saving available (26.7 MB of dex before
+            // shrinking) and was left off through M1-M13 because turning it on against
+            // Chaquopy is exactly the kind of change that fails at runtime rather than at
+            // build time — see proguard-rules.pro for what has to be kept and why.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {
