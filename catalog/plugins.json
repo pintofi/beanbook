@@ -2,10 +2,12 @@
   "schema": 1,
   "note": "Curated candidates for the Expert (GitHub) edition only. Downloading and installing these is not available in the Play build: fetching executable code from a non-Play source is prohibited by the Device and Network Abuse policy (docs/distribution.md 2.1, D1). The Play build may list them for reference, and first-party plugins may be bundled in the APK instead.",
   "status_meaning": {
-    "untested": "listed only; no compatibility claim is made",
-    "supported": "install, import, execute, UI and round-trip all passed on a supported ABI",
-    "partial": "some steps passed; the failing step is recorded",
-    "unsupported": "a step failed; the reason is recorded"
+    "supported": "install, import, execute and round-trip all passed on a real run",
+    "needs-config": "works, but the plugin directive must carry a configuration string",
+    "partial": "some steps passed; the failing step is recorded in `tested.reason`",
+    "unsupported": "a step failed; the reason is recorded",
+    "unavailable": "could not be fetched or contains no loadable plugin; nothing was run",
+    "untested": "listed only; no compatibility claim is made"
   },
   "entries": [
     {
@@ -14,9 +16,14 @@
       "kind": "beancount-plugin",
       "repo": "SEIAROTg/autobean",
       "description": "Includes external ledgers without disabling their plugins",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL2",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.2.3"
+      }
     },
     {
       "id": "autobean.narration",
@@ -24,9 +31,14 @@
       "kind": "beancount-plugin",
       "repo": "SEIAROTg/autobean",
       "description": "Generates transaction narration from posting narration and comments",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL2",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.2.3"
+      }
     },
     {
       "id": "autobean.share",
@@ -34,9 +46,14 @@
       "kind": "beancount-plugin",
       "repo": "SEIAROTg/autobean",
       "description": "Expense split, joint bookkeeping and debt management",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL2",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "Error applying plugin \"autobean.share\": Traceback (most recent call last):\n  ...\n    File \"<repo>/build/plugin-sources/autobean/autobean-0.2.3/autobean/utils/plugin_lib.py\"",
+        "version": "0.2.3"
+      }
     },
     {
       "id": "autobean.sorted",
@@ -44,9 +61,14 @@
       "kind": "beancount-plugin",
       "repo": "SEIAROTg/autobean",
       "description": "Checks transactions are in non-descending order per file",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL2",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.2.3"
+      }
     },
     {
       "id": "autobean.truelayer",
@@ -54,9 +76,14 @@
       "kind": "beancount-plugin",
       "repo": "SEIAROTg/autobean",
       "description": "Imports transactions via the TrueLayer bank API aggregator",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL2",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.2.3"
+      }
     },
     {
       "id": "autobean.xcheck",
@@ -64,9 +91,14 @@
       "kind": "beancount-plugin",
       "repo": "SEIAROTg/autobean",
       "description": "Cross-checks against external ledgers",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL2",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.2.3"
+      }
     },
     {
       "id": "beancount-balancechange",
@@ -75,8 +107,13 @@
       "repo": "",
       "description": "Checks change in balance between two dates",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "beancount-balexpr",
@@ -85,8 +122,13 @@
       "repo": "",
       "description": "Checks balances against expressions combining accounts",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.5.0"
+      }
     },
     {
       "id": "beancount-checkclosed",
@@ -95,8 +137,13 @@
       "repo": "",
       "description": "Inserts a zero balance check for closed balance-sheet accounts",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "lazy.filter_map",
@@ -105,8 +152,13 @@
       "repo": "",
       "description": "Applies operations to groups of transactions selected by Fava filters",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "lazy.valuation",
@@ -115,8 +167,13 @@
       "repo": "",
       "description": "Tracks total value of an opaque fund over time",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "lazy.tag_from_continuous_events",
@@ -125,8 +182,13 @@
       "repo": "",
       "description": "Tags transactions based on Events",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "lazy.balance_extended",
@@ -135,8 +197,13 @@
       "repo": "",
       "description": "Extended balance assertions (full, padded, full-padded)",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "beangrow",
@@ -144,9 +211,14 @@
       "kind": "beancount-plugin",
       "repo": "beancount/beangrow",
       "description": "Computes investment returns across asset types",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GNU General Public License v2 (GPLv2)",
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "no module defining __plugins__ found in the download",
+        "version": "1.0.1"
+      }
     },
     {
       "id": "metadata-spray",
@@ -155,8 +227,13 @@
       "repo": "",
       "description": "Uses a regex pattern to add metadata to entries",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "portfolio_allocation",
@@ -164,9 +241,14 @@
       "kind": "beancount-plugin",
       "repo": "",
       "description": "Reports portfolio asset allocation for risk analysis and rebalancing",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL-3.0-or-later",
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "no module defining __plugins__ found in the download",
+        "version": "0.3.12"
+      }
     },
     {
       "id": "portfolio-returns",
@@ -174,9 +256,14 @@
       "kind": "beancount-plugin",
       "repo": "",
       "description": "Money-weighted and time-weighted portfolio returns",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL-2.0",
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "no module defining __plugins__ found in the download",
+        "version": "2.7.0"
+      }
     },
     {
       "id": "reds.capital_gains_classifier",
@@ -184,9 +271,14 @@
       "kind": "beancount-plugin",
       "repo": "redstreet/beancount_reds_plugins",
       "description": "Rebooks capital gains into long/short and gain/loss accounts",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL-3.0",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.4.0"
+      }
     },
     {
       "id": "reds.effective_date",
@@ -194,9 +286,14 @@
       "kind": "beancount-plugin",
       "repo": "redstreet/beancount_reds_plugins",
       "description": "Per-posting dates",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL-3.0",
+      "status": "needs-config",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "works, but the plugin directive must carry a configuration string; loaded cleanly once given one",
+        "version": "0.4.0"
+      }
     },
     {
       "id": "reds.opengroup",
@@ -204,9 +301,14 @@
       "kind": "beancount-plugin",
       "repo": "redstreet/beancount_reds_plugins",
       "description": "Inserts open statements for sets of accounts by rule",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL-3.0",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "with an empty config: Error applying plugin \"beancount_reds_plugins.opengroup.opengroup\": Traceback (most recent call last):\n  ...\n                     _feature_version=feature_version, optimize=optimize)\n    File \"<unknow",
+        "version": "0.4.0"
+      }
     },
     {
       "id": "reds.rename_accounts",
@@ -214,9 +316,14 @@
       "kind": "beancount-plugin",
       "repo": "redstreet/beancount_reds_plugins",
       "description": "Renames arbitrary accounts on the fly",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL-3.0",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "with an empty config: Error applying plugin \"beancount_reds_plugins.rename_accounts.rename_accounts\": Traceback (most recent call last):\n  ...\n                     _feature_version=feature_version, optimize=optimize)\n    F",
+        "version": "0.4.0"
+      }
     },
     {
       "id": "reds.zerosum",
@@ -224,9 +331,14 @@
       "kind": "beancount-plugin",
       "repo": "redstreet/beancount_reds_plugins",
       "description": "Finds matching posting pairs summing to zero",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL-3.0",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "with an empty config: Error applying plugin \"beancount_reds_plugins.zerosum.zerosum\": Traceback (most recent call last):\n  ...\n                     _feature_version=feature_version, optimize=optimize)\n    File \"<unknown>\",",
+        "version": "0.4.0"
+      }
     },
     {
       "id": "beancount-mortgage",
@@ -235,8 +347,13 @@
       "repo": "",
       "description": "Simulates loan/mortgage schedule and payments",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "beancount-zakat",
@@ -245,8 +362,13 @@
       "repo": "WildeBeast2521/beancount-zakat",
       "description": "Zakat calculation (first-party)",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "no module defining __plugins__ found in the download",
+        "version": "1.0.2"
+      }
     },
     {
       "id": "fava-envelope",
@@ -254,9 +376,14 @@
       "kind": "fava-extension",
       "repo": "",
       "description": "Envelope budgeting",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "MIT",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_envelope)",
+        "version": "0.5.9"
+      }
     },
     {
       "id": "fava-dashboards",
@@ -264,9 +391,14 @@
       "kind": "fava-extension",
       "repo": "",
       "description": "Fully custom dashboards",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "MIT License",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_dashboards)",
+        "version": "2.0.2"
+      }
     },
     {
       "id": "fava-portfolio-returns",
@@ -274,9 +406,14 @@
       "kind": "fava-extension",
       "repo": "andreasgerstmayr/fava-portfolio-returns",
       "description": "Portfolio returns",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL-2.0",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_portfolio_returns)",
+        "version": "2.7.0"
+      }
     },
     {
       "id": "fava-portfolio-summary",
@@ -285,8 +422,13 @@
       "repo": "",
       "description": "Grouped portfolio view with MWRR/TWRR",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "fava-classy-portfolio",
@@ -295,8 +437,13 @@
       "repo": "",
       "description": "Portfolio breakdowns using metadata labels",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "fava_investor",
@@ -304,9 +451,14 @@
       "kind": "fava-extension",
       "repo": "redstreet/fava_investor",
       "description": "Investment reports, analyses and tools",
-      "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "license": "GPL-3.0",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_investor)",
+        "version": "1.0.1"
+      }
     },
     {
       "id": "fava_budget_freedom",
@@ -315,8 +467,13 @@
       "repo": "",
       "description": "Budget management and visualisation",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "fava-currency-tracker",
@@ -325,8 +482,13 @@
       "repo": "",
       "description": "Currency exchange rate dashboard",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "fava-git",
@@ -335,8 +497,13 @@
       "repo": "",
       "description": "Simple Git integration for Fava",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "beantab",
@@ -345,8 +512,13 @@
       "repo": "",
       "description": "Balances editing visualisation",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     },
     {
       "id": "beancount-plugin-tax-uk",
@@ -355,8 +527,13 @@
       "repo": "",
       "description": "UK capital gains and tax reporting",
       "license": "unverified",
-      "status": "untested",
-      "tested": null
+      "status": "unavailable",
+      "tested": {
+        "on": "2026-08-26",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "could not be fetched: pypi: HTTP Error 404: Not Found",
+        "version": null
+      }
     }
   ]
 }
