@@ -83,7 +83,13 @@ echo "build backends pinned by $backends"
 # Without remapping, the shipped .so names the build machine's home directory — which in
 # a privacy-focused app is an identity leak in the artefact, not a cosmetic detail.
 export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo --remap-path-prefix=$work=/src ${RUSTFLAGS:-}"
-export CIBW_ENVIRONMENT="RUSTFLAGS='$RUSTFLAGS'"
+# Android is not Linux here: an extension module must link libpython explicitly, because
+# the Bionic linker resolves nothing at load time. Chaquopy's `python-3.13.pc` cannot supply
+# it — its `Libs:` line is `-L${libdir} $(BLDLIBRARY)`, an unexpanded Makefile variable — so
+# whether `-lpython3.13` reaches the link comes down to what meson infers, and that inference
+# differed between a laptop and a GitHub runner on identical toolchains (m14-part12.md).
+# Saying it outright removes the guess. A duplicate `-lpython3.13` is harmless.
+export CIBW_ENVIRONMENT="RUSTFLAGS='$RUSTFLAGS' LDFLAGS=\"\$LDFLAGS -lpython3.13\""
 
 # --- the sources -------------------------------------------------------------------
 fetch() {
