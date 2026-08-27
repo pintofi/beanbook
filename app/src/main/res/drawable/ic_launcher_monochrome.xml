@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The themed-icon mark: the same geometry in one colour.
+
+  A themed launcher takes only this drawable's coverage and tints it with the user's palette,
+  so the colour here is arbitrary — what matters is that the shape reads when the two brackets
+  are no longer distinguished by hue. It is a separate file from the foreground rather than the
+  same one reused, because the day someone gives the foreground a gradient or a shadow is the
+  day the themed icon quietly turns to mud.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!--
+      The designer's geometry is for a finished 512 tile, where the mark spans 50.8% of the
+      square. An adaptive foreground is not a finished tile: launchers show only the inner
+      72 of the 108 viewport, so the same coordinates used directly come out exactly 1.5x
+      too large — correct by the safe-zone rules, and visibly zoomed in against the design
+      the icon was chosen from.
+
+      So the mark is scaled by 72/108 about the centre, which reproduces the composition of
+      finalists/b2-balanced-columns/icon-512.png inside the visible tile. Done as a group
+      transform rather than by rewriting the numbers, so the path data stays the designer's
+      and this correction stays legible as a correction.
+    -->
+    <group
+        android:scaleX="0.666667"
+        android:scaleY="0.666667"
+        android:pivotX="256"
+        android:pivotY="256">
+        <path
+            android:pathData="M211,150 H148 Q126,150 126,172 V340 Q126,362 148,362 H211"
+            android:strokeColor="#000000"
+            android:strokeWidth="27"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M301,150 H364 Q386,150 386,172 V340 Q386,362 364,362 H301"
+            android:strokeColor="#000000"
+            android:strokeWidth="27"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M213,235 H299"
+            android:strokeColor="#000000"
+            android:strokeWidth="22"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M213,285 H299"
+            android:strokeColor="#000000"
+            android:strokeWidth="22"
+            android:strokeLineCap="round" />
+    </group>
+</vector>

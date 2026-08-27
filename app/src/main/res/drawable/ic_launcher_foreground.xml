@@ -1,30 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The launcher mark: three ledger rules with their figures aligned on the right.
+  Balanced Columns: two brackets facing each other across a pair of rules.
 
-  Drawn as a vector rather than shipped as bitmaps, so it costs about a kilobyte instead of
-  six PNG densities, and stays sharp on any screen.
+  The brackets suggest a plain-text ledger without drawing a literal document, and the two
+  equal rules between them say double entry — the thing this app is actually about — rather
+  than "a list", which is what the previous mark said and what every finance app's icon says.
+  Chosen from the concepts in the design lab; see docs/icon.md.
 
-  Everything sits inside the inner 72x72 of the 108x108 adaptive viewport (18..90), which is
-  the region launchers guarantee not to crop when they mask the icon into a circle, a squircle
-  or whatever shape the device prefers.
+  The viewport is the source's own 512x512 rather than 108x108, so the geometry is the
+  designer's numbers unaltered and no arithmetic of mine sits between the two. The drawable is
+  still declared as 108dp, which is what the adaptive-icon system reads.
+
+  Everything falls inside x 126..386, y 150..362 — in the 72x72 safe zone once scaled, so no
+  launcher mask crops it, whatever shape the device prefers.
+
+  The rules are drawn as round-capped strokes rather than rounded rectangles: same shape,
+  half the path data, and the cap radius cannot drift from the stroke width.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
+    android:viewportWidth="512"
+    android:viewportHeight="512">
 
-    <!-- Account rules: long, medium, short — a page of entries. -->
-    <path android:fillColor="#FFFFFF" android:pathData="M30,40 h30 a2.5,2.5 0 0 1 0,5 h-30 a2.5,2.5 0 0 1 0,-5 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M30,52 h24 a2.5,2.5 0 0 1 0,5 h-24 a2.5,2.5 0 0 1 0,-5 z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M30,64 h30 a2.5,2.5 0 0 1 0,5 h-30 a2.5,2.5 0 0 1 0,-5 z" />
+    <!--
+      The designer's geometry is for a finished 512 tile, where the mark spans 50.8% of the
+      square. An adaptive foreground is not a finished tile: launchers show only the inner
+      72 of the 108 viewport, so the same coordinates used directly come out exactly 1.5x
+      too large — correct by the safe-zone rules, and visibly zoomed in against the design
+      the icon was chosen from.
 
-    <!-- The amounts column, right-aligned, as it is everywhere in the app. -->
-    <path android:fillColor="#9CF1F0" android:pathData="M68,40 h10 a2.5,2.5 0 0 1 0,5 h-10 a2.5,2.5 0 0 1 0,-5 z" />
-    <path android:fillColor="#9CF1F0" android:pathData="M68,52 h10 a2.5,2.5 0 0 1 0,5 h-10 a2.5,2.5 0 0 1 0,-5 z" />
+      So the mark is scaled by 72/108 about the centre, which reproduces the composition of
+      finalists/b2-balanced-columns/icon-512.png inside the visible tile. Done as a group
+      transform rather than by rewriting the numbers, so the path data stays the designer's
+      and this correction stays legible as a correction.
+    -->
+    <group
+        android:scaleX="0.666667"
+        android:scaleY="0.666667"
+        android:pivotX="256"
+        android:pivotY="256">
+        <!-- Left bracket, in white: the account side. -->
+        <path
+            android:pathData="M211,150 H148 Q126,150 126,172 V340 Q126,362 148,362 H211"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="27"
+            android:strokeLineCap="round" />
 
-    <!-- The rule under a total, and the total itself. -->
-    <path android:fillColor="#9CF1F0" android:pathData="M64,61 h14 v1.6 h-14 z" />
-    <path android:fillColor="#9CF1F0" android:pathData="M68,64 h10 a2.5,2.5 0 0 1 0,5 h-10 a2.5,2.5 0 0 1 0,-5 z" />
+        <!-- Right bracket, in the palette's light teal: the amount side. -->
+        <path
+            android:pathData="M301,150 H364 Q386,150 386,172 V340 Q386,362 364,362 H301"
+            android:strokeColor="#9CF1F0"
+            android:strokeWidth="27"
+            android:strokeLineCap="round" />
+
+        <!-- Two rules of equal length: the balance. -->
+        <path
+            android:pathData="M213,235 H299"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="22"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M213,285 H299"
+            android:strokeColor="#9CF1F0"
+            android:strokeWidth="22"
+            android:strokeLineCap="round" />
+    </group>
 </vector>
