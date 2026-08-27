@@ -14,11 +14,6 @@ on:
 permissions:
   contents: write
 
-env:
-  # Hash-based .pyc instead of timestamp-based, so two builds of the same commit produce the
-  # same bytes (docs/milestones/m14-part18.md). Set per job below, since it needs the
-  # checkout to exist first.
-
 jobs:
   verify:
     # A tag does not get to skip the gates. Everything that guards a normal push guards a

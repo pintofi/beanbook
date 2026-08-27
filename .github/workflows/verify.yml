@@ -13,11 +13,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-env:
-  # Hash-based .pyc instead of timestamp-based, so two builds of the same commit produce the
-  # same bytes (docs/milestones/m14-part18.md). Set per job below, since it needs the
-  # checkout to exist first.
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

@@ -53,6 +53,15 @@ def main() -> int:
         # another way a workflow can look fine and do nothing.
         if "on" not in document and True not in document:
             problems.append(f"{path.name}: has no triggers")
+        # A key present with no value parses as None and GitHub refuses the whole file,
+        # producing a run with zero jobs and no error anywhere a person will look. That is
+        # how an `env:` block containing only comments reached CI and broke it
+        # (docs/milestones/m14-part20.md): this checker passed it, because `env: null` is
+        # perfectly good YAML.
+        for key in ("env", "jobs", "defaults", "permissions", "concurrency"):
+            if key in document and document[key] is None:
+                problems.append(f"{path.name}: `{key}:` is present with no value")
+
         jobs = document.get("jobs")
         if not isinstance(jobs, dict) or not jobs:
             problems.append(f"{path.name}: declares no jobs")
@@ -66,8 +75,15 @@ def main() -> int:
                 continue  # a reusable-workflow call needs no runner or steps
             if "runs-on" not in job:
                 problems.append(f"{path.name}: job '{name}' has no runs-on")
+            for key in ("env", "with", "strategy"):
+                if key in job and job[key] is None:
+                    problems.append(f"{path.name}: job '{name}' has an empty `{key}:`")
             if not job.get("steps"):
                 problems.append(f"{path.name}: job '{name}' has no steps")
+            for step in job.get("steps") or []:
+                if isinstance(step, dict) and "env" in step and step["env"] is None:
+                    label = step.get("name", step.get("uses", "?"))
+                    problems.append(f"{path.name}: step '{label}' has an empty `env:`")
 
     for problem in problems:
         print(f"::error::{problem}")
