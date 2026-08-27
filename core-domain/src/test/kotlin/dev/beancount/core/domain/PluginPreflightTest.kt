@@ -264,6 +264,7 @@ class PluginPreflightTest {
         override val allowsNativeCode = false
         override val allowsAndroidBridge = false
         override val allowsSelfUpdate = false
+        override val allowsPackageDownload = false
         override val name = "play"
     }
 
@@ -272,6 +273,7 @@ class PluginPreflightTest {
         override val allowsNativeCode = true
         override val allowsAndroidBridge = true
         override val allowsSelfUpdate = true
+        override val allowsPackageDownload = true
         override val name = "expert"
     }
 }

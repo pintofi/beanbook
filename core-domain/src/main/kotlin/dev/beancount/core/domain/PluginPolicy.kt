@@ -29,5 +29,15 @@ interface PluginPolicy {
     /** Whether the app may download and install an APK update itself. Never on Play. */
     val allowsSelfUpdate: Boolean
 
+    /**
+     * Whether the app may **fetch** a Python package from the network on the user's request.
+     *
+     * False for `play`, for the same reason as [allowsNativeCode]: downloading executable
+     * code from a non-Play source is what the Device and Network Abuse policy prohibits. It
+     * is a separate capability from [allowsNativeCode] because the two differ — a pure-Python
+     * wheel contains no `.so` and is still a download.
+     */
+    val allowsPackageDownload: Boolean
+
     val name: String
 }

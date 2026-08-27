@@ -29,6 +29,7 @@ val forbiddenPlaySourcePatterns = listOf(
     Regex("""BillingClient"""),            // monetization rule
     Regex("""allowsNativeCode\s*=\s*true"""),   // D1
     Regex("""allowsAndroidBridge\s*=\s*true"""), // D2
+    Regex("""allowsPackageDownload\s*=\s*true"""), // D1: no fetching code, native or not
 )
 
 /**
@@ -43,6 +44,7 @@ val requiredPlaySourcePatterns = listOf(
     Regex("""allowsNativeCode\s*=\s*false"""),    // D1
     Regex("""allowsAndroidBridge\s*=\s*false"""), // D2
     Regex("""allowsSelfUpdate\s*=\s*false"""),    // D3
+    Regex("""allowsPackageDownload\s*=\s*false"""), // D1
 )
 
 /**

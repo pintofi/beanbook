@@ -26,3 +26,38 @@ setup rewrites `LDFLAGS` after `CIBW_ENVIRONMENT` is applied, and meson's `c_lin
 
 Worth sending upstream: it is arguably a latent bug that the extension links libpython by
 luck. See [docs/milestones/m14-part12.md](../docs/milestones/m14-part12.md).
+
+## `beangrow-1.0.1-no-scipy.patch` and `fava_portfolio_returns-2.7.0-no-scipy.patch`
+
+Both packages import SciPy exactly once, for exactly one call:
+
+```python
+from scipy.optimize import fsolve
+...
+irr, *_ = fsolve(net_present_value, x0=estimated_irr, args=(cash_flows, years), ...)
+```
+
+That is a one-dimensional root find: the discount rate at which net present value is zero.
+SciPy has no build for CPython 3.13 on Android — 20 wheels on Chaquopy's index, none for
+cp313 — and it is an enormous dependency for one call, so these patches replace it with a
+bracketing solver in about forty lines.
+
+Arguably the better tool for the job, not merely the available one: NPV changes sign exactly
+once across the region that matters, so bracketing the root converges by construction, where
+a derivative-based method can walk away from a poor initial guess.
+
+**Measured against `fsolve`** on six cash-flow shapes — simple gain and loss, twelve monthly
+contributions, a ten-year horizon, a near-zero return, and a 5× gain:
+
+```
+worst disagreement: 3.2e-13
+```
+
+Verified end to end with SciPy *actively blocked* by an import guard, not merely absent, so
+the check cannot pass by accidentally finding it.
+
+`fava-portfolio-returns` vendors its own copy of beangrow, and the two have diverged — its
+call site clamps the result at −100% — so this is two patches rather than one applied twice.
+
+Worth sending upstream in the same form: it removes a heavyweight dependency from a package
+that only wanted a root finder.

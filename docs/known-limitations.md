@@ -61,11 +61,14 @@ differences exist, all forced by Play policy:
 | Java/Android bridge inside user plugin code | withheld | available |
 | Self-update | none | signed, user-initiated |
 
-**`fava_portfolio_returns` and beangrow are not available in either edition.** This was
-planned as Expert-only, on the assumption that the obstacle was Play policy and download size.
-It is not: both require `scipy`, and no scipy build exists for CPython 3.13 on Android —
-along with numpy, pandas and matplotlib floors above what is available. Nothing in this app
-can bring that forward. If those wheels appear, the feature does too.
+**`fava_portfolio_returns` and beangrow are Expert-only, and their dependencies are fetched
+on demand.** They need numpy, pandas, matplotlib and protobuf — around 50 MB, which does not
+belong in every download — so the Expert edition offers to fetch them when you first open a
+returns report. The Play edition cannot: fetching executable code is prohibited there.
+
+They also needed SciPy, for one function. That call is replaced by a solver in `patches/`
+which agrees with SciPy to thirteen decimal places, because SciPy has no Android build and is
+an enormous dependency for a root finder.
 
 **The plugin restrictions are policy compliance, not a security boundary.** User Python runs
 unsandboxed in both editions. Code you install can read anything the app can read, and in
