@@ -31,8 +31,14 @@ class EngineService : Service() {
 
     private val binder = object : IEngineService.Stub() {
 
-        override fun startEngine(ledgerPath: String, token: String): String = guarded {
-            python().getModule("engine").callAttr("start", ledgerPath, token).toString()
+        override fun startEngine(
+            ledgerPath: String,
+            token: String,
+            pluginDirs: String,
+        ): String = guarded {
+            python().getModule("engine")
+                .callAttr("start", ledgerPath, token, true, pluginDirs)
+                .toString()
         }
 
         override fun stopEngine(): String = guarded {

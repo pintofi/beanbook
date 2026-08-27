@@ -284,9 +284,9 @@
    "license": "GPL-3.0",
    "status": "supported",
    "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "imports, executes and preserves every directive",
+    "on": "2026-08-27",
+    "how": "CatalogPluginTest on an API 36 emulator, with a configuration from the plugin's own README",
+    "reason": "loads and transforms as documented; a directive it has no opinion about survives",
     "version": "0.4.0"
    },
    "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
@@ -298,11 +298,11 @@
    "repo": "https://github.com/redstreet/beancount_reds_plugins",
    "description": "Per-posting dates",
    "license": "GPL-3.0",
-   "status": "needs-config",
+   "status": "supported",
    "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "works, but the plugin directive must carry a configuration string; loaded cleanly once given one",
+    "on": "2026-08-27",
+    "how": "CatalogPluginTest on an API 36 emulator, with a configuration from the plugin's own README",
+    "reason": "loads and transforms as documented; a directive it has no opinion about survives",
     "version": "0.4.0"
    },
    "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
@@ -314,11 +314,11 @@
    "repo": "https://github.com/redstreet/beancount_reds_plugins",
    "description": "Inserts open statements for sets of accounts by rule",
    "license": "GPL-3.0",
-   "status": "needs-config",
+   "status": "supported",
    "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "works, but the plugin directive must carry a real configuration — it parses the argument as a Python literal, so an empty one is rejected",
+    "on": "2026-08-27",
+    "how": "CatalogPluginTest on an API 36 emulator, with a configuration from the plugin's own README",
+    "reason": "loads and transforms as documented; a directive it has no opinion about survives",
     "version": "0.4.0"
    },
    "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
@@ -330,11 +330,11 @@
    "repo": "https://github.com/redstreet/beancount_reds_plugins",
    "description": "Renames arbitrary accounts on the fly",
    "license": "GPL-3.0",
-   "status": "needs-config",
+   "status": "supported",
    "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "works, but the plugin directive must carry a real configuration — it parses the argument as a Python literal, so an empty one is rejected",
+    "on": "2026-08-27",
+    "how": "CatalogPluginTest on an API 36 emulator, with a configuration from the plugin's own README",
+    "reason": "loads and transforms as documented; a directive it has no opinion about survives",
     "version": "0.4.0"
    },
    "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
@@ -346,11 +346,11 @@
    "repo": "https://github.com/redstreet/beancount_reds_plugins",
    "description": "Finds matching posting pairs summing to zero",
    "license": "GPL-3.0",
-   "status": "needs-config",
+   "status": "supported",
    "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "works, but the plugin directive must carry a real configuration — it parses the argument as a Python literal, so an empty one is rejected",
+    "on": "2026-08-27",
+    "how": "CatalogPluginTest on an API 36 emulator, with a configuration from the plugin's own README",
+    "reason": "loads and transforms as documented; a directive it has no opinion about survives",
     "version": "0.4.0"
    },
    "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
@@ -394,12 +394,12 @@
    "repo": "https://github.com/polarmutex/fava-envelope",
    "description": "Envelope budgeting",
    "license": "MIT",
-   "status": "partial",
+   "status": "unavailable",
    "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_envelope)",
-    "version": "0.5.9"
+    "on": "2026-08-27",
+    "how": "FavaExtensionTest on an API 36 emulator: installed, served, and asked Fava",
+    "reason": "Fava now finds it — M14 fixed the engine so an installed extension reaches sys.path while serving — and it fails on a dependency the app does not bundle: pandas. The installer installs files and does not resolve dependencies (docs/milestones/m14-part26.md)",
+    "version": null
    }
   },
   {
@@ -409,12 +409,12 @@
    "repo": "https://github.com/andreasgerstmayr/fava-dashboards",
    "description": "Fully custom dashboards",
    "license": "MIT License",
-   "status": "partial",
+   "status": "unavailable",
    "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_dashboards)",
-    "version": "2.0.2"
+    "on": "2026-08-27",
+    "how": "FavaExtensionTest on an API 36 emulator: installed, served, and asked Fava",
+    "reason": "Fava now finds it — M14 fixed the engine so an installed extension reaches sys.path while serving — and it fails on a dependency the app does not bundle: yaml (PyYAML). The installer installs files and does not resolve dependencies (docs/milestones/m14-part26.md)",
+    "version": null
    }
   },
   {
@@ -424,12 +424,12 @@
    "repo": "https://github.com/andreasgerstmayr/fava-portfolio-returns",
    "description": "Portfolio returns",
    "license": "GPL-2.0",
-   "status": "partial",
+   "status": "unavailable",
    "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_portfolio_returns)",
-    "version": "2.7.0"
+    "on": "2026-08-27",
+    "how": "FavaExtensionTest on an API 36 emulator: installed, served, and asked Fava",
+    "reason": "Fava now finds it — M14 fixed the engine so an installed extension reaches sys.path while serving — and it fails on a dependency the app does not bundle: scipy, which has no CPython 3.13 build for Android at all (D6). The installer installs files and does not resolve dependencies (docs/milestones/m14-part26.md)",
+    "version": null
    }
   },
   {
@@ -471,12 +471,12 @@
    "repo": "https://github.com/redstreet/fava_investor",
    "description": "Investment reports, analyses and tools",
    "license": "GPL-3.0",
-   "status": "partial",
+   "status": "unavailable",
    "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_investor)",
-    "version": "1.0.1"
+    "on": "2026-08-27",
+    "how": "FavaExtensionTest on an API 36 emulator: installed, served, and asked Fava",
+    "reason": "Fava now finds it — M14 fixed the engine so an installed extension reaches sys.path while serving — and it fails on a dependency the app does not bundle: packaging. The installer installs files and does not resolve dependencies (docs/milestones/m14-part26.md)",
+    "version": null
    }
   },
   {

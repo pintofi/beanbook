@@ -36,12 +36,24 @@ class EngineManager(
     private var shutdownJob: Job? = null
     private var currentProject: String? = null
 
+    /**
+     * Directories Fava should be able to import from while serving — the enabled plugins.
+     *
+     * Asked for at start time rather than captured once, for the same reason the parse path
+     * asks: which plugins are enabled changes between loads.
+     */
+    var pluginDirectories: () -> List<String> = { emptyList() }
+
     /** Starts the engine for [projectPath], or returns the running one. */
     fun start(projectPath: String) {
         shutdownJob?.cancel()
         shutdownJob = null
         currentProject = projectPath
         scope.launch {
+            // Fava resolves an extension by module name when it loads the ledger, so this has
+            // to be set before start rather than after (docs/milestones/m14-part26.md).
+            (engine as? dev.beancount.engine.local.LocalEngineClient)?.pluginDirs =
+                pluginDirectories()
             val result = engine.start(projectPath)
             if (result is EngineStatus.Failed) {
                 Log.w(TAG, "engine failed to start: ${result.message}")

@@ -39,6 +39,7 @@ class CatalogPluginTest {
     private lateinit var project: File
     private lateinit var store: PluginStore
     private lateinit var source: File
+    private lateinit var redsSource: File
 
     /**
      * One catalogued plugin, and a ledger that exercises it.
@@ -94,6 +95,7 @@ class CatalogPluginTest {
         // uninstalls the app when it finishes, and an app's external directory goes with it
         // — so anything pushed there before the run is gone by the time the test looks.
         source = File("/data/local/tmp/bca-catalog/autobean")
+        redsSource = File("/data/local/tmp/bca-catalog/beancount_reds_plugins")
         assumeTrue(
             "no catalogued plugin on the device; run tools/plugin-compat/push-to-device.sh",
             source.isDirectory,
@@ -148,6 +150,111 @@ class CatalogPluginTest {
             )
         }
 
+        assertTrue(failures.joinToString("\n"), failures.isEmpty())
+    }
+
+    /**
+     * The `needs-config` set: four `reds.*` plugins, each with a real configuration.
+     *
+     * They were marked `needs-config` because an empty config string is not enough — the
+     * desktop harness could see that much. What it could not answer is whether they *work*
+     * here, given a configuration a user would actually write, which is what these ledgers
+     * carry. The configs are the ones from each plugin's own README or example ledger.
+     *
+     * These are **GPL-3.0** and this app is GPL-2.0-only. Running one in a test distributes
+     * nothing and the source stays out of this repository — it is fetched into `build/`,
+     * which is ignored. See docs/plugin-compatibility.md on why they are catalogued with that
+     * stated rather than silently recommended.
+     */
+    @Test fun theNeedsConfigPluginsWorkWhenGivenAConfiguration() {
+        assumeTrue(
+            "no reds plugins on the device; push them with tools/plugin-compat/push-to-device.sh",
+            redsSource.isDirectory,
+        )
+        val installed = store.install(redsSource, policy, "pushed for the compatibility harness")
+        assertTrue("step 'installs' failed: $installed", installed is InstallResult.Installed)
+        val root = store.directoryFor((installed as InstallResult.Installed).plugin).absolutePath
+
+        // Built by concatenation, not `trimIndent()`. Kotlin interpolates before trimming,
+        // so a raw string that splices in an already-trimmed fragment ends up with no common
+        // prefix at all and keeps every line's indentation — which Beancount rejects at line 1
+        // with "unexpected INDENT". A ledger is whitespace-sensitive; it does not survive
+        // being pretty-printed in source.
+        val note = "\n2026-02-03 note Assets:Bank:Checking \"a note that must survive\"\n"
+        val cases = listOf(
+            Case(
+                "beancount_reds_plugins.rename_accounts.rename_accounts",
+                "plugin \"beancount_reds_plugins.rename_accounts.rename_accounts\" " +
+                    "\"{'Expenses:Taxes': 'Income:Taxes'}\"\n\n" +
+                    opened + "\n2026-01-01 open Expenses:Taxes\n\n" +
+                    "2026-02-01 * \"Tax\" \"renamed away\"\n" +
+                    "  Expenses:Taxes           30.00 USD\n" +
+                    "  Assets:Bank:Checking\n" + note,
+                expectTransactions = 1,
+            ),
+            Case(
+                "beancount_reds_plugins.zerosum.zerosum",
+                "plugin \"beancount_reds_plugins.zerosum.zerosum\" " +
+                    "\"{'zerosum_accounts': {'Assets:ZeroSum:Transfers': ('Assets:Matched', 3)}}\"\n\n" +
+                    opened + "\n2026-01-01 open Assets:ZeroSum:Transfers\n" +
+                    "2026-01-01 open Assets:Matched\n\n" +
+                    "2026-02-01 * \"Out\" \"half a transfer\"\n" +
+                    "  Assets:Bank:Checking      -20.00 USD\n" +
+                    "  Assets:ZeroSum:Transfers\n\n" +
+                    "2026-02-02 * \"In\" \"the other half\"\n" +
+                    "  Expenses:Food:Groceries    20.00 USD\n" +
+                    "  Assets:ZeroSum:Transfers  -20.00 USD\n" + note,
+                expectTransactions = 2,
+            ),
+            Case(
+                "beancount_reds_plugins.effective_date.effective_date",
+                "plugin \"beancount_reds_plugins.effective_date.effective_date\" " +
+                    "\"{'Expenses': {'earlier': 'Liabilities:Hold:Expenses', " +
+                    "'later': 'Assets:Hold:Expenses'}}\"\n\n" +
+                    opened + "\n" +
+                    "2026-02-01 * \"Insurance\" \"paid now, used later\"\n" +
+                    "  Expenses:Food:Groceries   60.00 USD\n" +
+                    "    effective_date: 2026-05-01\n" +
+                    "  Assets:Bank:Checking\n" + note,
+                // The plugin splits the transaction across a hold account.
+                expectTransactions = 2,
+            ),
+            Case(
+                "beancount_reds_plugins.opengroup.opengroup",
+                "plugin \"beancount_reds_plugins.opengroup.opengroup\" \"{}\"\n\n" +
+                    opened + "\n" +
+                    "2026-02-01 * \"Shop\" \"ordinary\"\n" +
+                    "  Expenses:Food:Groceries   12.00 USD\n" +
+                    "  Assets:Bank:Checking\n" + note,
+                expectTransactions = 1,
+            ),
+        )
+
+        val failures = mutableListOf<String>()
+        cases.forEach { case ->
+            val name = case.plugin.substringAfterLast('.')
+            val ledger = File(project, "$name.beancount").apply { writeText(case.ledger + "\n") }
+            val result = JSONObject(
+                Python.getInstance().getModule("ledger")
+                    .callAttr("inspect", ledger.absolutePath, 200, root, policy.allowsAndroidBridge)
+                    .toString(),
+            )
+            val errors = result.getJSONArray("errors")
+            if (errors.length() != 0) {
+                failures += "$name: $errors"
+                return@forEach
+            }
+            val counts = result.getJSONObject("entry_counts")
+            val notes = counts.optInt("Note")
+            if (notes != case.expectNotes) {
+                failures += "$name: a directive it has no opinion about disappeared — " +
+                    "$notes notes, expected ${case.expectNotes}"
+            }
+            android.util.Log.i(
+                "CatalogPlugin",
+                "$name ok transactions=${counts.optInt("Transaction")} notes=$notes",
+            )
+        }
         assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }
 

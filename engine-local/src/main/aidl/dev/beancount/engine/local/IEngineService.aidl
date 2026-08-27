@@ -12,7 +12,14 @@ package dev.beancount.engine.local;
 interface IEngineService {
 
     /** Starts Fava on loopback. Returns "port=<n> slug=<s> …". */
-    String startEngine(String ledgerPath, String token);
+    /**
+     * @param pluginDirs comma-separated directories to make importable while Fava is served.
+     *   Without this a Fava extension installed through the app is invisible to Fava, which
+     *   reports `No module named …` and 404s the extension's route — the parse path took
+     *   plugin directories from the beginning and the serving path never did
+     *   (docs/milestones/m14-part26.md).
+     */
+    String startEngine(String ledgerPath, String token, String pluginDirs);
 
     /** Stops the server and joins its non-daemon threads. */
     String stopEngine();

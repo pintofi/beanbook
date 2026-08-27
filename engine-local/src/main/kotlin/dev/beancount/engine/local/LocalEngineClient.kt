@@ -58,6 +58,12 @@ class LocalEngineClient(
             .orEmpty()
     }
 
+    /**
+     * Directories to make importable while Fava is served, for Fava extensions. Set before
+     * [start]; empty means none, which is what every caller did until M14.
+     */
+    var pluginDirs: List<String> = emptyList()
+
     override suspend fun start(projectPath: String): EngineStatus = lifecycleLock.withLock {
         (status.value as? EngineStatus.Serving)?.let { return it }
 
@@ -65,7 +71,9 @@ class LocalEngineClient(
         val newToken = newToken()
         val started = System.currentTimeMillis()
         val result = withContext(io) {
-            connection.withEngine { engine -> engine.startEngine(projectPath, newToken) }
+            connection.withEngine { engine ->
+                engine.startEngine(projectPath, newToken, pluginDirs.joinToString(","))
+            }
                 .mapCatching { report ->
                     if (report.startsWith("error: ")) error(report.removePrefix("error: "))
                     token = newToken

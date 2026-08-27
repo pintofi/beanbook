@@ -85,6 +85,22 @@ worked. A failure leaves the previous valid ledger recoverable.
 
 ---
 
+## Plugins and Fava extensions
+
+**The installer installs files, not packages, and does not resolve dependencies.** You give
+the app a plugin's source; it does not fetch anything, and there is no package manager on the
+device. So a plugin works only if everything it imports is already bundled.
+
+In practice that means most **Beancount plugins** work — they import Beancount and the
+standard library — and most **Fava extensions** do not, because they reach for `pandas`,
+`PyYAML`, `packaging` or `scipy`, none of which ship. The app says which module was missing
+rather than failing silently, so the reason is visible.
+
+None of the four catalogued Fava extensions currently loads, each for that reason. This is a
+limit of what can be bundled, not a bug in the extensions.
+
+---
+
 ## Importing statements
 
 **File types are recognised by extension, not by content.** `libmagic` is not built for

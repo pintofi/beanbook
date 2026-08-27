@@ -59,7 +59,15 @@ class BeancountApplication : Application() {
 
     val engine: LocalEngineClient by lazy { LocalEngineClient(this, connection = engineConnection) }
 
-    val engineManager: EngineManager by lazy { EngineManager(engine, appScope) }
+    val engineManager: EngineManager by lazy {
+        EngineManager(engine, appScope).apply {
+            // The same directories the parse path is given, so a Fava extension the user
+            // installed is importable while Fava serves as well as while the ledger is read.
+            pluginDirectories = {
+                pluginsState.enabledDirectories().split(",").filter { it.isNotBlank() }
+            }
+        }
+    }
 
     val ledgerState: LedgerState by lazy {
         LedgerState(LedgerReader(this, connection = engineConnection), appScope)

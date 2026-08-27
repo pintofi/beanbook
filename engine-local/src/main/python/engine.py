@@ -12,6 +12,8 @@ Nothing here creates or modifies ledger content: it serves a project that alread
 from __future__ import annotations
 
 import hmac
+import importlib
+import sys
 import threading
 import time
 from http.cookies import SimpleCookie
@@ -66,7 +68,12 @@ class TokenGate:
         return hmac.compare_digest(morsel.value, self._token)
 
 
-def start(ledger_path: str, token: str, poll_watcher: bool = True) -> str:
+def start(
+    ledger_path: str,
+    token: str,
+    poll_watcher: bool = True,
+    plugin_dirs: str = "",
+) -> str:
     """Serve ``ledger_path`` on loopback.
 
     Returns a space-separated diagnostic string (``port=… slug=… total_ms=…``) rather
@@ -85,6 +92,22 @@ def start(ledger_path: str, token: str, poll_watcher: bool = True) -> str:
         raise FileNotFoundError(f"no such ledger file: {ledger_path}")
 
     started = time.monotonic()
+
+    # Fava imports an extension by module name when it loads the ledger, so anything the user
+    # installed has to be importable *before* create_app. The parse path has always done this
+    # (see plugins.activated); the serving path never did, so every Fava extension installed
+    # through the app failed with "No module named …" and its route 404ed
+    # (docs/milestones/m14-part26.md).
+    for directory in filter(None, plugin_dirs.split(",")):
+        if directory not in sys.path:
+            sys.path.insert(0, directory)
+    # Required, not defensive: a plugin directory is created while this process is already
+    # running, and Python caches each path entry's directory listing. Without invalidating
+    # that cache the import fails with "No module named …" even though the directory is on
+    # `sys.path` and the package is plainly in it — which is exactly what it did, and what
+    # sent this looking at the path for an hour. `plugins.activated` has always done this;
+    # the serving path had no reason to until now.
+    importlib.invalidate_caches()
 
     from fava.application import create_app
 
