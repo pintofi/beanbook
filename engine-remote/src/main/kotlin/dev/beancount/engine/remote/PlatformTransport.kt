@@ -44,7 +44,10 @@ sealed interface RemoteFailure {
     }
 }
 
-class RemoteException(val failure: RemoteFailure) : IOException(failure.describe())
+class RemoteException(
+    val failure: RemoteFailure,
+    cause: Throwable? = null,
+) : IOException(failure.describe(), cause)
 
 /** Credentials for a reverse proxy. Fava itself has no login (docs/feasibility/s12-fava-api.md). */
 data class BasicCredentials(val username: String, val password: CharArray) {
@@ -164,11 +167,15 @@ class PlatformTransport(
             // proxy in the middle. All of them stop the request.
             throw RemoteException(
                 RemoteFailure.CertificateRejected(ssl.message ?: ssl.javaClass.simpleName),
+                cause = ssl,
             )
         } catch (remote: RemoteException) {
             throw remote
         } catch (io: IOException) {
-            throw RemoteException(RemoteFailure.Unreachable(io.message ?: io.javaClass.simpleName))
+            throw RemoteException(
+                RemoteFailure.Unreachable(io.message ?: io.javaClass.simpleName),
+                cause = io,
+            )
         } finally {
             connection.disconnect()
         }

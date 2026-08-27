@@ -88,7 +88,7 @@ class BeancountApplication : Application() {
      * tree, so an export carries them (docs/storage-and-backup.md).
      */
     val documentCapture: DocumentCapture by lazy {
-        DocumentCapture(this, workspace, DocumentStore(workspace), appScope)
+        DocumentCapture(this, DocumentStore(workspace), appScope)
     }
 
     /** Where scheduled backups go, and what happened on the last run. */

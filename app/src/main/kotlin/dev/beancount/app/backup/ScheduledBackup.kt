@@ -147,11 +147,11 @@ class BackupSettings(private val stateDir: java.io.File) {
         val at = lines.getOrNull(0)?.toLongOrNull() ?: return null
         val success = lines.getOrNull(1)?.toBooleanStrictOrNull() ?: return null
         val detail = lines.getOrNull(2).orEmpty()
-        val when_ = Instant.ofEpochSecond(at)
+        val moment = Instant.ofEpochSecond(at)
         return if (success) {
-            "Last backup: $when_ ($detail)."
+            "Last backup: $moment ($detail)."
         } else {
-            "Last backup attempt failed at $when_: $detail."
+            "Last backup attempt failed at $moment: $detail."
         }
     }
 }

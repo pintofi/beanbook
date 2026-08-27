@@ -29,7 +29,6 @@ import kotlinx.coroutines.withContext
  */
 class DocumentCapture(
     context: Context,
-    private val workspace: ProjectWorkspace,
     private val store: DocumentStore,
     private val scope: CoroutineScope,
     private val assembler: PdfAssembler = PdfAssembler(),

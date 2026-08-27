@@ -150,7 +150,9 @@ class FavaClient(
                 url = address.resolve("/$slug/api/query?query_string=" + urlEncode(query)),
                 credentials = credentials,
             )
-        } catch (remote: RemoteException) {
+        } catch (ignored: RemoteException) {
+            // Deliberately not propagated: "could not ask" is a third answer, not an error.
+            // A caller that cannot reach the server must not conclude the entry is absent.
             return Presence.UNKNOWN
         }
         if (!response.isSuccess) return Presence.UNKNOWN

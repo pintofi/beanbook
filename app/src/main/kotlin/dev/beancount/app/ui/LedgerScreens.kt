@@ -13,6 +13,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -44,9 +46,14 @@ private fun Amount.accessibleDescription(): String {
 
 @Composable
 private fun AmountText(amount: Amount, modifier: Modifier = Modifier) {
+    // The helper below existed from M6 and was never applied, so every amount was announced
+    // as its raw text: TalkBack reads "-12.34 USD" by pronouncing the hyphen or dropping it,
+    // which is the one thing ux.md 6 says must not happen. detekt found it as dead code
+    // (docs/milestones/m14-part16.md).
+    val spoken = amount.accessibleDescription()
     Text(
         text = amount.format(),
-        modifier = modifier,
+        modifier = modifier.semantics { contentDescription = spoken },
         fontFamily = FontFamily.Monospace,
         textAlign = TextAlign.End,
         style = MaterialTheme.typography.bodyMedium,

@@ -1,0 +1,129 @@
+# detekt, tuned to this codebase as it is actually written (N2).
+#
+# `buildUponDefaultConfig` is on, so this file only records deviations. Every rule turned
+# off is turned off here, by name and with a reason — CLAUDE.md forbids blanket
+# suppressions, and a `@Suppress` scattered through the source is exactly that in disguise.
+
+build:
+  maxIssues: 0
+
+complexity:
+  LongMethod:
+    # Compose screens are long by nature: a single @Composable describes a whole screen and
+    # splitting it to satisfy a line count produces indirection nobody asked for. The real
+    # complexity guard here is CyclomaticComplexMethod, which stays on.
+    active: false
+  LongParameterList:
+    # Same reason: a stateless @Composable takes its state and its callbacks as parameters,
+    # which is the pattern Compose is built around.
+    active: false
+  TooManyFunctions:
+    # MainActivity carries the app's composition root. Counting functions there measures the
+    # architecture, not the code.
+    thresholdInFiles: 30
+    thresholdInClasses: 30
+    thresholdInObjects: 30
+  CyclomaticComplexMethod:
+    # 25, because the functions above it are validators and import planners where the
+    # branches *are* the specification — ImportExport.plan checks traversal, symlinks, zip
+    # bombs and case collisions, and splitting it would scatter one security decision across
+    # several functions.
+    # 30. The two functions above 25 are `SurfaceContent` and `DirectiveEntryScreen`: one is
+    # the app's composition root, whose branches are its list of surfaces, and the other is
+    # an entry form whose branches are the directive types Beancount defines. In both the
+    # branch count is the domain's, not the code's.
+    threshold: 25
+    # Compose screens are excluded rather than accommodated by a bigger number. A screen's
+    # branch count is its design — DirectiveEntryScreen branches once per directive type
+    # Beancount defines, SurfaceContent once per surface — and raising the threshold until
+    # they fit would stop the rule meaning anything for the logic code where it matters.
+    excludes: ['**/ui/**', '**/MainActivity.kt']
+  NestedBlockDepth:
+    threshold: 6
+  ComplexCondition:
+    # Four terms is normal in this codebase's guard clauses; five is the point at which one
+    # should be named.
+    threshold: 5
+
+style:
+  LoopWithTooManyJumpStatements:
+    # Off. The loops this flags are the import validator and the plugin pre-flight scanner,
+    # where a `continue` per rejection reason — symlink, absolute path, traversal, too deep,
+    # name too long, reserved name, case collision — is what makes each refusal explicit and
+    # named. The rule's premise, that many jumps hide control flow, is inverted here: they
+    # are the control flow, and a nested rewrite would bury which inputs get rejected and
+    # why. That code is the malicious-input gate; readable beats clever.
+    active: false
+  MaxLineLength:
+    # The codebase is written to 100 columns; this is a ceiling, not the target. Enforcing
+    # 100 exactly would mean mechanically rewrapping 142 lines that are between 100 and 110
+    # characters, which is churn across every file for no gain in readability. What this
+    # catches is a line that has genuinely run away.
+    maxLineLength: 120
+  ReturnCount:
+    # Raised to 20 deliberately. `UpdateVerifier.check` has sixteen returns and should:
+    # it is a signature validator with one early return per named rejection reason, and
+    # collapsing those into a nested expression would make a security-critical function
+    # harder to read, not easier.
+    max: 20
+    excludeGuardClauses: true
+  MagicNumber:
+    # Off, and this is a judgement rather than an oversight. What is left after the obvious
+    # exemptions is `errors.take(5)`, `fontScale > 1.3f`, `body.take(200)` — display limits
+    # and thresholds used once, where their meaning is plain at the call site. Naming each
+    # would add a constant whose definition says less than the code around it. Keeping the
+    # rule nominally on behind a list of thirty exempt integers would be pretending it is
+    # enforced; this says plainly that it is not.
+    active: false
+  UnusedPrivateMember:
+    active: true
+  ForbiddenComment:
+    # This is the rule that would have caught the TODO which sat in verify.yml for thirteen
+    # milestones (docs/milestones/m14-part7.md). It stays on, and stays strict.
+    active: true
+    comments:
+      - reason: 'an unfinished marker in shipped code is a gap that ships'
+        value: 'TODO:'
+      - reason: 'an unfinished marker in shipped code is a gap that ships'
+        value: 'FIXME:'
+      - reason: 'an unfinished marker in shipped code is a gap that ships'
+        value: 'STOPSHIP'
+
+exceptions:
+  TooGenericExceptionCaught:
+    # Kept on for `Exception` and `RuntimeException`, which is where careless catching
+    # happens. `Throwable` is removed from the list because the only two places this
+    # codebase catches it are places where catching less would be a bug: the AIDL boundary
+    # in EngineService, where a crash must reach the caller as a message rather than as a
+    # dead Binder, and ImportExport's cleanup, which deletes a staging directory and
+    # rethrows. Both are visible in review; neither swallows anything.
+    active: true
+    exceptionNames:
+      - ArrayIndexOutOfBoundsException
+      - Error
+      - Exception
+      - IllegalMonitorStateException
+      - IndexOutOfBoundsException
+      - NullPointerException
+      - RuntimeException
+  SwallowedException:
+    active: true
+
+performance:
+  SpreadOperator:
+    # The two uses are building a record from a small fixed argument list, once per write.
+    # The copy this rule warns about is not measurable there, and working around it would
+    # mean an array built by hand at every call site.
+    active: false
+
+naming:
+  MatchingDeclarationName:
+    # A Compose screen file holds the screen and the small type it renders — LicencesScreen
+    # with LicenceEntry — which is easier to follow than one type per file.
+    active: false
+  MemberNameEqualsClassName:
+    # `Json.json` reads correctly at the call site, which is the only place it appears.
+    active: false
+  FunctionNaming:
+    # @Composable functions are PascalCase by convention, which this rule otherwise flags.
+    functionPattern: '[a-zA-Z][a-zA-Z0-9]*'

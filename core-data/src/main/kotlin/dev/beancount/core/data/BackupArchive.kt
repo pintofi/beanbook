@@ -362,7 +362,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                                 derivation = derivation,
                                 encryption = encryption,
                             )
-                        } catch (wrong: PayloadCipher.WrongPassphrase) {
+                        } catch (ignored: PayloadCipher.WrongPassphrase) {
                             return listOf(ArchiveProblem.WrongPassphrase)
                         }
 

@@ -10,6 +10,10 @@ kotlin = "2.4.10"
 # "platforms;android-37.0", not "platforms;android-37" - see docs/feasibility/m1.md.
 composeBom = "2026.08.00"
 chaquopy = "17.0.0"
+# detekt for Kotlin static analysis (N2). Apache-2.0, which is fine here in a way it would
+# not be for a shipped dependency: it runs at build time and no part of it is linked into
+# the app, exactly like AGP and Gradle themselves (docs/architecture.md 7.1).
+detekt = "1.23.8"
 python = "3.13"
 
 compileSdk = "37"
@@ -87,3 +91,4 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 chaquopy = { id = "com.chaquo.python", version.ref = "chaquopy" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

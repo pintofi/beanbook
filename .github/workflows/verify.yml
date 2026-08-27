@@ -47,6 +47,12 @@ jobs:
           ./gradlew :core-domain:test :core-data:test :core-engine:test
           :core-entitlement:test :engine-remote:test
 
+      - name: detekt
+        # Static analysis across every module. It earned its place on the first run: an
+        # accessibility helper written in M6 and never wired up, so every amount was
+        # announced as raw text (docs/milestones/m14-part16.md).
+        run: ./gradlew detekt
+
       - name: Play flavor boundaries
         run: ./gradlew :app:verifyPlayFlavorBoundaries
 

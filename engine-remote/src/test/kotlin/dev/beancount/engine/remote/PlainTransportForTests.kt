@@ -46,7 +46,7 @@ internal class PlainTransportForTests : Transport {
                 location = connection.getHeaderField("Location"),
             )
         } catch (io: IOException) {
-            throw RemoteException(RemoteFailure.Unreachable(io.message ?: "io"))
+            throw RemoteException(RemoteFailure.Unreachable(io.message ?: "io"), cause = io)
         } finally {
             connection.disconnect()
         }

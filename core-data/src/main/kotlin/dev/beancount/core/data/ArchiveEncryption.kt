@@ -195,7 +195,7 @@ object PayloadCipher {
         )
         return try {
             cipher.doFinal(ciphertext)
-        } catch (error: javax.crypto.AEADBadTagException) {
+        } catch (ignored: javax.crypto.AEADBadTagException) {
             // Indistinguishable by design: a wrong passphrase and a damaged payload both
             // fail the tag, and neither yields anything usable.
             throw WrongPassphrase()

@@ -131,8 +131,8 @@ class PluginsState(
                     } ?: return@withContext InstallResult.Failed("that file could not be opened")
 
                     store.install(target, policy, sourceLabel = name)
-                } catch (e: SecurityException) {
-                    Log.w(TAG, "no permission for the picked document")
+                } catch (denied: SecurityException) {
+                    Log.w(TAG, "no permission for the picked document", denied)
                     InstallResult.Failed("this app was not given permission to read that file")
                 } finally {
                     scratch.deleteRecursively()
