@@ -80,7 +80,10 @@ class WheelFetcherTest {
         val resolved = fetcher().resolve(listOf("packaging")).getOrThrow()
         fetcher().install(resolved.wheels)
 
-        assertFalse("the download spool was left on disk", File(root, ".spool").exists())
+        assertFalse(
+            "the download spool was left on disk",
+            File(root.parentFile, "${root.name}-spool").exists(),
+        )
     }
 
     @Test fun preloadingIsHarmlessWhenThereAreNoCompanionLibraries() {
@@ -90,6 +93,20 @@ class WheelFetcherTest {
         fetcher().install(resolved.wheels)
 
         assertTrue("preloading invented a library", fetcher().preloadNativeLibraries().isEmpty())
+    }
+
+    @Test fun installedDoesNotCountThingsThatAreNotPackages() {
+        val resolved = fetcher().resolve(listOf("packaging")).getOrThrow()
+        fetcher().install(resolved.wheels)
+
+        // `chaquopy` is where native wheels put their shared libraries, and a spool is a
+        // download in progress. Reporting either as installed makes "is numpy here?"
+        // answerable with the wrong yes.
+        File(root, "chaquopy/lib").mkdirs()
+        val installed = fetcher().installed()
+
+        assertTrue("packaging should be reported", "packaging" in installed)
+        assertFalse("the shared library directory is not a package", "chaquopy" in installed)
     }
 
     @Test fun theEditionThatMayNotDownloadRefusesRatherThanFailing() {

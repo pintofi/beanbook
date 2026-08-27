@@ -65,7 +65,10 @@ class WheelFetcher(
      * megabytes of heap — an out-of-memory kill on the exact device this feature is for. The
      * spool is deleted after a successful install and on failure.
      */
-    private val spool = File(root, ".spool")
+    // Beside the install root, not inside it. A download in progress is not an installed
+    // package, and putting it in there made `installed()` report `.spool` as one — and left a
+    // wheel's own entries able to collide with it.
+    private val spool = File(root.parentFile ?: root, "${root.name}-spool")
 
     private fun spooledAt(url: String): File =
         File(spool, url.substringAfterLast('/').ifBlank { url.hashCode().toString() })
@@ -243,9 +246,19 @@ class WheelFetcher(
         return loaded.toList()
     }
 
-    /** Packages already on this device, so a second run costs nothing. */
+    /**
+     * Packages already on this device, so a second run costs nothing.
+     *
+     * `chaquopy` is excluded: it is the shared library directory Chaquopy's native wheels
+     * unpack into, not a package anyone asked for, and reporting it as installed would make
+     * "is numpy here?" answerable with the wrong yes.
+     */
     fun installed(): Set<String> =
-        root.listFiles()?.filter { it.isDirectory }?.map { normalise(it.name) }?.toSet().orEmpty()
+        root.listFiles()
+            ?.filter { it.isDirectory && !it.name.startsWith(".") && it.name != "chaquopy" }
+            ?.map { normalise(it.name) }
+            ?.toSet()
+            .orEmpty()
 
     private fun unpack(bytes: ByteArray) {
         ZipInputStream(bytes.inputStream()).use { zip ->
