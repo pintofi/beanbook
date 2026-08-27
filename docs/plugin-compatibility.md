@@ -6,6 +6,30 @@ wheels and exposes the bridge. See [distribution.md](distribution.md) §2.1 for 
 
 ---
 
+## Licences, and one combination this project will not recommend quietly
+
+Every entry records a licence, and one group needs saying out loud: the five `reds.*` plugins
+are **GPL-3.0**, and this app is **GPL-2.0-only** because Beancount is, explicitly not "or
+later". Those two licences are incompatible.
+
+What that does and does not mean:
+
+- **It is not a problem with the plugin.** They are good plugins and widely used.
+- **It is not something this project distributes.** No plugin source is in this repository or
+  in the APK; a user fetches one and installs it themselves.
+- **A user combining them privately is fine.** The GPL restricts distribution, not what
+  someone runs on their own device.
+- **What could not be done is redistribute the combination** — an APK with those plugins
+  bundled, or a device image, could not be shipped by anyone.
+
+So they stay in the catalogue, marked, with `licence_note` on each entry. Recommending them
+without saying this would be leaving a user to discover it at the point where it costs them
+something.
+
+The same test applies to anything added later: a catalogue is a recommendation, and a
+recommendation carries the licence question with it.
+
+
 ## 1. What "compatible" means
 
 "Supports all plugins" is not a claim any Android app can honestly make. Our definition:

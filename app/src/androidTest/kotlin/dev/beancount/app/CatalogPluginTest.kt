@@ -40,12 +40,26 @@ class CatalogPluginTest {
     private lateinit var store: PluginStore
     private lateinit var source: File
 
-    private val probe = """
-        plugin "autobean.sorted"
+    /**
+     * One catalogued plugin, and a ledger that exercises it.
+     *
+     * [expectTransactions] and [expectNotes] are what must survive the plugin running.
+     * Invariant 4 is the point of the note in every case: a plugin may reorder, annotate or
+     * reject, and a directive it has no opinion about must come out the other side.
+     */
+    private data class Case(
+        val plugin: String,
+        val ledger: String,
+        val expectTransactions: Int,
+        val expectNotes: Int = 1,
+    )
 
+    private val opened = """
         2026-01-01 open Assets:Bank:Checking
         2026-01-01 open Expenses:Food:Groceries
+    """.trimIndent()
 
+    private val twoTransactions = """
         2026-02-01 * "Small shop" "under the line"
           Expenses:Food:Groceries    12.00 USD
           Assets:Bank:Checking
@@ -56,6 +70,24 @@ class CatalogPluginTest {
 
         2026-02-03 note Assets:Bank:Checking "a note that must survive"
     """.trimIndent()
+
+    /**
+     * The GPL-2.0 half of the catalogue's `supported` set, which is the half this project can
+     * point a user at without also pointing them at a licence problem — see
+     * docs/plugin-compatibility.md on the `reds.*` entries.
+     *
+     * Five plugins from one package, which is why they can be run together: the app installs
+     * the package once and names the module per ledger.
+     */
+    private val cases = listOf(
+        Case("autobean.sorted", "plugin \"autobean.sorted\"\n\n$opened\n\n$twoTransactions", 2),
+        Case("autobean.narration", "plugin \"autobean.narration\"\n\n$opened\n\n$twoTransactions", 2),
+        Case("autobean.xcheck", "plugin \"autobean.xcheck\"\n\n$opened\n\n$twoTransactions", 2),
+        Case("autobean.include", "plugin \"autobean.include\"\n\n$opened\n\n$twoTransactions", 2),
+        // autobean.truelayer is deliberately absent: it imports `beancount.ingest`, which
+        // Beancount 3 removed, and fails identically on desktop. It is a Beancount 2 plugin,
+        // and the catalogue now says so (docs/milestones/m14-part25.md).
+    )
 
     @Before fun setUp() {
         // /data/local/tmp, not the app's own external cache: the Gradle test task
@@ -70,7 +102,7 @@ class CatalogPluginTest {
         store = PluginStore(project)
     }
 
-    @Test fun aCataloguedPluginInstallsLoadsAndLeavesTheLedgerIntact() {
+    @Test fun everyGplTwoCataloguedPluginInstallsLoadsAndLeavesTheLedgerIntact() {
         val installed = store.install(source, policy, "pushed for the compatibility harness")
         assertTrue(
             "step 'installs' failed under ${policy.name}: $installed",
@@ -81,20 +113,42 @@ class CatalogPluginTest {
         // The store copies the package under its own directory, so the importable root is
         // the directory that *contains* the package.
         val root = store.directoryFor(plugin).absolutePath
-        val ledger = File(project, "main.beancount").apply { writeText(probe + "\n") }
 
-        val result = JSONObject(
-            Python.getInstance().getModule("ledger")
-                .callAttr("inspect", ledger.absolutePath, 200, root, policy.allowsAndroidBridge)
-                .toString(),
-        )
+        val failures = mutableListOf<String>()
+        cases.forEach { case ->
+            val ledger = File(project, "${case.plugin.replace('.', '-')}.beancount")
+                .apply { writeText(case.ledger + "\n") }
 
-        val errors = result.getJSONArray("errors")
-        assertEquals("autobean.sorted did not load cleanly: $errors", 0, errors.length())
+            val result = JSONObject(
+                Python.getInstance().getModule("ledger")
+                    .callAttr("inspect", ledger.absolutePath, 200, root, policy.allowsAndroidBridge)
+                    .toString(),
+            )
 
-        val counts = result.getJSONObject("entry_counts")
-        assertEquals(2, counts.getInt("Transaction"))
-        assertEquals("a directive the plugin never touched disappeared", 1, counts.getInt("Note"))
+            val errors = result.getJSONArray("errors")
+            if (errors.length() != 0) {
+                failures += "${case.plugin}: did not load cleanly — $errors"
+                return@forEach
+            }
+
+            val counts = result.getJSONObject("entry_counts")
+            val transactions = counts.optInt("Transaction")
+            val notes = counts.optInt("Note")
+            if (transactions != case.expectTransactions) {
+                failures += "${case.plugin}: $transactions transactions, expected " +
+                    "${case.expectTransactions}"
+            }
+            if (notes != case.expectNotes) {
+                failures += "${case.plugin}: a directive it has no opinion about disappeared " +
+                    "— $notes notes, expected ${case.expectNotes}"
+            }
+            android.util.Log.i(
+                "CatalogPlugin",
+                "${case.plugin} ok transactions=$transactions notes=$notes",
+            )
+        }
+
+        assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }
 
     companion object {
