@@ -82,6 +82,15 @@ worked. A failure leaves the previous valid ledger recoverable.
 
 ---
 
+## Importing statements
+
+**File types are recognised by extension, not by content.** `libmagic` is not built for
+Android, so beangulp — which uses it optionally — falls back to matching the filename. Bank
+downloads arrive as `.csv`, `.ofx`, `.qfx` or `.pdf`, so in practice this is the same answer;
+a statement saved with the wrong extension, or none, will not be identified.
+
+---
+
 ## Devices
 
 **arm64-v8a and x86_64 only.** No 32-bit ABIs in v1. A 32-bit-only device cannot install it.

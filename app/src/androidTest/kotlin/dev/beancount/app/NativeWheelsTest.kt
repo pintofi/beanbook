@@ -120,6 +120,48 @@ class NativeWheelsTest {
         }
     }
 
+    @Test fun beangulpIdentifiesStatementsWithoutLibmagic() {
+        // V5. `python-magic` is a ctypes wrapper around libmagic, and libmagic is not in this
+        // APK — nothing builds it for Android. So `import magic` fails on device, which is
+        // the *expected* outcome rather than a defect: beangulp declares python-magic as an
+        // install dependency but uses it optionally, behind
+        // `except (ImportError, OSError): magic = None`, and falls back to identifying files
+        // by extension. This asserts that contract end to end, so that a future beangulp
+        // which hard-depends on magic fails here rather than in a user's import.
+        val importFailed = try {
+            python.getModule("magic")
+            false
+        } catch (expected: com.chaquo.python.PyException) {
+            assertTrue(
+                "python-magic failed for some reason other than the missing library: " +
+                    "${expected.message}",
+                expected.message.orEmpty().contains("libmagic"),
+            )
+            true
+        }
+        assertTrue(
+            "libmagic is present after all — this test's premise no longer holds, and " +
+                "content sniffing should be checked rather than the fallback",
+            importFailed,
+        )
+
+        // The fallback, doing the job the importers actually need: a statement's type from
+        // its name. `beangulp.mimetypes` is the current module; `file_type` is deprecated
+        // upstream and is the one that reaches for magic.
+        val mimetypes = python.getModule("beangulp.mimetypes")
+        listOf(
+            "statement.csv" to "text/csv",
+            "statement.pdf" to "application/pdf",
+            "statement.ofx" to "ofx",
+        ).forEach { (name, expected) ->
+            val guessed = mimetypes.callAttr("guess_type", name, false).asList()[0].toString()
+            assertTrue(
+                "beangulp could not identify $name without libmagic, it said: $guessed",
+                guessed.contains(expected, ignoreCase = true),
+            )
+        }
+    }
+
     private companion object {
         @JvmStatic
         @BeforeClass
