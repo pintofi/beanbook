@@ -73,6 +73,25 @@ class WheelFetcherTest {
         assertTrue("packaging should still resolve", resolved.wheels.any { it.name == "packaging" })
     }
 
+    @Test fun theSpoolIsNotLeftBehindAfterASuccessfulInstall() {
+        // The spool exists so a wheel is downloaded once rather than twice. Left behind, it
+        // would double the disk cost of every install instead — and for a closure containing
+        // OpenBLAS that is tens of megabytes of nothing.
+        val resolved = fetcher().resolve(listOf("packaging")).getOrThrow()
+        fetcher().install(resolved.wheels)
+
+        assertFalse("the download spool was left on disk", File(root, ".spool").exists())
+    }
+
+    @Test fun preloadingIsHarmlessWhenThereAreNoCompanionLibraries() {
+        // Pure-Python packages bring no `chaquopy/lib`. Preloading has to be a no-op there
+        // rather than an error, because the caller cannot know which kind it just installed.
+        val resolved = fetcher().resolve(listOf("packaging")).getOrThrow()
+        fetcher().install(resolved.wheels)
+
+        assertTrue("preloading invented a library", fetcher().preloadNativeLibraries().isEmpty())
+    }
+
     @Test fun theEditionThatMayNotDownloadRefusesRatherThanFailing() {
         val refused = fetcher(allowed = false)
             .install(fetcher().resolve(listOf("packaging")).getOrThrow().wheels)
