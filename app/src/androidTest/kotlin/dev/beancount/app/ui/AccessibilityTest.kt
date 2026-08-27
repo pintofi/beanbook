@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performScrollToNode
 import dev.beancount.core.domain.CapturedPages
 import dev.beancount.core.domain.LedgerVocabulary
 import java.time.LocalDate
@@ -248,6 +249,27 @@ class AccessibilityTest {
      * own merits, though note it did **not** catch the clipped switch that prompted it; see
      * `assertAccessible` for why.
      */
+    @Test fun theLicencesScreenIsLabelledAndFitsAtDoubleFontScale() {
+        // The one screen in the app whose whole job is to be *readable*: a licence notice
+        // that a screen reader cannot reach, or that clips at 200%, has not been given to
+        // anyone (docs/milestones/m14-part15.md).
+        render(widthDp = 320, fontScale = 2f) { LicencesScreen() }
+
+        // A LazyColumn only composes what is near the viewport, so `performScrollTo` — which
+        // needs the node to exist already — is the wrong tool; the list has to be scrolled to
+        // the node instead.
+        val list = compose.onNode(androidx.compose.ui.test.hasScrollAction())
+        list.performScrollToNode(
+            androidx.compose.ui.test.hasContentDescription(
+                "Beancount for Android is under GPL-2.0-only. Read the full licence.",
+            ),
+        ).assertExists()
+        list.performScrollToNode(
+            androidx.compose.ui.test.hasContentDescription("beancount, 3.2.3. Read its licence."),
+        ).assertExists()
+        assertAccessible()
+    }
+
     @Test fun theAppearanceScreenIsAccessibleAtAnOrdinaryPhoneWidth() {
         render(widthDp = 411, fontScale = 1f) {
             AppearanceScreen(

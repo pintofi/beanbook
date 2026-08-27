@@ -256,6 +256,14 @@ jobs:
           APK=$(find app/build/outputs/apk -name '*play-arm64-v8a-debug*.apk' | head -1)
           python3 tools/check-minsdk-symbols.py "$APK" --api 28 --abi arm64-v8a
 
+      - name: The licence notices match what the APK ships
+        # licences.json is generated from a built APK and committed, so it can drift — and a
+        # drifted licence file is not untidiness, it is a component shipping with no notice
+        # a user can read (docs/milestones/m14-part15.md).
+        run: |
+          APK=$(find app/build/outputs/apk -name '*expert-arm64-v8a-debug*.apk' | head -1)
+          python3 tools/licences.py --apk "$APK" --check
+
       - name: No build-machine paths in the APK
         run: |
           APK=$(find app/build/outputs/apk -name '*expert-arm64-v8a-debug*.apk' | head -1)

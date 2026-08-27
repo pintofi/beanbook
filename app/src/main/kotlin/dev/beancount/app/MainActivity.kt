@@ -827,6 +827,7 @@ internal enum class MoreSection(val label: String) {
     PLUGINS("Plugins"),
     APPEARANCE("Appearance"),
     UPDATES("Updates"),
+    LICENCES("Licences"),
 }
 
 /**
@@ -1340,6 +1341,8 @@ private fun SurfaceContent(
                         MoreSection.UPDATES ->
                             dev.beancount.app.update.UpdateSection()
 
+                        MoreSection.LICENCES -> dev.beancount.app.ui.LicencesScreen()
+
                         MoreSection.APPEARANCE ->
                             AppearanceScreen(
                                 choice = themeChoice,
@@ -1697,6 +1700,7 @@ private fun MoreMenu(onOpen: (MoreSection) -> Unit) {
         MoreSection.PLUGINS to "Extra checks and transformations, from files you supply",
         MoreSection.APPEARANCE to "Theme, dark mode and colours",
         MoreSection.UPDATES to "Check for a signed update to this app",
+        MoreSection.LICENCES to "This app's licence, and everything it is built on",
     )
 
     // Updates are the one section that is not in both editions: the Play build has no
