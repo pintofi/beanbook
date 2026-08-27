@@ -184,6 +184,14 @@ class MainActivity : ComponentActivity() {
         uri?.let { app.pluginsState.installFrom(it, displayNameOf(it)) }
     }
 
+    /** One read of one script, for the same reason the plugin picker is not a tree grant. */
+    private val scriptPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        val app = application as BeancountApplication
+        uri?.let { app.scriptRunner.runFrom(it, displayNameOf(it)) }
+    }
+
     private val backupReader = registerForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -263,6 +271,7 @@ class MainActivity : ComponentActivity() {
         app.projectsState.open(projectId)
         app.templatesState.open(projectId)
         app.pluginsState.openProject(app.workspace.projectDir(projectId))
+        app.scriptRunner.onProjectOpened(app.workspace.mainFile(projectId))
         refreshDocuments(app, projectId)
 
         // Asked at load time, not captured now: which plugins are on can change between
@@ -394,6 +403,9 @@ class MainActivity : ComponentActivity() {
                     val pluginRows by app.pluginsState.rows.collectAsStateWithLifecycle()
                     val pluginSafeMode by app.pluginsState.safeMode.collectAsStateWithLifecycle()
                     val pluginMessage by app.pluginsState.message.collectAsStateWithLifecycle()
+                    val scriptRunning by app.scriptRunner.running.collectAsStateWithLifecycle()
+                    val scriptOutcome by app.scriptRunner.outcome.collectAsStateWithLifecycle()
+                    val scriptMessage by app.scriptRunner.message.collectAsStateWithLifecycle()
 
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
@@ -503,6 +515,11 @@ class MainActivity : ComponentActivity() {
                         pluginSafeMode = pluginSafeMode,
                         pluginMessage = pluginMessage,
                         onInstallPlugin = { pluginPicker.launch(arrayOf("*/*")) },
+                        scriptRunning = scriptRunning,
+                        scriptOutcome = scriptOutcome,
+                        scriptMessage = scriptMessage,
+                        onPickScript = { scriptPicker.launch(arrayOf("*/*")) },
+                        onCancelScript = { app.scriptRunner.cancel() },
                         onSetPluginEnabled = { id, on -> app.pluginsState.setEnabled(id, on) },
                         onRemovePlugin = { app.pluginsState.remove(it) },
                         onSetPluginSafeMode = { app.pluginsState.setSafeMode(it) },
@@ -828,6 +845,7 @@ internal enum class MoreSection(val label: String) {
     PLUGINS("Plugins"),
     APPEARANCE("Appearance"),
     UPDATES("Updates"),
+    SCRIPTS("Scripts"),
     LICENCES("Licences"),
 }
 
@@ -925,6 +943,11 @@ internal fun LedgerApp(
     pluginSafeMode: Boolean,
     pluginMessage: String?,
     onInstallPlugin: () -> Unit,
+    scriptRunning: String?,
+    scriptOutcome: dev.beancount.app.plugins.ScriptOutcome?,
+    scriptMessage: String?,
+    onPickScript: () -> Unit,
+    onCancelScript: () -> Unit,
     onSetPluginEnabled: (String, Boolean) -> Unit,
     onRemovePlugin: (String) -> Unit,
     onSetPluginSafeMode: (Boolean) -> Unit,
@@ -1109,6 +1132,11 @@ internal fun LedgerApp(
                 pluginSafeMode = pluginSafeMode,
                 pluginMessage = pluginMessage,
                 onInstallPlugin = onInstallPlugin,
+                scriptRunning = scriptRunning,
+                scriptOutcome = scriptOutcome,
+                scriptMessage = scriptMessage,
+                onPickScript = onPickScript,
+                onCancelScript = onCancelScript,
                 onSetPluginEnabled = onSetPluginEnabled,
                 onRemovePlugin = onRemovePlugin,
                 onSetPluginSafeMode = onSetPluginSafeMode,
@@ -1212,6 +1240,11 @@ private fun SurfaceContent(
     pluginSafeMode: Boolean,
     pluginMessage: String?,
     onInstallPlugin: () -> Unit,
+    scriptRunning: String?,
+    scriptOutcome: dev.beancount.app.plugins.ScriptOutcome?,
+    scriptMessage: String?,
+    onPickScript: () -> Unit,
+    onCancelScript: () -> Unit,
     onSetPluginEnabled: (String, Boolean) -> Unit,
     onRemovePlugin: (String) -> Unit,
     onSetPluginSafeMode: (Boolean) -> Unit,
@@ -1351,6 +1384,24 @@ private fun SurfaceContent(
                                 hideWidgetAmounts = hideWidgetAmounts,
                                 onHideWidgetAmounts = onHideWidgetAmounts,
                             )
+
+                        MoreSection.SCRIPTS ->
+                            if (!entitlement.allows(Feature.SCRIPTS)) {
+                                LockedFeature(
+                                    title = "Scripts",
+                                    tier = Feature.SCRIPTS.required.label,
+                                    onContribute = onContribute,
+                                )
+                            } else {
+                                dev.beancount.app.ui.ScriptRunnerScreen(
+                                    running = scriptRunning,
+                                    outcome = scriptOutcome,
+                                    message = scriptMessage,
+                                    bridgeAvailable = currentPluginPolicy().allowsAndroidBridge,
+                                    onPick = onPickScript,
+                                    onCancel = onCancelScript,
+                                )
+                            }
 
                         MoreSection.PLUGINS ->
                             if (!entitlement.allows(Feature.PLUGINS)) {
@@ -1714,6 +1765,7 @@ private fun MoreMenu(onOpen: (MoreSection) -> Unit) {
         MoreSection.PLUGINS to "Extra checks and transformations, from files you supply",
         MoreSection.APPEARANCE to "Theme, dark mode and colours",
         MoreSection.UPDATES to "Check for a signed update to this app",
+        MoreSection.SCRIPTS to "Run a Python script once against the open ledger",
         MoreSection.LICENCES to "This app's licence, and everything it is built on",
     )
 

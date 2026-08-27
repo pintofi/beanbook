@@ -130,6 +130,11 @@ class BeancountApplication : Application() {
         dev.beancount.app.plugins.PluginsState(this, currentPluginPolicy(), appScope)
     }
 
+    /** Running a user script against the open ledger (Tier 3). Same policy, chosen once. */
+    val scriptRunner: dev.beancount.app.plugins.ScriptRunnerState by lazy {
+        dev.beancount.app.plugins.ScriptRunnerState(this, currentPluginPolicy(), appScope)
+    }
+
     /**
      * How the app should look. Outside the project tree: a display preference belongs to the
      * device, not to a ledger, and must not travel in a backup or a mirror.

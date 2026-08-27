@@ -290,6 +290,41 @@ class AccessibilityTest {
         assertAccessible()
     }
 
+    @Test fun theScriptRunnerIsLabelledAndFitsAtDoubleFontScale() {
+        render(widthDp = 320, fontScale = 2f) {
+            ScriptRunnerScreen(
+                running = null,
+                outcome = dev.beancount.app.plugins.ScriptOutcome(
+                    name = "tag_large.py",
+                    ok = false,
+                    output = "checked 412 entries",
+                    error = "",
+                    errorType = "",
+                    cancelled = true,
+                    timedOut = false,
+                    durationMs = 31_400,
+                    overranByMs = 1_400,
+                ),
+                message = null,
+                bridgeAvailable = true,
+                onPick = {},
+                onCancel = {},
+            )
+        }
+
+        listOf(
+            "Choose a script file and run it",
+            // The outcome is a live region, and its description is what a screen reader
+            // announces when a run ends — including the case the engine takes care to
+            // report honestly, a script that ignored its deadline.
+            "tag_large.py: Stopped — but it kept running for 1s after being asked, " +
+                "because it was inside a call that cannot be interrupted.",
+        ).forEach { label ->
+            compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
+        }
+        assertAccessible()
+    }
+
     @Test fun theLicencesScreenIsLabelledAndFitsAtDoubleFontScale() {
         // The one screen in the app whose whole job is to be *readable*: a licence notice
         // that a screen reader cannot reach, or that clips at 200%, has not been given to
