@@ -31,6 +31,30 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-wheels
+          path: wheels
+
+      - name: Take the wheels the verify run built
+        # Not rebuilt here: a release must ship the artefacts the gates actually passed on,
+        # and the wheels are not reproducible byte for byte (m14-part8.md). The pins for them
+        # are generated rather than committed, so this job writes its own from what it got
+        # (m14-part9.md) — it is a separate checkout from the job that built them.
+        run: |
+          WHEELS="$GITHUB_WORKSPACE/wheels"
+          if [ -z "$(ls -A "$WHEELS"/*.whl 2>/dev/null)" ]; then
+            echo "::error::no Android wheels at $WHEELS; the verify run should have built them"
+            exit 1
+          fi
+          ls "$WHEELS"
+          python3 tools/lock-python.py --refresh-local --wheel-dir "$WHEELS"
+          echo "BCA_WHEEL_DIR=$WHEELS" >> "$GITHUB_ENV"
+
       - name: Restore the signing key
         # Absent secrets produce an unsigned build rather than a failing one, and the step
         # below says which happened. A release that is quietly unsigned must be obvious.
@@ -49,7 +73,9 @@ jobs:
           BCA_KEYSTORE_PASSWORD: ${{ secrets.BCA_KEYSTORE_PASSWORD }}
           BCA_KEY_ALIAS: ${{ secrets.BCA_KEY_ALIAS }}
           BCA_KEY_PASSWORD: ${{ secrets.BCA_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleExpertRelease :app:assemblePlayRelease
+        run: >-
+          ./gradlew :app:assembleExpertRelease :app:assemblePlayRelease
+          -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
 
       - name: Refuse to publish an unsigned release
         run: |
