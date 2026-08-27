@@ -90,9 +90,13 @@ worked. A failure leaves the previous valid ledger recoverable.
 
 ## Plugins and Fava extensions
 
-**The installer installs files, not packages, and does not resolve dependencies.** You give
-the app a plugin's source; it does not fetch anything, and there is no package manager on the
-device. So a plugin works only if everything it imports is already bundled.
+**Plugins you supply as files are not resolved for you.** You give the app a plugin's source
+and it loads it; if that plugin imports something the app does not bundle, it fails at import
+with the missing module named.
+
+**The Expert edition can fetch what a plugin needs, on request** — see
+[on-demand-packages.md](on-demand-packages.md). The Play edition cannot, because retrieving
+executable code from outside the store is against its policy.
 
 In practice that means most **Beancount plugins** work — they import Beancount and the
 standard library — and most **Fava extensions** do not, because they reach for `pandas`,
