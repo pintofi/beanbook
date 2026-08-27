@@ -53,15 +53,22 @@ class WheelFetcher(
     private val chaquopyRequires = mutableMapOf<String, List<String>>()
 
     /**
-     * Wheels already downloaded while resolving, by URL.
+     * Wheels already downloaded while resolving, spooled to disk, by URL.
      *
-     * Chaquopy's index publishes no digests, so resolving one of its wheels means fetching it
-     * to hash it. Fetching it again to install it doubles the traffic — 60 MB for beangrow's
-     * 30 MB closure, over a phone connection. Kept in memory rather than on disk because the
-     * install follows the resolve immediately, and a half-written cache on disk is a bug
-     * waiting for a cancelled download.
+     * Chaquopy's index publishes no digests and no metadata endpoint, so resolving one of its
+     * wheels means fetching it — to hash it, and to read the `Requires-Dist` lines that PyPI
+     * does not have for that build. Fetching it a second time to install it doubles the
+     * traffic: 60 MB for beangrow's 30 MB closure, over a phone connection.
+     *
+     * **On disk, not in memory.** The first version of this held every wheel as a ByteArray,
+     * which for a closure containing OpenBLAS, numpy, pandas and matplotlib is a hundred
+     * megabytes of heap — an out-of-memory kill on the exact device this feature is for. The
+     * spool is deleted after a successful install and on failure.
      */
-    private val fetched = mutableMapOf<String, ByteArray>()
+    private val spool = File(root, ".spool")
+
+    private fun spooledAt(url: String): File =
+        File(spool, url.substringAfterLast('/').ifBlank { url.hashCode().toString() })
 
     /**
      * Works out what installing [names] would actually fetch, without fetching it.
@@ -112,8 +119,9 @@ class WheelFetcher(
         root.mkdirs()
         var total = 0L
         wheels.forEach { wheel ->
+            val spooled = spooledAt(wheel.url)
             val bytes = try {
-                fetched[wheel.url] ?: download(wheel.url)
+                if (spooled.isFile) spooled.readBytes() else download(wheel.url)
             } catch (problem: java.io.IOException) {
                 Log.w(TAG, "could not fetch ${wheel.name}", problem)
                 return FetchResult.Failed("${wheel.name} could not be downloaded")
@@ -134,6 +142,7 @@ class WheelFetcher(
             overlay(wheel)
             total += bytes.size
         }
+        spool.deleteRecursively()
         return FetchResult.Installed(wheels, total)
     }
 
@@ -180,6 +189,41 @@ class WheelFetcher(
             listOf(path)
         } else {
             children.flatMap { walkAssets(manager, "$path/$it") }
+        }
+    }
+
+    /**
+     * Loads the companion libraries a fetched package's extension modules link against.
+     *
+     * Chaquopy splits a native package in two: numpy's `_multiarray_umath.so` has a
+     * `DT_NEEDED` on `libopenblas.so`, which arrives in a separate `chaquopy-openblas` wheel
+     * and unpacks to `chaquopy/lib/`. Nothing puts that directory on the dynamic linker's
+     * search path — Chaquopy's own build does it at install time for the packages in the APK,
+     * and a directory this app unpacked at runtime is not one of them. So numpy installs
+     * perfectly and then fails to import with `library "libopenblas.so" not found`.
+     *
+     * Loading each by absolute path puts it in the process by soname, and the linker then
+     * satisfies the extension module's `DT_NEEDED` from what is already loaded.
+     *
+     * Ordered by dependency: `libc++_shared` underpins the rest, so it goes first. Failures
+     * are logged rather than thrown — a library that will not load here produces a clearer
+     * error at the import that actually needs it.
+     */
+    fun preloadNativeLibraries(): List<String> {
+        val libraries = File(root, "chaquopy/lib").listFiles()
+            ?.filter { it.name.endsWith(".so") }
+            ?.sortedBy { if (it.name.contains("c++")) 0 else 1 }
+            .orEmpty()
+
+        return libraries.mapNotNull { library ->
+            runCatching { System.load(library.absolutePath) }
+                .fold(
+                    onSuccess = { library.name },
+                    onFailure = { problem ->
+                        Log.w(TAG, "could not preload ${library.name}", problem)
+                        null
+                    },
+                )
         }
     }
 
@@ -236,7 +280,8 @@ class WheelFetcher(
         val bytes = runCatching { download(url) }.getOrNull() ?: return null
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
             .joinToString("") { "%02x".format(it) }
-        fetched[url] = bytes
+        spool.mkdirs()
+        spooledAt(url).writeBytes(bytes)
         chaquopyRequires[name] = requiresFrom(bytes)
         return Wheel(
             name = name,

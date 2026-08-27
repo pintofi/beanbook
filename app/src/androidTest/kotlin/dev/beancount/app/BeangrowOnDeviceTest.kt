@@ -61,6 +61,11 @@ class BeangrowOnDeviceTest {
             returns.readText().contains("def solve_irr"),
         )
 
+        // The companion libraries Chaquopy's native wheels link against. Without this,
+        // numpy installs perfectly and fails to import.
+        val preloaded = fetcher.preloadNativeLibraries()
+        android.util.Log.i(TAG, "preloaded: $preloaded")
+
         val python = Python.getInstance()
         python.getModule("sys").get("path")!!.callAttr("insert", 0, root.absolutePath)
         python.getModule("importlib").callAttr("invalidate_caches")

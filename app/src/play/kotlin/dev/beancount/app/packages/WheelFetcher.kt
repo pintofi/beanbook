@@ -30,6 +30,8 @@ class WheelFetcher(
 
     fun installed(): Set<String> = emptySet()
 
+    fun preloadNativeLibraries(): List<String> = emptyList()
+
     private companion object {
         const val REASON =
             "This edition cannot download packages. The version from the project's own site can."
