@@ -60,11 +60,6 @@ chaquopy {
             // their bytes differ on every build and a hash recorded on one machine cannot
             // match a wheel built on another (docs/milestones/m14-part9.md). Written by
             // tools/build-wheels.sh; without it there are no wheels to install anyway.
-            val localPins = layout.projectDirectory.file("requirements-local.lock").asFile
-            require(localPins.isFile) {
-                "engine-local/requirements-local.lock is missing. It is generated together " +
-                    "with the wheels themselves: run tools/build-wheels.sh --out $wheelDir"
-            }
             install("-r", "requirements-local.lock")
         }
     }
@@ -74,4 +69,21 @@ dependencies {
     api(project(":core-engine"))
     api(project(":core-data"))
     implementation(libs.kotlinx.coroutines.android)
+}
+
+// The generated pin file is checked when the Python assets are actually built, and not a
+// moment earlier. Checking it at configuration time made *every* Gradle invocation in a
+// fresh clone fail — `:core-domain:test` has nothing to do with Python and should not care
+// that a wheel has not been built (docs/milestones/m14-part10.md).
+tasks.matching { it.name.matches(Regex("install.*PythonRequirements")) }.configureEach {
+    val wheelDir = providers.gradleProperty("beancount.wheelDir")
+        .getOrElse("${System.getProperty("user.home")}/tools/wheels")
+    val localPins = layout.projectDirectory.file("requirements-local.lock").asFile
+    doFirst {
+        check(localPins.isFile) {
+            "engine-local/requirements-local.lock is missing. It pins the two wheels this " +
+                "project cross-builds, and is written beside them: " +
+                "tools/build-wheels.sh --out $wheelDir"
+        }
+    }
 }
