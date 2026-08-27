@@ -154,6 +154,58 @@ class CatalogPluginTest {
     }
 
     /**
+     * `autobean.share`, the last `partial` entry, with a real configuration.
+     *
+     * It was recorded as partial because with an **empty** config "directives disappeared:
+     * {'Open': 3, 'Note': 1}" — which is not a defect. The plugin's argument is a *viewpoint*:
+     * it rewrites the ledger to show what one person owns, and with nobody named there is
+     * nothing to show. Given a viewpoint and a default ownership policy, everything Alice owns
+     * should survive, including the directives the plugin has no opinion about.
+     */
+    @Test fun autobeanShareWorksWhenGivenAViewpoint() {
+        val installed = store.install(source, policy, "pushed for the compatibility harness")
+        assertTrue("step 'installs' failed: $installed", installed is InstallResult.Installed)
+        val root = store.directoryFor((installed as InstallResult.Installed).plugin).absolutePath
+
+        val ledger = File(project, "share.beancount")
+        ledger.writeText(
+            "plugin \"autobean.share\" \"Alice\"\n\n" +
+                "2000-01-01 custom \"autobean.share.policy\" \"default\"\n" +
+                "  share-Alice: 1\n\n" +
+                opened + "\n" +
+                "2026-02-01 * \"Shop\" \"all Alice's\"\n" +
+                "  Expenses:Food:Groceries   12.00 USD\n" +
+                "  Assets:Bank:Checking\n\n" +
+                "2026-02-03 note Assets:Bank:Checking \"a note that must survive\"\n",
+        )
+
+        val result = JSONObject(
+            Python.getInstance().getModule("ledger")
+                .callAttr("inspect", ledger.absolutePath, 200, root, policy.allowsAndroidBridge)
+                .toString(),
+        )
+        val errors = result.getJSONArray("errors")
+        assertEquals("autobean.share did not load cleanly: $errors", 0, errors.length())
+
+        val counts = result.getJSONObject("entry_counts")
+        android.util.Log.i(
+            "CatalogPlugin",
+            "autobean.share ok transactions=${counts.optInt("Transaction")} " +
+                "notes=${counts.optInt("Note")} opens=${counts.optInt("Open")}",
+        )
+        assertEquals(
+            "the transaction Alice owns did not survive her own viewpoint",
+            1,
+            counts.optInt("Transaction"),
+        )
+        assertEquals(
+            "a directive the plugin has no opinion about disappeared",
+            1,
+            counts.optInt("Note"),
+        )
+    }
+
+    /**
      * The `needs-config` set: four `reds.*` plugins, each with a real configuration.
      *
      * They were marked `needs-config` because an empty config string is not enough — the

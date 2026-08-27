@@ -47,11 +47,11 @@
    "repo": "SEIAROTg/autobean",
    "description": "Expense split, joint bookkeeping and debt management",
    "license": "GPL2",
-   "status": "partial",
+   "status": "supported",
    "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "with an empty config: directives disappeared: {'Open': 3, 'Note': 1}",
+    "on": "2026-08-27",
+    "how": "CatalogPluginTest on an API 36 emulator, with a viewpoint and a default ownership policy",
+    "reason": "works. The earlier 'directives disappeared' result was an empty config: the plugin's argument is a viewpoint, and with nobody named there is nothing to show. Given `\"Alice\"` and a default policy, the transaction, both opens and the note all survive (docs/milestones/m14-part26.md)",
     "version": "0.2.3"
    }
   },
