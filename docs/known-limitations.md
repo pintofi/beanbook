@@ -61,8 +61,11 @@ differences exist, all forced by Play policy:
 | Java/Android bridge inside user plugin code | withheld | available |
 | Self-update | none | signed, user-initiated |
 
-**`fava_portfolio_returns` / beangrow is Expert-only.** Its native dependency stack cannot be
-delivered under Play's rules. Play Feature Delivery is the compliant route later.
+**`fava_portfolio_returns` and beangrow are not available in either edition.** This was
+planned as Expert-only, on the assumption that the obstacle was Play policy and download size.
+It is not: both require `scipy`, and no scipy build exists for CPython 3.13 on Android —
+along with numpy, pandas and matplotlib floors above what is available. Nothing in this app
+can bring that forward. If those wheels appear, the feature does too.
 
 **The plugin restrictions are policy compliance, not a security boundary.** User Python runs
 unsandboxed in both editions. Code you install can read anything the app can read, and in
