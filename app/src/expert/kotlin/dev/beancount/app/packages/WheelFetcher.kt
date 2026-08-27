@@ -210,21 +210,37 @@ class WheelFetcher(
      * error at the import that actually needs it.
      */
     fun preloadNativeLibraries(): List<String> {
+        // `.so` is not always the last thing in the name: chaquopy-libgfortran ships
+        // `libgfortran.so.3`, a versioned soname. Matching on endsWith(".so") skipped it
+        // silently, and openblas — which needs it — then failed to load with a message about
+        // openblas rather than about the file that was actually missing.
         val libraries = File(root, "chaquopy/lib").listFiles()
-            ?.filter { it.name.endsWith(".so") }
-            ?.sortedBy { if (it.name.contains("c++")) 0 else 1 }
+            ?.filter { it.isFile && it.name.contains(".so") }
             .orEmpty()
 
-        return libraries.mapNotNull { library ->
-            runCatching { System.load(library.absolutePath) }
-                .fold(
-                    onSuccess = { library.name },
-                    onFailure = { problem ->
-                        Log.w(TAG, "could not preload ${library.name}", problem)
-                        null
-                    },
-                )
+        // Repeat until nothing more will load, rather than guessing an order. These libraries
+        // depend on each other — openblas needs libgfortran, which needs libc++ — and the
+        // order `listFiles` returns is arbitrary. A fixed point costs a few failed dlopens
+        // and cannot be wrong; a hand-written order is right until Chaquopy adds a library.
+        val loaded = LinkedHashSet<String>()
+        var progress = true
+        while (progress) {
+            progress = false
+            libraries.filter { it.name !in loaded }.forEach { library ->
+                if (runCatching { System.load(library.absolutePath) }.isSuccess) {
+                    loaded += library.name
+                    progress = true
+                }
+            }
         }
+
+        val skipped = libraries.map { it.name } - loaded
+        if (skipped.isNotEmpty()) {
+            // Not fatal: a library nothing imports is allowed to be unloadable, and the
+            // import that does need it will say so with its own name.
+            Log.w(TAG, "could not preload: $skipped")
+        }
+        return loaded.toList()
     }
 
     /** Packages already on this device, so a second run costs nothing. */
