@@ -52,16 +52,16 @@ PYTHON_LICENCES = {
     "python_magic": ("MIT", ""),
     "typing_extensions": ("PSF-2.0", ""),
     "simplecountingsort": ("MIT", ""),
-    # Chaquopy's own repackages of the C libraries, carrying no Python metadata. Upstream
-    # libxml2 and libxslt are MIT, but what matters is the terms of *this* repackaging, which
-    # is not stated in the artifact — so it is named as an open question rather than assumed.
-    "chaquopy_libxml2": (
-        "unverified",
-        "Chaquopy repackage of libxml2 (upstream MIT); confirm the repackage's terms",
-    ),
+    # Chaquopy's repackages of the C libraries carry no `License:` metadata, but they do ship
+    # the licence text itself in `dist-info/COPYING`, which is where these were read from
+    # (docs/milestones/m14-part11.md). Both are GPL-2.0-compatible, which is what the app
+    # needs; libxslt's is the X11 variant, with the clause about not using the author's name
+    # in advertising, and the FSF lists that as compatible too.
+    "chaquopy_libxml2": ("MIT", "dist-info/COPYING: the Expat text, (C) 1998-2012 Daniel Veillard"),
     "chaquopy_libxslt": (
-        "unverified",
-        "Chaquopy repackage of libxslt (upstream MIT); confirm the repackage's terms",
+        "X11",
+        "dist-info/COPYING: MIT/X Consortium text for libxslt and libexslt, with the "
+        "no-advertising clause",
     ),
 }
 
@@ -84,27 +84,40 @@ def gradle_libraries() -> list[tuple[str, str]]:
     return sorted(set(out))
 
 
-def python_packages(apk: Path) -> list[tuple[str, str, str]]:
-    """(package, version, licence) for everything Chaquopy packed into the APK.
+# Filenames a package uses for the licence text itself, as opposed to a declaration of which
+# licence it is. MIT, BSD and X11 all require the notice to travel with the software, so
+# whether this file is present is a distribution question, not a bookkeeping one.
+LICENCE_FILENAMES = re.compile(
+    r"^(COPYING|COPYING\.txt|LICEN[CS]E|LICEN[CS]E\.(txt|md|rst)|NOTICE|AUTHORS)$", re.I
+)
+
+
+def python_packages(apk: Path) -> list[tuple[str, str, str, bool]]:
+    """(package, version, licence, ships its own licence text) for everything in the APK.
 
     The licence is read from each package's own `dist-info/METADATA`, which is already in
     the APK. Reading it beats maintaining a table: the table is what goes stale when a
     transitive dependency changes underneath a version bump.
     """
     found: dict[str, tuple[str, str]] = {}
+    texts: set[str] = set()
     with zipfile.ZipFile(apk) as outer:
         for name in outer.namelist():
             if not name.startswith("assets/chaquopy/requirements"):
                 continue
             with zipfile.ZipFile(io.BytesIO(outer.read(name))) as inner:
                 for entry in inner.namelist():
-                    match = re.match(r"([A-Za-z0-9_.\-]+)-([0-9][^/]*)\.dist-info/METADATA$", entry)
-                    if not match:
+                    stem = re.match(r"([A-Za-z0-9_.\-]+)-([0-9][^/]*)\.dist-info/(.+)$", entry)
+                    if not stem:
                         continue
-                    metadata = inner.read(entry).decode("utf-8", "replace")
-                    key = match.group(1).lower().replace("-", "_")
-                    found[key] = (match.group(2), licence_from_metadata(metadata))
-    return sorted((name, v, lic) for name, (v, lic) in found.items())
+                    key = stem.group(1).lower().replace("-", "_")
+                    tail = stem.group(3)
+                    if tail == "METADATA":
+                        metadata = inner.read(entry).decode("utf-8", "replace")
+                        found[key] = (stem.group(2), licence_from_metadata(metadata))
+                    elif LICENCE_FILENAMES.match(tail.rsplit("/", 1)[-1]):
+                        texts.add(key)
+    return sorted((name, v, lic, name in texts) for name, (v, lic) in found.items())
 
 
 def licence_from_metadata(metadata: str) -> str:
@@ -177,10 +190,11 @@ def main() -> int:
         "",
         "## Python packages in the APK",
         "",
-        "| Package | Version | Licence | Note |",
-        "|---|---|---|---|",
+        "| Package | Version | Licence | Text in APK | Note |",
+        "|---|---|---|---|---|",
     ]
-    for package, version, declared in python:
+    no_text = []
+    for package, version, declared, has_text in python:
         # A checked statement beats a self-declaration where we have one — beancount's
         # "GPL-2.0-only, explicitly not or-later" is the fact this whole app is built around
         # and is not something to re-derive from a classifier each time.
@@ -188,7 +202,11 @@ def main() -> int:
         licence = known if known != "unverified" else declared
         if licence == "unverified":
             unverified += 1
-        lines.append(f"| `{package}` | {version} | {licence} | {note} |")
+        if not has_text:
+            no_text.append(package)
+        lines.append(
+            f"| `{package}` | {version} | {licence} | {'yes' if has_text else '**no**'} | {note} |"
+        )
 
     lines += [
         "",
@@ -197,7 +215,21 @@ def main() -> int:
         f"- {len(gradle)} Android/JVM dependencies",
         f"- {len(python)} Python packages shipped in the APK",
         f"- **{unverified} unverified licences** — each must be resolved before release",
+        f"- {len(python) - len(no_text)} of {len(python)} Python packages carry their own",
+        "  licence text inside the APK",
         "",
+        "MIT, BSD and X11 all require the notice to travel with the software, so \"is the",
+        "text in the APK\" is a distribution question rather than bookkeeping. It is *not* the",
+        "whole obligation: the texts sit inside nested archives in `assets/`, where no user",
+        "can read them, and the app has no licences screen. Tracked as N17.",
+        "",]
+    if no_text:
+        lines += [
+            "Shipping no licence text of their own, so their notice has to come from"
+            " somewhere else:",
+            "",
+        ] + [f"- `{package}`" for package in no_text] + [""]
+    lines += ["",
         "Unverified means this tool could not determine the licence from metadata it trusts.",
         "It is reported rather than guessed, because a plausible wrong answer about a licence",
         "is worse than an admitted gap.",

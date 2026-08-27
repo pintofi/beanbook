@@ -51,50 +51,63 @@ be decided against; it is not a claim that the position is settled.
 
 ## Python packages in the APK
 
-| Package | Version | Licence | Note |
-|---|---|---|---|
-| `anyio` | 4.14.2 | MIT | not resolved from metadata; check before release |
-| `babel` | 2.18.0 | BSD-3-Clause |  |
-| `beancount` | 3.2.3 | GPL-2.0-only | explicitly not 'or later' — the reason this app is GPL-2.0-only |
-| `beangulp` | 0.2.0 | GPL-2.0-only | same upstream as beancount |
-| `beanquery` | 0.2.0 | GPL-2.0-only | same upstream as beancount |
-| `beautifulsoup4` | 4.15.0 | MIT License | not resolved from metadata; check before release |
-| `blinker` | 1.9.0 | MIT License | not resolved from metadata; check before release |
-| `chaquopy_libxml2` | 2.9.8 | unverified | Chaquopy repackage of libxml2 (upstream MIT); confirm the repackage's terms |
-| `chaquopy_libxslt` | 1.1.32 | unverified | Chaquopy repackage of libxslt (upstream MIT); confirm the repackage's terms |
-| `chardet` | 7.6.0 | LGPL-2.1 | used by python-magic/beangulp for encoding detection |
-| `cheroot` | 11.1.2 | BSD License | not resolved from metadata; check before release |
-| `click` | 8.4.2 | BSD-3-Clause |  |
-| `fava` | 1.30.15 | MIT |  |
-| `flask` | 3.1.3 | BSD-3-Clause |  |
-| `flask_babel` | 4.0.0 | BSD-3-Clause |  |
-| `idna` | 3.19 | BSD-3-Clause | not resolved from metadata; check before release |
-| `itsdangerous` | 2.2.0 | BSD License | not resolved from metadata; check before release |
-| `jaraco_functools` | 4.6.0 | MIT | not resolved from metadata; check before release |
-| `jinja2` | 3.1.6 | BSD-3-Clause |  |
-| `lxml` | 5.3.0 | BSD-3-Clause |  |
-| `markdown_it_py` | 4.2.0 | MIT License | not resolved from metadata; check before release |
-| `markupsafe` | 3.0.3 | BSD-3-Clause |  |
-| `mdurl` | 0.1.2 | MIT License | not resolved from metadata; check before release |
-| `more_itertools` | 11.1.0 | MIT | not resolved from metadata; check before release |
-| `ply` | 3.11 | BSD-3-Clause |  |
-| `python_dateutil` | 2.9.0.post0 | BSD License | not resolved from metadata; check before release |
-| `python_magic` | 0.4.27 | MIT |  |
-| `pytz` | 2026.3.post1 | MIT |  |
-| `regex` | 2024.9.11 | Apache-2.0 |  |
-| `simplejson` | 3.20.2 | MIT License | not resolved from metadata; check before release |
-| `six` | 1.17.0 | MIT License | not resolved from metadata; check before release |
-| `soupsieve` | 2.9.2 | MIT License | not resolved from metadata; check before release |
-| `tatsu_lts` | 5.16.0 | BSD License | not resolved from metadata; check before release |
-| `typing_extensions` | 4.16.0 | PSF-2.0 |  |
-| `watchfiles` | 1.2.0 | MIT |  |
-| `werkzeug` | 3.1.8 | BSD-3-Clause |  |
+| Package | Version | Licence | Text in APK | Note |
+|---|---|---|---|---|
+| `anyio` | 4.14.2 | MIT | yes | not resolved from metadata; check before release |
+| `babel` | 2.18.0 | BSD-3-Clause | yes |  |
+| `beancount` | 3.2.3 | GPL-2.0-only | **no** | explicitly not 'or later' — the reason this app is GPL-2.0-only |
+| `beangulp` | 0.2.0 | GPL-2.0-only | yes | same upstream as beancount |
+| `beanquery` | 0.2.0 | GPL-2.0-only | yes | same upstream as beancount |
+| `beautifulsoup4` | 4.15.0 | MIT License | yes | not resolved from metadata; check before release |
+| `blinker` | 1.9.0 | MIT License | yes | not resolved from metadata; check before release |
+| `chaquopy_libxml2` | 2.9.8 | MIT | yes | dist-info/COPYING: the Expat text, (C) 1998-2012 Daniel Veillard |
+| `chaquopy_libxslt` | 1.1.32 | X11 | yes | dist-info/COPYING: MIT/X Consortium text for libxslt and libexslt, with the no-advertising clause |
+| `chardet` | 7.6.0 | LGPL-2.1 | yes | used by python-magic/beangulp for encoding detection |
+| `cheroot` | 11.1.2 | BSD License | yes | not resolved from metadata; check before release |
+| `click` | 8.5.0 | BSD-3-Clause | yes |  |
+| `fava` | 1.30.15 | MIT | yes |  |
+| `flask` | 3.1.3 | BSD-3-Clause | yes |  |
+| `flask_babel` | 4.0.0 | BSD-3-Clause | yes |  |
+| `idna` | 3.19 | BSD-3-Clause | yes | not resolved from metadata; check before release |
+| `itsdangerous` | 2.2.0 | BSD License | yes | not resolved from metadata; check before release |
+| `jaraco_functools` | 4.6.0 | MIT | yes | not resolved from metadata; check before release |
+| `jinja2` | 3.1.6 | BSD-3-Clause | yes |  |
+| `lxml` | 5.3.0 | BSD-3-Clause | yes |  |
+| `markdown_it_py` | 4.2.0 | MIT License | yes | not resolved from metadata; check before release |
+| `markupsafe` | 3.0.3 | BSD-3-Clause | yes |  |
+| `mdurl` | 0.1.2 | MIT License | yes | not resolved from metadata; check before release |
+| `more_itertools` | 11.1.0 | MIT | yes | not resolved from metadata; check before release |
+| `ply` | 3.11 | BSD-3-Clause | **no** |  |
+| `python_dateutil` | 2.9.0.post0 | BSD License | yes | not resolved from metadata; check before release |
+| `python_magic` | 0.4.27 | MIT | yes |  |
+| `pytz` | 2026.3.post1 | MIT | yes |  |
+| `regex` | 2024.9.11 | Apache-2.0 | yes |  |
+| `simplejson` | 3.20.2 | MIT License | yes | not resolved from metadata; check before release |
+| `six` | 1.17.0 | MIT License | yes | not resolved from metadata; check before release |
+| `soupsieve` | 2.9.2 | MIT License | yes | not resolved from metadata; check before release |
+| `tatsu_lts` | 5.16.0 | BSD License | yes | not resolved from metadata; check before release |
+| `typing_extensions` | 4.16.0 | PSF-2.0 | yes |  |
+| `watchfiles` | 1.2.0 | MIT | yes |  |
+| `werkzeug` | 3.1.8 | BSD-3-Clause | yes |  |
 
 ## Summary
 
 - 29 Android/JVM dependencies
 - 36 Python packages shipped in the APK
-- **2 unverified licences** — each must be resolved before release
+- **0 unverified licences** — each must be resolved before release
+- 34 of 36 Python packages carry their own
+  licence text inside the APK
+
+MIT, BSD and X11 all require the notice to travel with the software, so "is the
+text in the APK" is a distribution question rather than bookkeeping. It is *not* the
+whole obligation: the texts sit inside nested archives in `assets/`, where no user
+can read them, and the app has no licences screen. Tracked as N17.
+
+Shipping no licence text of their own, so their notice has to come from somewhere else:
+
+- `beancount`
+- `ply`
+
 
 Unverified means this tool could not determine the licence from metadata it trusts.
 It is reported rather than guessed, because a plausible wrong answer about a licence

@@ -130,6 +130,26 @@ jobs:
           print(f"{len(pins)} pins, all hashed, {text.count('--hash=sha256:')} digests")
           CHECK
 
+      - name: The licence is present and is GPL-2.0-only
+        # The repository declared itself GPL-2.0-only in CLAUDE.md for thirteen milestones
+        # and shipped no licence text at all (docs/milestones/m14-part11.md). GPLv3 is
+        # named here because Beancount is explicitly "not or later": a v3 text would not be
+        # a formatting slip, it would be a licence this project cannot use.
+        run: |
+          if [ ! -s COPYING ]; then
+            echo "::error::COPYING is missing; the app claims to be GPL-2.0-only"
+            exit 1
+          fi
+          if ! grep -q "Version 2, June 1991" COPYING; then
+            echo "::error::COPYING is not the GPL version 2 text"
+            exit 1
+          fi
+          if grep -qE "Version 3, 29 June 2007|GNU GENERAL PUBLIC LICENSE.*Version 3" COPYING; then
+            echo "::error::COPYING is GPLv3; Beancount is GPL-2.0-only, explicitly not or-later"
+            exit 1
+          fi
+          echo "COPYING is the GPL version 2 text"
+
       - name: No hard-coded signing keys
         run: |
           if git ls-files | grep -E '\.(pem|jks|keystore|p12|der)$'; then
