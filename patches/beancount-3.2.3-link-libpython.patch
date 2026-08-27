@@ -1,0 +1,13 @@
+--- a/meson.build
++++ b/meson.build
+@@ -241,6 +241,10 @@
+     'beancount/parser/tokens.c',
+     lexer_c,
+     grammar_c,
++    # Android's linker resolves nothing at load time, so an extension module must link
++    # libpython. Without this, meson only adds it when it happens to infer that the target
++    # needs it -- which it does on some machines and not others, from identical toolchains.
++    dependencies: [py.dependency(embed: true)],
+     install: true,
+     subdir: 'beancount/parser',
+ )

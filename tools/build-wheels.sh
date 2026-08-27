@@ -137,25 +137,18 @@ while read -r name version want; do
     # rewrites LDFLAGS after CIBW_ENVIRONMENT is applied, so anything added there is silently
     # dropped. `c_link_args` survives, and shows up in meson's "User defined options" where it
     # can be checked rather than assumed.
-    # Chaquopy's `python-3.13.pc` cannot tell anyone how to link libpython: its `Libs:` line
-    # is `-L${libdir} $(BLDLIBRARY)`, an unexpanded *Makefile* variable that means nothing to
-    # pkg-config. So whether `-lpython3.13` reaches the link is left to whatever else meson
-    # can infer — and on this laptop it infers an absolute path to `libpython3.13.so`, while
-    # on a GitHub runner, with the same NDK, CPython, meson and pkgconf, it infers nothing and
-    # the link fails with every Python symbol undefined (docs/milestones/m14-part12.md).
-    #
-    # The fix is to repair the thing that is actually broken. The same prefix ships a correct
-    # `python-3.13-embed.pc` — identical but for `Libs: -L${libdir} -lpython3.13` — so it is
-    # copied over the one meson reads. Android needs libpython linked whatever the file is
-    # called: unlike Linux, the Bionic linker resolves nothing at load time.
-    #
-    # Not done through LDFLAGS, which cibuildwheel's own Android setup rewrites afterwards, and
-    # not through meson's `c_link_args`, which *replaces* the flags carrying `-L` rather than
-    # adding to them. Both were tried; both silently produced a build that still had to guess.
-    case "$name" in
-        beancount) export CIBW_BEFORE_BUILD="$here/tools/fix-python-pc.sh" ;;
-        *)         unset CIBW_BEFORE_BUILD ;;
-    esac
+    # Patches live in patches/, are applied after the hash check, and never fork upstream.
+    for patch in "$here/patches/$name-$version-"*.patch; do
+        [ -e "$patch" ] || continue
+        say "applying $(basename "$patch")"
+        # --forward so a re-run is not mistaken for a conflict; any other failure is fatal,
+        # because a patch that no longer applies means the build would quietly produce
+        # something different from what was reviewed.
+        if ! ( cd "$work/$name-$version" && patch -p1 --forward --silent < "$patch" ); then
+            echo "::error::$(basename "$patch") does not apply to $name $version" >&2
+            exit 1
+        fi
+    done
 
     say "cross-building $name $version for $archs"
     ( cd "$work/$name-$version"
