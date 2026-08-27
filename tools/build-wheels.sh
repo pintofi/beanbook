@@ -50,7 +50,7 @@ if [ ! -x "$venv/bin/cibuildwheel" ]; then
     "$venv/bin/pip" install --quiet 'cibuildwheel==4.2.0'
 fi
 cbw="$venv/bin/cibuildwheel"
-echo "cibuildwheel: $("$cbw" --version 2>&1 | tail -1)"
+echo "cibuildwheel: $("$venv/bin/pip" show cibuildwheel | awk '/^Version:/{print $2}')"
 
 # cibuildwheel installs the NDK through the SDK's own sdkmanager, so it needs a real SDK
 # to install it into. A GitHub runner image already has one; a laptop may not, and the
@@ -83,13 +83,7 @@ echo "build backends pinned by $backends"
 # Without remapping, the shipped .so names the build machine's home directory — which in
 # a privacy-focused app is an identity leak in the artefact, not a cosmetic detail.
 export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo --remap-path-prefix=$work=/src ${RUSTFLAGS:-}"
-# Android is not Linux here: an extension module must link libpython explicitly, because
-# the Bionic linker resolves nothing at load time. Chaquopy's `python-3.13.pc` cannot supply
-# it — its `Libs:` line is `-L${libdir} $(BLDLIBRARY)`, an unexpanded Makefile variable — so
-# whether `-lpython3.13` reaches the link comes down to what meson infers, and that inference
-# differed between a laptop and a GitHub runner on identical toolchains (m14-part12.md).
-# Saying it outright removes the guess. A duplicate `-lpython3.13` is harmless.
-export CIBW_ENVIRONMENT="RUSTFLAGS='$RUSTFLAGS' LDFLAGS=\"\$LDFLAGS -lpython3.13\""
+export CIBW_ENVIRONMENT="RUSTFLAGS='$RUSTFLAGS'"
 
 # --- the sources -------------------------------------------------------------------
 fetch() {
@@ -131,6 +125,37 @@ built=0
 while read -r name version want; do
     case "$name" in ''|\#*) continue ;; esac
     fetch "$name" "$version" "$want"
+
+    # Android is not Linux here: an extension module must link libpython explicitly, because
+    # the Bionic linker resolves nothing at load time. Chaquopy's `python-3.13.pc` cannot
+    # supply it — its `Libs:` line is `-L${libdir} $(BLDLIBRARY)`, an unexpanded Makefile
+    # variable — so whether `-lpython3.13` reaches the link is left to what meson infers, and
+    # that inference differed between a laptop and a GitHub runner on identical toolchains
+    # (docs/milestones/m14-part12.md).
+    #
+    # It has to be said through meson, not the environment: cibuildwheel's own Android setup
+    # rewrites LDFLAGS after CIBW_ENVIRONMENT is applied, so anything added there is silently
+    # dropped. `c_link_args` survives, and shows up in meson's "User defined options" where it
+    # can be checked rather than assumed.
+    # Chaquopy's `python-3.13.pc` cannot tell anyone how to link libpython: its `Libs:` line
+    # is `-L${libdir} $(BLDLIBRARY)`, an unexpanded *Makefile* variable that means nothing to
+    # pkg-config. So whether `-lpython3.13` reaches the link is left to whatever else meson
+    # can infer — and on this laptop it infers an absolute path to `libpython3.13.so`, while
+    # on a GitHub runner, with the same NDK, CPython, meson and pkgconf, it infers nothing and
+    # the link fails with every Python symbol undefined (docs/milestones/m14-part12.md).
+    #
+    # The fix is to repair the thing that is actually broken. The same prefix ships a correct
+    # `python-3.13-embed.pc` — identical but for `Libs: -L${libdir} -lpython3.13` — so it is
+    # copied over the one meson reads. Android needs libpython linked whatever the file is
+    # called: unlike Linux, the Bionic linker resolves nothing at load time.
+    #
+    # Not done through LDFLAGS, which cibuildwheel's own Android setup rewrites afterwards, and
+    # not through meson's `c_link_args`, which *replaces* the flags carrying `-L` rather than
+    # adding to them. Both were tried; both silently produced a build that still had to guess.
+    case "$name" in
+        beancount) export CIBW_BEFORE_BUILD="$here/tools/fix-python-pc.sh" ;;
+        *)         unset CIBW_BEFORE_BUILD ;;
+    esac
 
     say "cross-building $name $version for $archs"
     ( cd "$work/$name-$version"
