@@ -14,6 +14,11 @@ on:
 permissions:
   contents: write
 
+env:
+  # Hash-based .pyc instead of timestamp-based, so two builds of the same commit produce the
+  # same bytes (docs/milestones/m14-part18.md). Set per job below, since it needs the
+  # checkout to exist first.
+
 jobs:
   verify:
     # A tag does not get to skip the gates. Everything that guards a normal push guards a
@@ -39,6 +44,12 @@ jobs:
         with:
           name: android-wheels
           path: wheels
+
+      - name: Reproducible Python bytecode
+        # Hash-based .pyc rather than timestamp-based, so two builds of the same commit are
+        # byte-identical (docs/milestones/m14-part18.md). Derived from the commit, so a
+        # different commit is still allowed to differ.
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
       - name: Take the wheels the verify run built
         # Not rebuilt here: a release must ship the artefacts the gates actually passed on,

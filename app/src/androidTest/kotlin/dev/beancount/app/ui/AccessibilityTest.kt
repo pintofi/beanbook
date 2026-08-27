@@ -3,6 +3,7 @@ package dev.beancount.app.ui
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.requiredWidth
@@ -26,12 +27,16 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performScrollToNode
 import dev.beancount.core.domain.CapturedPages
 import dev.beancount.core.domain.LedgerVocabulary
 import java.time.LocalDate
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -249,6 +254,42 @@ class AccessibilityTest {
      * own merits, though note it did **not** catch the clipped switch that prompted it; see
      * `assertAccessible` for why.
      */
+    @Test fun reportsPutsTheWebViewInTheWiderPaneOnAnExpandedWindow() {
+        // ux.md 7: "Fava WebView gets the wider pane". Reports rendered as a single pane at
+        // every width until M14, so on a tablet the report ran the full window and the only
+        // way to another report was Fava's own navigation, folded away inside the page (N8).
+        var chosen: dev.beancount.core.engine.ReportPath? = null
+        render(widthDp = 1000, fontScale = 1f) {
+            ReportsPane(
+                selected = dev.beancount.core.engine.ReportPath.INCOME_STATEMENT,
+                onSelect = { chosen = it },
+            ) {
+                // Tagged on a box that fills the pane, not on the text: measuring the text
+                // measures the text, which is how the first version of this test "failed".
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .testTag("report"),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithContentDescription("Journal report")
+        list.assertExists()
+        val listWidth = list.fetchSemanticsNode().size.width
+        val reportWidth = compose.onNodeWithTag("report", useUnmergedTree = true)
+            .fetchSemanticsNode().size.width
+
+        assertTrue(
+            "the report pane ($reportWidth) is not wider than the list ($listWidth)",
+            reportWidth > listWidth,
+        )
+
+        list.performClick()
+        assertEquals(dev.beancount.core.engine.ReportPath.JOURNAL, chosen)
+        assertAccessible()
+    }
+
     @Test fun theLicencesScreenIsLabelledAndFitsAtDoubleFontScale() {
         // The one screen in the app whose whole job is to be *readable*: a licence notice
         // that a screen reader cannot reach, or that clips at 200%, has not been given to

@@ -53,6 +53,7 @@ import dev.beancount.app.engine.RecoveryOnStart
 import dev.beancount.app.ui.BalancesScreen
 import dev.beancount.app.ui.JournalScreen
 import dev.beancount.app.ui.OnboardingScreen
+import dev.beancount.app.ui.ReportsPane
 import dev.beancount.app.ui.EditableFile
 import dev.beancount.app.ui.ProjectPickerScreen
 import dev.beancount.app.ui.RawEditorScreen
@@ -1512,13 +1513,30 @@ private fun SurfaceContent(
                     LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
                 } else {
                     if (token != null) installSessionToken(serving.origin, token)
-                    FavaWebView(
-                        url = "${serving.origin}/${serving.ledgerSlug}/${ReportPath.INCOME_STATEMENT.path}/",
-                        allowlist = OriginAllowlist(setOf(serving.origin)),
-                        modifier = Modifier.fillMaxSize().padding(padding),
-                        debuggingAllowed = debuggingAllowed,
-                        onExternalLink = onOpenExternally,
-                    )
+                    var report by remember { mutableStateOf(ReportPath.INCOME_STATEMENT) }
+                    val web: @Composable () -> Unit = {
+                        FavaWebView(
+                            url = "${serving.origin}/${serving.ledgerSlug}/${report.path}/",
+                            allowlist = OriginAllowlist(setOf(serving.origin)),
+                            modifier = Modifier.fillMaxSize(),
+                            debuggingAllowed = debuggingAllowed,
+                            onExternalLink = onOpenExternally,
+                        )
+                    }
+                    if (twoPane) {
+                        // ux.md 7: on an expanded window the Fava WebView gets the wider
+                        // pane, with the report list beside it (N8).
+                        ReportsPane(
+                            selected = report,
+                            onSelect = { report = it },
+                            modifier = Modifier.fillMaxSize().padding(padding),
+                            report = web,
+                        )
+                    } else {
+                        androidx.compose.foundation.layout.Box(
+                            Modifier.fillMaxSize().padding(padding),
+                        ) { web() }
+                    }
                 }
             }
         }

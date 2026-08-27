@@ -18,7 +18,11 @@ python = "3.13"
 
 compileSdk = "37"
 targetSdk = "36"
-minSdk = "28"
+# 29, not 28: on API 28 the engine cannot start at all. Chaquopy's libpython3.13.so
+# calls the legacy `open()` syscall from a static constructor, and Android's seccomp
+# filter kills the process with SIGSYS before Python is up. Measured on API 28, 29, 30
+# and 36 — 28 is the only one that fails (docs/milestones/m14-part17.md).
+minSdk = "29"
 
 activityCompose = "1.13.0"
 lifecycle = "2.11.0"

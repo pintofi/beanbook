@@ -86,7 +86,7 @@ worked. A failure leaves the previous valid ledger recoverable.
 
 **arm64-v8a and x86_64 only.** No 32-bit ABIs in v1. A 32-bit-only device cannot install it.
 
-**minSdk 28 (Android 9).** The engine is verified on API 28 and API 36.
+**minSdk 29 (Android 10).** Android 9 is not supported, and the reason is worth stating: the embedded Python runtime is killed by Android 9's seccomp filter before it finishes starting, so the app would install and then fail to open any ledger. Verified working on API 29, 30 and 36.
 
 **Each per-ABI APK carries both ABIs' Python assets** — about 4 MB of waste per download,
 because the ABI split does not split Chaquopy's assets. Fixing it means per-ABI builds or an

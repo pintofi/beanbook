@@ -42,6 +42,26 @@ class KeySecrecyTest {
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
+    /**
+     * Writes a unique marker and returns it, so a later read can start from this moment.
+     *
+     * `logcat -c` is a request an app is not always allowed to make, and a test that assumes
+     * it worked will read whatever an earlier test wrote and blame the app for it.
+     */
+    private fun mark(): String {
+        val marker = "KeySecrecyTest-mark-" + java.util.UUID.randomUUID()
+        android.util.Log.i("KeySecrecyTest", marker)
+        Runtime.getRuntime().exec(arrayOf("logcat", "-c")).waitFor()
+        return marker
+    }
+
+    /** Everything logged after [marker], or the whole log if the marker is not in it. */
+    private fun logSince(marker: String): String {
+        val text = Runtime.getRuntime().exec(arrayOf("logcat", "-d")).inputStream
+            .bufferedReader().readText()
+        return text.substringAfter(marker, text)
+    }
+
     private fun freshState(directory: File): EntitlementState {
         directory.deleteRecursively()
         return EntitlementState(
@@ -51,16 +71,17 @@ class KeySecrecyTest {
     }
 
     @Test fun applyingAKeyWritesNothingAboutItToTheLog() = runBlocking {
-        // A clean slate, so anything found afterwards was written by this test's key.
-        Runtime.getRuntime().exec(arrayOf("logcat", "-c")).waitFor()
+        // A clean slate, so anything found afterwards was written by this test's key. The
+        // clear is attempted but not trusted: an app cannot always clear the system log, so
+        // the read below is bounded by a marker written now (see [logSince]).
+        val since = mark()
 
         val directory = File(context.filesDir, "entitlement-secrecy-test")
         val state = freshState(directory)
         state.applyKey(KEY)
         withTimeout(10_000) { state.entitlement.first { it.tier == Tier.POWER } }
 
-        val log = Runtime.getRuntime().exec(arrayOf("logcat", "-d")).inputStream
-            .bufferedReader().readText()
+        val log = logSince(since)
 
         val signature = KEY.substringAfterLast('.')
         assertFalse("the whole key was logged", log.contains(KEY))
@@ -71,7 +92,7 @@ class KeySecrecyTest {
     }
 
     @Test fun aRejectedKeyIsNotQuotedBackIntoTheLogEither() = runBlocking {
-        Runtime.getRuntime().exec(arrayOf("logcat", "-c")).waitFor()
+        val since = mark()
 
         val directory = File(context.filesDir, "entitlement-secrecy-rejected")
         val state = freshState(directory)
@@ -79,8 +100,7 @@ class KeySecrecyTest {
         state.applyKey(tampered)
         withTimeout(10_000) { state.message.first { it != null } }
 
-        val log = Runtime.getRuntime().exec(arrayOf("logcat", "-d")).inputStream
-            .bufferedReader().readText()
+        val log = logSince(since)
 
         assertFalse("a rejected key was logged", log.contains(tampered))
         assertFalse("a rejected key's payload was logged", log.contains(KEY.split('.')[1]))
@@ -103,24 +123,31 @@ class KeySecrecyTest {
     }
 
     /**
-     * The negative control. "The key was not in the log" is worth nothing unless a key that
-     * *is* in the log gets caught — an emulator that dropped this app's logs entirely would
-     * otherwise make the two tests above pass while proving nothing.
+     * The negative control. "The key was not in the log" is worth nothing unless something
+     * that *is* in the log gets caught — an emulator that dropped this app's logs entirely
+     * would otherwise make the two tests above pass while proving nothing.
+     *
+     * It logs a sentinel of the same shape rather than the key itself. Logging the real key
+     * here made this class order-dependent and produced a false security failure on API 29:
+     * `logcat -c` does not reliably clear the system log from an app, so whichever of these
+     * tests ran after this one found the control's own leak and reported the app had written
+     * the key (docs/milestones/m14-part17.md). A control that can fail its neighbours is not
+     * a control.
      */
     @Test fun theLogCheckWouldCatchALeak() = runBlocking {
-        Runtime.getRuntime().exec(arrayOf("logcat", "-c")).waitFor()
-        android.util.Log.i("KeySecrecyTest", "deliberate leak for the control: $KEY")
+        val sentinel = "BCA1.control-" + java.util.UUID.randomUUID()
+        android.util.Log.i("KeySecrecyTest", "deliberate leak for the control: $sentinel")
 
         val log = withTimeout(10_000) {
             var text = ""
-            while (!text.contains(KEY)) {
+            while (!text.contains(sentinel)) {
                 text = Runtime.getRuntime().exec(arrayOf("logcat", "-d")).inputStream
                     .bufferedReader().readText()
             }
             text
         }
 
-        assertTrue("the log check cannot see this app's logs at all", log.contains(KEY))
+        assertTrue("the log check cannot see this app's logs at all", log.contains(sentinel))
     }
 
     @Test fun theVerifierAcceptsThisKeyOnDevice() {

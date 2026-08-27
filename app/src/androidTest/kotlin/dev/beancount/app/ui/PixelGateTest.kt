@@ -51,6 +51,16 @@ class PixelGateTest {
         const val TOP_INSET = 64
     }
 
+    private val TODAY: java.time.LocalDate = java.time.LocalDate.of(2026, 3, 4)
+
+    private fun vocabulary() = dev.beancount.core.domain.LedgerVocabulary(
+        accounts = listOf("Assets:Cash", "Expenses:Food"),
+        payees = listOf("Cafe"),
+        narrations = listOf("Lunch"),
+        currencies = listOf("USD"),
+        tags = emptyList(),
+    )
+
     /** 16dp of screen padding, in pixels, less a pixel for antialiasing at the boundary. */
     private fun marginPx(density: Density): Int =
         with(density) { 16.dp.toPx() }.toInt() - 1
@@ -170,6 +180,68 @@ class PixelGateTest {
      * If this ever stops failing, the gate has stopped working and every green run above
      * means nothing.
      */
+    /**
+     * Every other screen, at the width where clipping shows up.
+     *
+     * The gate covered two screens because those were the two where a clipped switch had
+     * already been found, which is checking the place the bug was rather than the places it
+     * could be (N11). These render at 320dp — narrower than any phone in use — because a
+     * layout that survives 320dp survives the rest, and because the defect this catches is
+     * one the semantics tree structurally cannot see: a control that is drawn outside its
+     * parent still reports sensible bounds.
+     */
+    /**
+     * Every other screen, at the width where clipping shows up.
+     *
+     * The gate covered two screens because those were the two where a clipped switch had
+     * already been found, which is checking where the bug was rather than where it could be
+     * (N11). 320dp is narrower than any phone in use: a layout that survives it survives the
+     * rest, and the defect this catches is one the semantics tree structurally cannot see —
+     * a control drawn outside its parent still reports sensible bounds.
+     *
+     * One test per screen rather than a loop: `setContent` may be called once per rule, and
+     * a loop over it fails with "has already set content" after the first pass.
+     */
+    @Test fun theQuickAddScreenDrawsNothingInItsSideMargins() {
+        render(widthDp = 320) { QuickAddScreen(vocabulary(), onSave = {}, today = TODAY) }
+        val problems = check("quick-add")
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    @Test fun theDirectiveEntryScreenDrawsNothingInItsSideMargins() {
+        render(widthDp = 320) { DirectiveEntryScreen(vocabulary(), onSave = {}, today = TODAY) }
+        val problems = check("directive-entry")
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    // The Licences screen is deliberately not here, and the gate is what established that it
+    // should not be. It reported 246 pixels in the left margin — Material `ListItem`s and the
+    // dividers between them run edge to edge by design, as they do in the More menu, so on a
+    // full-bleed list "nothing in the side margin" is not the property being tested for. The
+    // margin rule belongs to screens laid out with `padding(16.dp)`; applying it to a list
+    // would mean insetting the list to satisfy a test, which is backwards. The licence *text*
+    // view is padded and is covered at 320dp and 200% font by AccessibilityTest.
+
+    @Test fun theRemoteScreenDrawsNothingInItsSideMargins() {
+        render(widthDp = 320) {
+            RemoteScreen(
+                status = dev.beancount.core.engine.EngineStatus.Stopped,
+                capabilities = null,
+                savedAddress = "http://192.168.1.5:5000",
+                savedUsername = "someone",
+                pendingRetry = true,
+                onConnect = { _, _, _ -> },
+                onDisconnect = {},
+                onForget = {},
+                onRetryPending = {},
+                onDiscardPending = {},
+                message = "Saved on the server.",
+            )
+        }
+        val problems = check("remote")
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+
     @Test fun theGateCatchesAControlDrawnOffTheRightEdge() {
         render(widthDp = 411, heightDp = 200) {
             Box(Modifier.fillMaxSize()) {
