@@ -1,3 +1,4 @@
+import java.io.File
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.chaquopy)
@@ -31,11 +32,16 @@ chaquopy {
     defaultConfig {
         version = libs.versions.python.get()
 
-        // The host needs a CPython matching the embedded runtime's minor version for pip
-        // to run (Phase 0 finding). Overridable so CI and other machines can point at
-        // their own interpreter.
-        val hostPython = providers.gradleProperty("beancount.buildPython")
-            .getOrElse("${System.getProperty("user.home")}/tools/py313/bin/python3.13")
+        // The host needs a CPython matching the embedded runtime's minor version for pip to
+        // run (Phase 0 finding). The default used to be one developer's `~/tools/py313`,
+        // which meant the build only worked on that machine: a GitHub runner has 3.13 from
+        // `actions/setup-python`, on PATH and nowhere near a home directory
+        // (docs/milestones/m14-part13.md). So: the property if given, else that path if it
+        // exists, else whatever `python3.13` PATH resolves to.
+        val hostPython = providers.gradleProperty("beancount.buildPython").orNull
+            ?: "${System.getProperty("user.home")}/tools/py313/bin/python3.13"
+                .takeIf { File(it).canExecute() }
+            ?: "python3.13"
         buildPython(hostPython)
 
         pip {
