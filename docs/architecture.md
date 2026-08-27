@@ -19,7 +19,7 @@ Companion to [SPEC.md](../SPEC.md). Verified against upstream on **2026-08-16**.
 | simplejson | 4.1.1 | MIT/AFL-2.1 | ✅ `any` wheel (pure fallback) |
 | protobuf | 7.35.1 | BSD-3 | ✅ `any` wheel |
 | numpy / pandas / scipy / matplotlib | Chaquopy repo | BSD-family | ✅ prebuilt Android wheels |
-| beangrow | latest | GPL-2.0 | Expert-only, on-demand (spike 9) |
+| beangrow | — | GPL-2.0 | **Not shipped in either edition.** It needs `scipy`, and no scipy build exists for CPython 3.13 on Android (m14-part22.md) |
 
 Sources: [Chaquopy versions](https://chaquo.com/chaquopy/doc/current/versions.html),
 [Chaquopy wheel index](https://chaquo.com/pypi-13.1/), PyPI JSON API,

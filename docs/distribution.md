@@ -215,7 +215,7 @@ payload = { "v":1, "kid":"k1", "tier":3,
   the JSON it decodes to: re-serialising to verify is how signer and verifier come to
   disagree about whitespace and field order (implemented in M7, `KeyVerifier`).
 - Ed25519 comes from `net.i2p.crypto:eddsa` (public domain, ~90 KB), because `java.security`
-  only gained Ed25519 in API 33 and minSdk is 28.
+  only gained Ed25519 in API 33 and minSdk is 29.
 - **Soft binding to email, unlimited devices.** The email is shown in Settings as a mild
   social deterrent. No device lock, no activation counter, no reissue support burden.
 - Stored in app-private storage; the raw key is retained so the user can re-display it.
