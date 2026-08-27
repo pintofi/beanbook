@@ -74,6 +74,18 @@ else
     echo "warning: no rustup on PATH — the watchfiles build will fail" >&2
 fi
 
+# `actions/setup-python` exports PKG_CONFIG_PATH pointing at the *host* interpreter's
+# pkgconfig directory, and pkg-config searches PKG_CONFIG_PATH **before** the
+# PKG_CONFIG_LIBDIR that cibuildwheel sets to the Android prefix. So on a GitHub runner meson
+# resolved Python against an x86_64 libpython while cross-compiling for aarch64, and on a
+# laptop — where the variable is unset — it resolved the Android one and everything worked.
+# That single line of difference produced two entirely different failures
+# (docs/milestones/m14-part12.md).
+if [ -n "${PKG_CONFIG_PATH:-}" ]; then
+    echo "ignoring PKG_CONFIG_PATH=$PKG_CONFIG_PATH: it points at the host Python"
+    unset PKG_CONFIG_PATH
+fi
+
 # --- pinning what the build itself uses ---------------------------------------------
 backends="$here/engine-local/build-backends.lock"
 export PIP_CONSTRAINT="$backends"
