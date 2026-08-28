@@ -101,13 +101,18 @@ with the missing module named.
 [on-demand-packages.md](on-demand-packages.md). The Play edition cannot, because retrieving
 executable code from outside the store is against its policy.
 
-In practice that means most **Beancount plugins** work — they import Beancount and the
-standard library — and most **Fava extensions** do not, because they reach for `pandas`,
-`PyYAML`, `packaging` or `scipy`, none of which ship. The app says which module was missing
-rather than failing silently, so the reason is visible.
+In practice that means most **Beancount plugins** work out of the box — they import Beancount
+and the standard library — while every catalogued **Fava extension** needs something the app
+does not bundle: `pandas`, `PyYAML` or `packaging`. The app names the missing module rather
+than failing silently, so the reason is visible.
 
-None of the four catalogued Fava extensions currently loads, each for that reason. This is a
-limit of what can be bundled, not a bug in the extensions.
+On the Expert edition those three are fetchable, and a fetched extension does load. Measured
+on 2026-08-28: `fava_investor` installed through the app, `packaging` fetched on the device,
+and Fava mounted the extension's route — HTTP 200, against 404 for the same extension without
+the fetch. On the Play edition, which cannot fetch, none of the four loads.
+
+So this is a limit of what can be *bundled*, and on Expert it is one the user can lift per
+extension. It is not a bug in the extensions.
 
 ---
 

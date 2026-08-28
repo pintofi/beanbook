@@ -198,12 +198,22 @@ class FavaExtensionTest {
 
         // Not asserted: that the route mounts. Every catalogued Fava extension needs a
         // third-party package the app does not bundle — `packaging` here, `yaml` for
-        // fava-dashboards, `pandas` for fava-envelope, `scipy` for fava-portfolio-returns
-        // (which has no Android build at all, D6). The installer installs *files*; it does
-        // not resolve dependencies, and cannot (docs/known-limitations.md).
+        // fava-dashboards, `pandas` for fava-envelope. The installer installs *files*; it
+        // does not resolve dependencies, and cannot (docs/known-limitations.md). Fetching
+        // them is a separate, deliberate step, which is what
+        // [anExtensionLoadsOnceItsDependenciesAreFetched] does.
+        //
+        // The code is recorded, not asserted, and deliberately so: it is order-dependent.
+        // The engine runs in its own process that outlives a single test, so once the
+        // fetching test has imported `packaging` there, it stays in `sys.modules` even
+        // after the files are deleted. Run alone this test sees 404 — the route absent;
+        // run after that one it sees 500 — the route mounted against a module whose files
+        // have gone. Measured both ways, 2026-08-28. The property this test does assert
+        // survives either, because it is about the extension being visible at all.
         android.util.Log.i(
             "FavaExtension",
-            "extension_route=$reached — 200 means it loaded, 404 means a missing dependency",
+            "extension_route=$reached — 200 loaded, 404 dependency missing, " +
+                "500 imported earlier in this process (see the comment above)",
         )
     }
 }
