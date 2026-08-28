@@ -86,6 +86,27 @@ class ProjectWriter(
         newContent: String,
         operation: String = "replace",
         policy: ErrorPolicy = ErrorPolicy.ROLLBACK_ON_NEW_ERRORS,
+    ): WriteResult =
+        write(projectId, file, newContent.toByteArray(Charsets.UTF_8), expectedSha, operation, policy)
+
+    /**
+     * Replaces [file] with raw [newContent], through the same protocol as [replace].
+     *
+     * A project holds more than its ledger — PDFs and other attachments sit beside it — and
+     * those cannot go through the text API: a String round trip via UTF-8 replaces every byte
+     * that is not valid UTF-8, so an attachment would arrive corrupted while the ledger still
+     * parsed and nothing noticed.
+     *
+     * The ledger is still re-parsed afterwards. A pulled-in file can break a `document` link
+     * or an `include`, and that is exactly what the re-parse is for.
+     */
+    suspend fun replaceBytes(
+        projectId: String,
+        file: File,
+        expectedSha: String,
+        newContent: ByteArray,
+        operation: String = "replace-bytes",
+        policy: ErrorPolicy = ErrorPolicy.ROLLBACK_ON_NEW_ERRORS,
     ): WriteResult = write(projectId, file, newContent, expectedSha, operation, policy)
 
     /** Appends [text] to [file], creating it if needed. */
@@ -106,7 +127,7 @@ class ProjectWriter(
         return write(
             projectId = projectId,
             file = file,
-            newContent = existing + separator + text.trimEnd() + "\n",
+            newContent = (existing + separator + text.trimEnd() + "\n").toByteArray(Charsets.UTF_8),
             expectedSha = if (file.isFile) WriteJournal.sha256(file) else "",
             operation = operation,
             policy = policy,
@@ -116,7 +137,7 @@ class ProjectWriter(
     private suspend fun write(
         projectId: String,
         file: File,
-        newContent: String,
+        newContent: ByteArray,
         expectedSha: String,
         operation: String,
         policy: ErrorPolicy,
@@ -270,12 +291,12 @@ class ProjectWriter(
      * The rename is what makes the write atomic: a reader sees either the whole old file
      * or the whole new one, never a partial write.
      */
-    private fun writeAtomically(file: File, content: String) {
+    private fun writeAtomically(file: File, content: ByteArray) {
         file.parentFile?.mkdirs()
         val tmp = File(file.parentFile, "${file.name}.tmp")
 
         FileOutputStream(tmp).use { out ->
-            out.write(content.toByteArray(Charsets.UTF_8))
+            out.write(content)
             out.flush()
             out.fd.sync()
         }

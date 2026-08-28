@@ -11,7 +11,9 @@ import dev.beancount.core.data.MirrorPlan
 import dev.beancount.core.data.MirrorPlanResult
 import dev.beancount.core.data.MirrorState
 import dev.beancount.core.data.ProjectWorkspace
+import dev.beancount.core.data.ProjectWriter
 import dev.beancount.core.data.WriteJournal
+import dev.beancount.core.data.WriteResult
 import java.io.File
 import java.time.Instant
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +48,7 @@ class MirrorController(
     private val context: Context,
     private val workspace: ProjectWorkspace,
     private val journal: WriteJournal,
+    private val writer: ProjectWriter,
     private val scope: CoroutineScope,
     private val settings: MirrorSettings,
 ) {
@@ -91,7 +94,7 @@ class MirrorController(
                 }
                 outcome
                     .onSuccess { result ->
-                        _conflicts.value = result.conflicts
+                        _conflicts.value = result.plan.conflicts
                         _message.value = describe(result)
                     }
                     .onFailure { failure ->
@@ -103,15 +106,32 @@ class MirrorController(
         }
     }
 
-    private fun describe(result: MirrorPlanResult): String = when {
-        result.isClean -> "Everything is already in sync."
-        result.conflicts.isNotEmpty() ->
-            "${result.automatic.size} file(s) synced. " +
-                "${result.conflicts.size} need(s) your decision — nothing was overwritten."
-        else -> "${result.automatic.size} file(s) synced."
+    /**
+     * What happened, counted from what committed rather than from what was planned.
+     *
+     * A pass used to report `plan.automatic.size` files synced whatever the writes did. A
+     * file the write protocol refused or rolled back was still counted, so "3 file(s) synced"
+     * could mean none of them were.
+     */
+    private fun describe(result: MirrorPassOutcome): String {
+        val plan = result.plan
+        val landed = plan.pushes.size + result.committed.size
+        val refusedNote = if (result.refused.isEmpty()) {
+            ""
+        } else {
+            " ${result.refused.size} could not be brought in and your project is unchanged " +
+                "for those: ${result.refused.first()}"
+        }
+        return when {
+            plan.isClean -> "Everything is already in sync."
+            plan.conflicts.isNotEmpty() ->
+                "$landed file(s) synced. ${plan.conflicts.size} need(s) your decision — " +
+                    "nothing was overwritten.$refusedNote"
+            else -> "$landed file(s) synced.$refusedNote"
+        }
     }
 
-    private fun runPass(projectId: String, folderUri: Uri): MirrorPlanResult {
+    private suspend fun runPass(projectId: String, folderUri: Uri): MirrorPassOutcome {
         val root = DocumentFile.fromTreeUri(context, folderUri)
             ?: error("that folder is no longer reachable")
         val projectDir = workspace.projectDir(projectId)
@@ -122,6 +142,8 @@ class MirrorController(
         val plan = MirrorPlan.plan(local, external, state.read(projectId))
 
         val synced = state.read(projectId).toMutableMap()
+        val committed = mutableListOf<String>()
+        val refused = mutableListOf<String>()
         // Files that already match on both sides are recorded, so a lost state file heals
         // itself on the next pass instead of re-copying everything for ever.
         local.forEach { (path, hash) -> if (external[path] == hash) synced[path] = hash }
@@ -134,16 +156,31 @@ class MirrorController(
                 }
 
                 is MirrorAction.PullIn -> {
+                    // Through ProjectWriter, not a local helper: a file arriving from a folder
+                    // this app does not control is a write to the user's project like any
+                    // other, and needs the journal, the snapshot, the re-parse and the undo
+                    // entry that go with one. Writing it directly and then reporting the pass
+                    // as synced was invariants 2, 3 and 8 at once.
+                    //
+                    // Containment is ProjectWriter's own first check, so the explicit one that
+                    // stood here is no longer needed.
                     val bytes = read(externalFiles.getValue(action.path))
                     val target = File(projectDir, action.path)
-                    // Checked again here, not only when enumerating: one check guarding two
-                    // places is one check away from guarding neither (PluginPreflight).
-                    check(
-                        target.canonicalPath.startsWith(projectDir.canonicalPath + File.separator)
-                    ) { "refusing to write ${action.path} outside the project" }
-                    target.parentFile?.mkdirs()
-                    writeAtomically(target, bytes)
-                    synced[action.path] = BackupArchive.sha256(bytes)
+                    val result = writer.replaceBytes(
+                        projectId = projectId,
+                        file = target,
+                        expectedSha = if (target.isFile) WriteJournal.sha256(target) else "",
+                        newContent = bytes,
+                        operation = "mirror-pull-in",
+                    )
+                    // Only what actually committed is recorded as agreed. Recording a refused
+                    // or rolled-back file would tell the next pass the two sides match.
+                    if (result is WriteResult.Committed) {
+                        synced[action.path] = BackupArchive.sha256(bytes)
+                        committed += action.path
+                    } else {
+                        refused += "${action.path}: ${describeFailure(result)}"
+                    }
                 }
 
                 is MirrorAction.DeleteThere -> {
@@ -152,6 +189,7 @@ class MirrorController(
                 }
 
                 is MirrorAction.Conflict -> preserveBothVersions(
+                    projectId,
                     action,
                     projectDir,
                     externalFiles[action.path],
@@ -160,7 +198,23 @@ class MirrorController(
         }
 
         state.write(projectId, synced)
-        return plan
+        if (refused.isNotEmpty()) {
+            Log.w(TAG, "mirror: ${refused.size} file(s) not pulled in: $refused")
+        }
+        return MirrorPassOutcome(plan, committed, refused)
+    }
+
+    /** What a pass planned, and what of it actually landed. */
+    private data class MirrorPassOutcome(
+        val plan: MirrorPlanResult,
+        val committed: List<String>,
+        val refused: List<String>,
+    )
+
+    private fun describeFailure(result: WriteResult): String = when (result) {
+        is WriteResult.Refused -> result.reason
+        is WriteResult.RolledBack -> result.reason
+        is WriteResult.Committed -> "committed"
     }
 
     /**
@@ -169,7 +223,8 @@ class MirrorController(
      * The copy is named `<file>.conflict-<timestamp>`, which is not a Beancount extension, so
      * it sits in the project visibly without being parsed or included.
      */
-    private fun preserveBothVersions(
+    private suspend fun preserveBothVersions(
+        projectId: String,
         conflict: MirrorAction.Conflict,
         projectDir: File,
         external: DocumentFile?,
@@ -177,8 +232,16 @@ class MirrorController(
         if (external == null) return
         val copy = File(projectDir, "${conflict.path}.conflict-${Instant.now().epochSecond}")
         if (copy.exists()) return
-        copy.parentFile?.mkdirs()
-        writeAtomically(copy, read(external))
+        // A conflict copy is a new file inside the user's project, so it goes through the
+        // same protocol as any other. Its name is not a Beancount extension, so it is not
+        // parsed or included, but it is still theirs and still has to be recoverable.
+        writer.replaceBytes(
+            projectId = projectId,
+            file = copy,
+            expectedSha = "",
+            newContent = read(external),
+            operation = "mirror-conflict-copy",
+        )
     }
 
     /** Resolves one conflict by keeping this device's version and copying it out. */
@@ -190,14 +253,20 @@ class MirrorController(
     fun keepTheirs(projectId: String, path: String) = resolve(projectId, path) { root, projectDir ->
         val document = enumerate(root)[path] ?: error("\"$path\" is no longer in your folder")
         val target = File(projectDir, path)
-        target.parentFile?.mkdirs()
-        writeAtomically(target, read(document))
+        val result = writer.replaceBytes(
+            projectId = projectId,
+            file = target,
+            expectedSha = if (target.isFile) WriteJournal.sha256(target) else "",
+            newContent = read(document),
+            operation = "mirror-keep-theirs",
+        )
+        check(result is WriteResult.Committed) { describeFailure(result) }
     }
 
     private fun resolve(
         projectId: String,
         path: String,
-        apply: (DocumentFile, File) -> Unit,
+        apply: suspend (DocumentFile, File) -> Unit,
     ) {
         val folder = folderUri ?: return
         scope.launch {
@@ -282,15 +351,6 @@ class MirrorController(
     }
 
     /** Local writes go through a temporary file, like every other durable write here. */
-    private fun writeAtomically(target: File, bytes: ByteArray) {
-        val tmp = File(target.parentFile, "${target.name}.mirror-tmp")
-        tmp.writeBytes(bytes)
-        if (!tmp.renameTo(target)) {
-            tmp.copyTo(target, overwrite = true)
-            tmp.delete()
-        }
-    }
-
     private companion object {
         const val TAG = "MirrorController"
     }

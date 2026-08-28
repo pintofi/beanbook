@@ -119,7 +119,7 @@ class BeancountApplication : Application() {
     val mirrorSettings: MirrorSettings by lazy { MirrorSettings(filesDir.resolve("state")) }
 
     val mirror: MirrorController by lazy {
-        MirrorController(this, workspace, journal, appScope, mirrorSettings)
+        MirrorController(this, workspace, journal, writer, appScope, mirrorSettings)
     }
 
     /** Remote mode (Tier 3): a self-hosted Fava, its credentials, and the connection. */
