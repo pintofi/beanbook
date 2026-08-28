@@ -220,6 +220,7 @@ class ProjectImporter(
             mkdirs()
         }
 
+        var extracted = 0L
         try {
             plan.files.forEach { entry ->
                 val destination = File(staging, entry.path)
@@ -230,7 +231,15 @@ class ProjectImporter(
                 }
                 destination.parentFile?.mkdirs()
                 source.open(entry).use { input ->
-                    destination.outputStream().use { output -> input.copyTo(output) }
+                    destination.outputStream().use { output ->
+                        extracted += copyBounded(
+                            input = input,
+                            output = output,
+                            path = entry.path,
+                            entryLimit = entry.size,
+                            remainingTotal = limits.maxTotalBytes - extracted,
+                        )
+                    }
                 }
             }
 
@@ -244,6 +253,11 @@ class ProjectImporter(
                 staging.copyRecursively(target, overwrite = false)
                 staging.deleteRecursively()
             }
+        } catch (overrun: ArchiveOverrun) {
+            // The archive lied about its own size. Refused rather than thrown, so the user
+            // gets the same message as any other rejected import.
+            staging.deleteRecursively()
+            return ImportResult.Rejected(listOf(ImportProblem.TooLarge(overrun.path, overrun.bytes)))
         } catch (error: Throwable) {
             staging.deleteRecursively()
             throw error
@@ -266,6 +280,42 @@ class ProjectImporter(
                 { it },
             )
         )
+    }
+
+    /** An entry delivered more bytes than the container said it would. */
+    private class ArchiveOverrun(val path: String, val bytes: Long) : java.io.IOException(
+        "\"$path\" delivered more than the $bytes bytes it declared"
+    )
+
+    /**
+     * Copies [input] to [output], refusing to go past what the entry declared.
+     *
+     * Every size check in [plan] reads the container's own metadata, which the archive
+     * supplies and an attacker therefore chooses. Those figures decide whether an import is
+     * allowed; this is what makes them true. Without it an archive could declare a kilobyte
+     * per entry, pass every check, and inflate to whatever it liked while extracting.
+     *
+     * Bounded twice: by what this entry claimed, and by what is left of the whole-archive
+     * budget, so many small honest-looking entries cannot add up past the limit either.
+     */
+    private fun copyBounded(
+        input: InputStream,
+        output: OutputStream,
+        path: String,
+        entryLimit: Long,
+        remainingTotal: Long,
+    ): Long {
+        val allowed = minOf(entryLimit, remainingTotal)
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var written = 0L
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            written += read
+            if (written > allowed) throw ArchiveOverrun(path, allowed)
+            output.write(buffer, 0, read)
+        }
+        return written
     }
 
     private fun escapesRoot(path: String): Boolean {
