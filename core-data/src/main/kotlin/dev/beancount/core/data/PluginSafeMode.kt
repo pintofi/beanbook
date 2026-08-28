@@ -83,6 +83,25 @@ class PluginSafeMode(projectRoot: File) {
         }
 
     /** The plugins that should actually load right now. */
+    /**
+     * The plugins that may be handed to the engine.
+     *
+     * Enabled is not sufficient. Plugins live at `<project>/plugins/`, inside what auto-mirror
+     * syncs and what a restore writes, so their bytes can change without the app ever seeing
+     * them — and the policy that judged them ran at install time, on different bytes. A file
+     * dropped into the user's mirrored folder was pulled in and loaded unexamined; in the Play
+     * edition that is a route to the native code `PlayPluginPolicy` exists to refuse.
+     *
+     * `verify` already computed this and nothing consulted it. Now the load gate does: a
+     * plugin whose contents no longer match what was installed is held back until the user
+     * installs it again, which is the point at which a policy gets to judge it (R4).
+     */
     fun pluginsToLoad(store: PluginStore): List<InstalledPlugin> =
-        if (isSafeMode) emptyList() else store.list().filter { it.enabled }
+        if (isSafeMode) {
+            emptyList()
+        } else {
+            store.list()
+                .filter { it.enabled }
+                .filter { store.verify(it) is PluginIntegrity.Unchanged }
+        }
 }

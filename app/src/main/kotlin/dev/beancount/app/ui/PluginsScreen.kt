@@ -242,12 +242,13 @@ private fun PluginCard(
             when (val integrity = row.integrity) {
                 PluginIntegrity.Unchanged -> Unit
                 is PluginIntegrity.Changed -> Warning(
-                    "The files have changed since you installed this. That may have been you " +
-                        "editing it, or it may not — if you did not change it, turn it off " +
-                        "until you know why it is different.",
+                    "The files have changed since you installed this, so it is not being " +
+                        "loaded. That may have been you editing it, or something else writing " +
+                        "into the project — a folder you mirror, or a restore. Install it " +
+                        "again to have it checked and run.",
                 )
                 PluginIntegrity.Missing -> Warning(
-                    "Its files are gone. It cannot run; remove it to tidy up.",
+                    "Its files are gone, so it is not being loaded. Remove it to tidy up.",
                 )
             }
 
