@@ -75,14 +75,67 @@ val forbiddenPlayPermissions = listOf(
     "android.permission.REQUEST_INSTALL_PACKAGES",
 )
 
+/**
+ * Source with comments removed, so the boundary rules read code rather than prose.
+ *
+ * This matters in both directions. A file explaining that it deliberately does *not* use
+ * `PackageInstaller` tripped the forbidden-pattern rule once the scan widened to the
+ * dependency modules; and a required assertion could equally have been satisfied by a comment
+ * claiming the policy rather than by the policy object stating it (R6).
+ *
+ * String literals are kept: naming a forbidden class in a string is how you would reach it
+ * reflectively, which is exactly what the rule should still catch.
+ */
+fun stripComments(source: String): String {
+    val out = StringBuilder(source.length)
+    var i = 0
+    var inString = false
+    var inChar = false
+    while (i < source.length) {
+        val c = source[i]
+        val next = if (i + 1 < source.length) source[i + 1] else '\u0000'
+        when {
+            inString -> {
+                out.append(c)
+                if (c == '\\') { if (i + 1 < source.length) out.append(source[i + 1]); i++ }
+                else if (c == '"') inString = false
+            }
+            inChar -> {
+                out.append(c)
+                if (c == '\\') { if (i + 1 < source.length) out.append(source[i + 1]); i++ }
+                else if (c == '\'') inChar = false
+            }
+            c == '"' -> { inString = true; out.append(c) }
+            c == '\'' -> { inChar = true; out.append(c) }
+            c == '/' && next == '/' -> { while (i < source.length && source[i] != '\n') i++; continue }
+            c == '/' && next == '*' -> {
+                i += 2
+                while (i + 1 < source.length && !(source[i] == '*' && source[i + 1] == '/')) i++
+                i += 2
+                continue
+            }
+            else -> out.append(c)
+        }
+        i++
+    }
+    return out.toString()
+}
+
 val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
     group = "verification"
     description = "Fails if the play edition crosses a Google Play policy boundary."
 
+    // The app's own play and shared sources, plus every module that compiles into the play
+    // edition. Scanning only app/src was the gap: `PackageInstaller` in :core-data, or any
+    // other forbidden call living one module down, satisfied the gate while still shipping
+    // in the APK (R6).
     val playSourceDirs = listOf(
         file("src/play"),
         file("src/main"),
-    )
+    ) + listOf(
+        "core-domain", "core-data", "core-engine", "core-entitlement",
+        "engine-local", "engine-remote",
+    ).map { File(rootDir, "$it/src/main") }
     val manifestFiles = playSourceDirs.map { File(it, "AndroidManifest.xml") }
     val configurationNames = listOf(
         "playDebugRuntimeClasspath",
@@ -120,7 +173,7 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
             dir.walkTopDown()
                 .filter { it.isFile && (it.extension == "kt" || it.extension == "java") }
                 .forEach { source ->
-                    val text = source.readText()
+                    val text = stripComments(source.readText())
                     for (pattern in forbiddenPlaySourcePatterns) {
                         if (pattern.containsMatchIn(text)) {
                             violations += "forbidden pattern /${pattern.pattern}/ in " +
@@ -151,7 +204,7 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
             dir.walkTopDown()
                 .filter { it.isFile && (it.extension == "kt" || it.extension == "java") }
                 .forEach { source ->
-                    val text = source.readText()
+                    val text = stripComments(source.readText())
                     for (pattern in forbiddenAppProcessPatterns) {
                         if (pattern.containsMatchIn(text)) {
                             violations += "R9: /${pattern.pattern}/ in " +
@@ -196,6 +249,62 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
 }
 
 // The gate is not optional: assembling a play release runs it.
+/**
+ * The permission rules again, against the manifest that actually ships.
+ *
+ * `verifyPlayFlavorBoundaries` reads `src/play` and `src/main` and runs before merging, so a
+ * permission contributed by a *library* manifest — which is how four of the seven in this app
+ * arrive — was invisible to it. This task reads the merged output instead, which is the only
+ * place the question "what does the shipped APK ask for" can honestly be answered (R6).
+ */
+val verifyPlayMergedManifest = tasks.register("verifyPlayMergedManifest") {
+    group = "verification"
+    description = "Fails if a merged play manifest declares a forbidden permission."
+
+    val mergedRoot = layout.buildDirectory.dir("intermediates/merged_manifests")
+    val forbidden = forbiddenPlayPermissions
+
+    doLast {
+        val root = mergedRoot.get().asFile
+        val manifests = root.walkTopDown()
+            .filter { it.isFile && it.name == "AndroidManifest.xml" }
+            .filter { it.path.contains("play", ignoreCase = true) }
+            .toList()
+
+        if (manifests.isEmpty()) {
+            // Nothing to check is not the same as nothing wrong. Say so rather than pass.
+            logger.lifecycle("verifyPlayMergedManifest: no merged play manifest yet; nothing checked")
+            return@doLast
+        }
+
+        val violations = mutableListOf<String>()
+        for (manifest in manifests) {
+            val text = manifest.readText()
+            for (permission in forbidden) {
+                if (text.contains(permission)) {
+                    violations += "forbidden permission $permission in the merged manifest " +
+                        manifest.relativeTo(root)
+                }
+            }
+        }
+        if (violations.isNotEmpty()) {
+            throw GradleException(
+                "Play merged-manifest violations (${violations.size}):\n" +
+                    violations.joinToString("\n") { "    - $it" }
+            )
+        }
+        logger.lifecycle(
+            "verifyPlayMergedManifest: OK (${manifests.size} merged manifest(s), " +
+                "${forbidden.size} permission rules)"
+        )
+    }
+}
+
+tasks.matching { it.name.matches(Regex("process.*Play.*Manifest")) }.configureEach {
+    finalizedBy(verifyPlayMergedManifest)
+}
+
 tasks.matching { it.name.startsWith("assemblePlay") }.configureEach {
     dependsOn(verifyPlayFlavorBoundaries)
+    dependsOn(verifyPlayMergedManifest)
 }

@@ -11,8 +11,12 @@ import java.io.File
  * Device and Network Abuse policy prohibits, and a pure-Python wheel is still executable code
  * (docs/distribution.md 2.1).
  *
- * `:verifyPlayFlavorBoundaries` fails the build if the expert edition's version of this file
- * ever compiles into `play`, so this is not merely a promise in a comment.
+ * What keeps the expert version out of this edition is AGP's source-set separation, not the
+ * boundary gate: `src/expert` is simply not compiled here. The gate's contribution is
+ * different and still real -- it fails the build if a forbidden call or permission appears
+ * anywhere the play edition compiles, now including the dependency modules and the merged
+ * manifest. Said precisely because the previous wording named a mechanism that does not
+ * exist, and a guarantee nobody can point at is worse than none.
  *
  * Every entry point returns a refusal rather than throwing: shared code may ask, and the
  * honest answer to "can you install this?" in this edition is no, not a crash.
