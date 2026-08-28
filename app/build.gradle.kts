@@ -13,7 +13,17 @@ val copyCorpusToAssets = tasks.register<Copy>("copyCorpusToAssets") {
 
 // AGP's SourceSet API rejects task Providers, so the dependency is declared explicitly:
 // every androidTest asset merge must wait for the corpus to be staged.
-tasks.matching { it.name.contains("AndroidTestAssets") }.configureEach {
+//
+// Lint's analysis tasks read the same staged directory, and until they said so Gradle only
+// complained when something scheduled them alongside the merge — running lint and the
+// instrumentation suite in one invocation was enough. CI runs them in separate jobs and
+// never saw it, which is exactly why it was worth fixing rather than avoiding.
+// Every lint task in the family, not a list of the ones seen failing: the analysis tasks, the
+// vital ones, and the model generators all read the staged directory, and naming them
+// individually meant fixing this three times.
+tasks.matching {
+    it.name.contains("AndroidTestAssets") || it.name.contains("Lint", ignoreCase = true)
+}.configureEach {
     dependsOn(copyCorpusToAssets)
 }
 
