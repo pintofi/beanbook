@@ -441,8 +441,15 @@ def main() -> int:
     manifest = []
     for entry in catalog["entries"]:
         result = results[entry["id"]]
-        module = result.get("module")
-        if not module or result["status"] not in ("supported", "needs-config"):
+        # Fava extensions too, and `partial` with them. `partial` is what this harness says
+        # about every extension — it can import one but cannot drive its UI — so filtering to
+        # supported would push no extension at all. That is not hypothetical: doing exactly
+        # that removed `fava_investor` from the device and FavaExtensionTest went from
+        # passing to skipping, which reads identically in a console summary.
+        module = result.get("module") or next(iter(result.get("modules") or []), None)
+        if not module:
+            continue
+        if result["status"] not in ("supported", "needs-config", "partial"):
             continue
         record = fetched.get(entry["id"], {})
         found = discover_all(Path(record["root"]))

@@ -151,6 +151,11 @@ class LedgerCorpusTest {
         if (cold >= 8_000) {
             Log.w(TAG, "BUDGET MISS: cold parse ${cold} ms exceeds the 8 s cold-start budget")
         }
+        // This is wall-clock on shared hardware, so it is load-sensitive: measured alone on
+        // the API 36 emulator it is ~16 s, and inside the full 153-test suite it has been
+        // seen at 20.9 s and failed. The ceiling is deliberately not raised to accommodate
+        // that — it exists to catch a real regression, and a ceiling moved to fit the worst
+        // environment stops catching anything. Measure it alone, or on hardware.
         assertTrue(
             "cold parse of 25k transactions took ${cold} ms, far beyond any usable ceiling",
             cold < 20_000,

@@ -65,6 +65,12 @@ class CatalogManifestTest {
         for (i in 0 until manifest.length()) {
             val entry = manifest.getJSONObject(i)
             val id = entry.getString("id")
+
+            // Extensions are in the manifest so they reach the device — FavaExtensionTest
+            // needs them there — but Fava loads them from a `custom "fava-extension"`
+            // directive, not a `plugin` one. Running them here would fail them for not being
+            // something they never claimed to be.
+            if (entry.getString("kind") == "fava-extension") continue
             val module = entry.getString("module")
             val pushed = File(catalogDir, entry.getString("package_name"))
             if (!pushed.exists()) {
@@ -83,11 +89,13 @@ class CatalogManifestTest {
                 }
                 val root = store.directoryFor(installed.plugin).absolutePath
 
-                // needs-config entries are named in the manifest with the status the desktop
-                // gave them. Loading one without its configuration is expected to fail, and
-                // failing it here would be recording the harness's choice as the plugin's
-                // defect — CatalogPluginTest covers those with real configurations.
-                val needsConfig = entry.getString("desktop_status") == "needs-config"
+                // Only what the desktop loaded *cleanly* is asserted here. A `needs-config`
+                // or `partial` entry did not load cleanly there either — `autobean.share`
+                // wants a viewpoint, `lazy.balance_extended` wants a companion plugin
+                // enabled — so requiring it to load bare on Android would record the
+                // harness's choice of an empty configuration as the plugin's defect.
+                // CatalogPluginTest drives those with real configurations.
+                val needsConfig = entry.getString("desktop_status") != "supported"
 
                 val ledger = File(project, "probe.beancount")
                 ledger.writeText("plugin \"$module\"\n\n$probe\n")
