@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import dev.beancount.core.data.PluginIntegrity
 import dev.beancount.core.domain.PluginPolicy
 import dev.beancount.app.packages.PackagesStatus
+import dev.beancount.app.packages.PackagesUi
 import dev.beancount.app.plugins.PluginRow
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -56,15 +57,9 @@ fun PluginsScreen(
     onSetEnabled: (String, Boolean) -> Unit,
     onRemove: (String) -> Unit,
     onSetSafeMode: (Boolean) -> Unit,
-    packagesInstalled: List<String>,
-    packagesStatus: PackagesStatus,
-    onRequestPackages: (String) -> Unit,
-    onConfirmPackages: () -> Unit,
-    onCancelPackages: () -> Unit,
-    onRemovePackages: () -> Unit,
+    packages: PackagesUi,
     modifier: Modifier = Modifier,
     message: String? = null,
-    packagesMessage: String? = null,
 ) {
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
@@ -132,16 +127,7 @@ fun PluginsScreen(
 
         HorizontalDivider()
 
-        PackagesSection(
-            policy = policy,
-            installed = packagesInstalled,
-            status = packagesStatus,
-            onRequest = onRequestPackages,
-            onConfirm = onConfirmPackages,
-            onCancel = onCancelPackages,
-            onRemoveAll = onRemovePackages,
-            message = packagesMessage,
-        )
+        PackagesSection(policy, packages)
 
         HorizontalDivider()
 
@@ -327,16 +313,15 @@ private fun dateOf(epochMillis: Long): String =
  * edition's `WheelFetcher` refusing, not this composable being hidden.
  */
 @Composable
-private fun PackagesSection(
-    policy: PluginPolicy,
-    installed: List<String>,
-    status: PackagesStatus,
-    onRequest: (String) -> Unit,
-    onConfirm: () -> Unit,
-    onCancel: () -> Unit,
-    onRemoveAll: () -> Unit,
-    message: String?,
-) {
+private fun PackagesSection(policy: PluginPolicy, packages: PackagesUi) {
+    val installed = packages.installed
+    val status = packages.status
+    val message = packages.message
+    val onRequest = packages.onRequest
+    val onConfirm = packages.onConfirm
+    val onCancel = packages.onCancel
+    val onRemoveAll = packages.onRemoveAll
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Extra Python packages", style = MaterialTheme.typography.titleSmall)
 

@@ -12,14 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** What the screen is showing while a fetch is in progress or has finished. */
-sealed interface PackagesStatus {
-    data object Idle : PackagesStatus
-    data class Resolving(val request: String) : PackagesStatus
-    data class Confirming(val request: String, val resolution: Resolution) : PackagesStatus
-    data class Fetching(val request: String) : PackagesStatus
-}
-
 /**
  * Python packages the user has asked for, fetched on demand (docs/on-demand-packages.md).
  *
@@ -157,6 +149,13 @@ class PackagesState(
             refresh()
         }
     }
+
+    /**
+     * The bundle the screen takes, built here so the activity does not have to know which of
+     * these are values and which are this object's own methods.
+     */
+    fun ui(installed: List<String>, status: PackagesStatus, message: String?) =
+        PackagesUi(installed, status, message, ::request, ::confirm, ::cancel, ::removeAll)
 
     fun clearMessage() {
         _message.value = null

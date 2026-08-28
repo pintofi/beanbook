@@ -276,12 +276,12 @@ class AccessibilityTest {
                 // Non-empty so the fetched-packages controls render and are checked here
                 // too: this section is the app's only network surface in local mode, and a
                 // download button that TalkBack cannot describe is the worst one to miss.
-                packagesInstalled = listOf("numpy", "pandas"),
-                packagesStatus = dev.beancount.app.packages.PackagesStatus.Idle,
-                onRequestPackages = {},
-                onConfirmPackages = {},
-                onCancelPackages = {},
-                onRemovePackages = {},
+                packages = dev.beancount.app.packages.PackagesUi(
+                    installed = listOf("numpy", "pandas"),
+                    status = dev.beancount.app.packages.PackagesStatus.Idle,
+                    message = null,
+                    onRequest = {}, onConfirm = {}, onCancel = {}, onRemoveAll = {},
+                ),
             )
         }
 

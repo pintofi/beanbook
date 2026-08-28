@@ -116,47 +116,39 @@ class MainActivity : ComponentActivity() {
     private var hideWidgetAmounts: Boolean by mutableStateOf(false)
 
     private var recoveryMessage: String? by mutableStateOf(null)
-    private var saveMessage: String? by mutableStateOf(null)
+    internal var saveMessage: String? by mutableStateOf(null)
 
     /** The documents already filed in the open project; refreshed after every change. */
-    private var documents: List<String> by mutableStateOf(emptyList())
+    internal var documents: List<String> by mutableStateOf(emptyList())
 
     /**
      * SAF pickers. These are the only way a project enters the app, and every byte they
      * hand over is validated before anything is written (docs/storage-and-backup.md §4).
      */
-    private val folderPicker = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree(),
-    ) { uri ->
-        val app = application as BeancountApplication
-        uri?.let {
-            contentResolver.takePersistableUriPermission(
-                it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
-            )
-            app.projectsState.importFolder(contentResolver, it) { id -> openProject(app, id) }
-        }
-    }
-
     /**
-     * Where an exported copy goes. Write permission is taken persistably for the same reason
-     * the import picker takes read: without it the grant dies with the activity, and an
-     * export that half-ran would leave files behind with no way to finish.
+     * A folder the user picked, with the grant taken persistably.
+     *
+     * Persistably in both directions: without it the grant dies with the activity, so an
+     * import that resumed or an export that half-ran would have no way to finish.
      */
-    private val exportPicker = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree(),
-    ) { uri ->
-        val app = application as BeancountApplication
-        val projectId = app.registry.activeProjectId()
-        uri?.let {
-            contentResolver.takePersistableUriPermission(
-                it, android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            )
-            if (projectId == null) {
-                app.projectsState.report("Open a project before exporting a copy of it.")
-            } else {
-                app.projectsState.exportFolder(contentResolver, it, projectId)
+    private fun treePicker(grant: Int, use: (BeancountApplication, android.net.Uri) -> Unit) =
+        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            uri?.let {
+                contentResolver.takePersistableUriPermission(it, grant)
+                use(application as BeancountApplication, it)
             }
         }
+
+    private val folderPicker = treePicker(
+        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+    ) { app, uri ->
+        app.projectsState.importFolder(contentResolver, uri) { id -> openProject(app, id) }
+    }
+
+    private val exportPicker = treePicker(
+        android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+    ) { app, uri ->
+        app.projectsState.exportFolder(contentResolver, uri)
     }
 
     private val archivePicker = registerForActivityResult(
@@ -293,9 +285,7 @@ class MainActivity : ComponentActivity() {
         app.projectsState.open(projectId)
         app.templatesState.open(projectId)
         app.pluginsState.openProject(app.workspace.projectDir(projectId))
-        // Not per-project: fetched packages are shared by every ledger on the device, so this
-        // only needs to know what is on disk.
-        app.packagesState.refresh()
+        app.packagesState.refresh()   // shared by every ledger; only needs what is on disk
         app.scriptRunner.onProjectOpened(app.workspace.mainFile(projectId))
         refreshDocuments(app, projectId)
 
@@ -431,6 +421,8 @@ class MainActivity : ComponentActivity() {
                     val packagesInstalled by app.packagesState.installed.collectAsStateWithLifecycle()
                     val packagesStatus by app.packagesState.status.collectAsStateWithLifecycle()
                     val packagesMessage by app.packagesState.message.collectAsStateWithLifecycle()
+                    val packages = app.packagesState
+                        .ui(packagesInstalled, packagesStatus, packagesMessage)
                     val scriptRunning by app.scriptRunner.running.collectAsStateWithLifecycle()
                     val scriptOutcome by app.scriptRunner.outcome.collectAsStateWithLifecycle()
                     val scriptMessage by app.scriptRunner.message.collectAsStateWithLifecycle()
@@ -542,13 +534,7 @@ class MainActivity : ComponentActivity() {
                         pluginRows = pluginRows,
                         pluginSafeMode = pluginSafeMode,
                         pluginMessage = pluginMessage,
-                        packagesInstalled = packagesInstalled,
-                        packagesStatus = packagesStatus,
-                        packagesMessage = packagesMessage,
-                        onRequestPackages = { app.packagesState.request(it) },
-                        onConfirmPackages = { app.packagesState.confirm() },
-                        onCancelPackages = { app.packagesState.cancel() },
-                        onRemovePackages = { app.packagesState.removeAll() },
+                        packages = packages,
                         onInstallPlugin = { pluginPicker.launch(arrayOf("*/*")) },
                         scriptRunning = scriptRunning,
                         scriptOutcome = scriptOutcome,
@@ -738,7 +724,7 @@ class MainActivity : ComponentActivity() {
      * Beancount, and only then report success. A generated entry that introduces errors is
      * rolled back rather than kept, because broken output from guided entry is our bug.
      */
-    private fun saveText(
+    internal fun saveText(
         app: BeancountApplication,
         projectId: String,
         text: String,
@@ -770,99 +756,6 @@ class MainActivity : ComponentActivity() {
             app.ledgerState.load(ledgerPath)
             app.mirror.syncAfterCommit(projectId)
         }
-    }
-
-    private fun refreshDocuments(app: BeancountApplication, projectId: String) {
-        lifecycleScope.launch { documents = app.documentCapture.existing(projectId) }
-    }
-
-    /**
-     * Files the captured pages as a PDF, then writes the `document` directive that points at
-     * it — in that order, so the ledger never names a file that does not exist yet
-     * (CLAUDE.md, invariant 5).
-     */
-    private fun attachDocument(app: BeancountApplication, projectId: String, account: String) {
-        app.documentCapture.save(projectId, account) { relativePath ->
-            val directive = DirectiveDraft.Document(
-                date = LocalDate.now().toString(),
-                account = account,
-                path = relativePath,
-            )
-            saveText(
-                app,
-                projectId,
-                directive.render(),
-                operation = "attach-document",
-                target = app.workspace.mainFile(projectId),
-            ) { outcome ->
-                saveMessage = outcome
-                // Said where the user is standing, not on a screen they have left.
-                app.documentCapture.report("Filed ${relativePath.substringAfterLast('/')}. $outcome")
-            }
-            app.documentCapture.reset()
-            refreshDocuments(app, projectId)
-        }
-    }
-
-    /**
-     * Removes the link, not the file.
-     *
-     * The directive is deleted from whichever included file holds it and the write goes
-     * through the ordinary protocol, so an unlink is snapshotted and undoable like any other
-     * edit. The PDF stays exactly where it was.
-     */
-    private fun unlinkDocument(app: BeancountApplication, projectId: String, path: String) {
-        lifecycleScope.launch {
-            val projectDir = app.workspace.projectDir(projectId)
-            val candidates = projectDir.walkTopDown()
-                .filter { it.isFile && (it.extension == "beancount" || it.extension == "bean") }
-                .toList()
-
-            val holder = candidates.firstOrNull { it.readText().contains(path) }
-            if (holder == null) {
-                saveMessage = "Nothing in the ledger links to $path."
-                return@launch
-            }
-
-            val kept = holder.readLines().filterNot { line ->
-                line.contains(path) && line.contains("document")
-            }
-            val result = app.writer.replace(
-                projectId = projectId,
-                file = holder,
-                expectedSha = dev.beancount.core.data.WriteJournal.sha256(holder),
-                newContent = kept.joinToString("\n").let { if (it.endsWith("\n")) it else it + "\n" },
-                operation = "unlink-document",
-            )
-            saveMessage = when (result) {
-                is dev.beancount.core.data.WriteResult.Committed ->
-                    "Unlinked $path. The file is still in the project."
-                is dev.beancount.core.data.WriteResult.RolledBack ->
-                    "Not unlinked: ${result.reason}. Your ledger is unchanged."
-                is dev.beancount.core.data.WriteResult.Refused -> "Not unlinked: ${result.reason}"
-            }
-            app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
-        }
-    }
-
-    /** Hands one document to another app as a temporary read-only URI, and nothing else. */
-    private fun shareDocument(app: BeancountApplication, projectId: String, path: String) {
-        val file = app.workspace.projectDir(projectId).resolve(path)
-        if (!file.isFile) {
-            saveMessage = "That document is not in the project any more."
-            return
-        }
-        val uri = androidx.core.content.FileProvider.getUriForFile(
-            this,
-            "${BuildConfig.APPLICATION_ID}.documents",
-            file,
-        )
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = "application/pdf"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        runCatching { startActivity(Intent.createChooser(send, "Share document")) }
     }
 
     private fun openInBrowser(uri: Uri) {
@@ -978,13 +871,7 @@ internal fun LedgerApp(
     pluginRows: List<dev.beancount.app.plugins.PluginRow>,
     pluginSafeMode: Boolean,
     pluginMessage: String?,
-    packagesInstalled: List<String>,
-    packagesStatus: dev.beancount.app.packages.PackagesStatus,
-    packagesMessage: String?,
-    onRequestPackages: (String) -> Unit,
-    onConfirmPackages: () -> Unit,
-    onCancelPackages: () -> Unit,
-    onRemovePackages: () -> Unit,
+    packages: dev.beancount.app.packages.PackagesUi,
     onInstallPlugin: () -> Unit,
     scriptRunning: String?,
     scriptOutcome: dev.beancount.app.plugins.ScriptOutcome?,
@@ -1175,13 +1062,7 @@ internal fun LedgerApp(
                 pluginRows = pluginRows,
                 pluginSafeMode = pluginSafeMode,
                 pluginMessage = pluginMessage,
-                packagesInstalled = packagesInstalled,
-                packagesStatus = packagesStatus,
-                packagesMessage = packagesMessage,
-                onRequestPackages = onRequestPackages,
-                onConfirmPackages = onConfirmPackages,
-                onCancelPackages = onCancelPackages,
-                onRemovePackages = onRemovePackages,
+                packages = packages,
                 onInstallPlugin = onInstallPlugin,
                 scriptRunning = scriptRunning,
                 scriptOutcome = scriptOutcome,
@@ -1291,13 +1172,7 @@ private fun SurfaceContent(
     pluginRows: List<dev.beancount.app.plugins.PluginRow>,
     pluginSafeMode: Boolean,
     pluginMessage: String?,
-    packagesInstalled: List<String>,
-    packagesStatus: dev.beancount.app.packages.PackagesStatus,
-    packagesMessage: String?,
-    onRequestPackages: (String) -> Unit,
-    onConfirmPackages: () -> Unit,
-    onCancelPackages: () -> Unit,
-    onRemovePackages: () -> Unit,
+    packages: dev.beancount.app.packages.PackagesUi,
     onInstallPlugin: () -> Unit,
     scriptRunning: String?,
     scriptOutcome: dev.beancount.app.plugins.ScriptOutcome?,
@@ -1480,14 +1355,8 @@ private fun SurfaceContent(
                                     onSetEnabled = onSetPluginEnabled,
                                     onRemove = onRemovePlugin,
                                     onSetSafeMode = onSetPluginSafeMode,
-                                    packagesInstalled = packagesInstalled,
-                                    packagesStatus = packagesStatus,
-                                    onRequestPackages = onRequestPackages,
-                                    onConfirmPackages = onConfirmPackages,
-                                    onCancelPackages = onCancelPackages,
-                                    onRemovePackages = onRemovePackages,
+                                    packages = packages,
                                     message = pluginMessage,
-                                    packagesMessage = packagesMessage,
                                 )
                             }
 

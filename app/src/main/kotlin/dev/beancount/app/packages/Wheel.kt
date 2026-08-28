@@ -53,3 +53,28 @@ object OnDemandPackages {
     fun root(context: android.content.Context): java.io.File =
         java.io.File(context.filesDir, "ondemand")
 }
+
+/** What the screen is showing while a fetch is in progress or has finished. */
+sealed interface PackagesStatus {
+    data object Idle : PackagesStatus
+    data class Resolving(val request: String) : PackagesStatus
+    data class Confirming(val request: String, val resolution: Resolution) : PackagesStatus
+    data class Fetching(val request: String) : PackagesStatus
+}
+
+/**
+ * Everything the packages section of the plugins screen needs, in one parameter.
+ *
+ * Seven separate parameters threaded through three composables is how a screen's signature
+ * grows until nobody can see what it takes. Grouped because they are one feature, and because
+ * the alternative made the activity that passes them large enough for detekt to say so.
+ */
+data class PackagesUi(
+    val installed: List<String>,
+    val status: PackagesStatus,
+    val message: String?,
+    val onRequest: (String) -> Unit,
+    val onConfirm: () -> Unit,
+    val onCancel: () -> Unit,
+    val onRemoveAll: () -> Unit,
+)

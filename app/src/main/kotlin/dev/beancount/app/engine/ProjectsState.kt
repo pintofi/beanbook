@@ -82,11 +82,6 @@ class ProjectsState(
             ZipImportSource(local) to (archive.lastPathSegment ?: "imported")
         }
 
-    /** Show the user a message that did not come from an operation this class ran. */
-    fun report(text: String) {
-        _message.value = text
-    }
-
     /**
      * Writes a copy of a project into a folder the user chooses (SPEC.md §55, free tier).
      *
@@ -99,7 +94,11 @@ class ProjectsState(
      * export reported as a success is the failure that matters here (invariant 5: `include`
      * directives and document links must stay valid across an export).
      */
-    fun exportFolder(resolver: ContentResolver, tree: Uri, projectId: String) {
+    fun exportFolder(resolver: ContentResolver, tree: Uri, projectId: String? = activeId.value) {
+        if (projectId == null) {
+            _message.value = "Open a project before exporting a copy of it."
+            return
+        }
         scope.launch {
             _message.value = "Writing…"
             val outcome = withContext(Dispatchers.IO) {
