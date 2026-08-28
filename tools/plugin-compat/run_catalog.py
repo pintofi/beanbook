@@ -117,6 +117,36 @@ def discover_all(extracted: Path) -> dict:
     }
 
 
+FAVA_VERSION = "1.30.15"
+
+
+def import_module_at(root: Path, module: str) -> dict:
+    """Import `module` with `root` on `sys.path`, in a child interpreter."""
+    script = textwrap.dedent(
+        f"""
+        import importlib, json, sys
+        sys.path.insert(0, {str(root)!r})
+        try:
+            importlib.import_module({module!r})
+            print(json.dumps({{"ok": True}}))
+        except ModuleNotFoundError as exc:
+            print(json.dumps({{"ok": False, "missing": exc.name,
+                              "error": f"{{type(exc).__name__}}: {{exc}}"}}))
+        except Exception as exc:
+            print(json.dumps({{"ok": False, "error": f"{{type(exc).__name__}}: {{exc}}"}}))
+        """
+    )
+    proc = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=180)
+    try:
+        got = json.loads(proc.stdout.strip().splitlines()[-1])
+    except Exception:
+        return {"ok": False, "error": proc.stderr.strip()[-300:] or "no output"}
+    # Its own top-level package missing is the extension's problem, not a fetchable one.
+    if got.get("missing") and module.startswith(got["missing"]):
+        got.pop("missing")
+    return got
+
+
 def import_only(extracted: Path, entry: dict, import_hint: str | None) -> dict:
     """Can this be imported at all? The question for a library or an importer."""
     # The module the id names, not the package that contains it. Importing `autobean` and
@@ -176,6 +206,7 @@ def import_only(extracted: Path, entry: dict, import_hint: str | None) -> dict:
     if got.get("ok"):
         return {
             "status": "supported",
+            "module": got.get("module"),
             "reason": f"imports cleanly as a {kind} ({got.get('module')}); it is not loaded by "
                       f"a plugin directive, so there is no ledger round-trip to report",
         }
@@ -320,6 +351,7 @@ def main() -> int:
             results[entry["id"]] = {
                 "status": outcome["status"],
                 "reason": sanitise(outcome["reason"]),
+                "module": outcome.get("module"),
                 "version": record.get("version"),
                 "license": record.get("license"),
             }
@@ -358,14 +390,41 @@ def main() -> int:
             candidates = exact or found["plugins"]
 
         if entry["kind"] == "fava-extension":
+            if not found["extensions"]:
+                results[entry["id"]] = {
+                    "status": "unavailable",
+                    "reason": "no FavaExtensionBase subclass found in the download",
+                    "version": record.get("version"),
+                    "license": record.get("license"),
+                }
+                continue
+
+            # Import it, rather than take the presence of the words `FavaExtensionBase` in a
+            # file as proof. Grepping said `partial` for every extension in the catalogue
+            # including one that cannot be imported at all: fava-classy-portfolio reaches for
+            # `cost_or_value` in `fava.template_filters`, which this Fava no longer has. The
+            # device run found that; the desktop run should not have needed it to.
+            module = found["extensions"][0]
+            root = Path(found["roots"][module])
+            outcome = import_module_at(root, module)
+            if outcome["ok"]:
+                status, reason = "partial", (
+                    f"imports as a Fava extension ({module}); its UI needs a WebView and is "
+                    "not exercised here"
+                )
+            elif outcome.get("missing"):
+                status, reason = "partial", (
+                    f"a Fava extension ({module}) needing {outcome['missing']}, which the app "
+                    "does not bundle — the Expert edition can fetch it (on-demand-packages.md)"
+                )
+            else:
+                status, reason = "unsupported", (
+                    f"a Fava extension ({module}) that does not import against Fava "
+                    f"{FAVA_VERSION}: {outcome['error']}"
+                )
             results[entry["id"]] = {
-                "status": "partial" if found["extensions"] else "unavailable",
-                "reason": sanitise(
-                    "a Fava extension: importable here, but its UI needs a WebView and is "
-                    f"not exercised ({', '.join(found['extensions'][:3])})"
-                    if found["extensions"]
-                    else "no FavaExtensionBase subclass found in the download"
-                ),
+                "status": status,
+                "reason": sanitise(reason),
                 "modules": found["extensions"],
                 "version": record.get("version"),
                 "license": record.get("license"),
@@ -454,6 +513,18 @@ def main() -> int:
         record = fetched.get(entry["id"], {})
         found = discover_all(Path(record["root"]))
         root = found["roots"].get(module)
+        if not root:
+            # A library defines neither `__plugins__` nor a FavaExtensionBase subclass, so
+            # discovery never saw it and has no root for it. Find the directory that makes
+            # its top-level name importable, the same way the import test did.
+            top = module.split(".")[0]
+            extracted = Path(record["root"])
+            for base in (extracted, extracted / "src",
+                         *(c for c in extracted.glob("*") if c.is_dir()),
+                         *(c / "src" for c in extracted.glob("*") if (c / "src").is_dir())):
+                if (base / top).is_dir() or (base / f"{top}.py").is_file():
+                    root = str(base)
+                    break
         if not root:
             continue
         # A package directory, or a single module file. The app installs both — a plugin

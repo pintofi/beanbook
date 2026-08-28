@@ -25,7 +25,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "0.2.3",
-        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+        "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       }
     },
     {
@@ -41,7 +41,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "0.2.3",
-        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+        "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       }
     },
     {
@@ -56,7 +56,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "with an empty config: directives disappeared: {'Open': 3, 'Note': 1}",
-        "version": "0.2.3"
+        "version": "0.2.3",
+        "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       }
     },
     {
@@ -72,7 +73,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "0.2.3",
-        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+        "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       }
     },
     {
@@ -87,7 +88,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "as a importer it fails to import: ModuleNotFoundError: No module named 'beancount.ingest'",
-        "version": "0.2.3"
+        "version": "0.2.3",
+        "on_device": "not run on Android: it is an importer that reaches for beancount.ingest, removed in Beancount 3, so it fails identically on both and the manifest excludes it"
       }
     },
     {
@@ -103,7 +105,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "0.2.3",
-        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+        "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       }
     },
     {
@@ -119,7 +121,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "main",
-        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+        "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
       "distribution": null
     },
@@ -136,7 +138,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "0.5.0",
-        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+        "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       }
     },
     {
@@ -152,7 +154,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "main",
-        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+        "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
       "distribution": null
     },
@@ -169,7 +171,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "main",
-        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+        "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
       "distribution": "lazy"
     },
@@ -186,7 +188,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "main",
-        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+        "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
       "distribution": "lazy"
     },
@@ -203,7 +205,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "main",
-        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+        "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
       "distribution": "lazy"
     },
@@ -219,7 +221,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "default_pad_type is 'pad-ext' but beancount_lazy_plugins.pad_extended plugin is not enabled. Add plugin \"beancount_lazy_plugins.pad_extended\".",
-        "version": "main"
+        "version": "main",
+        "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
       "distribution": "lazy"
     },
@@ -235,7 +238,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports cleanly as a library (beangrow); it is not loaded by a plugin directive, so there is no ledger round-trip to report",
-        "version": "1.0.1"
+        "version": "1.0.1",
+        "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
       "distribution": "beangrow"
     },
@@ -251,7 +255,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "Error applying plugin \"beancount_plugins_metadata_spray.plugins.metadata_spray\": Traceback (most recent call last):\n  ...\n      entries, plugin_errors = callback(entries, options_map, *args)\n         ",
-        "version": "0.0.1"
+        "version": "0.0.1",
+        "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
       "distribution": null
     },
@@ -267,7 +272,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports cleanly as a library (beancount_portfolio_allocation); it is not loaded by a plugin directive, so there is no ledger round-trip to report",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
       "distribution": "portfolio_allocation"
     },
@@ -283,7 +289,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports cleanly as a library (cashflows); it is not loaded by a plugin directive, so there is no ledger round-trip to report",
-        "version": "master"
+        "version": "master",
+        "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
       "distribution": null
     },
@@ -299,7 +306,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
-        "version": "0.4.0"
+        "version": "0.4.0",
+        "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
       "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
     },
@@ -315,7 +323,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "works, but the plugin directive must carry a configuration string; loaded cleanly once given one",
-        "version": "0.4.0"
+        "version": "0.4.0",
+        "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
       "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
     },
@@ -331,7 +340,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
-        "version": "0.4.0"
+        "version": "0.4.0",
+        "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
       "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
     },
@@ -347,7 +357,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
-        "version": "0.4.0"
+        "version": "0.4.0",
+        "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
       "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
     },
@@ -363,7 +374,8 @@
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
-        "version": "0.4.0"
+        "version": "0.4.0",
+        "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
       "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
     },
@@ -380,7 +392,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "main",
-        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+        "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
       "distribution": null
     },
@@ -395,8 +407,9 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (beancount_zakat.fava_extension)",
-        "version": "1.0.2"
+        "reason": "a Fava extension (beancount_zakat.fava_extension) needing hijridate, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "version": "1.0.2",
+        "on_device": "imported on Android as far as its dependency: it needs hijridate, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
       },
       "distribution": "beancount-zakat"
     },
@@ -411,8 +424,9 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_envelope)",
-        "version": "0.5.9"
+        "reason": "a Fava extension (fava_envelope) needing pandas, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "version": "0.5.9",
+        "on_device": "imported on Android as far as its dependency: it needs pandas, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
       }
     },
     {
@@ -426,8 +440,9 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_dashboards)",
-        "version": "2.0.2"
+        "reason": "a Fava extension (fava_dashboards) needing yaml, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "version": "2.0.2",
+        "on_device": "imported on Android as far as its dependency: it needs yaml, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
       }
     },
     {
@@ -441,8 +456,9 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_portfolio_returns)",
-        "version": "2.7.0"
+        "reason": "a Fava extension (fava_portfolio_returns) needing numpy, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "version": "2.7.0",
+        "on_device": "imported on Android as far as its dependency: it needs numpy, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
       }
     },
     {
@@ -456,8 +472,9 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava-portfolio-summary-main)",
-        "version": "main"
+        "reason": "imports as a Fava extension (fava-portfolio-summary-main); its UI needs a WebView and is not exercised here",
+        "version": "main",
+        "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
       "distribution": null
     },
@@ -468,12 +485,13 @@
       "repo": "https://github.com/seltzered/fava-classy-portfolio",
       "description": "Portfolio breakdowns using metadata labels",
       "license": "unverified",
-      "status": "partial",
+      "status": "unsupported",
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_classy_portfolio)",
-        "version": "master"
+        "reason": "a Fava extension (fava_classy_portfolio) that does not import against Fava 1.30.15: ImportError: cannot import name 'cost_or_value' from 'fava.template_filters' (<home>/.claude/jobs/4627fca9/tmp/compat-venv/lib/python3.14/site-packages/fava/template_filters.py)",
+        "version": "master",
+        "on_device": "the failure was found on Android first: CatalogManifestTest imported it on the emulator (API 36, 2026-08-28) and got ImportError: cannot import name 'cost_or_value' from 'fava.template_filters'. The desktop harness had called it partial because it only searched the source text for FavaExtensionBase without importing anything; it imports extensions now and agrees"
       },
       "distribution": null
     },
@@ -488,8 +506,9 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_investor)",
-        "version": "1.0.1"
+        "reason": "a Fava extension (fava_investor) needing packaging, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "version": "1.0.1",
+        "on_device": "imported on Android as far as its dependency: it needs packaging, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28); with packaging fetched on the device Fava mounted its route and returned 200 (FavaExtensionTest)"
       }
     },
     {
@@ -503,8 +522,9 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_budget_freedom)",
-        "version": "master"
+        "reason": "imports as a Fava extension (fava_budget_freedom); its UI needs a WebView and is not exercised here",
+        "version": "master",
+        "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
       "distribution": null
     },
@@ -519,8 +539,9 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_currency_tracker)",
-        "version": "main"
+        "reason": "imports as a Fava extension (fava_currency_tracker); its UI needs a WebView and is not exercised here",
+        "version": "main",
+        "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
       "distribution": null
     },
@@ -535,8 +556,9 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_git)",
-        "version": "main"
+        "reason": "imports as a Fava extension (fava_git); its UI needs a WebView and is not exercised here",
+        "version": "main",
+        "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
       "distribution": null
     },
@@ -551,8 +573,9 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (beantab)",
-        "version": "main"
+        "reason": "a Fava extension (beantab) needing beancount_lazy_plugins, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "version": "main",
+        "on_device": "imported on Android as far as its dependency: it needs beancount_lazy_plugins, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
       },
       "distribution": null
     },
@@ -567,8 +590,9 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (beancount_plugin_tax_uk.fava_extension)",
-        "version": "main"
+        "reason": "a Fava extension (beancount_plugin_tax_uk.fava_extension) needing pandas, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "version": "main",
+        "on_device": "imported on Android as far as its dependency: it needs pandas, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
       },
       "distribution": null
     }
