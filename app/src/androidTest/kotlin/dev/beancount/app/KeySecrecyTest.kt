@@ -152,7 +152,7 @@ class KeySecrecyTest {
 
     @Test fun theVerifierAcceptsThisKeyOnDevice() {
         // The same check the app runs, on the device's own JVM: Ed25519 comes from a library
-        // rather than the platform precisely because API 28 has none (docs/distribution.md 4.5).
+        // rather than the platform precisely because API 29 has none (docs/distribution.md 4.5).
         val check = KeyVerifier().check(KEY)
         assertTrue("a real key must verify on device, got $check", check is KeyCheck.Verified)
     }

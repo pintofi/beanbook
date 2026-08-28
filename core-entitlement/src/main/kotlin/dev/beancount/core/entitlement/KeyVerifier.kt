@@ -32,7 +32,7 @@ data class TrustedSigner(
  * is the whole mechanism, and it is why the app works forever with no service behind it.
  *
  * Ed25519 comes from `net.i2p.crypto:eddsa` rather than the platform because
- * `java.security` only gained Ed25519 in API 33 and this app supports API 28.
+ * `java.security` only gained Ed25519 in API 33 and this app supports API 29.
  */
 class KeyVerifier(private val trusted: List<TrustedSigner> = TrustedSigners.ALL) {
 
@@ -106,7 +106,7 @@ object TrustedSigners {
  * than can be reviewed.
  *
  * From `net.i2p.crypto:eddsa` rather than the platform because `java.security` only gained
- * Ed25519 in API 33 and this app supports API 28.
+ * Ed25519 in API 33 and this app supports API 29.
  */
 internal object Ed25519 {
 

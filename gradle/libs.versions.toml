@@ -43,7 +43,7 @@ androidxTestJunit = "1.3.0"
 androidxTestRunner = "1.7.0"
 espresso = "3.7.0"
 # Ed25519 for offline key verification. The platform only gained Ed25519 in API 33 and
-# minSdk is 28, so it cannot come from java.security.
+# minSdk is 29, so it cannot come from java.security.
 eddsa = "0.3.0"
 
 [libraries]
