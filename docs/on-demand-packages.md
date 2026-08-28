@@ -7,15 +7,20 @@
 The app bundles what Beancount and Fava need and nothing more. A few things a user might
 genuinely want cost far more than that:
 
-| feature | needs | size |
-|---|---|---|
-| beangrow returns reports | numpy, pandas, matplotlib, protobuf, and their companions | ~30 MB |
-| `fava_portfolio_returns` | the same | — |
-| `fava-envelope` | pandas | — |
-| `fava-dashboards` | PyYAML | — |
+| feature | needs | download | on disk |
+|---|---|---|---|
+| beangrow returns reports | numpy, pandas, matplotlib, protobuf, and their companions | 37 MB | **~143 MB** |
+| `fava_portfolio_returns` | the same | — | — |
+| `fava-envelope` | pandas | — | — |
+| `fava-dashboards` | PyYAML | — | — |
 
-Putting 30 MB in every download, for a feature most people will not use, is the wrong trade.
-So the expert edition fetches them when asked, once, and keeps them.
+Note the second column against the third. Wheels are compressed archives, so **the download
+figure is not the storage figure** — beangrow's closure downloads 37 MB and occupies about
+143 MB unpacked. Quoting only the download would understate what this costs on a phone by
+nearly four times, and storage is the scarcer of the two.
+
+Putting that in every download, for a feature most people will not use, is the wrong trade.
+So the expert edition fetches it when asked, once, and keeps it.
 
 ## Why not pip
 

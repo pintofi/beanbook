@@ -62,7 +62,7 @@ differences exist, all forced by Play policy:
 | Self-update | none | signed, user-initiated |
 
 **beangrow works, in the Expert edition, with its dependencies fetched on demand.** It needs
-numpy, pandas, matplotlib and protobuf — 37 MB, which does not belong in every download — so
+numpy, pandas, matplotlib and protobuf — a 37 MB download that occupies about 143 MB once unpacked, which does not belong in every install — so
 the Expert edition fetches them the first time you open a returns report, once. Verified on a
 device: the same internal rate of return SciPy computes on a desktop.
 
