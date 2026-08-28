@@ -40,3 +40,16 @@ data class Resolution(
 ) {
     val bytesUnknown: Boolean get() = wheels.isEmpty()
 }
+
+/**
+ * Where fetched packages live, named in one place.
+ *
+ * Two classes need to agree on it — [dev.beancount.app.packages.PackagesState], which puts
+ * things there, and `PluginsState.enabledDirectories`, which hands it to the engine. When
+ * they were two string literals, a test that pointed one of them elsewhere would have passed
+ * while the app quietly fetched into a directory nothing imported from.
+ */
+object OnDemandPackages {
+    fun root(context: android.content.Context): java.io.File =
+        java.io.File(context.filesDir, "ondemand")
+}

@@ -39,12 +39,23 @@ class PackagesStateTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val project = File(context.cacheDir, "packages-state-${System.nanoTime()}")
 
+    /**
+     * This test's own package directory, not the app's.
+     *
+     * The first version of this class used the real one and asserted that nothing had been
+     * fetched into it. That is not a property of the code under test — `BeangrowOnDeviceTest`
+     * installs 143 MB into the same directory earlier in the run, so the assertion failed,
+     * and the cleanup here would have deleted that test's work if the order had been the
+     * other way round. Anything asserting "nothing is there" has to own the directory.
+     */
+    private val ownRoot = File(context.cacheDir, "packages-root-${System.nanoTime()}")
+
     @After fun clean() {
         project.deleteRecursively()
-        File(context.filesDir, "ondemand").deleteRecursively()
+        ownRoot.deleteRecursively()
     }
 
-    private fun state() = PackagesState(context, currentPluginPolicy(), scope)
+    private fun state() = PackagesState(context, currentPluginPolicy(), scope, root = ownRoot)
 
     /**
      * Nothing is downloaded until the user has seen what and how much.
@@ -54,7 +65,6 @@ class PackagesStateTest {
      */
     @Test fun askingForAPackageDownloadsNothingByItself() = runBlocking {
         val packages = state()
-        val before = File(context.filesDir, "ondemand")
 
         packages.request("packaging")
         withTimeout(60_000) {
@@ -73,7 +83,7 @@ class PackagesStateTest {
         }
         assertFalse(
             "something was downloaded before the user agreed to anything",
-            before.isDirectory && before.walkTopDown().any { it.isFile },
+            ownRoot.isDirectory && ownRoot.walkTopDown().any { it.isFile },
         )
     }
 
@@ -88,7 +98,7 @@ class PackagesStateTest {
         assertEquals(PackagesStatus.Idle, packages.status.value)
         assertFalse(
             "cancelling still left packages behind",
-            File(context.filesDir, "ondemand").walkTopDown().any { it.isFile },
+            ownRoot.walkTopDown().any { it.isFile },
         )
     }
 
@@ -101,7 +111,7 @@ class PackagesStateTest {
         assertEquals(PackagesStatus.Idle, packages.status.value)
         assertFalse(
             "a confirmation with no pending request fetched something",
-            File(context.filesDir, "ondemand").walkTopDown().any { it.isFile },
+            ownRoot.walkTopDown().any { it.isFile },
         )
     }
 
@@ -122,8 +132,12 @@ class PackagesStateTest {
         assertTrue("the fixture plugin did not install: $installed", installed is InstallResult.Installed)
         store.setEnabled((installed as InstallResult.Installed).plugin.id, true)
 
-        val fetched = File(context.filesDir, "ondemand").apply { mkdirs() }
-        File(fetched, "marker.py").writeText("# stands in for a fetched package\n")
+        // The real directory, because that is the one `enabledDirectories` names — but only
+        // a file of this test's own is added, and only that file is taken away again, so a
+        // fetch another test made survives this one.
+        val fetched = dev.beancount.app.packages.OnDemandPackages.root(context).apply { mkdirs() }
+        val marker = File(fetched, "marker-${System.nanoTime()}.py")
+        marker.writeText("# stands in for a fetched package\n")
 
         val plugins = PluginsState(context, currentPluginPolicy(), scope)
         plugins.openProject(project)
@@ -138,6 +152,7 @@ class PackagesStateTest {
             "the plugin's own directory was lost: $directories",
             directories.any { it.contains("plugins") },
         )
+        marker.delete()
     }
 
     /**
@@ -153,13 +168,16 @@ class PackagesStateTest {
         val store = PluginStore(project)
         val installed = store.install(source, currentPluginPolicy(), "packages state test")
         store.setEnabled((installed as InstallResult.Installed).plugin.id, true)
-        File(context.filesDir, "ondemand").apply { mkdirs() }
-            .resolve("marker.py").writeText("# fetched\n")
+        val marker = dev.beancount.app.packages.OnDemandPackages.root(context)
+            .apply { mkdirs() }
+            .resolve("marker-${System.nanoTime()}.py")
+        marker.writeText("# fetched\n")
 
         val plugins = PluginsState(context, currentPluginPolicy(), scope)
         plugins.openProject(project)
         dev.beancount.core.data.PluginSafeMode(project).isSafeMode = true
 
         assertEquals("safe mode let something through", "", plugins.enabledDirectories())
+        marker.delete()
     }
 }

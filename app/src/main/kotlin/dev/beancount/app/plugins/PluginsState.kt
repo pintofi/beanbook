@@ -87,7 +87,7 @@ class PluginsState(
         // Under safe mode this stays empty along with everything else. Not because a library
         // is dangerous, but because safe mode means "load nothing of mine", and a numpy that
         // shadowed something would make that promise false.
-        val packages = File(context.filesDir, "ondemand")
+        val packages = dev.beancount.app.packages.OnDemandPackages.root(context)
             .takeIf { plugins.isNotEmpty() && it.isDirectory }
             ?.absolutePath
 

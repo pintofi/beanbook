@@ -41,13 +41,18 @@ class PackagesState(
     private val context: Context,
     private val policy: PluginPolicy,
     private val scope: CoroutineScope,
-) {
     /**
      * Where fetched packages live: app-private, outside any project, and deliberately not in
      * the project tree — they are not the user's data and must never be exported with a
      * ledger or reach a backup.
+     *
+     * A parameter so a test can own its own directory. The default is the one the engine is
+     * given, and tests that assert on the shared one are not testing themselves: the first
+     * version of `PackagesStateTest` asserted that nothing had been fetched into it, and
+     * failed because `BeangrowOnDeviceTest` had put 143 MB there earlier in the same run.
      */
-    val root: File get() = File(context.filesDir, "ondemand")
+    val root: File = OnDemandPackages.root(context),
+) {
 
     private fun fetcher() = WheelFetcher(
         root,
