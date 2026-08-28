@@ -250,7 +250,13 @@ internal object MiniJson {
                         'f' -> out.append('')
                         'u' -> {
                             val hex = text.substring(index + 1, minOf(index + 5, text.length))
-                            if (hex.length < 4) return null
+                            // Length was guarded; the characters were not, so `\uZZZZ` in a
+                            // pasted key reached toInt(16) and threw. This parser is the
+                            // first thing the entitlement layer runs on clipboard text, and
+                            // it runs before any signature check (R9).
+                            if (hex.length < 4 || !hex.all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }) {
+                                return null
+                            }
                             out.append(hex.toInt(16).toChar())
                             index += 4
                         }

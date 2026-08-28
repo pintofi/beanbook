@@ -138,7 +138,17 @@ class WriteJournal(private val workspace: ProjectWorkspace) {
 
     /** Drops records older than [keep], oldest first. Snapshots are the undo depth. */
     fun prune(projectId: String, keep: Int = DEFAULT_UNDO_DEPTH) {
-        val all = journalRoot(projectId).listFiles()?.filter { it.isDirectory }?.sortedBy { it.name }
+        // Terminal records only. Sorting every directory by name and deleting the oldest
+        // could take an INTENT or RENAMED record -- a write that was interrupted and has not
+        // been recovered yet -- and its snapshot with it, which is the one thing recovery
+        // needs (R9).
+        val all = journalRoot(projectId).listFiles()
+            ?.filter { it.isDirectory }
+            ?.filter { dir ->
+                val state = read(projectId, dir)?.state
+                state == State.COMMITTED || state == State.ROLLEDBACK
+            }
+            ?.sortedBy { it.name }
             ?: return
         val excess = all.size - keep
         if (excess <= 0) return

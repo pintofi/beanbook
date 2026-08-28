@@ -1,6 +1,7 @@
 package dev.beancount.app
 
 import android.content.Intent
+import java.io.File
 import android.net.Uri
 import dev.beancount.core.domain.DirectiveDraft
 import java.time.LocalDate
@@ -96,7 +97,18 @@ internal fun MainActivity.unlinkDocument(app: BeancountApplication, projectId: S
 
 /** Hands one document to another app as a temporary read-only URI, and nothing else. */
 internal fun MainActivity.shareDocument(app: BeancountApplication, projectId: String, path: String) {
-    val file = app.workspace.projectDir(projectId).resolve(path)
+    val projectDir = app.workspace.projectDir(projectId)
+    val documents = File(projectDir, "documents")
+    val file = projectDir.resolve(path)
+
+    // Only out of the documents directory, and only from inside it. The FileProvider is
+    // configured over `projects/`, because it cannot express `projects/*/documents`, so this
+    // call site is where the narrower rule actually lives: without it, any path this function
+    // is handed becomes a content:// URI another app can read -- a ledger included (R9).
+    if (!file.canonicalPath.startsWith(documents.canonicalPath + File.separator)) {
+        saveMessage = "Only documents can be shared out of a project."
+        return
+    }
     if (!file.isFile) {
         saveMessage = "That document is not in the project any more."
         return

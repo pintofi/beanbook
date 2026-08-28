@@ -185,7 +185,11 @@ fun WebView.applyBeancountHardening(debuggingAllowed: Boolean = false) {
 fun installSessionToken(origin: String, token: String) {
     CookieManager.getInstance().apply {
         setAcceptCookie(true)
-        setCookie(origin, "bca_token=$token; Path=/; SameSite=Strict")
+        // HttpOnly: the token authenticates requests to the loopback engine, and nothing on
+        // the page has any reason to read it. Without the flag, script running in the Fava
+        // document could — and the page renders a ledger, so it is not a place to be generous
+        // (R9). The browser still sends the cookie; only script is shut out.
+        setCookie(origin, "bca_token=$token; Path=/; SameSite=Strict; HttpOnly")
         flush()
     }
 }

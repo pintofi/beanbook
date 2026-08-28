@@ -45,7 +45,14 @@ class EditorController(
         return (listOf(main.absolutePath) + includedFiles)
             .distinct()
             .map(::File)
-            .filter { it.isFile && it.canonicalPath.startsWith(projectDir.canonicalPath) }
+            // With the separator: without it "projects/foo-other" passes the check for
+            // project "foo", and Beancount permits `include "../..."`, so a crafted ledger
+            // could list a neighbouring project's files. Writes are refused by ProjectWriter
+            // regardless, so this was read exposure rather than a write path (R9).
+            .filter {
+                it.isFile &&
+                    it.canonicalPath.startsWith(projectDir.canonicalPath + File.separator)
+            }
             .map {
                 EditableFile(
                     relativePath = it.relativeTo(projectDir).path,
