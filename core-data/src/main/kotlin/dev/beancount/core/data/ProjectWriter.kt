@@ -3,6 +3,8 @@ package dev.beancount.core.data
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.channels.FileChannel
+import java.nio.file.StandardOpenOption
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -282,8 +284,16 @@ class ProjectWriter(
             throw IOException("could not rename ${tmp.name} onto ${file.name}")
         }
         // Durability of the rename itself: without this the directory entry can be lost.
+        //
+        // Through a channel, not a FileOutputStream. Opening a directory for writing fails
+        // with EISDIR on Linux, so the previous form threw every time and runCatching
+        // swallowed it -- the call had never once synced anything while the comment above it
+        // claimed durability. Best-effort is still right (some filesystems refuse), but it
+        // has to be able to succeed.
         runCatching {
-            FileOutputStream(file.parentFile).use { it.fd.sync() }
+            file.parentFile?.let { parent ->
+                FileChannel.open(parent.toPath(), StandardOpenOption.READ).use { it.force(true) }
+            }
         }
     }
 }
