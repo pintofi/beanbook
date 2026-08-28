@@ -116,6 +116,7 @@ fun ProjectPickerScreen(
     onCreateNew: (String) -> Unit,
     onOpenFolder: () -> Unit,
     onOpenArchive: () -> Unit,
+    onExport: () -> Unit,
     onDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
     busyMessage: String? = null,
@@ -165,6 +166,23 @@ fun ProjectPickerScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onOpenFolder) { Text("Import folder") }
                     OutlinedButton(onClick = onOpenArchive) { Text("Import .zip") }
+                }
+
+                if (activeId != null) {
+                    HorizontalDivider()
+                    Text("The open project", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Write a copy of it into a folder you choose — the ledger, everything " +
+                            "it includes, and its documents. It is a copy taken now, not kept " +
+                            "in step afterwards; Mirror is the one that stays in step.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    OutlinedButton(
+                        onClick = onExport,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Export a copy of the open project to a folder"
+                        },
+                    ) { Text("Export a copy") }
                 }
                 OutlinedTextField(
                     value = newTitle,

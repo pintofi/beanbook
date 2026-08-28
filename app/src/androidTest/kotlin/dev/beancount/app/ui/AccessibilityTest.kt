@@ -202,6 +202,44 @@ class AccessibilityTest {
      * plugin it acts on. The unsandboxed warning is checked too: it is the one thing on this
      * screen that must reach a person who cannot see it.
      */
+    /**
+     * The project picker, which had no gate coverage at all until export was added to it.
+     *
+     * Every control here acts on a whole project — opening one, replacing what is on screen,
+     * writing a copy somewhere, or deleting it. "Delete" alone, announced without the project
+     * it would delete, is the worst label in the app.
+     */
+    @Test fun projectPickerIsLabelledAndFitsAtDoubleFontScale() {
+        val project = dev.beancount.core.data.ProjectSummary(
+            id = "household",
+            title = "Household",
+            mainFile = java.io.File("/does/not/need/to/exist/main.beancount"),
+            fileCount = 3,
+            totalBytes = 12_288,
+            lastModified = 1_756_000_000_000,
+        )
+
+        render(widthDp = 320, fontScale = 2f) {
+            ProjectPickerScreen(
+                projects = listOf(project),
+                activeId = "household",
+                onOpen = {},
+                onCreateNew = {},
+                onOpenFolder = {},
+                onOpenArchive = {},
+                onExport = {},
+                onDelete = {},
+            )
+        }
+
+        compose.onNodeWithContentDescription(
+            "Export a copy of the open project to a folder",
+        ).performScrollTo().assertExists()
+        compose.onNodeWithContentDescription(
+            "Open Household, ${project.describe()}",
+        ).performScrollTo().assertExists()
+    }
+
     @Test fun pluginsScreenIsLabelledAndFitsAtDoubleFontScale() {
         val plugin = dev.beancount.core.data.InstalledPlugin(
             id = "tag-large",

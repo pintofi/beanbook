@@ -137,6 +137,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Where an exported copy goes. Write permission is taken persistably for the same reason
+     * the import picker takes read: without it the grant dies with the activity, and an
+     * export that half-ran would leave files behind with no way to finish.
+     */
+    private val exportPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        val app = application as BeancountApplication
+        val projectId = app.registry.activeProjectId()
+        uri?.let {
+            contentResolver.takePersistableUriPermission(
+                it, android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+            if (projectId == null) {
+                app.projectsState.report("Open a project before exporting a copy of it.")
+            } else {
+                app.projectsState.exportFolder(contentResolver, it, projectId)
+            }
+        }
+    }
+
     private val archivePicker = registerForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -593,6 +615,7 @@ class MainActivity : ComponentActivity() {
                         onCreateProject = { title ->
                             app.projectsState.createNew(title) { openProject(app, it) }
                         },
+                        onExportProject = { exportPicker.launch(null) },
                         onImportFolder = { folderPicker.launch(null) },
                         onImportArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
                         onDeleteProject = { id -> app.projectsState.delete(id) },
@@ -985,6 +1008,7 @@ internal fun LedgerApp(
     projectMessage: String?,
     onOpenProject: (String) -> Unit,
     onCreateProject: (String) -> Unit,
+    onExportProject: () -> Unit,
     onImportFolder: () -> Unit,
     onImportArchive: () -> Unit,
     onDeleteProject: (String) -> Unit,
@@ -1183,6 +1207,7 @@ internal fun LedgerApp(
                 projectMessage = projectMessage,
                 onOpenProject = onOpenProject,
                 onCreateProject = onCreateProject,
+                onExportProject = onExportProject,
                 onImportFolder = onImportFolder,
                 onImportArchive = onImportArchive,
                 onDeleteProject = onDeleteProject,
@@ -1298,6 +1323,7 @@ private fun SurfaceContent(
     projectMessage: String?,
     onOpenProject: (String) -> Unit,
     onCreateProject: (String) -> Unit,
+    onExportProject: () -> Unit,
     onImportFolder: () -> Unit,
     onImportArchive: () -> Unit,
     onDeleteProject: (String) -> Unit,
@@ -1398,6 +1424,7 @@ private fun SurfaceContent(
                             onCreateNew = onCreateProject,
                             onOpenFolder = onImportFolder,
                             onOpenArchive = onImportArchive,
+                            onExport = onExportProject,
                             onDelete = onDeleteProject,
                             busyMessage = projectMessage,
                         )

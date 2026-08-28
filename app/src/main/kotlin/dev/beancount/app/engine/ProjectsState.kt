@@ -3,8 +3,10 @@ package dev.beancount.app.engine
 import android.content.ContentResolver
 import android.net.Uri
 import android.util.Log
+import dev.beancount.app.storage.SafExportTarget
 import dev.beancount.app.storage.SafImportSource
 import dev.beancount.core.data.ImportResult
+import dev.beancount.core.data.ProjectExporter
 import dev.beancount.core.data.ProjectImporter
 import dev.beancount.core.data.ProjectRegistry
 import dev.beancount.core.data.ProjectSummary
@@ -79,6 +81,45 @@ class ProjectsState(
             } ?: error("could not read the chosen file")
             ZipImportSource(local) to (archive.lastPathSegment ?: "imported")
         }
+
+    /** Show the user a message that did not come from an operation this class ran. */
+    fun report(text: String) {
+        _message.value = text
+    }
+
+    /**
+     * Writes a copy of a project into a folder the user chooses (SPEC.md §55, free tier).
+     *
+     * Distinct from mirroring, which sets up an ongoing relationship with one folder. This is
+     * a snapshot: it happens once, to wherever the user points it, and the app forgets about
+     * it afterwards. Both exist because they answer different questions — "keep this in sync"
+     * and "give me a copy".
+     *
+     * The count comes back from the exporter rather than being assumed, because a partial
+     * export reported as a success is the failure that matters here (invariant 5: `include`
+     * directives and document links must stay valid across an export).
+     */
+    fun exportFolder(resolver: ContentResolver, tree: Uri, projectId: String) {
+        scope.launch {
+            _message.value = "Writing…"
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    ProjectExporter(workspace).exportFolder(projectId, SafExportTarget(resolver, tree))
+                }
+            }
+            _message.value = outcome.fold(
+                onSuccess = { count ->
+                    "Exported $count file(s) to the folder you chose. This copy is not kept " +
+                        "in step with the original — use Mirror for that."
+                },
+                onFailure = {
+                    // Named rather than generic: SAF providers fail for reasons the user can
+                    // usually act on, and "export failed" tells them nothing.
+                    "Nothing was exported: ${it.message ?: it::class.simpleName}"
+                },
+            )
+        }
+    }
 
     private fun import(
         onOpened: (String) -> Unit,
