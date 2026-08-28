@@ -33,6 +33,18 @@ class BeangrowOnDeviceTest {
     @Test fun beangrowIsFetchedAndComputesAnInternalRateOfReturn() {
         val fetcher = WheelFetcher(root, allowed = true, allowNative = true, assets = context.assets)
 
+        // A second run costs nothing. That is the point of `installed()`, and until this
+        // nothing called it — so the property it exists to provide was never exercised.
+        if ("beangrow" in fetcher.installed() && "numpy" in fetcher.installed()) {
+            android.util.Log.i(TAG, "already installed; skipping the download")
+        } else {
+            install(fetcher)
+        }
+
+        checkItComputes(fetcher)
+    }
+
+    private fun install(fetcher: WheelFetcher) {
         val resolution = fetcher.resolve(listOf("beangrow")).getOrElse {
             throw AssertionError("could not resolve beangrow: $it")
         }
@@ -52,6 +64,9 @@ class BeangrowOnDeviceTest {
         val megabytes = (installed as FetchResult.Installed).bytes / 1_000_000
         android.util.Log.i(TAG, "installed ${resolution.wheels.size} packages, $megabytes MB")
 
+    }
+
+    private fun checkItComputes(fetcher: WheelFetcher) {
         // The overlay must have replaced beangrow's returns.py, or the import below reaches
         // for SciPy and there is none.
         val returns = File(root, "beangrow/returns.py")
@@ -78,9 +93,19 @@ class BeangrowOnDeviceTest {
 
         // Twelve monthly contributions and a payout — the shape a real portfolio has, and the
         // case checked against SciPy on desktop, where it agreed to 3.2e-13.
+        // Built on the Python side. A Kotlin List arrives as a Java proxy that numpy wraps
+        // as an object array rather than a float one, and the failure surfaces much later as
+        // `unsupported operand type(s) for ** or pow(): 'float' and 'ArrayList'`.
+        fun pythonList(values: List<Double>) = python.builtins.callAttr("list").also { list ->
+            values.forEach { list.callAttr("append", it) }
+        }
+
         val numpy = python.getModule("numpy")
-        val flows = numpy.callAttr("array", (0 until 12).map { -100.0 } + listOf(1500.0))
-        val years = numpy.callAttr("array", (0 until 12).map { -(12 - it) / 12.0 } + listOf(0.0))
+        val flows = numpy.callAttr("array", pythonList((0 until 12).map { -100.0 } + listOf(1500.0)))
+        val years = numpy.callAttr(
+            "array",
+            pythonList((0 until 12).map { -(12 - it) / 12.0 } + listOf(0.0)),
+        )
         val irr = module.callAttr("solve_irr", flows, years, 0.2).toDouble()
 
         android.util.Log.i(TAG, "irr=$irr")

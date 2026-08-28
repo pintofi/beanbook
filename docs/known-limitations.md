@@ -61,14 +61,17 @@ differences exist, all forced by Play policy:
 | Java/Android bridge inside user plugin code | withheld | available |
 | Self-update | none | signed, user-initiated |
 
-**`fava_portfolio_returns` and beangrow are Expert-only, and their dependencies are fetched
-on demand.** They need numpy, pandas, matplotlib and protobuf — around 50 MB, which does not
-belong in every download — so the Expert edition offers to fetch them when you first open a
-returns report. The Play edition cannot: fetching executable code is prohibited there.
+**beangrow works, in the Expert edition, with its dependencies fetched on demand.** It needs
+numpy, pandas, matplotlib and protobuf — 37 MB, which does not belong in every download — so
+the Expert edition fetches them the first time you open a returns report, once. Verified on a
+device: the same internal rate of return SciPy computes on a desktop.
 
-They also needed SciPy, for one function. That call is replaced by a solver in `patches/`
-which agrees with SciPy to thirteen decimal places, because SciPy has no Android build and is
-an enormous dependency for a root finder.
+SciPy itself is not installed and is not needed. beangrow used it for one call, a root find,
+and `patches/` replaces that with a solver agreeing to thirteen decimal places — SciPy has no
+Android build and is an enormous dependency for a root finder.
+
+**The Play edition cannot do this**, because fetching executable code from outside the store
+is against its policy. beangrow is Expert-only for that reason, not because of size.
 
 **The plugin restrictions are policy compliance, not a security boundary.** User Python runs
 unsandboxed in both editions. Code you install can read anything the app can read, and in
