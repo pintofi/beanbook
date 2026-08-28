@@ -366,9 +366,17 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                             return listOf(ArchiveProblem.WrongPassphrase)
                         }
 
-                        // The decrypted payload goes to a temporary file rather than staying
-                        // in memory: a project with documents can be larger than a heap.
-                        val temp = File.createTempFile("payload", ".zip", archive.parentFile)
+                        // Staged in the app's own cache, never beside the archive. The
+                        // archive can sit anywhere the user picked -- a Downloads folder, a
+                        // synced folder, external storage -- and writing the whole decrypted
+                        // project next to it put every account name and amount somewhere the
+                        // user did not choose, for as long as the verify took (R8).
+                        //
+                        // The temporary file is about `ZipFile`, which needs random access;
+                        // the plaintext is already fully in memory above, so this is not the
+                        // memory saving an earlier comment here claimed.
+                        val scratch = workspace.cacheDir.apply { mkdirs() }
+                        val temp = File.createTempFile("payload", ".zip", scratch)
                         decrypted = temp
                         temp.writeBytes(plaintext)
 
