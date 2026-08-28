@@ -16,6 +16,9 @@ keystore.properties
 .idea/
 .vscode/
 
+# Kotlin compiler session files. These were committed twice before this entry existed.
+.kotlin/
+
 # Python
 __pycache__/
 *.py[cod]
