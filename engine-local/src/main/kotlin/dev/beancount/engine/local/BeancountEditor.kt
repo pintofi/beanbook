@@ -1,6 +1,7 @@
 package dev.beancount.engine.local
 
 import android.content.Context
+import dev.beancount.core.data.LedgerUnavailable
 import dev.beancount.core.data.LedgerValidator
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +23,12 @@ class BeancountValidator(
 
     override suspend fun validate(mainFile: String): Result<List<String>> =
         withContext(io) {
-            connection.withEngine { it.validate(mainFile) }.mapCatching { json ->
+            connection.withEngine { it.validate(mainFile) }
+                // The engine being unreachable says nothing about the ledger. Typed so the
+                // writer can tell it apart from Beancount refusing the file, and report the
+                // difference to the user (R5).
+                .recoverCatching { failure -> throw LedgerUnavailable(failure.message ?: "engine unavailable") }
+                .mapCatching { json ->
                 if (json.startsWith("error: ")) error(json.removePrefix("error: "))
                 val root = JSONObject(json)
                 val errors = root.optJSONArray("errors")

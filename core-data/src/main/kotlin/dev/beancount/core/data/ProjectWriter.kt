@@ -12,6 +12,17 @@ import kotlinx.coroutines.sync.withLock
  * Re-parses a project after a write. Implemented by the engine module; injected here so
  * the whole protocol is testable on the JVM without Python.
  */
+/**
+ * The ledger could not be checked, which is not the same as the ledger being wrong.
+ *
+ * The engine runs in its own process. When it has been killed, or cannot be bound, the
+ * validator has nothing to say about the file — and saying "the ledger could not be parsed"
+ * is a claim about the user's data that is not true. The writer needs to tell the two apart
+ * because the honest response differs: a real parse failure means the write broke something,
+ * while this means nobody knows yet.
+ */
+class LedgerUnavailable(message: String) : Exception(message)
+
 fun interface LedgerValidator {
     /**
      * @return the errors Beancount reports, or a failure if the ledger could not be
@@ -162,9 +173,20 @@ class ProjectWriter(
         // this baseline is the only way to tell "the write broke something" from "the
         // ledger was already imperfect".
         val baseline = if (policy == ErrorPolicy.ROLLBACK_ON_NEW_ERRORS) {
-            validator.validate(workspace.mainFile(projectId).absolutePath)
-                .getOrElse { emptyList() }
-                .size
+            val before = validator.validate(workspace.mainFile(projectId).absolutePath)
+            // Nothing has been written yet, so refusing here is free and honest. Carrying on
+            // with a baseline of zero was worse than it looks: a ledger that already had
+            // errors would then have the next perfectly good write rolled back for
+            // "introducing" them.
+            before.exceptionOrNull()?.let { failure ->
+                if (failure is LedgerUnavailable) {
+                    return WriteResult.Refused(
+                        "the engine is not available, so the ledger could not be checked " +
+                            "before writing. Nothing was changed."
+                    )
+                }
+            }
+            before.getOrElse { emptyList() }.size
         } else {
             0
         }
@@ -183,6 +205,31 @@ class ProjectWriter(
 
             val validation = validator.validate(workspace.mainFile(projectId).absolutePath)
             val errors = validation.getOrElse { failure ->
+                if (failure is LedgerUnavailable) {
+                    // The write landed; nobody could check it. Under KEEP_AND_REPORT the
+                    // user typed this text and losing it to an engine restart would be the
+                    // one thing that policy exists to prevent, so it stays and the message
+                    // says it is unchecked. A generated write is undone instead, because
+                    // "we could not confirm this is safe" is not a reason to keep it.
+                    return if (policy == ErrorPolicy.KEEP_AND_REPORT) {
+                        journal.commit(record)
+                        WriteResult.Committed(
+                            txnId = record.txnId,
+                            warnings = listOf(
+                                "Saved, but the engine is not available so the ledger has " +
+                                    "not been checked."
+                            ),
+                        )
+                    } else {
+                        journal.restoreSnapshot(record)
+                        journal.markRolledBack(record)
+                        WriteResult.RolledBack(
+                            reason = "the engine is not available, so the write could not be " +
+                                "checked and was undone. Your ledger is unchanged.",
+                            errors = listOfNotNull(failure.message),
+                        )
+                    }
+                }
                 journal.restoreSnapshot(record)
                 journal.markRolledBack(record)
                 return WriteResult.RolledBack(
