@@ -311,9 +311,25 @@ fun QuickAddScreen(
             )
         }
 
+        // Invariant 6: a retried write never creates a duplicate entry. `ProjectWriter.append`
+        // cannot enforce that on its own -- it computes `expectedSha` from the file at call
+        // time, so the stale-hash check that protects `replace` sees nothing wrong with the
+        // second write, and the write mutex serialises the two taps rather than collapsing
+        // them. Two taps on this button therefore produced two identical transactions, both
+        // reported as saved.
+        //
+        // The guard is the draft itself: once this exact draft has been submitted the button
+        // is disabled, and it comes back the moment any field changes. Somebody entering two
+        // genuinely identical transactions edits something and edits it back, which is a
+        // deliberate act rather than a slip.
+        var submitted by remember { mutableStateOf<TransactionDraft?>(null) }
+
         Button(
-            onClick = { onSave(draft) },
-            enabled = problems.isEmpty(),
+            onClick = {
+                submitted = draft
+                onSave(draft)
+            },
+            enabled = problems.isEmpty() && draft != submitted,
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Save entry") }
 
