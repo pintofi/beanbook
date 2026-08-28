@@ -8,6 +8,7 @@ import dev.beancount.core.engine.EngineStatus
 import dev.beancount.engine.local.LocalEngineClient
 import java.io.File
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -31,6 +32,78 @@ import org.junit.runner.RunWith
 class FavaExtensionTest {
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
+
+    /**
+     * A Fava extension, with the dependencies it needs fetched on demand (V8).
+     *
+     * Every catalogued Fava extension was recorded as unavailable for wanting a package the
+     * app does not bundle — `pandas`, `yaml`, `packaging`, `scipy`. The first three are now
+     * fetchable, and the fourth is not needed: `fava_portfolio_returns` vendors beangrow and
+     * calls SciPy once, which the overlay replaces.
+     *
+     * So this is the end-to-end claim the catalogue could never make: a Fava extension the
+     * user installed, with its dependencies obtained on the device, **loaded by Fava** — its
+     * route mounted rather than 404ing on an import error.
+     */
+    @Test fun anExtensionLoadsOnceItsDependenciesAreFetched() {
+        val source = File("/data/local/tmp/bca-catalog/fava_investor")
+        assumeTrue("no Fava extension pushed to the device", source.isDirectory)
+
+        val project = File(context.cacheDir, "fava-deps-${System.nanoTime()}").apply { mkdirs() }
+        val store = PluginStore(project)
+        val installed = store.install(source, currentPluginPolicy(), "compatibility harness")
+        assertTrue("the extension did not install: $installed", installed is InstallResult.Installed)
+        val root = store.directoryFor((installed as InstallResult.Installed).plugin).absolutePath
+
+        // `packaging` is what fava_investor was missing. Pure Python, so this is a small
+        // download rather than the 37 MB beangrow needs.
+        val packages = File(context.filesDir, "ondemand-fava")
+        val fetcher = dev.beancount.app.packages.WheelFetcher(
+            packages, allowed = true, allowNative = true, assets = context.assets,
+        )
+        val resolution = fetcher.resolve(listOf("packaging")).getOrElse {
+            throw AssertionError("could not resolve packaging: $it")
+        }
+        fetcher.install(resolution.wheels)
+        fetcher.preloadNativeLibraries()
+
+        val ledger = File(project, "main.beancount")
+        ledger.writeText(
+            "2000-01-01 custom \"fava-extension\" \"fava_investor\"\n\n" +
+                "2026-01-01 open Assets:Bank:Checking\n" +
+                "2026-01-01 open Expenses:Food\n\n" +
+                "2026-02-01 * \"Shop\"\n" +
+                "  Expenses:Food   12.00 USD\n" +
+                "  Assets:Bank:Checking\n",
+        )
+
+        val engine = LocalEngineClient(context)
+        // Both roots: the extension itself, and what was fetched for it.
+        engine.pluginDirs = listOf(root, packages.absolutePath)
+        var reached = -1
+        var errors = ""
+        try {
+            val started = runBlocking { engine.start(ledger.absolutePath) }
+            assertTrue("the engine did not start: $started", started is EngineStatus.Serving)
+            started as EngineStatus.Serving
+            reached = get(
+                "${started.origin}/${started.ledgerSlug}/extension/Investor/",
+                engine.sessionToken,
+            )
+            errors = body("${started.origin}/${started.ledgerSlug}/api/errors", engine.sessionToken)
+        } finally {
+            runBlocking { runCatching { engine.stop() } }
+            project.deleteRecursively()
+            packages.deleteRecursively()
+        }
+
+        android.util.Log.i("FavaExtension", "with dependencies: route=$reached errors=$errors")
+        assertFalse(
+            "Fava still could not import the extension: $errors",
+            errors.contains("FavaExtensionError"),
+        )
+        assertEquals("Fava did not mount the extension's route", 200, reached)
+    }
 
     private fun open(url: String, token: String?): java.net.HttpURLConnection =
         (java.net.URL(url).openConnection() as java.net.HttpURLConnection).apply {

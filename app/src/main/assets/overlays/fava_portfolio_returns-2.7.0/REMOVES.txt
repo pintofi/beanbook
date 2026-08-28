@@ -1,0 +1,10 @@
+# Dependencies this overlay makes unnecessary, one per line. See ../README.txt.
+#
+# fava-portfolio-returns vendors its own copy of beangrow, which imports scipy for the same
+# single call — scipy.optimize.fsolve, a one-dimensional root find for the internal rate of
+# return. The returns.py in this directory replaces it with the same bracketing solver used
+# for beangrow itself, so nothing left in the package imports scipy.
+#
+# The vendored copy has diverged from upstream beangrow: its call site clamps the result at
+# -100%. That is preserved.
+scipy
