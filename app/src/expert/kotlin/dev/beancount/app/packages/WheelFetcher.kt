@@ -63,7 +63,7 @@ class WheelFetcher(
      * **On disk, not in memory.** The first version of this held every wheel as a ByteArray,
      * which for a closure containing OpenBLAS, numpy, pandas and matplotlib is a hundred
      * megabytes of heap — an out-of-memory kill on the exact device this feature is for. The
-     * spool is deleted after a successful install and on failure.
+     * spool is deleted after an install, whether it succeeded or failed.
      */
     // Beside the install root, not inside it. A download in progress is not an installed
     // package, and putting it in there made `installed()` report `.spool` as one — and left a
@@ -120,6 +120,22 @@ class WheelFetcher(
             return FetchResult.Refused("this edition does not download packages")
         }
         root.mkdirs()
+
+        // Unpacked into staging, moved into place only when every wheel has succeeded.
+        // Previously a digest mismatch at wheel n left wheels 1..n-1 unpacked in the install
+        // root and reported failure, and `installed()` then listed them as present -- while
+        // the comment below said nothing already unpacked is trusted. Nothing deleted them
+        // (R7). ProjectImporter and PluginStore both stage-then-rename for the same reason.
+        val staging = File(root.parentFile ?: root, "${root.name}-staging")
+        staging.deleteRecursively()
+        staging.mkdirs()
+
+        fun abandon(reason: String): FetchResult {
+            staging.deleteRecursively()
+            spool.deleteRecursively()
+            return FetchResult.Failed(reason)
+        }
+
         var total = 0L
         wheels.forEach { wheel ->
             val spooled = spooledAt(wheel.url)
@@ -127,7 +143,7 @@ class WheelFetcher(
                 if (spooled.isFile) spooled.readBytes() else download(wheel.url)
             } catch (problem: java.io.IOException) {
                 Log.w(TAG, "could not fetch ${wheel.name}", problem)
-                return FetchResult.Failed("${wheel.name} could not be downloaded")
+                return abandon("${wheel.name} could not be downloaded")
             }
 
             val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
@@ -135,16 +151,20 @@ class WheelFetcher(
             if (digest != wheel.sha256) {
                 // The index said one thing and the bytes are another. There is no benign
                 // explanation, so nothing is unpacked and nothing already unpacked is trusted.
-                return FetchResult.Failed(
-                    "${wheel.name} did not match the digest its index published",
-                )
+                return abandon("${wheel.name} did not match the digest its index published")
             }
 
-            runCatching { unpack(bytes) }
-                .onFailure { return FetchResult.Failed("${wheel.name} could not be unpacked") }
-            overlay(wheel)
+            runCatching { unpack(bytes, staging) }
+                .onFailure { return abandon("${wheel.name} could not be unpacked") }
+            overlay(wheel, staging)
             total += bytes.size
         }
+
+        // Every wheel succeeded: merge staging into the install root. Not a rename, because
+        // the root holds whatever was installed before and this is an addition to it.
+        runCatching { staging.copyRecursively(root, overwrite = true) }
+            .onFailure { return abandon("the packages could not be moved into place") }
+        staging.deleteRecursively()
         spool.deleteRecursively()
         return FetchResult.Installed(wheels, total)
     }
@@ -162,7 +182,7 @@ class WheelFetcher(
      * overlay that applies to whatever happens to be there is a way to break a package
      * quietly, and quietly is the problem.
      */
-    private fun overlay(wheel: Wheel) {
+    private fun overlay(wheel: Wheel, into: File) {
         val manager = assets ?: return
         val prefix = "overlays/${wheel.name}-${wheel.version}"
         // `list` returns an empty array for a directory that does not exist as well as for
@@ -176,7 +196,7 @@ class WheelFetcher(
         if (files.isEmpty()) return
 
         files.forEach { path ->
-            val target = File(root, path.removePrefix("$prefix/"))
+            val target = File(into, path.removePrefix("$prefix/"))
             target.parentFile?.mkdirs()
             manager.open(path).use { input ->
                 target.outputStream().use { input.copyTo(it) }
@@ -260,13 +280,13 @@ class WheelFetcher(
             ?.toSet()
             .orEmpty()
 
-    private fun unpack(bytes: ByteArray) {
+    private fun unpack(bytes: ByteArray, into: File) {
         ZipInputStream(bytes.inputStream()).use { zip ->
             generateSequence { zip.nextEntry }.forEach { entry ->
                 // A wheel is an archive from the network: a member named ../../something
                 // would write outside the directory, which is the oldest trick there is.
-                val target = File(root, entry.name).canonicalFile
-                if (!target.path.startsWith(root.canonicalFile.path + File.separator)) {
+                val target = File(into, entry.name).canonicalFile
+                if (!target.path.startsWith(into.canonicalFile.path + File.separator)) {
                     error("wheel entry escapes the install directory: ${entry.name}")
                 }
                 if (entry.isDirectory) {
