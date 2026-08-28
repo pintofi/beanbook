@@ -5,8 +5,15 @@ Plain-text double-entry accounting on Android, running the real
 [Fava](https://github.com/beancount/fava) on-device — or connecting to your own
 self-hosted Fava.
 
-**Status: specification phase.** No application code exists yet. Feasibility spikes come
-next; the architecture is not approved until they report back.
+**Status: implemented, not released.** Both editions build and the quality gates run; the
+app has never been submitted to Google Play and no contribution key has been sold. What is
+proven, what is deferred and what is still unverified are tracked in
+[docs/pending-verification.md](docs/pending-verification.md), and
+[docs/release-readiness.md](docs/release-readiness.md) says where the project stands against
+the acceptance criteria in SPEC.md.
+
+Minimum Android version is **10 (API 29)**: on Android 9 (API 28) the embedded Python runtime is killed by
+seccomp before the engine starts.
 
 ## Documents
 
@@ -21,7 +28,11 @@ next; the architecture is not approved until they report back.
 | [docs/plugin-compatibility.md](docs/plugin-compatibility.md) | Compatibility definition, matrix, harness, limitations |
 | [docs/ux.md](docs/ux.md) | Information architecture, native-vs-web ownership, accessibility, widgets |
 | [docs/feasibility/plan.md](docs/feasibility/plan.md) | Phase 0 spikes, pass/fail criteria, commands |
-| [CLAUDE.md](CLAUDE.md) | Durable engineering rules (proposed) |
+| [docs/known-limitations.md](docs/known-limitations.md) | What the app cannot do, and why |
+| [docs/on-demand-packages.md](docs/on-demand-packages.md) | Fetching extra Python packages (Expert edition) |
+| [docs/release-readiness.md](docs/release-readiness.md) | Standing against SPEC.md acceptance criteria |
+| [docs/pending-verification.md](docs/pending-verification.md) | Every unfinished item, in one register |
+| [CLAUDE.md](CLAUDE.md) | Durable engineering rules |
 
 ## License
 
