@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import dev.beancount.core.data.WriteJournal
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
@@ -343,6 +345,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Says out loud what API 35+ already does to a targetSdk-35+ app: draw it behind the
+        // system bars. Measured, this line changes nothing on API 36 — the platform had
+        // forced it either way. It matters below 35, where the window is not edge to edge
+        // unless asked, so that one arrangement holds from 29 to 36 rather than the layout
+        // depending on which Android is running it. The clearance itself comes from
+        // safeDrawingPadding at the root, not from here.
+        enableEdgeToEdge()
+
         val app = application as BeancountApplication
 
         app.projectsState.refresh()
@@ -387,7 +398,18 @@ class MainActivity : ComponentActivity() {
             val themeChoice by app.themeSettings.choice.collectAsStateWithLifecycle()
             val dynamicColour by app.themeSettings.dynamicColour.collectAsStateWithLifecycle()
             BeancountTheme(choice = themeChoice, dynamicColour = dynamicColour) {
-                Surface(modifier = Modifier.fillMaxSize()) {
+                // What actually keeps content clear of the bars. At the root rather than per
+                // screen, because onboarding and the project picker render outside the
+                // Scaffold that would otherwise have handled it — and those are the first
+                // things anybody sees. Consuming here also stops the Scaffold's top bar
+                // adding the same inset a second time.
+                //
+                // The symptom was not overlap. On the API 36 emulator the title began at
+                // exactly 63px, which is both the status bar height and this screen's own
+                // 24dp padding: flush against the bar with no clearance whatsoever. It now
+                // starts at 126px. WindowInsetsTest measures that, and fails if this is
+                // removed.
+                Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
                     val engineStatus by app.engineManager.status.collectAsStateWithLifecycle()
                     val ledger by app.ledgerState.snapshot.collectAsStateWithLifecycle()
                     val projects by app.projectsState.projects.collectAsStateWithLifecycle()
