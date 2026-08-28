@@ -46,6 +46,13 @@ class FavaExtensionTest {
      * route mounted rather than 404ing on an import error.
      */
     @Test fun anExtensionLoadsOnceItsDependenciesAreFetched() {
+        // The whole point of this case is the dependency arriving on the device, which the
+        // Play edition may not do. Skipped there rather than failed: the capability is
+        // absent by policy, and its absence is asserted by WheelFetcherTest's Play stub.
+        assumeTrue(
+            "this edition cannot fetch packages, so there is nothing to load",
+            currentPluginPolicy().allowsPackageDownload,
+        )
         val source = File("/data/local/tmp/bca-catalog/fava_investor")
         assumeTrue("no Fava extension pushed to the device", source.isDirectory)
 

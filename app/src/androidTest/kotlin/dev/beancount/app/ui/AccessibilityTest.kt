@@ -285,16 +285,22 @@ class AccessibilityTest {
             )
         }
 
-        listOf(
+        // The fetched-packages controls exist only in an edition that may download. Play
+        // shows a sentence there instead, by policy, so asserting them unconditionally
+        // failed this test on Play for a reason that is the screen behaving correctly.
+        val packagesControls = listOf(
+            "Name of a package to fetch",
+            "See what this would download",
+            "Remove every fetched package",
+        ).takeIf { dev.beancount.app.currentPluginPolicy().allowsPackageDownload }.orEmpty()
+
+        (listOf(
             "What running a plugin means",
             "Install a plugin from a file",
             "Safe mode: hold every plugin back",
             "Run tag_large.py when the ledger loads",
             "Remove tag_large.py",
-            "Name of a package to fetch",
-            "See what this would download",
-            "Remove every fetched package",
-        ).forEach { label ->
+        ) + packagesControls).forEach { label ->
             compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
         }
         assertAccessible()
