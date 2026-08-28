@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import dev.beancount.core.data.BackupArchive
 import dev.beancount.core.data.MirrorAction
+import dev.beancount.core.domain.PluginPreflight
 import dev.beancount.core.data.MirrorPlan
 import dev.beancount.core.data.MirrorPlanResult
 import dev.beancount.core.data.MirrorState
@@ -135,6 +136,11 @@ class MirrorController(
                 is MirrorAction.PullIn -> {
                     val bytes = read(externalFiles.getValue(action.path))
                     val target = File(projectDir, action.path)
+                    // Checked again here, not only when enumerating: one check guarding two
+                    // places is one check away from guarding neither (PluginPreflight).
+                    check(
+                        target.canonicalPath.startsWith(projectDir.canonicalPath + File.separator)
+                    ) { "refusing to write ${action.path} outside the project" }
                     target.parentFile?.mkdirs()
                     writeAtomically(target, bytes)
                     synced[action.path] = BackupArchive.sha256(bytes)
@@ -242,7 +248,14 @@ class MirrorController(
         }
         walk(root, "")
         return found.filterNot { (path, _) ->
-            BackupArchive.isExcluded(path) || path.contains(".conflict-")
+            BackupArchive.isExcluded(path) || path.contains(".conflict-") ||
+                // These names come from a DocumentsProvider's display-name column, which this
+                // app does not control, and they are joined straight into a path under the
+                // project directory. Every other place untrusted names reach the filesystem
+                // checks this -- ProjectImporter, BackupArchive.extract, ProjectWriter.write
+                // -- and the mirror did not. A name containing ".." would have written
+                // outside the project on the way in.
+                PluginPreflight.escapesRoot(path)
         }
     }
 
