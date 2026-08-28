@@ -232,11 +232,15 @@ class AccessibilityTest {
             )
         }
 
-        compose.onNodeWithContentDescription(
-            "Export a copy of the open project to a folder",
-        ).performScrollTo().assertExists()
+        // Order matters here, and not for a reason the screen is at fault for. This is a
+        // LazyColumn: scrolling to the export button at the bottom disposes the project row
+        // at the top, and looking for it afterwards finds nothing at all — the failure reads
+        // exactly like a missing label. Anything above is checked before anything below.
         compose.onNodeWithContentDescription(
             "Open Household, ${project.describe()}",
+        ).performScrollTo().assertExists()
+        compose.onNodeWithContentDescription(
+            "Export a copy of the open project to a folder",
         ).performScrollTo().assertExists()
     }
 
