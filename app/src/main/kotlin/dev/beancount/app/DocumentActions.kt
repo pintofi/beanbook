@@ -63,20 +63,24 @@ internal fun MainActivity.unlinkDocument(app: BeancountApplication, projectId: S
             .filter { it.isFile && (it.extension == "beancount" || it.extension == "bean") }
             .toList()
 
-        val holder = candidates.firstOrNull { it.readText().contains(path) }
+        // The file holding an actual `document` directive for this path -- not merely one
+        // that mentions the path somewhere, which would match a comment or a transaction's
+        // own `document:` metadata.
+        val holder = candidates.asSequence()
+            .map { it to dev.beancount.core.domain.BeancountText
+                .removeDocumentDirective(it.readText(), path) }
+            .firstOrNull { (_, rewritten) -> rewritten != null }
         if (holder == null) {
             saveMessage = "Nothing in the ledger links to $path."
             return@launch
         }
+        val (file, rewritten) = holder
 
-        val kept = holder.readLines().filterNot { line ->
-            line.contains(path) && line.contains("document")
-        }
         val result = app.writer.replace(
             projectId = projectId,
-            file = holder,
-            expectedSha = dev.beancount.core.data.WriteJournal.sha256(holder),
-            newContent = kept.joinToString("\n").let { if (it.endsWith("\n")) it else it + "\n" },
+            file = file,
+            expectedSha = dev.beancount.core.data.WriteJournal.sha256(file),
+            newContent = rewritten!!,
             operation = "unlink-document",
         )
         saveMessage = when (result) {
