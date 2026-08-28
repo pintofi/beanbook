@@ -40,39 +40,146 @@ PROBE = """\
 """
 
 
-def package_root(extracted: Path, import_root: str) -> Path | None:
-    """The directory to put on `sys.path` so `import <import_root>` works."""
-    if not extracted.exists():
-        return None
-    for candidate in [extracted, extracted / "src", *extracted.glob("*")]:
-        if (candidate / import_root / "__init__.py").is_file():
-            return candidate
-        if (candidate / f"{import_root}.py").is_file():
-            return candidate
-    for init in extracted.rglob(f"{import_root}/__init__.py"):
-        return init.parent.parent
-    return None
+SKIP_DIRS = {".git", "tests", "test", "docs", "examples", "build", "dist", "__pycache__"}
 
 
-def discover_modules(root: Path, import_root: str) -> dict:
-    """Every Beancount plugin and Fava extension the package provides."""
+def _import_root_for(path: Path) -> Path:
+    """The directory to put on `sys.path` so `path` is importable by a dotted name.
+
+    Walk up while the directory is a package. The directory where that stops is the root:
+    for `src/fava_envelope/x.py` it is `src`, and for `autobean-0.2.3/autobean/share.py` it
+    is `autobean-0.2.3`.
+
+    One extra step for namespace packages. `beancount_plugins_metadata_spray` has no
+    `__init__.py` of its own but holds `plugins/`, which has one, so the plain walk would
+    stop inside it and produce the module name `plugins.metadata_spray` — importable only by
+    accident and wrong. When the directory the walk stopped at looks like a package that
+    simply omits its `__init__.py`, go up one more.
+    """
+    root = path.parent
+    while (root / "__init__.py").is_file() and root.parent != root:
+        root = root.parent
+    # `src` is a path convention, not a package: `src/fava_envelope/x.py` imports as
+    # `fava_envelope.x`, never `src.fava_envelope.x`. Promoting it produced module names
+    # that were wrong in a way the harness would not have noticed, because it only ever
+    # printed them.
+    conventional = {"src", "lib", "source", "python"}
+    if (
+        root.name.isidentifier()
+        and root.name not in conventional
+        and any(root.glob("*/__init__.py"))
+        and root.parent != root
+    ):
+        root = root.parent
+    return root
+
+
+def discover_all(extracted: Path) -> dict:
+    """Every Beancount plugin and Fava extension anywhere in a download.
+
+    Scanning beats guessing an import root. The previous version derived one name from the
+    catalog id and gave up when it was not there, which is why a single `mortgage.py` at a
+    repository root, a `src/` layout and a namespace package were all recorded as
+    impossible to install. What a user does — point the app at the file — has no such
+    requirement.
+    """
     plugins, extensions = [], []
-    package = root / import_root
-    files = package.rglob("*.py") if package.is_dir() else [root / f"{import_root}.py"]
-    for path in files:
-        if not path.is_file():
+    if not extracted.exists():
+        return {"plugins": [], "extensions": [], "roots": {}}
+    roots: dict[str, str] = {}
+    for path in sorted(extracted.rglob("*.py")):
+        parts = set(path.relative_to(extracted).parts)
+        if parts & SKIP_DIRS or path.name.endswith(("_test.py", "test_.py")):
+            continue
+        if path.name.startswith("test_") or path.name == "setup.py":
             continue
         try:
             text = path.read_text(errors="replace")
         except OSError:
             continue
-        dotted = ".".join(path.relative_to(root).with_suffix("").parts)
+        is_plugin = re.search(r"^__plugins__\s*=", text, re.M)
+        is_ext = re.search(r"FavaExtensionBase\b", text) and "class " in text
+        if not (is_plugin or is_ext):
+            continue
+        root = _import_root_for(path)
+        try:
+            rel = path.relative_to(root)
+        except ValueError:
+            continue
+        dotted = ".".join(rel.with_suffix("").parts)
         dotted = dotted[: -len(".__init__")] if dotted.endswith(".__init__") else dotted
-        if re.search(r"^__plugins__\s*=", text, re.M):
-            plugins.append(dotted)
-        if re.search(r"FavaExtensionBase\b", text) and "class " in text:
-            extensions.append(dotted)
-    return {"plugins": sorted(set(plugins)), "extensions": sorted(set(extensions))}
+        roots[dotted] = str(root)
+        (plugins if is_plugin else extensions).append(dotted)
+    return {
+        "plugins": sorted(set(plugins)),
+        "extensions": sorted(set(extensions)),
+        "roots": roots,
+    }
+
+
+def import_only(extracted: Path, entry: dict, import_hint: str | None) -> dict:
+    """Can this be imported at all? The question for a library or an importer."""
+    # The module the id names, not the package that contains it. Importing `autobean` and
+    # calling the result evidence for `autobean.truelayer` is the same error as running one
+    # plugin and filing it under another: the top package imports fine, and the importer
+    # underneath it reaches for `beancount.ingest`, which Beancount 3 removed.
+    top = import_hint or entry["id"].split(".")[0].replace("-", "_")
+    name = f"{top}.{entry['id'].split('.', 1)[1]}" if "." in entry["id"] else top
+
+    # Some of these are a repository of loose scripts rather than a package — hoostus's
+    # portfolio-returns is `irr.py` and `cashflows.py` at the top level, run directly. There
+    # is no `portfolio_returns` to import and never was, so the guessed name failing says
+    # nothing about the project. Fall back to what the download actually contains.
+    # Only when the named module is genuinely absent. If it is there and fails, that failure
+    # is the result — falling through to some other module in the same download and
+    # reporting success is how `autobean.truelayer` came to be called supported twice: once
+    # from a run of `autobean.include`, and once from an import of `autobean/__init__.py`.
+    leaf = name.split(".")[-1]
+    present = any(
+        c.stem == leaf or (c.is_dir() and c.name == leaf)
+        for c in extracted.rglob("*")
+        if c.suffix in ("", ".py")
+    )
+    extra = []
+    if not present:
+        for base in (extracted, *(p for p in extracted.glob("*") if p.is_dir())):
+            for module in sorted(base.glob("*.py")):
+                if module.stem in ("setup", "conftest", "__init__") or module.stem.startswith("test"):
+                    continue
+                extra.append(module.stem)
+    candidates = [name] + [e for e in dict.fromkeys(extra) if e != name]
+    roots = [extracted, extracted / "src", *[p for p in extracted.glob("*") if p.is_dir()]]
+    roots += [p / "src" for p in extracted.glob("*") if (p / "src").is_dir()]
+    script = textwrap.dedent(
+        f"""
+        import importlib, json, sys
+        sys.path[:0] = {json.dumps([str(r) for r in roots])}
+        first = None
+        for candidate in {candidates!r}:
+            try:
+                importlib.import_module(candidate)
+                print(json.dumps({{"ok": True, "module": candidate}}))
+                break
+            except Exception as exc:
+                if first is None:
+                    first = f"{{type(exc).__name__}}: {{exc}}"
+        else:
+            print(json.dumps({{"ok": False, "error": first}}))
+        """
+    )
+    proc = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=180)
+    try:
+        got = json.loads(proc.stdout.strip().splitlines()[-1])
+    except Exception:
+        return {"status": "unsupported", "reason": f"could not be imported: {proc.stderr[-300:]}"}
+    kind = "importer" if entry["kind"] == "beancount-importer" else "library"
+    if got.get("ok"):
+        return {
+            "status": "supported",
+            "reason": f"imports cleanly as a {kind} ({got.get('module')}); it is not loaded by "
+                      f"a plugin directive, so there is no ledger round-trip to report",
+        }
+    return {"status": "unsupported", "reason": f"as a {kind} it fails to import: {got.get('error')}"}
 
 
 def run_one(root: Path, module: str, work: Path, config: str | None = None) -> dict:
@@ -199,18 +306,56 @@ def main() -> int:
 
         # Older fetched.json files may carry a null import root; the distribution name is
         # the right fallback and costs nothing to apply.
-        import_root = record.get("import_root") or record["distribution"].replace("-", "_")
-        root = package_root(Path(record["root"]), import_root)
-        if root is None:
+        found = discover_all(Path(record["root"]))
+
+        # Not everything in the catalogue is loaded by a `plugin "..."` directive. beangrow
+        # computes returns as a library; hoostus's portfolio-returns is a command-line
+        # script; autobean.truelayer is an importer. Judging those by whether they define
+        # `__plugins__` asks the wrong question and answers it "unavailable", which reads as
+        # "you cannot have this" rather than "this is not that kind of thing".
+        if entry["kind"] in ("library", "beancount-importer"):
+            top = sorted({m.split(".")[0] for m in found["plugins"] + found["extensions"]})
+            root_dir = Path(record["root"])
+            outcome = import_only(root_dir, entry, import_hint=record.get("import_root"))
             results[entry["id"]] = {
-                "status": "unavailable",
-                "reason": sanitise(f"no importable '{import_root}' in the download"),
+                "status": outcome["status"],
+                "reason": sanitise(outcome["reason"]),
+                "version": record.get("version"),
+                "license": record.get("license"),
             }
             continue
 
-        found = discover_modules(root, import_root)
+        if not found["plugins"] and not found["extensions"]:
+            results[entry["id"]] = {
+                "status": "unavailable",
+                "reason": "the download defines no Beancount plugin and no Fava extension",
+                "version": record.get("version"),
+                "license": record.get("license"),
+            }
+            continue
         leaf = entry["id"].split(".")[-1].replace("-", "_")
-        candidates = [m for m in found["plugins"] if m.split(".")[-1] == leaf] or found["plugins"]
+        # The leaf may name the module (`zerosum` -> `...zerosum.zerosum`) or the package
+        # that holds it (`capital_gains_classifier` -> `...capital_gains_classifier.gain_loss`
+        # and `.long_short`). Matching only the final component missed the second shape and
+        # reported a plugin that ships two working modules as having none.
+        exact = [
+            m for m in found["plugins"]
+            if m.split(".")[-1] == leaf or leaf in m.split(".")[:-1]
+        ]
+
+        # A namespaced id — `autobean.truelayer`, `reds.zerosum` — names one plugin inside a
+        # package that holds many. If that exact module is not there, running some other
+        # module from the same package and filing the result under this id is not a weaker
+        # result, it is a wrong one: `autobean.truelayer` was recorded as supported on the
+        # strength of a run of `autobean.include`, and `reds.capital_gains_classifier` on a
+        # run of `autoclose_tree`.
+        #
+        # A bare id — `beancount-balexpr` — names a project, and the single plugin it ships
+        # may legitimately sit at `beancount_balexpr.balexpr`. There the fallback is right.
+        if "." in entry["id"]:
+            candidates = exact
+        else:
+            candidates = exact or found["plugins"]
 
         if entry["kind"] == "fava-extension":
             results[entry["id"]] = {
@@ -228,15 +373,22 @@ def main() -> int:
             continue
 
         if not candidates:
+            missing = (
+                f"the download has no module '{leaf}' defining __plugins__; it ships "
+                f"{', '.join(found['plugins'][:4]) or 'no plugin modules'}"
+                if "." in entry["id"]
+                else "no module defining __plugins__ found in the download"
+            )
             results[entry["id"]] = {
-                "status": "unavailable",
-                "reason": "no module defining __plugins__ found in the download",
+                "status": "unsupported" if "." in entry["id"] else "unavailable",
+                "reason": sanitise(missing),
                 "version": record.get("version"),
                 "license": record.get("license"),
             }
             continue
 
         module = candidates[0]
+        root = Path(found["roots"][module])
         outcome = run_one(root, module, work)
         status, reason = classify(outcome)
 
@@ -281,6 +433,42 @@ def main() -> int:
     print("\n" + ", ".join(f"{count} {status}" for status, count in sorted(tally.items())))
 
     (sources / "results.json").write_text(json.dumps(results, indent=2) + "\n")
+
+    # What the device run needs: for every entry the desktop could load, the package
+    # directory to push and the module name to name in a `plugin` directive. The device test
+    # reads this rather than carrying a hand-written list, so a plugin that starts working
+    # here cannot be silently left out of the run that matters.
+    manifest = []
+    for entry in catalog["entries"]:
+        result = results[entry["id"]]
+        module = result.get("module")
+        if not module or result["status"] not in ("supported", "needs-config"):
+            continue
+        record = fetched.get(entry["id"], {})
+        found = discover_all(Path(record["root"]))
+        root = found["roots"].get(module)
+        if not root:
+            continue
+        # A package directory, or a single module file. The app installs both — a plugin
+        # can be one `.py` — and `beancount-mortgage` is exactly that, so requiring a
+        # directory would have dropped it from the device run for no reason.
+        package = Path(root) / module.split(".")[0]
+        if not package.is_dir():
+            single = Path(root) / (module.replace(".", "/") + ".py")
+            if not single.is_file():
+                continue
+            package = single
+        manifest.append({
+            "id": entry["id"],
+            "kind": entry["kind"],
+            "module": module,
+            "package": str(package),
+            "package_name": package.name,
+            "single_file": package.is_file(),
+            "desktop_status": result["status"],
+        })
+    (sources / "device-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    print(f"device manifest: {len(manifest)} entries -> {sources / 'device-manifest.json'}")
 
     if args.write_catalog:
         stamp = subprocess.run(

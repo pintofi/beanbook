@@ -1,563 +1,576 @@
 {
- "schema": 1,
- "note": "Curated candidates for the Expert (GitHub) edition only. Downloading and installing these is not available in the Play build: fetching executable code from a non-Play source is prohibited by the Device and Network Abuse policy (docs/distribution.md 2.1, D1). The Play build may list them for reference, and first-party plugins may be bundled in the APK instead. M14 re-checked the 19 'unavailable' entries: 7 are on PyPI under a different distribution name than their catalog id, and 12 are not published on PyPI at all. Repository URLs were filled in from awesome-beancount.com on 2026-08-27; for the twelve not published on PyPI that is the only way to obtain them, and the Expert edition installs from a file the user supplies.",
- "status_meaning": {
-  "supported": "install, import, execute and round-trip all passed on a real run",
-  "needs-config": "works, but the plugin directive must carry a configuration string",
-  "partial": "some steps passed; the failing step is recorded in `tested.reason`",
-  "unsupported": "a step failed; the reason is recorded",
-  "unavailable": "could not be fetched or contains no loadable plugin; nothing was run",
-  "untested": "listed only; no compatibility claim is made"
- },
- "entries": [
-  {
-   "id": "autobean.include",
-   "name": "autobean.include",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/SEIAROTg/autobean/tree/master/autobean/include",
-   "description": "Includes external ledgers without disabling their plugins",
-   "license": "GPL2",
-   "status": "supported",
-   "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "imports, executes and preserves every directive",
-    "version": "0.2.3"
-   }
+  "schema": 1,
+  "note": "Curated candidates for the Expert (GitHub) edition only. Downloading and installing these is not available in the Play build: fetching executable code from a non-Play source is prohibited by the Device and Network Abuse policy (docs/distribution.md 2.1, D1). The Play build may list them for reference, and first-party plugins may be bundled in the APK instead. M14 re-checked every entry after finding the fetcher broken: it passed browser URLs to an endpoint expecting owner/name slugs, so every GitHub fallback 404'd and 24 of 35 entries were recorded as 'could not be fetched'. All 35 fetch. Statuses here come from tools/plugin-compat/run_catalog.py against CPython 3.14 with Beancount 3.2.3; entries carrying tested.on_device were additionally loaded on an Android device.",
+  "status_meaning": {
+    "supported": "install, import, execute and round-trip all passed on a real run",
+    "needs-config": "works, but the plugin directive must carry a configuration string",
+    "partial": "some steps passed; the failing step is recorded in `tested.reason`",
+    "unsupported": "a step failed; the reason is recorded",
+    "unavailable": "could not be fetched or contains no loadable plugin; nothing was run",
+    "untested": "listed only; no compatibility claim is made",
+    "library": "not loaded by a plugin directive: a module other code imports, or a command-line tool. Judged on whether it imports and runs, not on a ledger round-trip",
+    "beancount-importer": "a beangulp/ingest importer rather than a plugin; the app has no importer runner yet"
   },
-  {
-   "id": "autobean.narration",
-   "name": "autobean.narration",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/SEIAROTg/autobean/tree/master/autobean/narration",
-   "description": "Generates transaction narration from posting narration and comments",
-   "license": "GPL2",
-   "status": "supported",
-   "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "imports, executes and preserves every directive",
-    "version": "0.2.3"
-   }
-  },
-  {
-   "id": "autobean.share",
-   "name": "autobean.share",
-   "kind": "beancount-plugin",
-   "repo": "SEIAROTg/autobean",
-   "description": "Expense split, joint bookkeeping and debt management",
-   "license": "GPL2",
-   "status": "supported",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "CatalogPluginTest on an API 36 emulator, with a viewpoint and a default ownership policy",
-    "reason": "works. The earlier 'directives disappeared' result was an empty config: the plugin's argument is a viewpoint, and with nobody named there is nothing to show. Given `\"Alice\"` and a default policy, the transaction, both opens and the note all survive (docs/milestones/m14-part26.md)",
-    "version": "0.2.3"
-   }
-  },
-  {
-   "id": "autobean.sorted",
-   "name": "autobean.sorted",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/SEIAROTg/autobean/tree/master/autobean/sorted",
-   "description": "Checks transactions are in non-descending order per file",
-   "license": "GPL2",
-   "status": "supported",
-   "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "imports, executes and preserves every directive",
-    "version": "0.2.3"
-   }
-  },
-  {
-   "id": "autobean.truelayer",
-   "name": "autobean.truelayer",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/SEIAROTg/autobean/tree/master/autobean/truelayer",
-   "description": "Imports transactions via the TrueLayer bank API aggregator",
-   "license": "GPL2",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "CatalogPluginTest on an API 36 emulator, and desktop CPython 3.13 + Beancount 3.2.3",
-    "reason": "imports `beancount.ingest`, which Beancount 3 removed — the functionality moved to beangulp. Fails identically on device and desktop, so it is a Beancount 2 plugin rather than an Android limitation. It was recorded as supported without ever being imported (docs/milestones/m14-part25.md)",
-    "version": "0.2.3"
-   }
-  },
-  {
-   "id": "autobean.xcheck",
-   "name": "autobean.xcheck",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/SEIAROTg/autobean/tree/master/autobean/xcheck",
-   "description": "Cross-checks against external ledgers",
-   "license": "GPL2",
-   "status": "supported",
-   "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "imports, executes and preserves every directive",
-    "version": "0.2.3"
-   }
-  },
-  {
-   "id": "beancount-balancechange",
-   "name": "beancount-balancechange",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/daniel-wells/beancount_balancechange",
-   "description": "Checks change in balance between two dates",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": null
-   },
-   "distribution": null
-  },
-  {
-   "id": "beancount-balexpr",
-   "name": "beancount-balexpr",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/w1ndy/beancount_balexpr",
-   "description": "Checks balances against expressions combining accounts",
-   "license": "unverified",
-   "status": "supported",
-   "tested": {
-    "on": "2026-08-26",
-    "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-    "reason": "imports, executes and preserves every directive",
-    "version": "0.5.0"
-   }
-  },
-  {
-   "id": "beancount-checkclosed",
-   "name": "beancount-checkclosed",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/daniel-wells/beancount_checkclosed",
-   "description": "Inserts a zero balance check for closed balance-sheet accounts",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": null
-   },
-   "distribution": null
-  },
-  {
-   "id": "lazy.filter_map",
-   "name": "beancount-lazy-plugins.filter_map",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/Evernight/beancount-lazy-plugins",
-   "description": "Applies operations to groups of transactions selected by Fava filters",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "on PyPI as 'lazy', not under the catalog id — the earlier run looked up the id and took the 404 at face value. Still unexercised: fetchable, not yet run",
-    "version": null
-   },
-   "distribution": "lazy"
-  },
-  {
-   "id": "lazy.valuation",
-   "name": "beancount-lazy-plugins.valuation",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/Evernight/beancount-lazy-plugins",
-   "description": "Tracks total value of an opaque fund over time",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "on PyPI as 'lazy', not under the catalog id — the earlier run looked up the id and took the 404 at face value. Still unexercised: fetchable, not yet run",
-    "version": null
-   },
-   "distribution": "lazy"
-  },
-  {
-   "id": "lazy.tag_from_continuous_events",
-   "name": "beancount-lazy-plugins.tag_from_continuous_events",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/Evernight/beancount-lazy-plugins",
-   "description": "Tags transactions based on Events",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "on PyPI as 'lazy', not under the catalog id — the earlier run looked up the id and took the 404 at face value. Still unexercised: fetchable, not yet run",
-    "version": null
-   },
-   "distribution": "lazy"
-  },
-  {
-   "id": "lazy.balance_extended",
-   "name": "beancount-lazy-plugins.balance_extended",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/Evernight/beancount-lazy-plugins",
-   "description": "Extended balance assertions (full, padded, full-padded)",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "on PyPI as 'lazy', not under the catalog id — the earlier run looked up the id and took the 404 at face value. Still unexercised: fetchable, not yet run",
-    "version": null
-   },
-   "distribution": "lazy"
-  },
-  {
-   "id": "beangrow",
-   "name": "beangrow",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/beancount/beangrow",
-   "description": "Computes investment returns across asset types",
-   "license": "GNU General Public License v2 (GPLv2)",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "on PyPI as 'beangrow', not under the catalog id — the earlier run looked up the id and took the 404 at face value. Still unexercised: fetchable, not yet run",
-    "version": "1.0.1"
-   },
-   "distribution": "beangrow"
-  },
-  {
-   "id": "metadata-spray",
-   "name": "metadata-spray",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/seltzered/beancount-plugins-metadata-spray",
-   "description": "Uses a regex pattern to add metadata to entries",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": null
-   },
-   "distribution": null
-  },
-  {
-   "id": "portfolio_allocation",
-   "name": "portfolio_allocation",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/ghislainbourgeois/beancount_portfolio_allocation",
-   "description": "Reports portfolio asset allocation for risk analysis and rebalancing",
-   "license": "GPL-3.0-or-later",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "on PyPI as 'portfolio_allocation', not under the catalog id — the earlier run looked up the id and took the 404 at face value. Still unexercised: fetchable, not yet run",
-    "version": "0.3.12"
-   },
-   "distribution": "portfolio_allocation"
-  },
-  {
-   "id": "portfolio-returns",
-   "name": "portfolio-returns",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/hoostus/portfolio-returns",
-   "description": "Money-weighted and time-weighted portfolio returns",
-   "license": "GPL-2.0",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": "2.7.0"
-   },
-   "distribution": null
-  },
-  {
-   "id": "reds.capital_gains_classifier",
-   "name": "reds capital_gains_classifier",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/redstreet/beancount_reds_plugins",
-   "description": "Rebooks capital gains into long/short and gain/loss accounts",
-   "license": "GPL-3.0",
-   "status": "supported",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "CatalogPluginTest on an API 36 emulator, with a configuration from the plugin's own README",
-    "reason": "loads and transforms as documented; a directive it has no opinion about survives",
-    "version": "0.4.0"
-   },
-   "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
-  },
-  {
-   "id": "reds.effective_date",
-   "name": "reds effective_date",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/redstreet/beancount_reds_plugins",
-   "description": "Per-posting dates",
-   "license": "GPL-3.0",
-   "status": "supported",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "CatalogPluginTest on an API 36 emulator, with a configuration from the plugin's own README",
-    "reason": "loads and transforms as documented; a directive it has no opinion about survives",
-    "version": "0.4.0"
-   },
-   "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
-  },
-  {
-   "id": "reds.opengroup",
-   "name": "reds opengroup",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/redstreet/beancount_reds_plugins",
-   "description": "Inserts open statements for sets of accounts by rule",
-   "license": "GPL-3.0",
-   "status": "supported",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "CatalogPluginTest on an API 36 emulator, with a configuration from the plugin's own README",
-    "reason": "loads and transforms as documented; a directive it has no opinion about survives",
-    "version": "0.4.0"
-   },
-   "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
-  },
-  {
-   "id": "reds.rename_accounts",
-   "name": "reds rename_accounts",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/redstreet/beancount_reds_plugins",
-   "description": "Renames arbitrary accounts on the fly",
-   "license": "GPL-3.0",
-   "status": "supported",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "CatalogPluginTest on an API 36 emulator, with a configuration from the plugin's own README",
-    "reason": "loads and transforms as documented; a directive it has no opinion about survives",
-    "version": "0.4.0"
-   },
-   "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
-  },
-  {
-   "id": "reds.zerosum",
-   "name": "reds zerosum",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/redstreet/beancount_reds_plugins",
-   "description": "Finds matching posting pairs summing to zero",
-   "license": "GPL-3.0",
-   "status": "supported",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "CatalogPluginTest on an API 36 emulator, with a configuration from the plugin's own README",
-    "reason": "loads and transforms as documented; a directive it has no opinion about survives",
-    "version": "0.4.0"
-   },
-   "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
-  },
-  {
-   "id": "beancount-mortgage",
-   "name": "beancount-mortgage",
-   "kind": "beancount-plugin",
-   "repo": "https://github.com/mclate/beancount-mortgage",
-   "description": "Simulates loan/mortgage schedule and payments",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": null
-   },
-   "distribution": null
-  },
-  {
-   "id": "beancount-zakat",
-   "name": "beancount-zakat",
-   "kind": "beancount-plugin",
-   "repo": "WildeBeast2521/beancount-zakat",
-   "description": "Zakat calculation (first-party)",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "on PyPI as 'beancount-zakat', not under the catalog id — the earlier run looked up the id and took the 404 at face value. Still unexercised: fetchable, not yet run",
-    "version": "1.0.2"
-   },
-   "distribution": "beancount-zakat"
-  },
-  {
-   "id": "fava-envelope",
-   "name": "fava-envelope",
-   "kind": "fava-extension",
-   "repo": "https://github.com/polarmutex/fava-envelope",
-   "description": "Envelope budgeting",
-   "license": "MIT",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "FavaExtensionTest on an API 36 emulator: installed, served, and asked Fava",
-    "reason": "Fava now finds it — M14 fixed the engine so an installed extension reaches sys.path while serving — and it fails on a dependency the app does not bundle: pandas. The installer installs files and does not resolve dependencies (docs/milestones/m14-part26.md)",
-    "version": null
-   }
-  },
-  {
-   "id": "fava-dashboards",
-   "name": "fava-dashboards",
-   "kind": "fava-extension",
-   "repo": "https://github.com/andreasgerstmayr/fava-dashboards",
-   "description": "Fully custom dashboards",
-   "license": "MIT License",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "FavaExtensionTest on an API 36 emulator: installed, served, and asked Fava",
-    "reason": "Fava now finds it — M14 fixed the engine so an installed extension reaches sys.path while serving — and it fails on a dependency the app does not bundle: yaml (PyYAML). The installer installs files and does not resolve dependencies (docs/milestones/m14-part26.md)",
-    "version": null
-   }
-  },
-  {
-   "id": "fava-portfolio-returns",
-   "name": "fava-portfolio-returns",
-   "kind": "fava-extension",
-   "repo": "https://github.com/andreasgerstmayr/fava-portfolio-returns",
-   "description": "Portfolio returns",
-   "license": "GPL-2.0",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "FavaExtensionTest on an API 36 emulator: installed, served, and asked Fava",
-    "reason": "Fava now finds it — M14 fixed the engine so an installed extension reaches sys.path while serving — and it fails on a dependency the app does not bundle: scipy, which has no CPython 3.13 build for Android at all (D6). The installer installs files and does not resolve dependencies (docs/milestones/m14-part26.md)",
-    "version": null
-   }
-  },
-  {
-   "id": "fava-portfolio-summary",
-   "name": "fava-portfolio-summary",
-   "kind": "fava-extension",
-   "repo": "https://github.com/PhracturedBlue/fava-portfolio-summary",
-   "description": "Grouped portfolio view with MWRR/TWRR",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": null
-   },
-   "distribution": null
-  },
-  {
-   "id": "fava-classy-portfolio",
-   "name": "fava-classy-portfolio",
-   "kind": "fava-extension",
-   "repo": "https://github.com/seltzered/fava-classy-portfolio",
-   "description": "Portfolio breakdowns using metadata labels",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": null
-   },
-   "distribution": null
-  },
-  {
-   "id": "fava_investor",
-   "name": "fava_investor",
-   "kind": "fava-extension",
-   "repo": "https://github.com/redstreet/fava_investor",
-   "description": "Investment reports, analyses and tools",
-   "license": "GPL-3.0",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "FavaExtensionTest on an API 36 emulator: installed, served, and asked Fava",
-    "reason": "Fava now finds it — M14 fixed the engine so an installed extension reaches sys.path while serving — and it fails on a dependency the app does not bundle: packaging. The installer installs files and does not resolve dependencies (docs/milestones/m14-part26.md)",
-    "version": null
-   }
-  },
-  {
-   "id": "fava_budget_freedom",
-   "name": "fava_budget_freedom",
-   "kind": "fava-extension",
-   "repo": "https://github.com/Leon2xiaowu/fava_budget_freedom",
-   "description": "Budget management and visualisation",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": null
-   },
-   "distribution": null
-  },
-  {
-   "id": "fava-currency-tracker",
-   "name": "fava-currency-tracker",
-   "kind": "fava-extension",
-   "repo": "https://github.com/Evernight/fava-currency-tracker",
-   "description": "Currency exchange rate dashboard",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": null
-   },
-   "distribution": null
-  },
-  {
-   "id": "fava-git",
-   "name": "fava-git",
-   "kind": "fava-extension",
-   "repo": "https://github.com/Evernight/fava-git",
-   "description": "Simple Git integration for Fava",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": null
-   },
-   "distribution": null
-  },
-  {
-   "id": "beantab",
-   "name": "beantab",
-   "kind": "fava-extension",
-   "repo": "https://github.com/Evernight/beantab",
-   "description": "Balances editing visualisation",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": null
-   },
-   "distribution": null
-  },
-  {
-   "id": "beancount-plugin-tax-uk",
-   "name": "beancount-plugin-tax-uk",
-   "kind": "fava-extension",
-   "repo": "https://github.com/Evernight/beancount-plugin-tax-uk",
-   "description": "UK capital gains and tax reporting",
-   "license": "unverified",
-   "status": "unavailable",
-   "tested": {
-    "on": "2026-08-27",
-    "how": "PyPI name resolution, M14 (docs/milestones/m14-part23.md)",
-    "reason": "not published on PyPI under any obvious name. It cannot be installed from a package name at all, so the app's installer cannot reach it however compatible the code may be",
-    "version": null
-   },
-   "distribution": null
-  }
- ]
+  "entries": [
+    {
+      "id": "autobean.include",
+      "name": "autobean.include",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/SEIAROTg/autobean/tree/master/autobean/include",
+      "description": "Includes external ledgers without disabling their plugins",
+      "license": "GPL2",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.2.3",
+        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      }
+    },
+    {
+      "id": "autobean.narration",
+      "name": "autobean.narration",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/SEIAROTg/autobean/tree/master/autobean/narration",
+      "description": "Generates transaction narration from posting narration and comments",
+      "license": "GPL2",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.2.3",
+        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      }
+    },
+    {
+      "id": "autobean.share",
+      "name": "autobean.share",
+      "kind": "beancount-plugin",
+      "repo": "SEIAROTg/autobean",
+      "description": "Expense split, joint bookkeeping and debt management",
+      "license": "GPL2",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "with an empty config: directives disappeared: {'Open': 3, 'Note': 1}",
+        "version": "0.2.3"
+      }
+    },
+    {
+      "id": "autobean.sorted",
+      "name": "autobean.sorted",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/SEIAROTg/autobean/tree/master/autobean/sorted",
+      "description": "Checks transactions are in non-descending order per file",
+      "license": "GPL2",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.2.3",
+        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      }
+    },
+    {
+      "id": "autobean.truelayer",
+      "name": "autobean.truelayer",
+      "kind": "beancount-importer",
+      "repo": "https://github.com/SEIAROTg/autobean/tree/master/autobean/truelayer",
+      "description": "Imports transactions via the TrueLayer bank API aggregator",
+      "license": "GPL2",
+      "status": "unsupported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "as a importer it fails to import: ModuleNotFoundError: No module named 'beancount.ingest'",
+        "version": "0.2.3"
+      }
+    },
+    {
+      "id": "autobean.xcheck",
+      "name": "autobean.xcheck",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/SEIAROTg/autobean/tree/master/autobean/xcheck",
+      "description": "Cross-checks against external ledgers",
+      "license": "GPL2",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.2.3",
+        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      }
+    },
+    {
+      "id": "beancount-balancechange",
+      "name": "beancount-balancechange",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/daniel-wells/beancount_balancechange",
+      "description": "Checks change in balance between two dates",
+      "license": "GPL-2.0",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "main",
+        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      },
+      "distribution": null
+    },
+    {
+      "id": "beancount-balexpr",
+      "name": "beancount-balexpr",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/w1ndy/beancount_balexpr",
+      "description": "Checks balances against expressions combining accounts",
+      "license": "unverified",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "0.5.0",
+        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      }
+    },
+    {
+      "id": "beancount-checkclosed",
+      "name": "beancount-checkclosed",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/daniel-wells/beancount_checkclosed",
+      "description": "Inserts a zero balance check for closed balance-sheet accounts",
+      "license": "GPL-2.0",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "main",
+        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      },
+      "distribution": null
+    },
+    {
+      "id": "lazy.filter_map",
+      "name": "beancount-lazy-plugins.filter_map",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/Evernight/beancount-lazy-plugins",
+      "description": "Applies operations to groups of transactions selected by Fava filters",
+      "license": "MIT",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "main",
+        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      },
+      "distribution": "lazy"
+    },
+    {
+      "id": "lazy.valuation",
+      "name": "beancount-lazy-plugins.valuation",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/Evernight/beancount-lazy-plugins",
+      "description": "Tracks total value of an opaque fund over time",
+      "license": "MIT",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "main",
+        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      },
+      "distribution": "lazy"
+    },
+    {
+      "id": "lazy.tag_from_continuous_events",
+      "name": "beancount-lazy-plugins.tag_from_continuous_events",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/Evernight/beancount-lazy-plugins",
+      "description": "Tags transactions based on Events",
+      "license": "MIT",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "main",
+        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      },
+      "distribution": "lazy"
+    },
+    {
+      "id": "lazy.balance_extended",
+      "name": "beancount-lazy-plugins.balance_extended",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/Evernight/beancount-lazy-plugins",
+      "description": "Extended balance assertions (full, padded, full-padded)",
+      "license": "MIT",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "default_pad_type is 'pad-ext' but beancount_lazy_plugins.pad_extended plugin is not enabled. Add plugin \"beancount_lazy_plugins.pad_extended\".",
+        "version": "main"
+      },
+      "distribution": "lazy"
+    },
+    {
+      "id": "beangrow",
+      "name": "beangrow",
+      "kind": "library",
+      "repo": "https://github.com/beancount/beangrow",
+      "description": "Computes investment returns across asset types",
+      "license": "GNU General Public License v2 (GPLv2)",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports cleanly as a library (beangrow); it is not loaded by a plugin directive, so there is no ledger round-trip to report",
+        "version": "1.0.1"
+      },
+      "distribution": "beangrow"
+    },
+    {
+      "id": "metadata-spray",
+      "name": "metadata-spray",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/seltzered/beancount-plugins-metadata-spray",
+      "description": "Uses a regex pattern to add metadata to entries",
+      "license": "GPLv2",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "Error applying plugin \"beancount_plugins_metadata_spray.plugins.metadata_spray\": Traceback (most recent call last):\n  ...\n      entries, plugin_errors = callback(entries, options_map, *args)\n         ",
+        "version": "0.0.1"
+      },
+      "distribution": null
+    },
+    {
+      "id": "portfolio_allocation",
+      "name": "portfolio_allocation",
+      "kind": "library",
+      "repo": "https://github.com/ghislainbourgeois/beancount_portfolio_allocation",
+      "description": "Reports portfolio asset allocation for risk analysis and rebalancing",
+      "license": "GNU General Public License v2 (GPLv2)",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports cleanly as a library (beancount_portfolio_allocation); it is not loaded by a plugin directive, so there is no ledger round-trip to report",
+        "version": "1.0.0"
+      },
+      "distribution": "portfolio_allocation"
+    },
+    {
+      "id": "portfolio-returns",
+      "name": "portfolio-returns",
+      "kind": "library",
+      "repo": "https://github.com/hoostus/portfolio-returns",
+      "description": "Money-weighted and time-weighted portfolio returns",
+      "license": "present, unrecognised",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports cleanly as a library (cashflows); it is not loaded by a plugin directive, so there is no ledger round-trip to report",
+        "version": "master"
+      },
+      "distribution": null
+    },
+    {
+      "id": "reds.capital_gains_classifier",
+      "name": "reds capital_gains_classifier",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/redstreet/beancount_reds_plugins",
+      "description": "Rebooks capital gains into long/short and gain/loss accounts",
+      "license": "GPL-3.0",
+      "status": "needs-config",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
+        "version": "0.4.0"
+      },
+      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
+    },
+    {
+      "id": "reds.effective_date",
+      "name": "reds effective_date",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/redstreet/beancount_reds_plugins",
+      "description": "Per-posting dates",
+      "license": "GPL-3.0",
+      "status": "needs-config",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "works, but the plugin directive must carry a configuration string; loaded cleanly once given one",
+        "version": "0.4.0"
+      },
+      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
+    },
+    {
+      "id": "reds.opengroup",
+      "name": "reds opengroup",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/redstreet/beancount_reds_plugins",
+      "description": "Inserts open statements for sets of accounts by rule",
+      "license": "GPL-3.0",
+      "status": "needs-config",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
+        "version": "0.4.0"
+      },
+      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
+    },
+    {
+      "id": "reds.rename_accounts",
+      "name": "reds rename_accounts",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/redstreet/beancount_reds_plugins",
+      "description": "Renames arbitrary accounts on the fly",
+      "license": "GPL-3.0",
+      "status": "needs-config",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
+        "version": "0.4.0"
+      },
+      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
+    },
+    {
+      "id": "reds.zerosum",
+      "name": "reds zerosum",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/redstreet/beancount_reds_plugins",
+      "description": "Finds matching posting pairs summing to zero",
+      "license": "GPL-3.0",
+      "status": "needs-config",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
+        "version": "0.4.0"
+      },
+      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
+    },
+    {
+      "id": "beancount-mortgage",
+      "name": "beancount-mortgage",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/mclate/beancount-mortgage",
+      "description": "Simulates loan/mortgage schedule and payments",
+      "license": "MIT",
+      "status": "supported",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "main",
+        "on_device": "loaded on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      },
+      "distribution": null
+    },
+    {
+      "id": "beancount-zakat",
+      "name": "beancount-zakat",
+      "kind": "fava-extension",
+      "repo": "WildeBeast2521/beancount-zakat",
+      "description": "Zakat calculation (first-party)",
+      "license": "unverified",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (beancount_zakat.fava_extension)",
+        "version": "1.0.2"
+      },
+      "distribution": "beancount-zakat"
+    },
+    {
+      "id": "fava-envelope",
+      "name": "fava-envelope",
+      "kind": "fava-extension",
+      "repo": "https://github.com/polarmutex/fava-envelope",
+      "description": "Envelope budgeting",
+      "license": "MIT",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_envelope)",
+        "version": "0.5.9"
+      }
+    },
+    {
+      "id": "fava-dashboards",
+      "name": "fava-dashboards",
+      "kind": "fava-extension",
+      "repo": "https://github.com/andreasgerstmayr/fava-dashboards",
+      "description": "Fully custom dashboards",
+      "license": "MIT License",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_dashboards)",
+        "version": "2.0.2"
+      }
+    },
+    {
+      "id": "fava-portfolio-returns",
+      "name": "fava-portfolio-returns",
+      "kind": "fava-extension",
+      "repo": "https://github.com/andreasgerstmayr/fava-portfolio-returns",
+      "description": "Portfolio returns",
+      "license": "GPL-2.0",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_portfolio_returns)",
+        "version": "2.7.0"
+      }
+    },
+    {
+      "id": "fava-portfolio-summary",
+      "name": "fava-portfolio-summary",
+      "kind": "fava-extension",
+      "repo": "https://github.com/PhracturedBlue/fava-portfolio-summary",
+      "description": "Grouped portfolio view with MWRR/TWRR",
+      "license": "MIT",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava-portfolio-summary-main)",
+        "version": "main"
+      },
+      "distribution": null
+    },
+    {
+      "id": "fava-classy-portfolio",
+      "name": "fava-classy-portfolio",
+      "kind": "fava-extension",
+      "repo": "https://github.com/seltzered/fava-classy-portfolio",
+      "description": "Portfolio breakdowns using metadata labels",
+      "license": "unverified",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_classy_portfolio)",
+        "version": "master"
+      },
+      "distribution": null
+    },
+    {
+      "id": "fava_investor",
+      "name": "fava_investor",
+      "kind": "fava-extension",
+      "repo": "https://github.com/redstreet/fava_investor",
+      "description": "Investment reports, analyses and tools",
+      "license": "GPL-3.0",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_investor)",
+        "version": "1.0.1"
+      }
+    },
+    {
+      "id": "fava_budget_freedom",
+      "name": "fava_budget_freedom",
+      "kind": "fava-extension",
+      "repo": "https://github.com/Leon2xiaowu/fava_budget_freedom",
+      "description": "Budget management and visualisation",
+      "license": "unverified",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_budget_freedom)",
+        "version": "master"
+      },
+      "distribution": null
+    },
+    {
+      "id": "fava-currency-tracker",
+      "name": "fava-currency-tracker",
+      "kind": "fava-extension",
+      "repo": "https://github.com/Evernight/fava-currency-tracker",
+      "description": "Currency exchange rate dashboard",
+      "license": "present, unrecognised",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_currency_tracker)",
+        "version": "main"
+      },
+      "distribution": null
+    },
+    {
+      "id": "fava-git",
+      "name": "fava-git",
+      "kind": "fava-extension",
+      "repo": "https://github.com/Evernight/fava-git",
+      "description": "Simple Git integration for Fava",
+      "license": "unverified",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (fava_git)",
+        "version": "main"
+      },
+      "distribution": null
+    },
+    {
+      "id": "beantab",
+      "name": "beantab",
+      "kind": "fava-extension",
+      "repo": "https://github.com/Evernight/beantab",
+      "description": "Balances editing visualisation",
+      "license": "GPL-2.0",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (beantab)",
+        "version": "main"
+      },
+      "distribution": null
+    },
+    {
+      "id": "beancount-plugin-tax-uk",
+      "name": "beancount-plugin-tax-uk",
+      "kind": "fava-extension",
+      "repo": "https://github.com/Evernight/beancount-plugin-tax-uk",
+      "description": "UK capital gains and tax reporting",
+      "license": "MIT",
+      "status": "partial",
+      "tested": {
+        "on": "2026-08-28",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "a Fava extension: importable here, but its UI needs a WebView and is not exercised (beancount_plugin_tax_uk.fava_extension)",
+        "version": "main"
+      },
+      "distribution": null
+    }
+  ]
 }

@@ -32,16 +32,47 @@ USER_AGENT = "beancount-android-plugin-compat/1.0"
 DISTRIBUTIONS = {
     "autobean.": ("autobean", "autobean"),
     "reds.": ("beancount-reds-plugins", "beancount_reds_plugins"),
-    "lazy.": ("beancount-lazy-plugins", "beancount_lazy_plugins"),
     "beangrow": ("beangrow", "beangrow"),
-    "portfolio-returns": ("fava-portfolio-returns", "fava_portfolio_returns"),
     "fava_investor": ("fava-investor", "fava_investor"),
     "fava-portfolio-returns": ("fava-portfolio-returns", "fava_portfolio_returns"),
+    # Confirmed against each project's own repository, not guessed from the catalog id. The
+    # id and the distribution differ for all of these, which is why looking up the id alone
+    # produced a 404 and the 404 was recorded as "not published on PyPI".
+    "metadata-spray": ("beancount-plugins-metadata-spray", "beancount_plugins_metadata_spray"),
+    "portfolio_allocation": ("beancount_portfolio_allocation", "beancount_portfolio_allocation"),
+    "beancount-zakat": ("beancount-zakat", "beancount_zakat"),
+    "fava-envelope": ("fava-envelope", "fava_envelope"),
+    "fava-dashboards": ("fava-dashboards", "fava_dashboards"),
+    # Deliberately absent, and each for a checked reason:
+    #
+    # "lazy." — `beancount-lazy-plugins` is not on PyPI. An earlier run recorded these as
+    #   "on PyPI as 'lazy'", which is a different project entirely: Stefan Holek's "Lazy
+    #   attributes for Python objects". Acting on that note would have installed an
+    #   unrelated package. They come from GitHub.
+    # "portfolio-returns" — hoostus/portfolio-returns, which was mapped here to Andreas
+    #   Gerstmayr's fava-portfolio-returns. Two different projects with similar names; the
+    #   mapping would have tested the wrong one and called the result evidence.
 }
 
 
-def distribution_for(entry: dict) -> tuple[str, str | None]:
-    """The PyPI distribution and import root for a catalog entry."""
+# Projects that are not on PyPI at all, where the fallback of "use the first segment of the
+# id" would find a *different* project with the same name and quietly test that instead.
+GITHUB_ONLY = {
+    # `lazy` on PyPI is "Lazy attributes for Python objects", by another author, with no
+    # connection to beancount-lazy-plugins.
+    "lazy.": "beancount_lazy_plugins",
+}
+
+
+def distribution_for(entry: dict) -> tuple[str | None, str | None]:
+    """The PyPI distribution and import root for a catalog entry.
+
+    A `None` distribution means "do not ask PyPI": the name collides with an unrelated
+    project, so a lookup would succeed and be wrong, which is worse than failing.
+    """
+    for prefix, import_root in GITHUB_ONLY.items():
+        if entry["id"].startswith(prefix):
+            return None, import_root
     for prefix, mapping in DISTRIBUTIONS.items():
         if entry["id"].startswith(prefix):
             return mapping
@@ -98,7 +129,26 @@ def _classifier_license(meta: dict) -> str:
     return "unstated"
 
 
+def github_slug(repo: str) -> str:
+    """`owner/name`, from whatever form the catalog records.
+
+    The catalog holds browser URLs — `https://github.com/owner/name`, sometimes with a
+    `/tree/<branch>/<path>` suffix pointing at one plugin inside a monorepo. `codeload`
+    wants the bare slug. Passing the URL through unchanged asks codeload for
+    `https:/github.com/owner/name`, which 404s on both branches, and the fallback then
+    reports "no main or master branch" — which is how fifteen fetchable projects came to be
+    recorded as impossible to obtain.
+    """
+    slug = repo.strip().rstrip("/")
+    if "github.com/" in slug:
+        slug = slug.split("github.com/", 1)[1]
+    slug = slug.split("/tree/", 1)[0]
+    parts = [p for p in slug.split("/") if p]
+    return "/".join(parts[:2])
+
+
 def from_github(repo: str, into: Path) -> dict | None:
+    repo = github_slug(repo)
     for branch in ("main", "master"):
         try:
             payload = _get(
@@ -157,14 +207,15 @@ def main() -> int:
             continue
         distribution, import_root = distribution_for(entry)
 
-        if distribution in seen:
-            result = dict(seen[distribution])
+        key = distribution or f"github:{github_slug(entry.get('repo', ''))}"
+        if key in seen:
+            result = dict(seen[key])
         else:
-            target = out / distribution
-            result = from_pypi(distribution, target)
+            target = out / key.replace("/", "_").replace(":", "_")
+            result = from_pypi(distribution, target) if distribution else {"error": "not on PyPI"}
             if result and result.get("error") and entry.get("repo"):
                 result = from_github(entry["repo"], target)
-            seen[distribution] = result
+            seen[key] = result
 
         result["import_root"] = import_root
         fetched[entry["id"]] = result
