@@ -161,6 +161,12 @@ class PixelGateTest {
                 onSetEnabled = { _, _ -> },
                 onRemove = {},
                 onSetSafeMode = {},
+                packagesInstalled = listOf("numpy", "pandas"),
+                packagesStatus = dev.beancount.app.packages.PackagesStatus.Idle,
+                onRequestPackages = {},
+                onConfirmPackages = {},
+                onCancelPackages = {},
+                onRemovePackages = {},
             )
         }
 

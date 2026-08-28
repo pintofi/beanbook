@@ -271,6 +271,9 @@ class MainActivity : ComponentActivity() {
         app.projectsState.open(projectId)
         app.templatesState.open(projectId)
         app.pluginsState.openProject(app.workspace.projectDir(projectId))
+        // Not per-project: fetched packages are shared by every ledger on the device, so this
+        // only needs to know what is on disk.
+        app.packagesState.refresh()
         app.scriptRunner.onProjectOpened(app.workspace.mainFile(projectId))
         refreshDocuments(app, projectId)
 
@@ -403,6 +406,9 @@ class MainActivity : ComponentActivity() {
                     val pluginRows by app.pluginsState.rows.collectAsStateWithLifecycle()
                     val pluginSafeMode by app.pluginsState.safeMode.collectAsStateWithLifecycle()
                     val pluginMessage by app.pluginsState.message.collectAsStateWithLifecycle()
+                    val packagesInstalled by app.packagesState.installed.collectAsStateWithLifecycle()
+                    val packagesStatus by app.packagesState.status.collectAsStateWithLifecycle()
+                    val packagesMessage by app.packagesState.message.collectAsStateWithLifecycle()
                     val scriptRunning by app.scriptRunner.running.collectAsStateWithLifecycle()
                     val scriptOutcome by app.scriptRunner.outcome.collectAsStateWithLifecycle()
                     val scriptMessage by app.scriptRunner.message.collectAsStateWithLifecycle()
@@ -514,6 +520,13 @@ class MainActivity : ComponentActivity() {
                         pluginRows = pluginRows,
                         pluginSafeMode = pluginSafeMode,
                         pluginMessage = pluginMessage,
+                        packagesInstalled = packagesInstalled,
+                        packagesStatus = packagesStatus,
+                        packagesMessage = packagesMessage,
+                        onRequestPackages = { app.packagesState.request(it) },
+                        onConfirmPackages = { app.packagesState.confirm() },
+                        onCancelPackages = { app.packagesState.cancel() },
+                        onRemovePackages = { app.packagesState.removeAll() },
                         onInstallPlugin = { pluginPicker.launch(arrayOf("*/*")) },
                         scriptRunning = scriptRunning,
                         scriptOutcome = scriptOutcome,
@@ -942,6 +955,13 @@ internal fun LedgerApp(
     pluginRows: List<dev.beancount.app.plugins.PluginRow>,
     pluginSafeMode: Boolean,
     pluginMessage: String?,
+    packagesInstalled: List<String>,
+    packagesStatus: dev.beancount.app.packages.PackagesStatus,
+    packagesMessage: String?,
+    onRequestPackages: (String) -> Unit,
+    onConfirmPackages: () -> Unit,
+    onCancelPackages: () -> Unit,
+    onRemovePackages: () -> Unit,
     onInstallPlugin: () -> Unit,
     scriptRunning: String?,
     scriptOutcome: dev.beancount.app.plugins.ScriptOutcome?,
@@ -1131,6 +1151,13 @@ internal fun LedgerApp(
                 pluginRows = pluginRows,
                 pluginSafeMode = pluginSafeMode,
                 pluginMessage = pluginMessage,
+                packagesInstalled = packagesInstalled,
+                packagesStatus = packagesStatus,
+                packagesMessage = packagesMessage,
+                onRequestPackages = onRequestPackages,
+                onConfirmPackages = onConfirmPackages,
+                onCancelPackages = onCancelPackages,
+                onRemovePackages = onRemovePackages,
                 onInstallPlugin = onInstallPlugin,
                 scriptRunning = scriptRunning,
                 scriptOutcome = scriptOutcome,
@@ -1239,6 +1266,13 @@ private fun SurfaceContent(
     pluginRows: List<dev.beancount.app.plugins.PluginRow>,
     pluginSafeMode: Boolean,
     pluginMessage: String?,
+    packagesInstalled: List<String>,
+    packagesStatus: dev.beancount.app.packages.PackagesStatus,
+    packagesMessage: String?,
+    onRequestPackages: (String) -> Unit,
+    onConfirmPackages: () -> Unit,
+    onCancelPackages: () -> Unit,
+    onRemovePackages: () -> Unit,
     onInstallPlugin: () -> Unit,
     scriptRunning: String?,
     scriptOutcome: dev.beancount.app.plugins.ScriptOutcome?,
@@ -1419,7 +1453,14 @@ private fun SurfaceContent(
                                     onSetEnabled = onSetPluginEnabled,
                                     onRemove = onRemovePlugin,
                                     onSetSafeMode = onSetPluginSafeMode,
+                                    packagesInstalled = packagesInstalled,
+                                    packagesStatus = packagesStatus,
+                                    onRequestPackages = onRequestPackages,
+                                    onConfirmPackages = onConfirmPackages,
+                                    onCancelPackages = onCancelPackages,
+                                    onRemovePackages = onRemovePackages,
                                     message = pluginMessage,
+                                    packagesMessage = packagesMessage,
                                 )
                             }
 

@@ -138,6 +138,14 @@ class BeancountApplication : Application() {
         dev.beancount.app.plugins.PluginsState(this, currentPluginPolicy(), appScope)
     }
 
+    /**
+     * Python packages fetched on demand. Same policy object as the plugin store, so the Play
+     * edition's inability to download is decided in one place rather than two.
+     */
+    val packagesState: dev.beancount.app.packages.PackagesState by lazy {
+        dev.beancount.app.packages.PackagesState(this, currentPluginPolicy(), appScope)
+    }
+
     /** Running a user script against the open ledger (Tier 3). Same policy, chosen once. */
     val scriptRunner: dev.beancount.app.plugins.ScriptRunnerState by lazy {
         dev.beancount.app.plugins.ScriptRunnerState(this, currentPluginPolicy(), appScope)

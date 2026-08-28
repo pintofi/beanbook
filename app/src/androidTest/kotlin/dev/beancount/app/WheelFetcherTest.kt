@@ -12,12 +12,16 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Fetching a Python package on demand, on a device (D6).
+ * Fetching a Python package on demand, on a device.
  *
  * The app bundles what Beancount and Fava need. beangrow's returns reports need numpy,
- * pandas, matplotlib and protobuf on top of that — around 50 MB, which does not belong in
- * every download for a feature most people will not use. So the expert edition fetches them
- * when asked.
+ * pandas, matplotlib and protobuf on top of that — a 37 MB download that takes about 143 MB
+ * once unpacked, which does not belong in every install for a feature most people will not
+ * use. So the expert edition fetches them when asked.
+ *
+ * These drive `WheelFetcher` directly. What drives it the way the app does is
+ * [PackagesStateTest], and the difference mattered: the fetcher passed every test here while
+ * no app code called it at all.
  *
  * These tests use the network deliberately and are the only ones here that do. They are
  * written to fail *informatively* when it is unavailable rather than to pass quietly.

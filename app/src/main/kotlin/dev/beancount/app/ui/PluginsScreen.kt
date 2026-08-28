@@ -13,6 +13,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,12 +24,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.beancount.core.data.PluginIntegrity
 import dev.beancount.core.domain.PluginPolicy
+import dev.beancount.app.packages.PackagesStatus
 import dev.beancount.app.plugins.PluginRow
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -52,8 +56,15 @@ fun PluginsScreen(
     onSetEnabled: (String, Boolean) -> Unit,
     onRemove: (String) -> Unit,
     onSetSafeMode: (Boolean) -> Unit,
+    packagesInstalled: List<String>,
+    packagesStatus: PackagesStatus,
+    onRequestPackages: (String) -> Unit,
+    onConfirmPackages: () -> Unit,
+    onCancelPackages: () -> Unit,
+    onRemovePackages: () -> Unit,
     modifier: Modifier = Modifier,
     message: String? = null,
+    packagesMessage: String? = null,
 ) {
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
@@ -118,6 +129,19 @@ fun PluginsScreen(
             // one control rather than two that do the same thing.
             Switch(checked = safeMode, onCheckedChange = null)
         }
+
+        HorizontalDivider()
+
+        PackagesSection(
+            policy = policy,
+            installed = packagesInstalled,
+            status = packagesStatus,
+            onRequest = onRequestPackages,
+            onConfirm = onConfirmPackages,
+            onCancel = onCancelPackages,
+            onRemoveAll = onRemovePackages,
+            message = packagesMessage,
+        )
 
         HorizontalDivider()
 
@@ -289,3 +313,163 @@ private fun Warning(text: String) {
 
 private fun dateOf(epochMillis: Long): String =
     SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(epochMillis))
+
+/**
+ * Extra Python packages, fetched when the user asks (docs/on-demand-packages.md).
+ *
+ * This is the only place in the app that reaches the network in local mode, so it says so,
+ * and it says what it will cost before it costs anything. The order is deliberate:
+ * the user types a name, the app resolves the closure and *stops*, showing how many packages
+ * and how many megabytes; only then is there a button that downloads. A confirmation that
+ * appears after the download has started is not a confirmation.
+ *
+ * Absent entirely in the Play edition, which cannot fetch — but the enforcement is that
+ * edition's `WheelFetcher` refusing, not this composable being hidden.
+ */
+@Composable
+private fun PackagesSection(
+    policy: PluginPolicy,
+    installed: List<String>,
+    status: PackagesStatus,
+    onRequest: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+    onRemoveAll: () -> Unit,
+    message: String?,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Extra Python packages", style = MaterialTheme.typography.titleSmall)
+
+        if (!policy.allowsPackageDownload) {
+            Text(
+                "This edition installs no packages beyond the ones built in. A plugin that " +
+                    "needs numpy or pandas will say which module was missing when it runs, " +
+                    "and will not work here. The version from the project's own site can " +
+                    "fetch them.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            return@Column
+        }
+
+        Text(
+            "Some plugins need libraries the app does not carry — beangrow's returns " +
+                "reports need numpy, pandas and matplotlib. They are downloaded only when " +
+                "you ask, kept afterwards, and you are shown the size before anything is " +
+                "fetched. This is the only thing in the app that uses the network while " +
+                "your ledger is on this device.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+
+        var wanted by remember { mutableStateOf("") }
+
+        when (status) {
+            is PackagesStatus.Resolving -> Text(
+                "Working out what ${status.request} needs…",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+
+            is PackagesStatus.Fetching -> Text(
+                "Downloading ${status.request}…",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+
+            is PackagesStatus.Confirming -> Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "What fetching would download" },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                ),
+            ) {
+                val resolution = status.resolution
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "${resolution.wheels.size} packages to download",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        resolution.wheels.joinToString(", ") { "${it.name} ${it.version}" },
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    // Said here because it is the number people are short of. Wheels are
+                    // compressed, so what unpacks onto the device is several times what
+                    // crosses the network, and quoting only the download would understate it.
+                    Text(
+                        "They will take noticeably more room once unpacked than they do to " +
+                            "download. Removing them afterwards is one button, below.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (resolution.unavailable.isNotEmpty()) {
+                        Text(
+                            "Not available for this device: " +
+                                resolution.unavailable.joinToString(", ") +
+                                ". Anything that needs one of those will fail with its name " +
+                                "rather than silently.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Text(
+                        "These come from the Python package index over the internet. They are " +
+                            "somebody else's code and will run with this app's permissions, " +
+                            "exactly as a plugin does.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = onConfirm,
+                            modifier = Modifier.semantics {
+                                contentDescription = "Download these packages"
+                            },
+                        ) { Text("Download") }
+                        TextButton(onClick = onCancel) { Text("Not now") }
+                    }
+                }
+            }
+
+            PackagesStatus.Idle -> {
+                OutlinedTextField(
+                    value = wanted,
+                    onValueChange = { wanted = it },
+                    label = { Text("Package name") },
+                    placeholder = { Text("beangrow") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Name of a package to fetch" },
+                )
+                Button(
+                    onClick = { onRequest(wanted); wanted = "" },
+                    enabled = wanted.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "See what this would download" },
+                ) { Text("See what it needs") }
+            }
+        }
+
+        message?.let {
+            Card(Modifier.fillMaxWidth()) {
+                Text(
+                    it,
+                    Modifier.padding(12.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+
+        if (installed.isNotEmpty()) {
+            Text(
+                "Installed: " + installed.joinToString(", "),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            TextButton(
+                onClick = onRemoveAll,
+                modifier = Modifier.semantics {
+                    contentDescription = "Remove every fetched package"
+                },
+            ) { Text("Remove fetched packages") }
+        }
+    }
+}

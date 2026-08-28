@@ -231,6 +231,15 @@ class AccessibilityTest {
                 onSetEnabled = { _, _ -> },
                 onRemove = {},
                 onSetSafeMode = {},
+                // Non-empty so the fetched-packages controls render and are checked here
+                // too: this section is the app's only network surface in local mode, and a
+                // download button that TalkBack cannot describe is the worst one to miss.
+                packagesInstalled = listOf("numpy", "pandas"),
+                packagesStatus = dev.beancount.app.packages.PackagesStatus.Idle,
+                onRequestPackages = {},
+                onConfirmPackages = {},
+                onCancelPackages = {},
+                onRemovePackages = {},
             )
         }
 
@@ -240,6 +249,9 @@ class AccessibilityTest {
             "Safe mode: hold every plugin back",
             "Run tag_large.py when the ledger loads",
             "Remove tag_large.py",
+            "Name of a package to fetch",
+            "See what this would download",
+            "Remove every fetched package",
         ).forEach { label ->
             compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
         }

@@ -77,8 +77,21 @@ class PluginsState(
     fun enabledDirectories(): String {
         val root = projectRoot ?: return ""
         val store = PluginStore(root)
-        return PluginSafeMode(root).pluginsToLoad(store)
-            .joinToString(",") { store.directoryFor(it).absolutePath }
+        val plugins = PluginSafeMode(root).pluginsToLoad(store)
+            .map { store.directoryFor(it).absolutePath }
+
+        // Packages the user fetched on demand (docs/on-demand-packages.md). They are
+        // libraries rather than plugins — nothing imports them on its own — so they are
+        // appended to whatever the plugins need rather than listed as plugins.
+        //
+        // Under safe mode this stays empty along with everything else. Not because a library
+        // is dangerous, but because safe mode means "load nothing of mine", and a numpy that
+        // shadowed something would make that promise false.
+        val packages = File(context.filesDir, "ondemand")
+            .takeIf { plugins.isNotEmpty() && it.isDirectory }
+            ?.absolutePath
+
+        return (plugins + listOfNotNull(packages)).joinToString(",")
     }
 
     fun setSafeMode(on: Boolean) {

@@ -22,6 +22,24 @@ nearly four times, and storage is the scarcer of the two.
 Putting that in every download, for a feature most people will not use, is the wrong trade.
 So the expert edition fetches it when asked, once, and keeps it.
 
+## How a user reaches it
+
+**More → Plugins → Extra Python packages.** Type a name, and the app resolves the closure and
+stops: it shows how many packages, which ones, what could not be found for this device, and
+that they will take noticeably more room unpacked than they do to download. Only then is there
+a **Download** button. Backing out is **Not now**, and it leaves the device exactly as it was.
+
+Fetched packages are removed all at once rather than one at a time — they were resolved as a
+closure, so removing one would leave the others importable and broken.
+
+They land in the app's private storage outside any project, so they are never exported with a
+ledger and never reach a backup, and the directory is handed to the engine alongside the
+enabled plugins. Under safe mode nothing is handed over, these included: safe mode means load
+nothing of mine, and a library that shadowed something would make that promise false.
+
+The Play edition shows the section as a sentence explaining that it installs nothing beyond
+what is built in. Hiding the control is not the enforcement — its `WheelFetcher` refusing is.
+
 ## Why not pip
 
 A wheel is a zip. Resolving one, checking a digest and unpacking it is a few hundred lines;
