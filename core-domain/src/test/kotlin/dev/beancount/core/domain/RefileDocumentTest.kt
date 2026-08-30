@@ -93,4 +93,32 @@ class RefileDocumentTest {
             BeancountText.refileDocument(source, "r.pdf", "not an account")
         }
     }
+
+    @Test
+    fun `refiles only the directive under the named account`() {
+        // Beancount allows one document under two accounts, and DocumentIndex lists a row
+        // per directive. Without a target, refiling one row moved both -- silently changing
+        // a filing the user was not looking at.
+        val source = """
+            2026-02-01 document Assets:Bank "r.pdf"
+            2026-02-01 document Expenses:Food "r.pdf"
+        """.trimIndent() + "\n"
+
+        val result = BeancountText.refileDocument(source, "r.pdf", "Assets:Card", from = "Assets:Bank")
+
+        assertEquals(
+            """
+            2026-02-01 document Assets:Card "r.pdf"
+            2026-02-01 document Expenses:Food "r.pdf"
+            """.trimIndent() + "\n",
+            result,
+        )
+    }
+
+    @Test
+    fun `returns null when no directive for that path sits under the named account`() {
+        val source = "2026-02-01 document Assets:Bank \"r.pdf\"\n"
+
+        assertNull(BeancountText.refileDocument(source, "r.pdf", "Assets:Card", from = "Equity:Opening"))
+    }
 }

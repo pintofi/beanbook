@@ -80,16 +80,25 @@ object BeancountText {
      * were, as is every other line in the file: invariant 4 draws no distinction between
      * discarding the user's formatting and rewriting it.
      *
+     * [from] narrows it to the directive currently filing the document under that account.
+     * Without it every directive naming [path] is moved, which is right for the ordinary
+     * single-filing case and wrong the moment a document is filed under two accounts.
+     *
      * The same narrowness as [removeDocumentDirective], and for the same reason -- a
      * transaction's own `document:` metadata names the very same file, and is not a directive.
      */
-    fun refileDocument(source: String, path: String, newAccount: String): String? {
+    fun refileDocument(
+        source: String,
+        path: String,
+        newAccount: String,
+        from: String? = null,
+    ): String? {
         require(ACCOUNT.matches(newAccount)) { "not an account: $newAccount" }
         // The account is captured on its own so that it, and nothing around it, can be swapped.
         val directive = Regex(
             // Named groups: ACCOUNT has capturing groups of its own, so the numbering here
             // would depend on that pattern's internals.
-            """^(?<head>\s*${DATE.pattern}\s+document\s+)${ACCOUNT.pattern}""" +
+            """^(?<head>\s*${DATE.pattern}\s+document\s+)(?<account>${ACCOUNT.pattern})""" +
                 """(?<tail>\s+"${Regex.escape(path)}"\s*(;.*)?)$"""
         )
         val lines = splitKeepingTerminators(source)
@@ -99,7 +108,10 @@ object BeancountText {
             val terminator = line.takeLastWhile { it == '\r' || it == '\n' }
             val body = line.substring(0, line.length - terminator.length)
             val match = directive.matchEntire(body)
-            if (match == null) {
+            // Beancount allows one document under two accounts, and the Organize list shows
+            // a row per directive. Without [from], refiling one row moved both -- silently
+            // changing a filing the user was not looking at.
+            if (match == null || (from != null && match.groups["account"]!!.value != from)) {
                 rebuilt.append(line)
                 continue
             }

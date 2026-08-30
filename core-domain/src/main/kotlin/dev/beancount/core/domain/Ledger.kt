@@ -24,6 +24,8 @@ data class LedgerSnapshot(
      * you had declared but not yet used could not be picked in the Add form (B6).
      */
     val commodities: List<String> = emptyList(),
+    /** The `document` directives the ledger declares, with absolute paths (B18). */
+    val documents: List<DocumentDirective> = emptyList(),
 ) {
     val hasErrors: Boolean get() = errors.isNotEmpty()
 
@@ -90,6 +92,29 @@ data class JournalEntry(
     val linkedDocuments: List<String>
         get() = metadata.filterKeys { it == "document" || it.startsWith("document-") }
             .values.filter { it.isNotBlank() }.toList()
+}
+
+/**
+ * One `document` directive: a file, and the account it is filed under.
+ *
+ * [path] is absolute. Beancount resolves it against the directory of the file that declares
+ * it, and reporting the resolved path is what lets a caller decide whether it is inside the
+ * project at all -- a directive may legitimately name a file elsewhere on the device.
+ *
+ * Distinct from [JournalEntry.linkedDocuments], which is the `fava.plugins.link_documents`
+ * metadata convention on a *transaction*. A file can have both, one, or neither.
+ */
+data class DocumentDirective(
+    val path: String,
+    val account: String,
+    val date: String,
+    val file: String? = null,
+    val line: Int? = null,
+    val tags: List<String> = emptyList(),
+    val links: List<String> = emptyList(),
+) {
+    /** The file's own name, which is what a list of documents is worth reading by. */
+    val name: String get() = path.substringAfterLast('/')
 }
 
 data class JournalPosting(val account: String, val amount: Amount?)
