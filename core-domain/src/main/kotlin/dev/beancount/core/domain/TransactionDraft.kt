@@ -18,6 +18,14 @@ data class PostingDraft(
     val account: String,
     val amount: Amount? = null,
     val comment: String? = null,
+    /**
+     * Keys describing this leg of the transaction rather than the whole event (B16).
+     *
+     * Beancount distinguishes the two, and so does this: an invoice number against one
+     * account, or a document linked to one side of a transfer, is not a statement about the
+     * other side.
+     */
+    val metadata: Map<String, String> = emptyMap(),
 ) {
     val isElided: Boolean get() = amount == null
 }
@@ -40,6 +48,14 @@ data class TransactionDraft(
 
         if (!DATE.matches(date)) problems += DraftProblem.InvalidDate(date)
         if (flag !in VALID_FLAGS) problems += DraftProblem.InvalidFlag(flag)
+
+        // A key Beancount cannot parse would be written into the file and break the next
+        // load, so it is refused here rather than discovered after the write.
+        (metadata.keys + postings.flatMap { it.metadata.keys }).forEach { key ->
+            if (!BeancountText.META_KEY.matches(key)) {
+                problems += DraftProblem.InvalidMetadataKey(key)
+            }
+        }
         if (postings.size < 2) problems += DraftProblem.TooFewPostings(postings.size)
 
         postings.forEach { posting ->
@@ -108,6 +124,13 @@ data class TransactionDraft(
             }
             posting.comment?.takeIf { it.isNotBlank() }?.let { builder.append("  ; ").append(it) }
             builder.append('\n')
+
+            // Deeper than the posting. At the same depth Beancount reads these as the
+            // transaction's, which is a different claim about the books.
+            posting.metadata.forEach { (key, value) ->
+                builder.append(pad).append(pad).append(key).append(": ")
+                    .append(quote(value)).append('\n')
+            }
         }
 
         return builder.toString()
@@ -155,6 +178,9 @@ sealed interface DraftProblem {
     data class InvalidTag(val tag: String) : DraftProblem
     data class InvalidLink(val link: String) : DraftProblem
     data class InvalidCurrency(val currency: String) : DraftProblem
+
+    /** Metadata keys are lower-case and may not start with a digit. */
+    data class InvalidMetadataKey(val key: String) : DraftProblem
     data class MissingText(val what: String) : DraftProblem
     data class PathOutsideProject(val path: String) : DraftProblem
     data object MissingAmount : DraftProblem
@@ -170,6 +196,9 @@ sealed interface DraftProblem {
         is InvalidTag -> "\"$tag\" is not a valid tag"
         is InvalidLink -> "\"$link\" is not a valid link"
         is InvalidCurrency -> "\"$currency\" is not a valid currency or commodity"
+        is InvalidMetadataKey ->
+            "\"$key\" is not a valid metadata key; they are lower-case and may not start with " +
+                "a digit"
         is MissingText -> "the $what is empty"
         is PathOutsideProject ->
             "\"$path\" points outside the project; document links must stay inside it"
