@@ -66,6 +66,13 @@
     }
   ],
   "commodities": [],
+  "documents": [
+    {
+      "account": "Assets:Bank:Checking",
+      "date": "2024-01-05",
+      "name": "statement-2024-01.pdf"
+    }
+  ],
   "entry_count": 6,
   "entry_counts": {
     "Document": 1,

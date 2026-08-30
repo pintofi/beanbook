@@ -185,8 +185,30 @@ def inspect(
             }
         )
 
+    # The `document` directives, so the app can say what a document is filed under and tell
+    # one the ledger knows about from a file merely sitting in the folder. Beancount has
+    # already resolved each path against the directory of the file declaring it, so these are
+    # absolute; relativising them needs the project root, which only the caller knows.
+    documents = sorted(
+        (
+            {
+                "path": entry.filename,
+                "account": entry.account,
+                "date": str(entry.date),
+                "file": entry.meta.get("filename"),
+                "line": entry.meta.get("lineno"),
+                "tags": sorted(entry.tags or []),
+                "links": sorted(entry.links or []),
+            }
+            for entry in entries
+            if isinstance(entry, data.Document)
+        ),
+        key=lambda row: (row["date"], row["path"]),
+    )
+
     payload = {
         "ok": True,
+        "documents": documents,
         "load_ms": round(load_ms, 1),
         "title": options_map.get("title"),
         "operating_currency": list(options_map.get("operating_currency") or []),
@@ -225,6 +247,13 @@ def digest(ledger_path: str) -> str:
             "account_count": payload["account_count"],
             "accounts": payload["accounts"],
             "commodities": payload["commodities"],
+            # Names, not paths, for the same reason as the errors above: a document resolves
+            # to a different absolute path on desktop and on device, but which account it is
+            # filed under is an accounting fact and must match exactly.
+            "documents": [
+                {"name": Path(d["path"]).name, "account": d["account"], "date": d["date"]}
+                for d in payload["documents"]
+            ],
             "included_file_names": [Path(f).name for f in payload["included_files"]],
         },
         ensure_ascii=False,

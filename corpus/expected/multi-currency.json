@@ -130,6 +130,7 @@
     "EUR",
     "USD"
   ],
+  "documents": [],
   "entry_count": 15,
   "entry_counts": {
     "Commodity": 3,
