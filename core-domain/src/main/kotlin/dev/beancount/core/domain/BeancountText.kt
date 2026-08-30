@@ -69,6 +69,50 @@ object BeancountText {
         return if (removedAny) kept.toString() else null
     }
 
+    /**
+     * [source] with the `document` directive naming [path] filed under [newAccount] instead.
+     *
+     * Returns `null` when no such directive is there, so the caller can say so rather than
+     * report a move that did not happen.
+     *
+     * Only the account token is rewritten. The date, the spacing around it, the quoted path,
+     * a trailing comment and the directive's own indented metadata are left exactly as they
+     * were, as is every other line in the file: invariant 4 draws no distinction between
+     * discarding the user's formatting and rewriting it.
+     *
+     * The same narrowness as [removeDocumentDirective], and for the same reason -- a
+     * transaction's own `document:` metadata names the very same file, and is not a directive.
+     */
+    fun refileDocument(source: String, path: String, newAccount: String): String? {
+        require(ACCOUNT.matches(newAccount)) { "not an account: $newAccount" }
+        // The account is captured on its own so that it, and nothing around it, can be swapped.
+        val directive = Regex(
+            // Named groups: ACCOUNT has capturing groups of its own, so the numbering here
+            // would depend on that pattern's internals.
+            """^(?<head>\s*${DATE.pattern}\s+document\s+)${ACCOUNT.pattern}""" +
+                """(?<tail>\s+"${Regex.escape(path)}"\s*(;.*)?)$"""
+        )
+        val lines = splitKeepingTerminators(source)
+        val rebuilt = StringBuilder()
+        var movedAny = false
+        for (line in lines) {
+            val terminator = line.takeLastWhile { it == '\r' || it == '\n' }
+            val body = line.substring(0, line.length - terminator.length)
+            val match = directive.matchEntire(body)
+            if (match == null) {
+                rebuilt.append(line)
+                continue
+            }
+            movedAny = true
+            // Rebuilt from the match's own ranges rather than with a replacement template,
+            // because a trailing comment may contain $ or \ and a template would read those.
+            rebuilt.append(match.groups["head"]!!.value).append(newAccount)
+            rebuilt.append(match.groups["tail"]!!.value)
+            rebuilt.append(terminator)
+        }
+        return if (movedAny) rebuilt.toString() else null
+    }
+
     /** Lines with their own terminators attached, so rejoining cannot change them. */
     private fun splitKeepingTerminators(source: String): List<String> {
         val lines = mutableListOf<String>()
