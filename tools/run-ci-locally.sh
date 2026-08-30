@@ -22,6 +22,15 @@
 #
 # So the useful local result is "21 passed, 3 failed, and those 3". A clean run is 24.
 #
+# It also leaves the tree in a state that breaks the next ordinary Gradle build. The
+# reproducible-build steps run `lock-python.py --refresh-local` against the repo's own
+# wheels/ directory, so the generated engine-local/requirements-local.lock ends up holding
+# the hashes of those wheels while Gradle still resolves from ~/tools/wheels. pip runs under
+# --require-hashes, so the next build fails with "THESE PACKAGES DO NOT MATCH THE HASHES",
+# which reads like a supply-chain alarm and is not one. Put it back with:
+#
+#   python3 tools/lock-python.py --refresh-local --wheel-dir ~/tools/wheels
+#
 #   tools/run-ci-locally.sh .github/workflows/verify.yml
 set -uo pipefail
 
