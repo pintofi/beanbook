@@ -85,6 +85,85 @@ object BeancountText {
         return lines
     }
 
+    /** What a highlighted run of source is. */
+    enum class TokenKind { COMMENT, STRING, DATE, KEYWORD, ACCOUNT, NUMBER, CURRENCY, TAG }
+
+    /** A run of [kind] covering `[start, end)` of the source it came from. */
+    data class Token(val start: Int, val end: Int, val kind: TokenKind)
+
+    private val DIRECTIVES = setOf(
+        "open", "close", "commodity", "txn", "balance", "pad", "note", "document",
+        "price", "event", "query", "custom", "option", "plugin", "include", "poptag",
+        "pushtag", "popmeta", "pushmeta",
+    )
+
+    /**
+     * Colours for one file of Beancount source, as non-overlapping runs.
+     *
+     * Line by line, and in a deliberate order: a comment claims the rest of its line, then
+     * quoted strings claim theirs, and only what is left is looked at for dates, keywords,
+     * accounts, numbers and currencies. That order is the whole correctness argument — a
+     * comment mentioning `Assets:Bank` is prose, and an account name inside a narration is
+     * part of the string, not an account. Colouring either one as code would be a lie about
+     * what Beancount will do with the file.
+     *
+     * Ranges are returned rather than styled text so this stays in `:core-domain`, where it
+     * can be tested without a Compose runtime, and so the caller owns the palette.
+     */
+    fun highlight(source: String): List<Token> {
+        val tokens = mutableListOf<Token>()
+        var lineStart = 0
+
+        source.split("\n").forEach { line ->
+            val claimed = BooleanArray(line.length)
+
+            fun claim(from: Int, to: Int, kind: TokenKind) {
+                if (from >= to) return
+                for (i in from until to) {
+                    if (claimed[i]) return
+                }
+                for (i in from until to) claimed[i] = true
+                tokens += Token(lineStart + from, lineStart + to, kind)
+            }
+
+            // 1. A comment owns the rest of the line, including anything that looks like code.
+            val comment = line.indexOf(';')
+            if (comment >= 0) claim(comment, line.length, TokenKind.COMMENT)
+
+            // 2. Quoted strings, before anything inside them can be mistaken for code.
+            var quote = line.indexOf('"')
+            while (quote >= 0 && (comment < 0 || quote < comment)) {
+                var end = quote + 1
+                while (end < line.length && line[end] != '"') {
+                    if (line[end] == '\\') end++
+                    end++
+                }
+                val close = if (end < line.length) end + 1 else line.length
+                claim(quote, close, TokenKind.STRING)
+                quote = line.indexOf('"', close)
+            }
+
+            fun scan(pattern: Regex, kind: TokenKind, accept: (MatchResult) -> Boolean = { true }) {
+                pattern.findAll(line).forEach { match ->
+                    if (accept(match)) claim(match.range.first, match.range.last + 1, kind)
+                }
+            }
+
+            scan(DATE, TokenKind.DATE)
+            scan(Regex("""\b[a-z]+\b"""), TokenKind.KEYWORD) { it.value in DIRECTIVES }
+            scan(ACCOUNT, TokenKind.ACCOUNT)
+            scan(Regex("""-?\d[\d,]*\.?\d*"""), TokenKind.NUMBER)
+            scan(Regex("""#[A-Za-z0-9\-_/.]+|\^[A-Za-z0-9\-_/.]+"""), TokenKind.TAG)
+            // Currencies last: the pattern also matches a bare account root, so anything that
+            // was an account has already claimed its characters by now.
+            scan(Regex("""\b[A-Z][A-Z0-9'._\-]*\b"""), TokenKind.CURRENCY)
+
+            lineStart += line.length + 1
+        }
+
+        return tokens.sortedBy { it.start }
+    }
+
     fun quote(value: String): String =
         "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 

@@ -11,6 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import dev.beancount.core.domain.BeancountText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -233,6 +239,51 @@ private fun Editor(
                 color = MaterialTheme.colorScheme.onSurface,
             ),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            visualTransformation = beancountHighlighting(),
         )
+    }
+}
+
+
+/**
+ * Colours Beancount source in the editor without touching a character of it (B12).
+ *
+ * A `VisualTransformation` rather than a styled value, because the field's text stays a plain
+ * `String` the write protocol can hash and compare. `OffsetMapping.Identity` is correct here
+ * for the same reason: no character is added, removed or reordered, so a cursor at offset *n*
+ * is still at offset *n*. Any transformation that changed length would need a real mapping,
+ * and getting that wrong puts the caret in the wrong place on every keystroke.
+ *
+ * Colours come from the theme rather than being fixed, so the editor stays readable in dark
+ * mode and under a dynamic palette.
+ */
+@Composable
+private fun beancountHighlighting(): VisualTransformation {
+    val scheme = MaterialTheme.colorScheme
+    val palette = mapOf(
+        BeancountText.TokenKind.COMMENT to scheme.onSurfaceVariant,
+        BeancountText.TokenKind.STRING to scheme.tertiary,
+        BeancountText.TokenKind.DATE to scheme.primary,
+        BeancountText.TokenKind.KEYWORD to scheme.primary,
+        BeancountText.TokenKind.ACCOUNT to scheme.secondary,
+        BeancountText.TokenKind.NUMBER to scheme.onSurface,
+        BeancountText.TokenKind.CURRENCY to scheme.onSurfaceVariant,
+        BeancountText.TokenKind.TAG to scheme.tertiary,
+    )
+
+    return VisualTransformation { text ->
+        val annotated = buildAnnotatedString {
+            append(text.text)
+            BeancountText.highlight(text.text).forEach { token ->
+                // Defensive: a span past the end would throw inside the renderer, where the
+                // stack trace says nothing about the highlighter.
+                if (token.end <= text.text.length) {
+                    palette[token.kind]?.let { colour ->
+                        addStyle(SpanStyle(color = colour), token.start, token.end)
+                    }
+                }
+            }
+        }
+        TransformedText(annotated, OffsetMapping.Identity)
     }
 }
