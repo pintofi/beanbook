@@ -72,6 +72,7 @@ class LedgerReader(
         journal = root.optJSONArray("journal").map { it.toJournalEntry() }.asReversed(),
         errors = root.optJSONArray("errors").map { it.toLedgerError() },
         includedFiles = root.optJSONArray("included_files").toStringList(),
+        commodities = root.optJSONArray("commodities").toStringList(),
         loadMillis = root.optDouble("load_ms", 0.0).toLong(),
     )
 

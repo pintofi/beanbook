@@ -17,6 +17,13 @@ data class LedgerSnapshot(
     val errors: List<LedgerError>,
     val includedFiles: List<String>,
     val loadMillis: Long,
+    /**
+     * Commodities the ledger *declares*, which is not the same as the ones it holds.
+     *
+     * The engine has always reported these and `LedgerReader` discarded them, so a commodity
+     * you had declared but not yet used could not be picked in the Add form (B6).
+     */
+    val commodities: List<String> = emptyList(),
 ) {
     val hasErrors: Boolean get() = errors.isNotEmpty()
 

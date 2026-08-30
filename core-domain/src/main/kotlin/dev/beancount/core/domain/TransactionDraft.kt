@@ -183,12 +183,20 @@ data class LedgerVocabulary(
     val payees: List<String>,
     val narrations: List<String>,
     val currencies: List<String>,
+    /**
+     * What a new posting should be denominated in: the ledger's operating currency.
+     *
+     * It used to be whichever commodity sorted first, so a PKR ledger holding a little USD
+     * offered "EUR" or "USD" by default and every entry had to be corrected (B5).
+     */
+    val defaultCurrency: String? = null,
     val tags: List<String>,
     /** Newest first, for offering back what was used last time. */
     val recentEntries: List<JournalEntry> = emptyList(),
 ) {
     fun accountsMatching(prefix: String): List<String> = match(accounts, prefix)
     fun payeesMatching(prefix: String): List<String> = match(payees, prefix)
+    fun currenciesMatching(prefix: String): List<String> = match(currencies, prefix)
 
     private fun match(source: List<String>, prefix: String): List<String> {
         if (prefix.isBlank()) return source.take(SUGGESTION_LIMIT)
@@ -213,15 +221,26 @@ data class LedgerVocabulary(
         recentEntries.firstOrNull { it.payee.equals(payee, ignoreCase = true) }
 
     companion object {
-        const val SUGGESTION_LIMIT = 12
+        // The strip these fill scrolls horizontally, so this caps rendering cost rather than
+        // hiding matches. At 12 a ledger with forty shops silently offered a third of them,
+        // which reads as the app not knowing the payee (B7).
+        const val SUGGESTION_LIMIT = 60
 
         fun from(snapshot: LedgerSnapshot): LedgerVocabulary = LedgerVocabulary(
             accounts = snapshot.accounts.map { it.name }.distinct().sorted(),
             payees = snapshot.journal.mapNotNull { it.payee }.distinct().sorted(),
             narrations = snapshot.journal.mapNotNull { it.narration }.distinct().sorted(),
-            currencies = snapshot.accounts
-                .flatMap { account -> account.positions.map { it.currency } }
-                .distinct().sorted(),
+            // Declared *and* held. A commodity directive with nothing in it yet is still one
+            // the user meant to use, and holding a balance in something never declared is
+            // normal in a hand-written ledger, so neither source is sufficient alone.
+            currencies = (
+                snapshot.commodities +
+                    snapshot.accounts.flatMap { account -> account.positions.map { it.currency } }
+                ).distinct().sorted(),
+            defaultCurrency = snapshot.operatingCurrencies.firstOrNull()
+                ?: snapshot.accounts.flatMap { it.positions }
+                    .groupingBy { it.currency }.eachCount()
+                    .maxByOrNull { it.value }?.key,
             tags = snapshot.journal.flatMap { it.tags }.distinct().sorted(),
             recentEntries = snapshot.journal,
         )
