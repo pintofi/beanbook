@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -955,6 +956,17 @@ internal fun LedgerApp(
     // null means "show the list of sections". Hoisted out of the More branch so the app bar
     // can send the user straight to Projects.
     var moreSection by remember { mutableStateOf<MoreSection?>(null) }
+
+    // Back walks out the way the user came in, rather than leaving the app from wherever
+    // they happen to be standing (B8). Innermost first: a More section, then the Contribute
+    // sheet, then any surface other than the Journal. Once on the Journal it is not enabled,
+    // so the system takes Back and the app closes -- which is what the platform expects of a
+    // top-level destination, and what predictive back animates against.
+    BackHandler(enabled = moreSection != null) { moreSection = null }
+    BackHandler(enabled = moreSection == null && showContribute) { showContribute = false }
+    BackHandler(enabled = moreSection == null && !showContribute && selected != Surface.JOURNAL) {
+        selected = Surface.JOURNAL
+    }
 
     // Breakpoints from docs/ux.md §7. Measured from the window, not the device: a phone in
     // landscape, a foldable half-open and a freeform window are all "how wide is the window
