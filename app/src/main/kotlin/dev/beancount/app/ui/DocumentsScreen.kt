@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -46,6 +47,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import dev.beancount.core.domain.BeancountText
 import dev.beancount.core.domain.CapturedPages
+import dev.beancount.core.domain.DocumentRow
+import dev.beancount.core.domain.DocumentStatus
 import dev.beancount.core.domain.DocumentRemoval
 import dev.beancount.core.domain.LedgerVocabulary
 import java.io.File
@@ -67,7 +70,7 @@ enum class DocumentsMode(val label: String) {
 @Composable
 fun DocumentsScreen(
     pages: CapturedPages,
-    documents: List<String>,
+    documents: List<DocumentRow>,
     vocabulary: LedgerVocabulary,
     onCapture: (File, (Boolean) -> Unit) -> Unit,
     captureFile: () -> File,
@@ -76,7 +79,7 @@ fun DocumentsScreen(
     onRemovePage: (Int) -> Unit,
     onSave: (String) -> Unit,
     onDiscard: () -> Unit,
-    onRefile: (String, String) -> Unit,
+    onRefile: (String, String, String?) -> Unit,
     onUnlink: (String) -> Unit,
     onDeleteFile: (String) -> Unit,
     onShare: (String) -> Unit,
@@ -94,7 +97,8 @@ fun DocumentsScreen(
     var granted by remember(hasCamera) { mutableStateOf(hasCamera) }
     var pendingRemoval by remember { mutableStateOf<Pair<String, DocumentRemoval>?>(null) }
     var mode by rememberSaveable { mutableStateOf(DocumentsMode.ADD) }
-    var refiling by remember { mutableStateOf<String?>(null) }
+    var refiling by remember { mutableStateOf<DocumentRow?>(null) }
+    var expanded by remember { mutableStateOf(emptySet<String>()) }
 
     val askForCamera = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -207,10 +211,37 @@ fun DocumentsScreen(
 
         if (mode == DocumentsMode.ORGANIZE && documents.isNotEmpty()) {
             Text("Documents in this project", style = MaterialTheme.typography.titleSmall)
-            documents.forEach { path ->
+            documents.forEach { row ->
+                val path = row.path
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(path, style = MaterialTheme.typography.bodySmall)
+                        // Tapping opens the details rather than a separate screen: there is
+                        // little enough to say that pushing a route for it would cost the
+                        // user a navigation to read three lines.
+                        val open = path in expanded
+                        Text(
+                            path.substringAfterLast('/'),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    expanded = if (open) expanded - path else expanded + path
+                                }
+                                .semantics {
+                                    contentDescription = if (open) {
+                                        "Hide details of $path"
+                                    } else {
+                                        "Show details of $path"
+                                    }
+                                },
+                        )
+                        Text(row.summary, style = MaterialTheme.typography.bodySmall)
+                        if (open) {
+                            Text(path, style = MaterialTheme.typography.bodySmall)
+                            row.date?.let {
+                                Text("Dated $it", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             TextButton(
                                 onClick = { onShare(path) },
@@ -221,7 +252,7 @@ fun DocumentsScreen(
                             // Two separate actions, deliberately worded differently: one
                             // removes the reference, the other removes the file.
                             TextButton(
-                                onClick = { refiling = path },
+                                onClick = { refiling = row },
                                 modifier = Modifier.semantics {
                                     contentDescription = "File $path under a different account"
                                 },
@@ -245,11 +276,14 @@ fun DocumentsScreen(
         }
     }
 
-    refiling?.let { path ->
+    refiling?.let { row ->
+        val path = row.path
         // The account is typed into the dialog rather than chosen from a list, because a
         // ledger's accounts are not a short list and the same field elsewhere in the app
         // works this way. Suggestions narrow it as the user types.
-        var target by remember(path) { mutableStateOf("") }
+        // Pre-filled with where it is now, so the field says what it is changing from and a
+        // slip of the finger cannot file it under an empty account.
+        var target by remember(row) { mutableStateOf(row.account.orEmpty()) }
         AlertDialog(
             onDismissRequest = { refiling = null },
             title = { Text("Refile document") },
@@ -269,7 +303,7 @@ fun DocumentsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onRefile(path, target.trim())
+                        onRefile(path, target.trim(), row.account)
                         refiling = null
                     },
                     // An account it is not would be written, fail the re-parse and roll back.

@@ -3,6 +3,7 @@ package dev.beancount.engine.local
 import android.content.Context
 import dev.beancount.core.domain.AccountBalance
 import dev.beancount.core.domain.Amount
+import dev.beancount.core.domain.DocumentDirective
 import dev.beancount.core.domain.JournalEntry
 import dev.beancount.core.domain.JournalPosting
 import dev.beancount.core.domain.LedgerError
@@ -73,7 +74,18 @@ class LedgerReader(
         errors = root.optJSONArray("errors").map { it.toLedgerError() },
         includedFiles = root.optJSONArray("included_files").toStringList(),
         commodities = root.optJSONArray("commodities").toStringList(),
+        documents = root.optJSONArray("documents").map { it.toDocumentDirective() },
         loadMillis = root.optDouble("load_ms", 0.0).toLong(),
+    )
+
+    private fun JSONObject.toDocumentDirective(): DocumentDirective = DocumentDirective(
+        path = getString("path"),
+        account = getString("account"),
+        date = optStringOrNull("date").orEmpty(),
+        file = optStringOrNull("file"),
+        line = if (has("line") && !isNull("line")) optInt("line") else null,
+        tags = optJSONArray("tags").toStringList(),
+        links = optJSONArray("links").toStringList(),
     )
 
     private fun JSONObject.toAccountBalance(): AccountBalance = AccountBalance(

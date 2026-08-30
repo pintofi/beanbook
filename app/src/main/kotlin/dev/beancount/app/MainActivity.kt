@@ -76,6 +76,8 @@ import dev.beancount.app.ui.DocumentsScreen
 import dev.beancount.core.data.RestoreStaged
 import dev.beancount.core.domain.CapturedPages
 import dev.beancount.core.domain.DirectiveDraft
+import dev.beancount.core.domain.DocumentIndex
+import dev.beancount.core.domain.DocumentRow
 import java.io.File as JavaFile
 import java.time.LocalDate
 import dev.beancount.app.ui.QuickAddScreen
@@ -500,7 +502,16 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         documentPages = documentPages,
-                        documents = documents,
+                        // The folder alone cannot say what a document is filed under, nor
+                        // tell one the ledger knows from a stray file; the directives alone
+                        // cannot say whether the file is still there. Reconciled here,
+                        // where both are in hand (B18).
+                        documents = DocumentIndex.reconcile(
+                            root = activeId?.let { app.workspace.projectDir(it).absolutePath }
+                                .orEmpty(),
+                            onDisk = documents,
+                            directives = ledger?.documents.orEmpty(),
+                        ),
                         documentMessage = documentMessage,
                         captureFile = { app.documentCapture.nextCaptureFile() },
                         onCapture = { file, _ ->
@@ -511,7 +522,9 @@ class MainActivity : ComponentActivity() {
                         onRemovePage = { app.documentCapture.remove(it) },
                         onSaveDocument = { account -> attachDocument(app, activeId!!, account) },
                         onDiscardPages = { app.documentCapture.reset(discardCaptures = true) },
-                        onRefileDocument = { path, account -> refileDocument(app, activeId!!, path, account) },
+                        onRefileDocument = { path, account, from ->
+                            refileDocument(app, activeId!!, path, account, from)
+                        },
                         onUnlinkDocument = { path -> unlinkDocument(app, activeId!!, path) },
                         onDeleteDocumentFile = { path ->
                             app.documentCapture.deleteFile(activeId!!, path) {
@@ -866,7 +879,7 @@ internal fun LedgerApp(
     onClearEntitlementMessage: () -> Unit,
     entitlementMessage: String?,
     documentPages: CapturedPages,
-    documents: List<String>,
+    documents: List<DocumentRow>,
     documentMessage: String?,
     onCapture: (JavaFile, (Boolean) -> Unit) -> Unit,
     captureFile: () -> JavaFile,
@@ -875,7 +888,7 @@ internal fun LedgerApp(
     onRemovePage: (Int) -> Unit,
     onSaveDocument: (String) -> Unit,
     onDiscardPages: () -> Unit,
-    onRefileDocument: (String, String) -> Unit,
+    onRefileDocument: (String, String, String?) -> Unit,
     onUnlinkDocument: (String) -> Unit,
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,
@@ -1192,7 +1205,7 @@ private fun SurfaceContent(
     selected: Surface,
     onContribute: () -> Unit,
     documentPages: CapturedPages,
-    documents: List<String>,
+    documents: List<DocumentRow>,
     documentMessage: String?,
     onCapture: (JavaFile, (Boolean) -> Unit) -> Unit,
     captureFile: () -> JavaFile,
@@ -1201,7 +1214,7 @@ private fun SurfaceContent(
     onRemovePage: (Int) -> Unit,
     onSaveDocument: (String) -> Unit,
     onDiscardPages: () -> Unit,
-    onRefileDocument: (String, String) -> Unit,
+    onRefileDocument: (String, String, String?) -> Unit,
     onUnlinkDocument: (String) -> Unit,
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,

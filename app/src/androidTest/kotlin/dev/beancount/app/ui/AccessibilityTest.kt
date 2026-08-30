@@ -36,6 +36,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performScrollToNode
 import dev.beancount.core.domain.CapturedPages
+import dev.beancount.core.domain.DocumentRow
+import dev.beancount.core.domain.DocumentStatus
 import dev.beancount.core.domain.LedgerVocabulary
 import java.time.LocalDate
 import org.junit.Assert.assertThrows
@@ -184,7 +186,14 @@ class AccessibilityTest {
         render(widthDp = 320, fontScale = 2f) {
             DocumentsScreen(
                 pages = CapturedPages().add("page-1.jpg").add("page-2.jpg"),
-                documents = listOf("documents/Assets/Cash/2026-08-24.abcdef123456.pdf"),
+                documents = listOf(
+                    DocumentRow(
+                        path = "documents/Assets/Cash/2026-08-24.abcdef123456.pdf",
+                        status = DocumentStatus.FILED,
+                        account = "Assets:Cash",
+                        date = "2026-08-24",
+                    ),
+                ),
                 vocabulary = vocabulary,
                 onCapture = { _, _ -> },
                 captureFile = { java.io.File("unused") },
@@ -193,7 +202,7 @@ class AccessibilityTest {
                 onRemovePage = {},
                 onSave = {},
                 onDiscard = {},
-                onRefile = { _, _ -> },
+                onRefile = { _, _, _ -> },
                 onUnlink = {},
                 onDeleteFile = {},
                 onShare = {},
@@ -219,6 +228,7 @@ class AccessibilityTest {
         compose.onNodeWithText("Organize").performScrollTo().performClick()
         val doc = "documents/Assets/Cash/2026-08-24.abcdef123456.pdf"
         listOf(
+            "Show details of $doc",
             "Share $doc",
             "File $doc under a different account",
             "Unlink $doc from its entry",

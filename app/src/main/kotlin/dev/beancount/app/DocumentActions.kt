@@ -115,11 +115,13 @@ internal fun MainActivity.refileDocument(
     projectId: String,
     path: String,
     newAccount: String,
+    from: String?,
 ) {
     lifecycleScope.launch {
         val holder = findDocumentDirective(app.workspace.projectDir(projectId)) {
             runCatching {
-                dev.beancount.core.domain.BeancountText.refileDocument(it, path, newAccount)
+                dev.beancount.core.domain.BeancountText
+                    .refileDocument(it, path, newAccount, from = from)
             }.getOrNull()
         }
         if (holder == null) {
