@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,6 +55,15 @@ private class PostingRow(account: String = "", amount: String = "", currency: St
     var account by mutableStateOf(account)
     var amount by mutableStateOf(amount)
     var currency by mutableStateOf(currency)
+
+    /** Keys describing this leg only (B16). Empty for almost every posting. */
+    val metadata = mutableStateListOf<MetadataRow>()
+}
+
+/** One editable metadata pair, on a transaction or on a posting. */
+private class MetadataRow(key: String = "", value: String = "") {
+    var key by mutableStateOf(key)
+    var value by mutableStateOf(value)
 }
 
 /**
@@ -82,6 +92,12 @@ fun QuickAddScreen(
     var date by remember { mutableStateOf(today.toString()) }
     var payee by remember { mutableStateOf("") }
     var narration by remember { mutableStateOf("") }
+    // "*" cleared, "!" pending. Beancount treats the second as "look at this again", and the
+    // form had no way to say it, so every entry claimed to be settled (B15).
+    var flag by remember { mutableStateOf("*") }
+    // Transaction-level metadata, as editable rows so a half-typed key cannot be committed
+    // by accident (B16).
+    val metaRows = remember { mutableStateListOf<MetadataRow>() }
     var currency by remember {
         mutableStateOf(vocabulary.defaultCurrency ?: vocabulary.currencies.firstOrNull() ?: "USD")
     }
@@ -97,10 +113,17 @@ fun QuickAddScreen(
 
     val draft = TransactionDraft(
         date = date.trim(),
+        flag = flag,
         payee = payee.trim().ifBlank { null },
         narration = narration.trim().ifBlank { null },
+        metadata = metaRows
+            .filter { it.key.isNotBlank() }
+            .associate { it.key.trim() to it.value.trim() },
         postings = rows.filter { it.account.isNotBlank() }.map { row ->
             PostingDraft(
+                metadata = row.metadata
+                    .filter { it.key.isNotBlank() }
+                    .associate { it.key.trim() to it.value.trim() },
                 account = row.account.trim(),
                 amount = row.amount.trim().takeIf { it.isNotBlank() }?.let { value ->
                     val denomination = row.currency.trim().ifBlank { currency.trim() }
@@ -184,6 +207,27 @@ fun QuickAddScreen(
             }
         }
 
+        // Cleared or pending, as two chips rather than free text: these are the only two
+        // flags Beancount accepts on a transaction, and typing is not the right way to pick
+        // from a closed set of two (B15).
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FilterChip(
+                selected = flag == "*",
+                onClick = { flag = "*" },
+                label = { Text("Cleared") },
+                modifier = Modifier.semantics { contentDescription = "Cleared transaction" },
+            )
+            FilterChip(
+                selected = flag == "!",
+                onClick = { flag = "!" },
+                label = { Text("Pending") },
+                modifier = Modifier.semantics { contentDescription = "Pending transaction" },
+            )
+        }
+
         OutlinedTextField(
             value = date,
             onValueChange = { date = it },
@@ -244,6 +288,12 @@ fun QuickAddScreen(
         )
         // Every commodity the ledger declares or holds, matched like any other field (B6).
         Suggestions(vocabulary.currenciesMatching(currency), "currency") { currency = it }
+
+        MetadataEditor(
+            rows = metaRows,
+            label = "Details about the whole transaction",
+            describe = { "transaction" },
+        )
 
         Text("Postings", style = MaterialTheme.typography.titleSmall)
 
@@ -320,6 +370,11 @@ fun QuickAddScreen(
                 Suggestions(vocabulary.accountsMatching(row.account), "account") {
                     row.account = it
                 }
+                MetadataEditor(
+                    rows = row.metadata,
+                    label = "Details about this posting only",
+                    describe = { "posting ${index + 1}" },
+                )
             }
         }
 
@@ -513,4 +568,67 @@ private fun TemplateDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+
+/**
+ * Metadata pairs, on a transaction or on one posting (B16).
+ *
+ * Collapsed until asked for. Almost no entry carries metadata, and a pair of empty fields on
+ * every posting would make the common case worse to serve the rare one.
+ *
+ * Keys are validated by `TransactionDraft.validate`, so a key Beancount cannot parse is
+ * reported beside the others rather than written into the file and discovered on the next
+ * load.
+ */
+@Composable
+private fun MetadataEditor(
+    rows: MutableList<MetadataRow>,
+    label: String,
+    describe: () -> String,
+) {
+    if (rows.isEmpty()) {
+        TextButton(
+            onClick = { rows.add(MetadataRow()) },
+            modifier = Modifier.semantics { contentDescription = "Add a detail to ${describe()}" },
+        ) { Text("Add a detail") }
+        return
+    }
+
+    Text(label, style = MaterialTheme.typography.labelMedium)
+    rows.forEachIndexed { index, meta ->
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = meta.key,
+                onValueChange = { meta.key = it },
+                label = { Text("Key") },
+                singleLine = true,
+                modifier = Modifier.weight(1f).semantics {
+                    contentDescription = "Detail ${index + 1} key for ${describe()}"
+                },
+            )
+            OutlinedTextField(
+                value = meta.value,
+                onValueChange = { meta.value = it },
+                label = { Text("Value") },
+                singleLine = true,
+                modifier = Modifier.weight(1f).semantics {
+                    contentDescription = "Detail ${index + 1} value for ${describe()}"
+                },
+            )
+            TextButton(
+                onClick = { rows.removeAt(index) },
+                modifier = Modifier.semantics {
+                    contentDescription = "Remove detail ${index + 1} from ${describe()}"
+                },
+            ) { Text("\u00d7") }
+        }
+    }
+    TextButton(
+        onClick = { rows.add(MetadataRow()) },
+        modifier = Modifier.semantics { contentDescription = "Add another detail to ${describe()}" },
+    ) { Text("Add another detail") }
 }

@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
@@ -124,11 +125,27 @@ class AccessibilityTest {
         render(widthDp = 320, fontScale = 2f) {
             QuickAddScreen(vocabulary, onSave = {}, today = today)
         }
+        // Scrolled into view before measuring: `boundsInRoot` is zero for a node the
+        // scrolling column has not laid out, and adding controls above the postings pushed
+        // this one below the fold. A zero rect reads as "side by side" and fails for the
+        // wrong reason.
+        compose.onNodeWithText("Amount").performScrollTo()
+
         val account = compose.onNodeWithText("Account 1").fetchSemanticsNode().boundsInRoot
         val amount = compose.onNodeWithText("Amount").fetchSemanticsNode().boundsInRoot
         assertTrue(
             "account ($account) and amount ($amount) are still side by side",
             amount.top >= account.bottom - 1f,
+        )
+
+        // The currency field shares the amount's line rather than taking a third: it is
+        // short enough to, and a three-line posting at 200% font leaves room for almost
+        // nothing else (B4).
+        val currency = compose.onAllNodesWithContentDescription("Currency for posting 1")
+            .fetchSemanticsNodes().first().boundsInRoot
+        assertTrue(
+            "currency ($currency) dropped onto its own line below the amount ($amount)",
+            currency.top < amount.bottom - 1f,
         )
     }
 
