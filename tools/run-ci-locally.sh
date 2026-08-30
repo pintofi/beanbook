@@ -12,6 +12,16 @@
 # on GitHub fails here for a reason that does not exist there — which is worse than useless,
 # because the obvious fix is to damage the workflow.
 #
+# Three steps of verify.yml cannot pass on a developer machine, and fail in a way that reads
+# like a repo defect rather than a missing tool. Checked 2026-08-30; none is a reason to
+# change the workflow:
+#
+#   [wheels] Rust with the Android targets  -- needs rustup, which a distro `cargo` is not.
+#   [wheels] Build                          -- watchfiles is a Rust extension, so it cascades.
+#   [reproducible] Build twice and compare  -- $RUNNER_TEMP is provided by GitHub, not by us.
+#
+# So the useful local result is "21 passed, 3 failed, and those 3". A clean run is 24.
+#
 #   tools/run-ci-locally.sh .github/workflows/verify.yml
 set -uo pipefail
 
