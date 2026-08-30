@@ -1556,7 +1556,11 @@ private fun SurfaceContent(
                         )
                     }
                 } else {
-                    BalancesScreen(ledger, Modifier.padding(padding))
+                    BalancesScreen(
+                        ledger,
+                        Modifier.padding(padding),
+                        valuationAllowed = entitlement.allows(Feature.HOLDINGS_VALUATION),
+                    )
                 }
             }
 

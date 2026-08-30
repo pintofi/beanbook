@@ -35,6 +35,17 @@ enum class Feature(val required: Tier) {
     CHARTS(Tier.INSIGHT),
     BQL_QUERIES(Tier.INSIGHT),
 
+    /**
+     * Balances at cost and at market value, beside the plain units (B14).
+     *
+     * Tier 1 rather than an edition difference. It was asked for as "Expert edition only",
+     * but the editions have feature parity by design and the only differences permitted are
+     * the ones Play policy forces (CLAUDE.md). Showing what a holding cost is not a policy
+     * matter, so gating it on the flavor would break that rule for no reason. It is the same
+     * kind of analytical feature as charts and BQL, so it sits with them.
+     */
+    HOLDINGS_VALUATION(Tier.INSIGHT),
+
     // Tier 2 — Workflow
     DOCUMENTS(Tier.WORKFLOW),
     CAMERA_CAPTURE(Tier.WORKFLOW),

@@ -25,7 +25,7 @@ class GatingTest {
         // start by editing this list (SPEC.md, "Free forever").
         assertEquals(
             listOf(
-                "FAVA_REPORTS", "CHARTS", "BQL_QUERIES",
+                "FAVA_REPORTS", "CHARTS", "BQL_QUERIES", "HOLDINGS_VALUATION",
                 "DOCUMENTS", "CAMERA_CAPTURE", "PDF_ASSEMBLY", "OCR", "WIDGETS",
                 "AUTO_MIRROR", "SCHEDULED_BACKUP",
                 "REMOTE_MODE", "STATEMENT_IMPORTERS", "SCRIPTS", "PLUGINS", "FAVA_EXTENSIONS",
@@ -35,6 +35,12 @@ class GatingTest {
         // STATEMENT_IMPORTERS is automated statement parsing (beangulp), not the manual
         // import of a ledger, which is free and unlimited. SCHEDULED_BACKUP is the scheduler,
         // not backup itself. Both distinctions are the whole promise, so they are stated here.
+        //
+        // HOLDINGS_VALUATION gates the *choice* of showing balances at cost or at market
+        // value. The plain units stay free and stay the default, so nothing a free user could
+        // see before is behind it -- which is the line that keeps this consistent with
+        // "data-out is never paywalled". Market value is applied price data, which is the
+        // same kind of analysis as charts and BQL.
         assertFalse(Feature.entries.any { it.name == "IMPORT" || it.name == "EXPORT" })
         assertFalse(Feature.entries.any { it.name == "BACKUP" || it.name == "RESTORE" })
     }

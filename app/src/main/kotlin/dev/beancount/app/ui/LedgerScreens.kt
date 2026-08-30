@@ -2,6 +2,13 @@ package dev.beancount.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import dev.beancount.core.domain.LedgerSummary
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -63,24 +70,86 @@ internal fun AmountText(amount: Amount, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun BalancesScreen(snapshot: LedgerSnapshot, modifier: Modifier = Modifier) {
+fun BalancesScreen(
+    snapshot: LedgerSnapshot,
+    modifier: Modifier = Modifier,
+    /** Cost and market value are Tier 3; the units everyone can see (B14). */
+    valuationAllowed: Boolean = false,
+) {
     val roots = listOf("Assets", "Liabilities", "Equity", "Income", "Expenses")
+    var filter by remember { mutableStateOf("") }
+    var basis by remember { mutableStateOf(Valuation.UNITS) }
 
-    LazyColumn(modifier = modifier.fillMaxSize()) {
-        if (snapshot.hasErrors) {
-            item { ErrorBanner(snapshot.errors) }
-        }
-        roots.forEach { root ->
-            val accounts = snapshot.accounts.filter {
-                it.name == root || it.name.startsWith("$root:")
-            }
-            if (accounts.isEmpty()) return@forEach
+    Column(modifier = modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = filter,
+            onValueChange = { filter = it },
+            label = { Text("Filter accounts") },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .semantics { contentDescription = "Filter accounts by name" },
+        )
 
-            item(key = "header-$root") {
-                RootHeader(root = root, totals = snapshot.totalFor(root))
+        if (valuationAllowed) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Valuation.entries.forEach { option ->
+                    FilterChip(
+                        selected = basis == option,
+                        onClick = { basis = option },
+                        label = { Text(option.label) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Show balances ${option.label}"
+                        },
+                    )
+                }
             }
-            items(accounts, key = { it.name }) { account -> AccountRow(account) }
         }
+
+        val needle = filter.trim()
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            if (snapshot.hasErrors) {
+                item { ErrorBanner(snapshot.errors) }
+            }
+            roots.forEach { root ->
+                val accounts = snapshot.accounts
+                    .filter { it.name == root || it.name.startsWith("$root:") }
+                    .filter { needle.isEmpty() || it.name.contains(needle, ignoreCase = true) }
+                if (accounts.isEmpty()) return@forEach
+
+                item(key = "header-$root") {
+                    // The header totals the accounts *shown*, not the whole root: a total
+                    // that ignored the filter would be a different number from the rows
+                    // under it, which reads as an arithmetic error.
+                    RootHeader(
+                        root = root,
+                        totals = if (needle.isEmpty()) {
+                            snapshot.totalFor(root)
+                        } else {
+                            LedgerSummary.sumByCurrency(accounts.flatMap { basis.of(it) })
+                        },
+                    )
+                }
+                items(accounts, key = { it.name }) { account -> AccountRow(account, basis) }
+            }
+        }
+    }
+}
+
+/** Which of an account's three figures to show (B14). */
+enum class Valuation(val label: String) {
+    UNITS("Units"),
+    COST("At cost"),
+    VALUE("Market value");
+
+    fun of(account: AccountBalance): List<Amount> = when (this) {
+        UNITS -> account.positions
+        COST -> account.atCost
+        VALUE -> account.atValue
     }
 }
 
@@ -106,7 +175,7 @@ private fun RootHeader(root: String, totals: List<Amount>) {
 }
 
 @Composable
-private fun AccountRow(account: AccountBalance) {
+private fun AccountRow(account: AccountBalance, basis: Valuation = Valuation.UNITS) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -125,7 +194,7 @@ private fun AccountRow(account: AccountBalance) {
             modifier = Modifier.weight(1f),
         )
         Column(horizontalAlignment = Alignment.End) {
-            account.positions.forEach { AmountText(it) }
+            basis.of(account).forEach { AmountText(it) }
         }
     }
     HorizontalDivider()
