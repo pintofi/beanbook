@@ -271,6 +271,51 @@ class AccessibilityTest {
         assertAccessible()
     }
 
+    /**
+     * Deleting names what it will delete, and where from (invariant 7).
+     *
+     * A confirmation that says only "Are you sure?" asks the user to remember which row they
+     * tapped. This one repeats the transaction and the file, so the answer does not depend on
+     * memory — and it is the screen a mis-tap lands on, so it has to read correctly to
+     * somebody who is not looking at it.
+     */
+    @Test fun deletingAnEntryNamesWhatItWillDelete() {
+        val entry = dev.beancount.core.domain.JournalEntry(
+            date = "2026-01-15", flag = "*", payee = "Landlord", narration = "January rent",
+            tags = emptyList(), links = emptyList(), postings = emptyList(),
+            file = "ledger/main.beancount", line = 42,
+        )
+
+        render(widthDp = 320, fontScale = 1f) {
+            EntryDetailScreen(entry = entry, onClone = {}, onClose = {}, onDelete = {})
+        }
+
+        compose.onNodeWithContentDescription("Delete this transaction").performScrollTo()
+            .performClick()
+        compose.onNodeWithContentDescription("Confirm deleting this transaction")
+            .performScrollTo().assertExists()
+        compose.onNodeWithContentDescription("Yes, delete this transaction")
+            .performScrollTo().assertExists()
+        assertAccessible()
+    }
+
+    @Test fun anEntryWithNoDeleteHandlerShowsNoDeleteButton() {
+        val entry = dev.beancount.core.domain.JournalEntry(
+            date = "2026-01-15", flag = "*", payee = "Landlord", narration = null,
+            tags = emptyList(), links = emptyList(), postings = emptyList(),
+            file = null, line = null,
+        )
+
+        render(widthDp = 320, fontScale = 1f) {
+            EntryDetailScreen(entry = entry, onClone = {}, onClose = {})
+        }
+
+        compose.onAllNodesWithContentDescription("Delete this transaction")
+            .fetchSemanticsNodes().let {
+                assertTrue("a delete button appeared with nothing to call", it.isEmpty())
+            }
+    }
+
     @Test fun homeScreenIsLabelledAndFitsAtDoubleFontScale() {
         render(widthDp = 320, fontScale = 2f) {
             HomeScreen(ledger = homeLedger(), hideAmounts = false)

@@ -125,3 +125,61 @@ internal fun MainActivity.shareDocument(app: BeancountApplication, projectId: St
     }
     runCatching { startActivity(Intent.createChooser(send, "Share document")) }
 }
+
+
+/**
+ * Removes one transaction from the ledger (B11).
+ *
+ * The extent comes from the engine's `entry_slice`, which is Beancount's own idea of where an
+ * entry starts and stops — including its metadata and any blank line inside it. Deleting by
+ * matching text would guess at that, and guess wrong on the first entry whose narration
+ * happened to appear twice.
+ *
+ * The write itself goes through `ProjectWriter`, so it is journalled, snapshotted, re-parsed
+ * and undoable like any other edit — which is what makes the confirmation's promise true.
+ */
+internal fun MainActivity.deleteEntry(
+    app: BeancountApplication,
+    projectId: String,
+    entry: dev.beancount.core.domain.JournalEntry,
+) {
+    val file = entry.file
+    val line = entry.line
+    if (file == null || line == null) {
+        saveMessage = "That entry has no recorded position in the file, so it cannot be removed here."
+        return
+    }
+
+    lifecycleScope.launch {
+        val mainFile = app.workspace.mainFile(projectId).absolutePath
+        val slice = runCatching { app.editor.sliceAt(mainFile, file, line) }.getOrNull()
+        if (slice == null) {
+            saveMessage = "Could not find that entry in the file. Nothing was changed."
+            return@launch
+        }
+
+        val target = java.io.File(slice.file)
+        val updated = runCatching {
+            app.editor.contentWithDeletion(slice.file, slice.startLine, slice.endLine)
+        }.getOrElse {
+            saveMessage = "Could not remove that entry: ${it.message}. Nothing was changed."
+            return@launch
+        }
+
+        val result = app.writer.replace(
+            projectId = projectId,
+            file = target,
+            expectedSha = dev.beancount.core.data.WriteJournal.sha256(target),
+            newContent = updated,
+            operation = "delete-entry",
+        )
+        saveMessage = when (result) {
+            is dev.beancount.core.data.WriteResult.Committed ->
+                "Deleted. Undo is available if that was not what you meant."
+            is dev.beancount.core.data.WriteResult.RolledBack ->
+                "Not deleted: ${result.reason}. Your ledger is unchanged."
+            is dev.beancount.core.data.WriteResult.Refused -> "Not deleted: ${result.reason}"
+        }
+        app.ledgerState.load(mainFile)
+    }
+}

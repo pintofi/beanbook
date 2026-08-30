@@ -9,11 +9,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -37,7 +42,9 @@ fun EntryDetailScreen(
     onClone: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    onDelete: (() -> Unit)? = null,
 ) {
+    var confirmingDelete by remember(entry) { mutableStateOf(false) }
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -107,7 +114,51 @@ fun EntryDetailScreen(
                     contentDescription = "Enter this transaction again"
                 },
             ) { Text("Enter again") }
+            if (onDelete != null && !confirmingDelete) {
+                TextButton(
+                    onClick = { confirmingDelete = true },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Delete this transaction"
+                    },
+                ) { Text("Delete") }
+            }
             TextButton(onClick = onClose) { Text("Close") }
+        }
+
+        // Invariant 7: a destructive action names its scope and is confirmable. It says
+        // which entry, says the file it will be taken out of, and says that undo exists --
+        // because the honest reassurance is that this is recoverable, not that it is small.
+        if (onDelete != null && confirmingDelete) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Confirm deleting this transaction" },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                ),
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Delete this transaction?",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        "\"${entry.description.ifBlank { entry.date }}\" will be removed from " +
+                            "${entry.file?.substringAfterLast('/') ?: "the ledger"}. Any document " +
+                            "it links to stays where it is, and this can be undone.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { confirmingDelete = false; onDelete() },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Yes, delete this transaction"
+                            },
+                        ) { Text("Delete it") }
+                        TextButton(onClick = { confirmingDelete = false }) { Text("Keep it") }
+                    }
+                }
+            }
         }
 
         Text(

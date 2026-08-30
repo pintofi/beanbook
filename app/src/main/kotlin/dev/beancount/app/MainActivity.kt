@@ -479,6 +479,9 @@ class MainActivity : ComponentActivity() {
 
                     LedgerApp(
                         openOn = requestedSurface,
+                        onDeleteEntry = { entry ->
+                            activeId?.let { deleteEntry(app, it, entry) }
+                        },
                         engineStatus = engineStatus,
                         ledger = ledger,
                         editionName = app.pluginPolicy.name,
@@ -853,6 +856,7 @@ internal fun LedgerApp(
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
     onSaveEntry: (TransactionDraft) -> Unit,
+    onDeleteEntry: (JournalEntry) -> Unit = {},
     templates: List<EntryTemplate>,
     onSaveTemplate: (EntryTemplate) -> Unit,
     onDeleteTemplate: (String) -> Unit,
@@ -1124,6 +1128,7 @@ internal fun LedgerApp(
                     pendingClone = TransactionDraft.cloneOf(entry, LocalDate.now().toString())
                     selected = Surface.ADD
                 },
+                onDeleteEntry = onDeleteEntry,
                 onHideWidgetAmounts = onHideWidgetAmounts,
                 pluginRows = pluginRows,
                 pluginSafeMode = pluginSafeMode,
@@ -1238,6 +1243,7 @@ private fun SurfaceContent(
     prefill: TransactionDraft? = null,
     onPrefillApplied: () -> Unit = {},
     onEnterAgain: (JournalEntry) -> Unit = {},
+    onDeleteEntry: (JournalEntry) -> Unit = {},
     onHideWidgetAmounts: (Boolean) -> Unit,
     pluginRows: List<dev.beancount.app.plugins.PluginRow>,
     pluginSafeMode: Boolean,
@@ -1552,6 +1558,7 @@ private fun SurfaceContent(
                             entry = entry,
                             onClone = { onEnterAgain(entry); openEntry = null },
                             onClose = { openEntry = null },
+                            onDelete = { onDeleteEntry(entry); openEntry = null },
                             modifier = Modifier.padding(padding),
                         )
                     }
