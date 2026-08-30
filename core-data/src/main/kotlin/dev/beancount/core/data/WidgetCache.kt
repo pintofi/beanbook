@@ -2,6 +2,7 @@ package dev.beancount.core.data
 
 import dev.beancount.core.domain.Amount
 import dev.beancount.core.domain.LedgerSnapshot
+import dev.beancount.core.domain.LedgerSummary
 import java.io.File
 import java.math.BigDecimal
 
@@ -153,12 +154,14 @@ class WidgetCache(stateDir: File) {
             nowEpochMs: Long,
             accounts: Collection<String> = ledger.accounts.map { it.name },
         ): WidgetSnapshot {
+            // One definition of these three, shared with the home surface (B10).
+            val summary = LedgerSummary.of(ledger)
             val wanted = accounts.toSet()
             // An account with no positions has nothing to show, and a widget saying nothing
             // is worse than one the user never added.
             val balances = ledger.accounts
                 .filter { it.name in wanted }
-                .mapNotNull { account -> format(account.positions)?.let { account.name to it } }
+                .mapNotNull { account -> LedgerSummary.format(account.positions)?.let { account.name to it } }
                 .toMap()
 
             return WidgetSnapshot(
@@ -169,11 +172,9 @@ class WidgetCache(stateDir: File) {
                 // Assets *plus* liabilities, not minus: Beancount already stores what you
                 // owe as a negative balance. Negating it made debt increase net worth, which
                 // is the most cheerful possible way to be wrong about someone's finances.
-                netWorth = format(
-                    sumByCurrency(ledger.totalFor("Assets") + ledger.totalFor("Liabilities")),
-                ),
-                periodIncome = format(sumByCurrency(negated(ledger.totalFor("Income")))),
-                periodExpense = format(sumByCurrency(ledger.totalFor("Expenses"))),
+                netWorth = summary.netWorth,
+                periodIncome = summary.income,
+                periodExpense = summary.expenses,
                 clean = ledger.errors.isEmpty(),
                 entitled = entitled,
             )
@@ -184,33 +185,6 @@ class WidgetCache(stateDir: File) {
          * headed "Income" showing a minus sign would be technically right and useless, so it
          * is flipped once, here, where the reason can be written down.
          */
-        private fun negated(amounts: List<Amount>): List<Amount> =
-            amounts.map { Amount(it.number.negate(), it.currency) }
 
-        /**
-         * Adds amounts of the same currency together.
-         *
-         * Two lists of totals concatenate rather than add, so net worth came out as
-         * "1240.00 USD  300.00 USD" — two numbers side by side, which reads as a total and
-         * is not one. Currencies are never mixed: a ledger in two currencies gets two
-         * figures, because adding them would require a rate this app does not have.
-         */
-        private fun sumByCurrency(amounts: List<Amount>): List<Amount> =
-            amounts.groupBy { it.currency }
-                .map { (currency, values) ->
-                    Amount(values.fold(BigDecimal.ZERO) { total, a -> total + a.number }, currency)
-                }
-                .sortedBy { it.currency }
-
-        private fun format(amounts: List<Amount>): String? {
-            val shown = amounts.filter { it.number.compareTo(BigDecimal.ZERO) != 0 }
-                .ifEmpty { amounts.take(1) }
-            if (shown.isEmpty()) return null
-            // One currency per line. Joined with two spaces, a multi-currency figure became a
-            // run-on inside a widget's single TextView -- "1240.00 USD  567.00 EUR" a few
-            // centimetres wide, which is unreadable at the glance a widget gets (B3). The
-            // period widget has always used a newline for the same reason.
-            return shown.joinToString("\n") { "${it.number.toPlainString()} ${it.currency}" }
-        }
     }
 }
