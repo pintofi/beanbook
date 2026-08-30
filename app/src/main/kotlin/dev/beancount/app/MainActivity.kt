@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.beancount.app.engine.LedgerState
 import dev.beancount.app.engine.RecoveryOnStart
+import dev.beancount.app.ui.HomeScreen
 import dev.beancount.app.ui.BalancesScreen
 import dev.beancount.app.ui.JournalScreen
 import dev.beancount.app.ui.OnboardingScreen
@@ -827,6 +828,7 @@ class RemoteReports(
 
 
 private enum class Surface(val label: String) {
+    HOME("Home"),
     ADD("Add"),
     JOURNAL("Journal"),
     BALANCES("Balances"),
@@ -949,7 +951,7 @@ internal fun LedgerApp(
     // Seeded from the widget that launched the app, when one did. Keyed on `openOn` so a
     // second widget tap while the app is already alive still lands where it asked.
     var selected by remember(openOn) {
-        mutableStateOf(Surface.entries.firstOrNull { it.name == openOn } ?: Surface.JOURNAL)
+        mutableStateOf(Surface.entries.firstOrNull { it.name == openOn } ?: Surface.HOME)
     }
     var showContribute by remember { mutableStateOf(false) }
 
@@ -964,8 +966,8 @@ internal fun LedgerApp(
     // top-level destination, and what predictive back animates against.
     BackHandler(enabled = moreSection != null) { moreSection = null }
     BackHandler(enabled = moreSection == null && showContribute) { showContribute = false }
-    BackHandler(enabled = moreSection == null && !showContribute && selected != Surface.JOURNAL) {
-        selected = Surface.JOURNAL
+    BackHandler(enabled = moreSection == null && !showContribute && selected != Surface.HOME) {
+        selected = Surface.HOME
     }
 
     // Breakpoints from docs/ux.md §7. Measured from the window, not the device: a phone in
@@ -1273,6 +1275,8 @@ private fun SurfaceContent(
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
     run {
         when (selected) {
+            Surface.HOME -> HomeScreen(ledger = ledger, hideAmounts = hideWidgetAmounts)
+
             Surface.ADD -> {
                 // Entry is free, always: adding entries is never gated
                 // (docs/distribution.md 4.4).

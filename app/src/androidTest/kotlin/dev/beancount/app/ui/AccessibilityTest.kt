@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import dev.beancount.app.ui.HomeScreen
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -209,6 +210,75 @@ class AccessibilityTest {
      * writing a copy somewhere, or deleting it. "Delete" alone, announced without the project
      * it would delete, is the worst label in the app.
      */
+    /**
+     * The home surface, which is the first thing anybody sees (B10).
+     *
+     * Each figure carries one description covering its label and its value, so a screen
+     * reader says "Net worth, 940.00 USD" rather than reading a caption and a number as two
+     * unrelated things. The hidden-amounts case is checked too: the point of that preference
+     * is that the figure is not readable, and a description that still spelled it out would
+     * defeat it on the surface where it matters most.
+     */
+    @Test fun homeScreenIsLabelledAndFitsAtDoubleFontScale() {
+        render(widthDp = 320, fontScale = 2f) {
+            HomeScreen(ledger = homeLedger(), hideAmounts = false)
+        }
+
+        listOf("Net worth: 940.00 USD", "Income: 3000.00 USD", "Expenses: 262.00 USD")
+            .forEach { compose.onNodeWithContentDescription(it).performScrollTo().assertExists() }
+        assertAccessible()
+    }
+
+    @Test fun homeScreenHidesAmountsWhenAsked() {
+        render(widthDp = 320, fontScale = 1f) {
+            HomeScreen(ledger = homeLedger(), hideAmounts = true)
+        }
+
+        compose.onNodeWithContentDescription("Net worth: •••").performScrollTo().assertExists()
+        assertAccessible()
+    }
+
+    private fun homeLedger() = dev.beancount.core.domain.LedgerSnapshot(
+        title = "Household",
+        operatingCurrencies = listOf("USD"),
+        entryCount = 3,
+        entryCounts = mapOf("Transaction" to 1),
+        accounts = listOf(
+            dev.beancount.core.domain.AccountBalance(
+                "Assets:Bank",
+                listOf(dev.beancount.core.domain.Amount(java.math.BigDecimal("1240.00"), "USD")),
+            ),
+            dev.beancount.core.domain.AccountBalance(
+                "Liabilities:Card",
+                listOf(dev.beancount.core.domain.Amount(java.math.BigDecimal("-300.00"), "USD")),
+            ),
+            dev.beancount.core.domain.AccountBalance(
+                "Income:Salary",
+                listOf(dev.beancount.core.domain.Amount(java.math.BigDecimal("-3000.00"), "USD")),
+            ),
+            dev.beancount.core.domain.AccountBalance(
+                "Expenses:Food",
+                listOf(dev.beancount.core.domain.Amount(java.math.BigDecimal("262.00"), "USD")),
+            ),
+        ),
+        journal = listOf(
+            dev.beancount.core.domain.JournalEntry(
+                date = "2026-02-01",
+                flag = "*",
+                payee = "Shop",
+                narration = "coffee",
+                tags = emptyList(),
+                links = emptyList(),
+                postings = emptyList(),
+                file = null,
+                line = null,
+            ),
+        ),
+        errors = emptyList(),
+        includedFiles = emptyList(),
+        loadMillis = 0,
+    )
+
     @Test fun projectPickerIsLabelledAndFitsAtDoubleFontScale() {
         val project = dev.beancount.core.data.ProjectSummary(
             id = "household",

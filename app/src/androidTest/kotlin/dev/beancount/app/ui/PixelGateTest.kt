@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import dev.beancount.app.ui.HomeScreen
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -119,6 +120,38 @@ class PixelGateTest {
     }
 
     // ---- the gate finds nothing wrong with correct screens ---------------------------------
+
+    /** The home surface, at the width and font size where cards stop fitting. */
+    @Test fun homeScreenFitsItsBounds() {
+        render {
+            HomeScreen(
+                ledger = dev.beancount.core.domain.LedgerSnapshot(
+                    title = "Household",
+                    operatingCurrencies = listOf("USD"),
+                    entryCount = 1,
+                    entryCounts = mapOf("Transaction" to 1),
+                    accounts = listOf(
+                        dev.beancount.core.domain.AccountBalance(
+                            "Assets:Bank",
+                            listOf(
+                                dev.beancount.core.domain.Amount(
+                                    java.math.BigDecimal("1240.00"), "USD",
+                                ),
+                            ),
+                        ),
+                    ),
+                    journal = emptyList(),
+                    errors = emptyList(),
+                    includedFiles = emptyList(),
+                    loadMillis = 0,
+                ),
+                hideAmounts = false,
+            )
+        }
+
+        val problems = check()
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
 
     @Test fun theAppearanceScreenDrawsNothingInItsSideMargins() {
         render {
