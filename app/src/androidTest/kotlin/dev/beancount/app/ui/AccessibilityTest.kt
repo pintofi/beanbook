@@ -193,6 +193,7 @@ class AccessibilityTest {
                 onRemovePage = {},
                 onSave = {},
                 onDiscard = {},
+                onRefile = { _, _ -> },
                 onUnlink = {},
                 onDeleteFile = {},
                 onShare = {},
@@ -200,13 +201,28 @@ class AccessibilityTest {
             )
         }
 
+        // The screen has two tabs and each must be checked in its own right: the page
+        // controls live in Add, the per-document ones in Organize, and asserting them all
+        // against whichever tab happens to open would quietly stop checking one of them.
         listOf(
             "Rotate page 1",
             "Move page 2 up",
             "Remove page 1",
-            "Share documents/Assets/Cash/2026-08-24.abcdef123456.pdf",
-            "Unlink documents/Assets/Cash/2026-08-24.abcdef123456.pdf from its entry",
-            "Delete the file documents/Assets/Cash/2026-08-24.abcdef123456.pdf",
+        ).forEach { label ->
+            compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
+        }
+        assertAccessible()
+
+        // Scrolled to first: the assertions above leave the column scrolled past the tabs,
+        // and a click on an off-screen node lands outside the viewport and does nothing --
+        // which looked like a passing check of a tab that had never been opened.
+        compose.onNodeWithText("Organize").performScrollTo().performClick()
+        val doc = "documents/Assets/Cash/2026-08-24.abcdef123456.pdf"
+        listOf(
+            "Share $doc",
+            "File $doc under a different account",
+            "Unlink $doc from its entry",
+            "Delete the file $doc",
         ).forEach { label ->
             compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
         }

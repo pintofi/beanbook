@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
@@ -30,6 +32,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,10 +44,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import dev.beancount.core.domain.BeancountText
 import dev.beancount.core.domain.CapturedPages
 import dev.beancount.core.domain.DocumentRemoval
 import dev.beancount.core.domain.LedgerVocabulary
 import java.io.File
+
+/** The two jobs the documents screen does, kept apart so neither is in the other's way. */
+enum class DocumentsMode(val label: String) {
+    ADD("Add"),
+    ORGANIZE("Organize"),
+}
 
 /**
  * Attach a document: photograph the pages, put them in order, and file them against an
@@ -66,6 +76,7 @@ fun DocumentsScreen(
     onRemovePage: (Int) -> Unit,
     onSave: (String) -> Unit,
     onDiscard: () -> Unit,
+    onRefile: (String, String) -> Unit,
     onUnlink: (String) -> Unit,
     onDeleteFile: (String) -> Unit,
     onShare: (String) -> Unit,
@@ -82,6 +93,8 @@ fun DocumentsScreen(
     }
     var granted by remember(hasCamera) { mutableStateOf(hasCamera) }
     var pendingRemoval by remember { mutableStateOf<Pair<String, DocumentRemoval>?>(null) }
+    var mode by rememberSaveable { mutableStateOf(DocumentsMode.ADD) }
+    var refiling by remember { mutableStateOf<String?>(null) }
 
     val askForCamera = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -91,6 +104,20 @@ fun DocumentsScreen(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Two jobs, kept apart. Beyond being what the user asked for, it is what keeps the
+        // camera unbound while somebody is only tidying up: CameraPane below is reached only
+        // in ADD, so ORGANIZE never opens the device.
+        TabRow(selectedTabIndex = mode.ordinal) {
+            DocumentsMode.entries.forEach { entry ->
+                Tab(
+                    selected = mode == entry,
+                    onClick = { mode = entry },
+                    text = { Text(entry.label) },
+                )
+            }
+        }
+
+        if (mode == DocumentsMode.ADD) {
         Text("Attach a document", style = MaterialTheme.typography.titleMedium)
 
         if (!granted) {
@@ -167,11 +194,18 @@ fun DocumentsScreen(
 
             TextButton(onClick = onDiscard) { Text("Discard these pages") }
         }
+        } // end ADD
 
         message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
 
-        if (documents.isNotEmpty()) {
-            HorizontalDivider()
+        if (mode == DocumentsMode.ORGANIZE && documents.isEmpty()) {
+            Text(
+                "No documents yet. Add one from the other tab and it will be listed here.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+
+        if (mode == DocumentsMode.ORGANIZE && documents.isNotEmpty()) {
             Text("Documents in this project", style = MaterialTheme.typography.titleSmall)
             documents.forEach { path ->
                 Card(Modifier.fillMaxWidth()) {
@@ -186,6 +220,12 @@ fun DocumentsScreen(
                             ) { Text("Share") }
                             // Two separate actions, deliberately worded differently: one
                             // removes the reference, the other removes the file.
+                            TextButton(
+                                onClick = { refiling = path },
+                                modifier = Modifier.semantics {
+                                    contentDescription = "File $path under a different account"
+                                },
+                            ) { Text("Refile") }
                             TextButton(
                                 onClick = { pendingRemoval = path to DocumentRemoval.UNLINK },
                                 modifier = Modifier.semantics {
@@ -203,6 +243,42 @@ fun DocumentsScreen(
                 }
             }
         }
+    }
+
+    refiling?.let { path ->
+        // The account is typed into the dialog rather than chosen from a list, because a
+        // ledger's accounts are not a short list and the same field elsewhere in the app
+        // works this way. Suggestions narrow it as the user types.
+        var target by remember(path) { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { refiling = null },
+            title = { Text("Refile document") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(path, style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        value = target,
+                        onValueChange = { target = it },
+                        label = { Text("File under account") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Suggestions(vocabulary.accountsMatching(target), "account") { target = it }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onRefile(path, target.trim())
+                        refiling = null
+                    },
+                    // An account it is not would be written, fail the re-parse and roll back.
+                    // Refusing it here says so before the user waits for that.
+                    enabled = BeancountText.ACCOUNT.matches(target.trim()),
+                ) { Text("Refile") }
+            },
+            dismissButton = { TextButton(onClick = { refiling = null }) { Text("Cancel") } },
+        )
     }
 
     pendingRemoval?.let { (path, removal) ->

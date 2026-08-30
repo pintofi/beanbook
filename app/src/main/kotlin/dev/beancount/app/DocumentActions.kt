@@ -57,20 +57,28 @@ internal fun MainActivity.attachDocument(app: BeancountApplication, projectId: S
  * through the ordinary protocol, so an unlink is snapshotted and undoable like any other
  * edit. The PDF stays exactly where it was.
  */
+/**
+ * The ledger file holding a real `document` directive, and [rewrite]'s result for it.
+ *
+ * [rewrite] returns `null` for a file with no such directive, which is what makes this
+ * narrow: a file merely *mentioning* the path -- in a comment, or in a transaction's own
+ * `document:` metadata -- is not a match, and rewriting it would be the R2 defect again.
+ *
+ * Shared by unlinking and refiling because both must agree on which file to touch. A ledger
+ * split by `include` may have many, and picking a different one for each operation would
+ * unlink from one file what had been refiled in another.
+ */
+private fun findDocumentDirective(projectDir: File, rewrite: (String) -> String?): Pair<File, String>? =
+    projectDir.walkTopDown()
+        .filter { it.isFile && (it.extension == "beancount" || it.extension == "bean") }
+        .mapNotNull { file -> rewrite(file.readText())?.let { file to it } }
+        .firstOrNull()
+
 internal fun MainActivity.unlinkDocument(app: BeancountApplication, projectId: String, path: String) {
     lifecycleScope.launch {
-        val projectDir = app.workspace.projectDir(projectId)
-        val candidates = projectDir.walkTopDown()
-            .filter { it.isFile && (it.extension == "beancount" || it.extension == "bean") }
-            .toList()
-
-        // The file holding an actual `document` directive for this path -- not merely one
-        // that mentions the path somewhere, which would match a comment or a transaction's
-        // own `document:` metadata.
-        val holder = candidates.asSequence()
-            .map { it to dev.beancount.core.domain.BeancountText
-                .removeDocumentDirective(it.readText(), path) }
-            .firstOrNull { (_, rewritten) -> rewritten != null }
+        val holder = findDocumentDirective(app.workspace.projectDir(projectId)) {
+            dev.beancount.core.domain.BeancountText.removeDocumentDirective(it, path)
+        }
         if (holder == null) {
             saveMessage = "Nothing in the ledger links to $path."
             return@launch
@@ -81,7 +89,7 @@ internal fun MainActivity.unlinkDocument(app: BeancountApplication, projectId: S
             projectId = projectId,
             file = file,
             expectedSha = dev.beancount.core.data.WriteJournal.sha256(file),
-            newContent = rewritten!!,
+            newContent = rewritten,
             operation = "unlink-document",
         )
         saveMessage = when (result) {
@@ -90,6 +98,47 @@ internal fun MainActivity.unlinkDocument(app: BeancountApplication, projectId: S
             is dev.beancount.core.data.WriteResult.RolledBack ->
                 "Not unlinked: ${result.reason}. Your ledger is unchanged."
             is dev.beancount.core.data.WriteResult.Refused -> "Not unlinked: ${result.reason}"
+        }
+        app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
+    }
+}
+
+/**
+ * Files an already-attached document under a different account (B18).
+ *
+ * A refile is one directive rewritten in place, not an unlink followed by an attach: the
+ * two-step version would leave the document unreferenced between the writes, and a failure
+ * of the second would lose the link entirely rather than leave it where it was.
+ */
+internal fun MainActivity.refileDocument(
+    app: BeancountApplication,
+    projectId: String,
+    path: String,
+    newAccount: String,
+) {
+    lifecycleScope.launch {
+        val holder = findDocumentDirective(app.workspace.projectDir(projectId)) {
+            runCatching {
+                dev.beancount.core.domain.BeancountText.refileDocument(it, path, newAccount)
+            }.getOrNull()
+        }
+        if (holder == null) {
+            saveMessage = "Nothing in the ledger files $path, or $newAccount is not an account."
+            return@launch
+        }
+        val (file, rewritten) = holder
+        val result = app.writer.replace(
+            projectId = projectId,
+            file = file,
+            expectedSha = dev.beancount.core.data.WriteJournal.sha256(file),
+            newContent = rewritten,
+            operation = "refile-document",
+        )
+        saveMessage = when (result) {
+            is dev.beancount.core.data.WriteResult.Committed -> "Filed $path under $newAccount."
+            is dev.beancount.core.data.WriteResult.RolledBack ->
+                "Not refiled: ${result.reason}. Your ledger is unchanged."
+            is dev.beancount.core.data.WriteResult.Refused -> "Not refiled: ${result.reason}"
         }
         app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
     }
