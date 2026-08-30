@@ -1597,10 +1597,14 @@ private fun SurfaceContent(
                     LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
                 } else {
                     if (token != null) installSessionToken(serving.origin, token)
-                    var report by remember { mutableStateOf(ReportPath.INCOME_STATEMENT) }
+                    // Starts at the ledger's own index so Fava serves whatever the file's
+                    // default-page option asks for; picking a report from the list overrides
+                    // it from then on (B19).
+                    var report by remember { mutableStateOf(ReportPath.LEDGER_DEFAULT) }
                     val web: @Composable () -> Unit = {
                         FavaWebView(
-                            url = "${serving.origin}/${serving.ledgerSlug}/${report.path}/",
+                            url = "${serving.origin}/${serving.ledgerSlug}/${report.path}"
+                                .trimEnd('/') + "/",
                             allowlist = OriginAllowlist(setOf(serving.origin)),
                             modifier = Modifier.fillMaxSize(),
                             debuggingAllowed = debuggingAllowed,

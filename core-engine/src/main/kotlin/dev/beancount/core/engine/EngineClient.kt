@@ -62,6 +62,16 @@ sealed interface EngineStatus {
 
 /** Report routes we address by name instead of by hand-built URL. */
 enum class ReportPath(val path: String) {
+    /**
+     * The ledger's own index, which Fava redirects to whatever the file asks for (B19).
+     *
+     * Beancount files can set `custom "fava-option" "default-page"`, and Fava's
+     * `application.py` already honours it on the index route. Requesting a named report
+     * instead of the index is what stopped that working, so the fix is to ask for nothing
+     * and let Fava answer — rather than parsing the option ourselves and having two places
+     * that disagree about what the ledger asked for.
+     */
+    LEDGER_DEFAULT(""),
     INCOME_STATEMENT("income_statement"),
     BALANCE_SHEET("balance_sheet"),
     TRIAL_BALANCE("trial_balance"),
