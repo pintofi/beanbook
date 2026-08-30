@@ -268,7 +268,7 @@ class MainActivity : ComponentActivity() {
      * possibly before the project it names was deleted. `WidgetLink` checks the id against
      * the projects that exist rather than taking the intent's word for it.
      */
-    private fun widgetTarget(app: BeancountApplication): String? {
+    private fun widgetTarget(app: BeancountApplication): dev.beancount.core.data.WidgetLink.Target? {
         val requested = intent?.getStringExtra(
             dev.beancount.app.widget.WidgetRenderer.EXTRA_PROJECT,
         ) ?: return null
@@ -279,8 +279,17 @@ class MainActivity : ComponentActivity() {
             ),
             knownProjects = app.projectsState.projects.value.map { it.id },
             activeProject = app.projectsState.activeId.value,
-        )?.projectId
+        )
     }
+
+    /**
+     * Which surface a widget asked the app to open on, if it was launched by one.
+     *
+     * `WidgetLink.resolve` has always returned this and the caller has always thrown it away
+     * by taking `.projectId`, so the add-entry widget -- which correctly sends `ADD` -- landed
+     * on whatever the app opens by default (B2).
+     */
+    private var requestedSurface: String? by mutableStateOf(null)
 
     private fun openProject(app: BeancountApplication, projectId: String) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
@@ -378,7 +387,7 @@ class MainActivity : ComponentActivity() {
             // Debug-only: begin a write and stall before committing, so a process kill
             // can be timed to land mid-write (docs/milestones/m4.md, process-death test).
             val stall = intent.getStringExtra("m4_test")
-            val active = widgetTarget(app) ?: app.projectsState.activeId.value
+            val active = widgetTarget(app)?.projectId ?: app.projectsState.activeId.value
             if (BuildConfig.DEBUG && active != null && stall != null &&
                 stall.startsWith("stall_mid_write")
             ) {
@@ -393,6 +402,8 @@ class MainActivity : ComponentActivity() {
                 stallMidPluginLoad(app, active)
             }
         }
+
+        requestedSurface = widgetTarget(app)?.surface
 
         setContent {
             val themeChoice by app.themeSettings.choice.collectAsStateWithLifecycle()
@@ -463,6 +474,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     LedgerApp(
+                        openOn = requestedSurface,
                         engineStatus = engineStatus,
                         ledger = ledger,
                         editionName = app.pluginPolicy.name,
@@ -831,6 +843,8 @@ internal fun LedgerApp(
     editionName: String,
     entitlement: Entitlement,
     token: String?,
+    /** The surface a launching widget asked for, if any (B2). */
+    openOn: String? = null,
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
     onSaveEntry: (TransactionDraft) -> Unit,
@@ -931,7 +945,11 @@ internal fun LedgerApp(
     onDiscardDraft: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var selected by remember { mutableStateOf(Surface.JOURNAL) }
+    // Seeded from the widget that launched the app, when one did. Keyed on `openOn` so a
+    // second widget tap while the app is already alive still lands where it asked.
+    var selected by remember(openOn) {
+        mutableStateOf(Surface.entries.firstOrNull { it.name == openOn } ?: Surface.JOURNAL)
+    }
     var showContribute by remember { mutableStateOf(false) }
 
     // null means "show the list of sections". Hoisted out of the More branch so the app bar
