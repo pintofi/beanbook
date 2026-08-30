@@ -87,7 +87,10 @@ class WidgetCacheTest {
 
         val snapshot = WidgetCache.from("my-ledger", multi, entitled = true, nowEpochMs = 0)
 
-        assertEquals("50.00 EUR  100.00 USD", snapshot.netWorth)
+        // One per line since B3: the property under test is that they are not added
+        // together, which is unchanged. Only the separator moved, because two spaces made a
+        // multi-currency figure a run-on inside a widget's single TextView.
+        assertEquals("50.00 EUR\n100.00 USD", snapshot.netWorth)
     }
 
     @Test

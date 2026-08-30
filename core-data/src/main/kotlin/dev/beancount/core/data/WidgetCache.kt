@@ -60,6 +60,27 @@ data class WidgetSnapshot(
         },
     )
 
+    /**
+     * The account the balance widget shows, and its formatted figure.
+     *
+     * Deterministic, and never an arbitrary map entry: the widget used to take
+     * `balances.entries.firstOrNull()`, which could name a different account between
+     * refreshes and was rendered with no account name at all, so the number meant nothing
+     * (B1).
+     *
+     * Assets first, because a balance somebody puts on a home screen is nearly always a bank
+     * account, then alphabetically. A ledger with no asset accounts still shows something
+     * rather than an em dash.
+     *
+     * This is a default, not a preference. Choosing the account per widget needs a
+     * configuration activity, which does not exist yet.
+     */
+    val primaryBalance: Pair<String, String>?
+        get() = balances.entries
+            .sortedWith(compareBy({ if (it.key.startsWith("Assets")) 0 else 1 }, { it.key }))
+            .firstOrNull()
+            ?.let { it.key to it.value }
+
     companion object {
         /** Six hours. Long enough that an untouched ledger is not nagging about itself. */
         const val DEFAULT_MAX_AGE_MS = 6L * 60 * 60 * 1000
@@ -185,7 +206,11 @@ class WidgetCache(stateDir: File) {
             val shown = amounts.filter { it.number.compareTo(BigDecimal.ZERO) != 0 }
                 .ifEmpty { amounts.take(1) }
             if (shown.isEmpty()) return null
-            return shown.joinToString("  ") { "${it.number.toPlainString()} ${it.currency}" }
+            // One currency per line. Joined with two spaces, a multi-currency figure became a
+            // run-on inside a widget's single TextView -- "1240.00 USD  567.00 EUR" a few
+            // centimetres wide, which is unreadable at the glance a widget gets (B3). The
+            // period widget has always used a newline for the same reason.
+            return shown.joinToString("\n") { "${it.number.toPlainString()} ${it.currency}" }
         }
     }
 }
