@@ -42,10 +42,18 @@ import dev.beancount.core.domain.TransactionDraft
 import java.math.BigDecimal
 import java.time.LocalDate
 
-/** One editable posting row. Empty amount means elided — Beancount works it out. */
-private class PostingRow(account: String = "", amount: String = "") {
+/**
+ * One editable posting row. Empty amount means elided — Beancount works it out.
+ *
+ * [currency] is per posting, blank meaning "the transaction's". A single currency for the
+ * whole transaction could not express a currency exchange or a foreign-card purchase, which
+ * are ordinary things to want to record (B4). Blank rather than a copy of the default, so
+ * changing the transaction's currency still moves every posting that never disagreed.
+ */
+private class PostingRow(account: String = "", amount: String = "", currency: String = "") {
     var account by mutableStateOf(account)
     var amount by mutableStateOf(amount)
+    var currency by mutableStateOf(currency)
 }
 
 /**
@@ -74,7 +82,9 @@ fun QuickAddScreen(
     var date by remember { mutableStateOf(today.toString()) }
     var payee by remember { mutableStateOf("") }
     var narration by remember { mutableStateOf("") }
-    var currency by remember { mutableStateOf(vocabulary.currencies.firstOrNull() ?: "USD") }
+    var currency by remember {
+        mutableStateOf(vocabulary.defaultCurrency ?: vocabulary.currencies.firstOrNull() ?: "USD")
+    }
 
     val rows = remember {
         mutableStateListOf(
@@ -93,7 +103,8 @@ fun QuickAddScreen(
             PostingDraft(
                 account = row.account.trim(),
                 amount = row.amount.trim().takeIf { it.isNotBlank() }?.let { value ->
-                    runCatching { Amount(BigDecimal(value), currency.trim()) }.getOrNull()
+                    val denomination = row.currency.trim().ifBlank { currency.trim() }
+                    runCatching { Amount(BigDecimal(value), denomination) }.getOrNull()
                 },
             )
         },
@@ -132,10 +143,14 @@ fun QuickAddScreen(
             draft.postings.firstOrNull()?.amount?.currency?.let { currency = it }
             rows.clear()
             draft.postings.forEach { posting ->
+                // Each posting keeps its own currency, so cloning a multi-currency entry
+                // does not quietly redenominate half of it into the transaction's default.
+                val denomination = posting.amount?.currency.orEmpty()
                 rows.add(
                     PostingRow(
                         posting.account,
                         posting.amount?.number?.toPlainString().orEmpty(),
+                        if (denomination == currency) "" else denomination,
                     )
                 )
             }
@@ -227,6 +242,8 @@ fun QuickAddScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+        // Every commodity the ledger declares or holds, matched like any other field (B6).
+        Suggestions(vocabulary.currenciesMatching(currency), "currency") { currency = it }
 
         Text("Postings", style = MaterialTheme.typography.titleSmall)
 
@@ -256,6 +273,18 @@ fun QuickAddScreen(
                         modifier = fieldModifier,
                     )
                 }
+                val currencyField: @Composable (Modifier) -> Unit = { fieldModifier ->
+                    OutlinedTextField(
+                        value = row.currency,
+                        onValueChange = { row.currency = it.uppercase() },
+                        label = { Text("Cur.") },
+                        placeholder = { Text(currency) },
+                        singleLine = true,
+                        modifier = fieldModifier.semantics {
+                            contentDescription = "Currency for posting ${index + 1}"
+                        },
+                    )
+                }
                 val removeButton: @Composable () -> Unit = {
                     if (rows.size > 2) {
                         TextButton(
@@ -273,7 +302,8 @@ fun QuickAddScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        amountField(Modifier.weight(1f))
+                        amountField(Modifier.weight(2f))
+                        currencyField(Modifier.weight(1f))
                         removeButton()
                     }
                 } else {
@@ -281,8 +311,9 @@ fun QuickAddScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        accountField(Modifier.weight(2f))
-                        amountField(Modifier.weight(1f))
+                        accountField(Modifier.weight(3f))
+                        amountField(Modifier.weight(2f))
+                        currencyField(Modifier.weight(1f))
                         removeButton()
                     }
                 }
@@ -388,7 +419,9 @@ internal fun Suggestions(values: List<String>, kind: String, onPick: (String) ->
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        values.take(6).forEach { value ->
+        // No cap: this row scrolls horizontally, so taking six hid matches the vocabulary had
+        // already found rather than saving any space (B7).
+        values.forEach { value ->
             AssistChip(
                 onClick = { onPick(value) },
                 label = { Text(value.substringAfterLast(':')) },

@@ -1512,8 +1512,11 @@ private fun SurfaceContent(
                                     documents = documents,
                                     vocabulary = ledger?.let { LedgerVocabulary.from(it) }
                                         ?: LedgerVocabulary(
-                                            emptyList(), emptyList(), emptyList(),
-                                            emptyList(), emptyList(),
+                                            accounts = emptyList(),
+                                            payees = emptyList(),
+                                            narrations = emptyList(),
+                                            currencies = emptyList(),
+                                            tags = emptyList(),
                                         ),
                                     onCapture = onCapture,
                                     captureFile = captureFile,
