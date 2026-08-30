@@ -103,7 +103,16 @@ class LedgerReader(
         },
         file = optStringOrNull("file"),
         line = if (isNull("line")) null else optInt("line"),
+        metadata = optJSONObject("metadata").toStringMap(),
     )
+
+    /** A flat JSON object as a string map, for metadata the app displays rather than parses. */
+    private fun JSONObject?.toStringMap(): Map<String, String> {
+        if (this == null) return emptyMap()
+        return keys().asSequence().mapNotNull { key ->
+            optStringOrNull(key)?.let { key to it }
+        }.toMap()
+    }
 
     private fun JSONObject.toLedgerError(): LedgerError = LedgerError(
         message = optString("message"),

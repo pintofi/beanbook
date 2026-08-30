@@ -73,10 +73,23 @@ data class JournalEntry(
     val postings: List<JournalPosting>,
     val file: String?,
     val line: Int?,
+    /** The user's own metadata keys. Beancount's bookkeeping is filtered out upstream. */
+    val metadata: Map<String, String> = emptyMap(),
 ) {
     /** What to show as the entry's headline, mirroring how Beancount reads on paper. */
     val description: String
         get() = listOfNotNull(payee, narration).filter { it.isNotBlank() }.joinToString(" · ")
+
+    /**
+     * Documents this entry links to, by the convention `fava.plugins.link_documents` uses
+     * (B17): a `document` metadata key whose value is a path.
+     *
+     * A list because a transaction can carry several, and because the singular key name
+     * would otherwise suggest the app only ever looks at one.
+     */
+    val linkedDocuments: List<String>
+        get() = metadata.filterKeys { it == "document" || it.startsWith("document-") }
+            .values.filter { it.isNotBlank() }.toList()
 }
 
 data class JournalPosting(val account: String, val amount: Amount?)

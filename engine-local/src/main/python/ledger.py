@@ -50,6 +50,16 @@ def _errors_with_plugin_failure(errors: Any, plugin_failure) -> list:
     return out
 
 
+def _meta_str(value) -> str:
+    """A metadata value as text.
+
+    Beancount keeps these typed -- a value can be a Decimal, a date, an Amount or an account
+    string -- and the app shows them rather than computing with them, so one text form here
+    beats every reader guessing at the type across the Binder boundary.
+    """
+    return str(value)
+
+
 def inspect(
     ledger_path: str,
     journal_limit: int = 200,
@@ -152,6 +162,16 @@ def inspect(
                 "links": sorted(entry.links or []),
                 "file": entry.meta.get("filename"),
                 "line": entry.meta.get("lineno"),
+                # The user's own keys only. Beancount keeps its bookkeeping in the same dict
+                # -- filename, lineno, and anything it prefixes with two underscores -- and
+                # showing "__automatic__" to somebody as though they had written it would be
+                # wrong. This is also where `fava.plugins.link_documents` records a linked
+                # receipt, which is what makes offering to open one possible at all (B17).
+                "metadata": {
+                    key: _meta_str(value)
+                    for key, value in (entry.meta or {}).items()
+                    if key not in ("filename", "lineno") and not key.startswith("__")
+                },
                 "postings": [
                     {
                         "account": posting.account,
