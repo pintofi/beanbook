@@ -43,6 +43,7 @@ fun EntryDetailScreen(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     onDelete: (() -> Unit)? = null,
+    onOpenDocument: ((String) -> Unit)? = null,
 ) {
     var confirmingDelete by remember(entry) { mutableStateOf(false) }
     Column(
@@ -85,6 +86,22 @@ fun EntryDetailScreen(
                 )
                 posting.amount?.let { AmountText(it) }
                     ?: Text("(elided)", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        // Documents this entry links to, by the convention link_documents uses. Opening one
+        // is the app's existing share path, so the viewer is whatever the user already has
+        // rather than a PDF renderer built into an accounting app (B17).
+        if (entry.linkedDocuments.isNotEmpty() && onOpenDocument != null) {
+            HorizontalDivider()
+            Text("Documents", style = MaterialTheme.typography.titleSmall)
+            entry.linkedDocuments.forEach { path ->
+                TextButton(
+                    onClick = { onOpenDocument(path) },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Open ${path.substringAfterLast('/')}"
+                    },
+                ) { Text(path.substringAfterLast('/')) }
             }
         }
 

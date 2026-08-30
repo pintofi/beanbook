@@ -246,6 +246,19 @@ private fun JournalRow(entry: JournalEntry, onClick: () -> Unit) {
             entry.flag?.let { Text(it, fontFamily = FontFamily.Monospace) }
         }
         Text(entry.description, style = MaterialTheme.typography.bodyLarge)
+        // Says a receipt is attached without opening anything: the row is a list item, and
+        // the document itself belongs on the detail screen (B17).
+        if (entry.linkedDocuments.isNotEmpty()) {
+            Text(
+                if (entry.linkedDocuments.size == 1) {
+                    "Has a document"
+                } else {
+                    "Has ${entry.linkedDocuments.size} documents"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
         if (entry.tags.isNotEmpty() || entry.links.isNotEmpty()) {
             Text(
                 text = (entry.tags.map { "#$it" } + entry.links.map { "^$it" }).joinToString(" "),

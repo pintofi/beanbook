@@ -1559,6 +1559,7 @@ private fun SurfaceContent(
                             onClone = { onEnterAgain(entry); openEntry = null },
                             onClose = { openEntry = null },
                             onDelete = { onDeleteEntry(entry); openEntry = null },
+                            onOpenDocument = onShareDocument,
                             modifier = Modifier.padding(padding),
                         )
                     }

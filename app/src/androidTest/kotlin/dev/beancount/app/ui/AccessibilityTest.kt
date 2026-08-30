@@ -299,6 +299,28 @@ class AccessibilityTest {
         assertAccessible()
     }
 
+    /** A linked receipt is announced by name, not as "attachment" (B17). */
+    @Test fun aLinkedDocumentIsOfferedByName() {
+        val entry = dev.beancount.core.domain.JournalEntry(
+            date = "2026-02-01", flag = "*", payee = "Shop", narration = "coffee",
+            tags = emptyList(), links = emptyList(), postings = emptyList(),
+            file = "main.beancount", line = 10,
+            metadata = mapOf("document" to "documents/receipt.pdf"),
+        )
+
+        render(widthDp = 320, fontScale = 2f) {
+            EntryDetailScreen(
+                entry = entry,
+                onClone = {},
+                onClose = {},
+                onOpenDocument = {},
+            )
+        }
+
+        compose.onNodeWithContentDescription("Open receipt.pdf").performScrollTo().assertExists()
+        assertAccessible()
+    }
+
     @Test fun anEntryWithNoDeleteHandlerShowsNoDeleteButton() {
         val entry = dev.beancount.core.domain.JournalEntry(
             date = "2026-01-15", flag = "*", payee = "Landlord", narration = null,
