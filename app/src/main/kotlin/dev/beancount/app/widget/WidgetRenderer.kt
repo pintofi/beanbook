@@ -18,7 +18,6 @@ import java.util.Locale
 enum class WidgetMetric(val label: String) {
     BALANCE("Balance"),
     NET_WORTH("Net worth"),
-    PERIOD("In and out"),
     QUICK_ADD("Add an entry"),
 }
 
@@ -78,10 +77,6 @@ object WidgetRenderer {
 
         val value = when (metric) {
             WidgetMetric.NET_WORTH -> snapshot.netWorth
-            WidgetMetric.PERIOD -> listOfNotNull(
-                snapshot.periodIncome?.let { "in  $it" },
-                snapshot.periodExpense?.let { "out $it" },
-            ).joinToString("\n").ifBlank { null }
             WidgetMetric.BALANCE -> snapshot.primaryBalance?.second
             WidgetMetric.QUICK_ADD -> null
         }

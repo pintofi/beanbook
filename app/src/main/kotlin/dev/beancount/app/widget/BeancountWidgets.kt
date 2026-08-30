@@ -57,8 +57,6 @@ class BalanceWidget : MetricWidget(WidgetMetric.BALANCE)
 
 class NetWorthWidget : MetricWidget(WidgetMetric.NET_WORTH)
 
-class PeriodWidget : MetricWidget(WidgetMetric.PERIOD)
-
 class QuickAddWidget : MetricWidget(WidgetMetric.QUICK_ADD)
 
 /**
@@ -72,7 +70,6 @@ object WidgetRefresh {
     private val PROVIDERS = listOf(
         BalanceWidget::class.java,
         NetWorthWidget::class.java,
-        PeriodWidget::class.java,
         QuickAddWidget::class.java,
     )
 

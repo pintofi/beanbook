@@ -133,8 +133,15 @@ Rotation and window resizing never lose editor state (drafts persist).
 
 ## 8. Widgets (Tier 2)
 
-Four widgets: **account balance**, **income/expense for a period**, **net worth /
-selected metric**, **quick add**.
+Three widgets: **account balance**, **net worth / selected metric**, **quick add**.
+
+An income/expense-for-a-period widget was built and removed (B9): two figures in one small
+box read as neither, and the same numbers belong on the home surface where there is room to
+label them. `WidgetSnapshot` still carries them for that reason.
+
+The balance widget names the account it is showing. Which account is a deterministic default
+— assets first, then alphabetically — because choosing it per widget needs a configuration
+activity that does not exist yet.
 
 Behaviour rules:
 

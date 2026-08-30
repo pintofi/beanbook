@@ -7,7 +7,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.beancount.app.widget.BalanceWidget
 import dev.beancount.app.widget.NetWorthWidget
-import dev.beancount.app.widget.PeriodWidget
 import dev.beancount.app.widget.QuickAddWidget
 import dev.beancount.app.widget.WidgetMetric
 import dev.beancount.app.widget.WidgetRenderer
@@ -90,7 +89,7 @@ class WidgetEngineIsolationTest {
         val before = enginePid()
 
         val manager = AppWidgetManager.getInstance(context)
-        listOf(BalanceWidget(), NetWorthWidget(), PeriodWidget(), QuickAddWidget())
+        listOf(BalanceWidget(), NetWorthWidget(), QuickAddWidget())
             .forEach { provider -> provider.onUpdate(context, manager, IntArray(0)) }
 
         // Unchanged, whatever it was. Null before and after is the strong case — nothing was

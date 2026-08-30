@@ -38,8 +38,8 @@ class WidgetHostTest {
 
         // SPEC §8: account balance, income/expense for a period, net worth, quick add.
         assertTrue(
-            "the system lists $declared, which is not the four widgets ux.md 8 specifies",
-            declared.size == 4,
+            "the system lists $declared, which is not the three widgets ux.md 8 specifies",
+            declared.size == 3,
         )
     }
 
