@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import dev.beancount.app.ui.EntryDetailScreen
 import dev.beancount.app.ui.HomeScreen
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -219,6 +220,40 @@ class AccessibilityTest {
      * is that the figure is not readable, and a description that still spelled it out would
      * defeat it on the surface where it matters most.
      */
+    /**
+     * The entry detail, which is where the destructive and duplicating actions live (B11).
+     *
+     * "Enter again" writes nothing by itself, but it is the control that leads to a second
+     * transaction, so it has to say what it does rather than relying on an icon.
+     */
+    @Test fun entryDetailIsLabelledAndFitsAtDoubleFontScale() {
+        val entry = dev.beancount.core.domain.JournalEntry(
+            date = "2026-01-15",
+            flag = "!",
+            payee = "Landlord",
+            narration = "January rent",
+            tags = listOf("housing"),
+            links = emptyList(),
+            postings = listOf(
+                dev.beancount.core.domain.JournalPosting(
+                    "Expenses:Rent",
+                    dev.beancount.core.domain.Amount(java.math.BigDecimal("1200.00"), "USD"),
+                ),
+                dev.beancount.core.domain.JournalPosting("Assets:Bank:Checking", null),
+            ),
+            file = "ledger/main.beancount",
+            line = 42,
+        )
+
+        render(widthDp = 320, fontScale = 2f) {
+            EntryDetailScreen(entry = entry, onClone = {}, onClose = {})
+        }
+
+        compose.onNodeWithContentDescription("Enter this transaction again")
+            .performScrollTo().assertExists()
+        assertAccessible()
+    }
+
     @Test fun homeScreenIsLabelledAndFitsAtDoubleFontScale() {
         render(widthDp = 320, fontScale = 2f) {
             HomeScreen(ledger = homeLedger(), hideAmounts = false)

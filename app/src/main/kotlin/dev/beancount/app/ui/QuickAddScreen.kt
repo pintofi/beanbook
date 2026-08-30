@@ -19,6 +19,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -63,6 +64,9 @@ fun QuickAddScreen(
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
     saveState: String? = null,
+    /** A draft to start from -- an entry being entered again (B11). Applied once. */
+    prefill: TransactionDraft? = null,
+    onPrefillApplied: () -> Unit = {},
     templates: List<EntryTemplate> = emptyList(),
     onSaveTemplate: (EntryTemplate) -> Unit = {},
     onDeleteTemplate: (String) -> Unit = {},
@@ -115,6 +119,27 @@ fun QuickAddScreen(
         rows.clear()
         applied.postings.forEach { posting ->
             rows.add(PostingRow(posting.account, posting.amount?.number?.toPlainString().orEmpty()))
+        }
+    }
+
+    // Applied once, then reported back so re-entering the tab does not silently overwrite
+    // what the user has typed since.
+    LaunchedEffect(prefill) {
+        prefill?.let { draft ->
+            date = draft.date
+            payee = draft.payee.orEmpty()
+            narration = draft.narration.orEmpty()
+            draft.postings.firstOrNull()?.amount?.currency?.let { currency = it }
+            rows.clear()
+            draft.postings.forEach { posting ->
+                rows.add(
+                    PostingRow(
+                        posting.account,
+                        posting.amount?.number?.toPlainString().orEmpty(),
+                    )
+                )
+            }
+            onPrefillApplied()
         }
     }
 

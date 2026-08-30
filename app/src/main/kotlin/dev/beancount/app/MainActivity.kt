@@ -53,6 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.beancount.app.engine.LedgerState
 import dev.beancount.app.engine.RecoveryOnStart
+import dev.beancount.app.ui.EntryDetailScreen
+import dev.beancount.core.domain.JournalEntry
 import dev.beancount.app.ui.HomeScreen
 import dev.beancount.app.ui.BalancesScreen
 import dev.beancount.app.ui.JournalScreen
@@ -955,6 +957,10 @@ internal fun LedgerApp(
     }
     var showContribute by remember { mutableStateOf(false) }
 
+    // An entry being entered again (B11). Held here because applying it means switching to
+    // the Add surface, which this composable owns; cleared once the form has taken it.
+    var pendingClone by remember { mutableStateOf<TransactionDraft?>(null) }
+
     // null means "show the list of sections". Hoisted out of the More branch so the app bar
     // can send the user straight to Projects.
     var moreSection by remember { mutableStateOf<MoreSection?>(null) }
@@ -1112,6 +1118,12 @@ internal fun LedgerApp(
                 onThemeChoice = onThemeChoice,
                 onDynamicColour = onDynamicColour,
                 hideWidgetAmounts = hideWidgetAmounts,
+                prefill = pendingClone,
+                onPrefillApplied = { pendingClone = null },
+                onEnterAgain = { entry ->
+                    pendingClone = TransactionDraft.cloneOf(entry, LocalDate.now().toString())
+                    selected = Surface.ADD
+                },
                 onHideWidgetAmounts = onHideWidgetAmounts,
                 pluginRows = pluginRows,
                 pluginSafeMode = pluginSafeMode,
@@ -1222,6 +1234,10 @@ private fun SurfaceContent(
     onThemeChoice: (dev.beancount.app.ui.theme.ThemeChoice) -> Unit,
     onDynamicColour: (Boolean) -> Unit,
     hideWidgetAmounts: Boolean,
+    /** An entry being entered again, and the way to ask for one (B11). */
+    prefill: TransactionDraft? = null,
+    onPrefillApplied: () -> Unit = {},
+    onEnterAgain: (JournalEntry) -> Unit = {},
     onHideWidgetAmounts: (Boolean) -> Unit,
     pluginRows: List<dev.beancount.app.plugins.PluginRow>,
     pluginSafeMode: Boolean,
@@ -1313,6 +1329,8 @@ private fun SurfaceContent(
                                 vocabulary = LedgerVocabulary.from(ledger),
                                 onSave = onSaveEntry,
                                 saveState = saveState,
+                                prefill = prefill,
+                                onPrefillApplied = onPrefillApplied,
                                 templates = templates,
                                 onSaveTemplate = onSaveTemplate,
                                 onDeleteTemplate = onDeleteTemplate,
@@ -1518,7 +1536,22 @@ private fun SurfaceContent(
                 if (ledger == null) {
                     LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
                 } else if (selected == Surface.JOURNAL) {
-                    JournalScreen(ledger, Modifier.padding(padding))
+                    // The open entry lives here rather than in LedgerApp: it means nothing
+                    // unless the Journal is showing, and its Back behaviour belongs with it.
+                    var openEntry by remember { mutableStateOf<JournalEntry?>(null) }
+                    BackHandler(enabled = openEntry != null) { openEntry = null }
+
+                    val entry = openEntry
+                    if (entry == null) {
+                        JournalScreen(ledger, Modifier.padding(padding)) { openEntry = it }
+                    } else {
+                        EntryDetailScreen(
+                            entry = entry,
+                            onClone = { onEnterAgain(entry); openEntry = null },
+                            onClose = { openEntry = null },
+                            modifier = Modifier.padding(padding),
+                        )
+                    }
                 } else {
                     BalancesScreen(ledger, Modifier.padding(padding))
                 }

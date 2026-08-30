@@ -1,6 +1,7 @@
 package dev.beancount.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,7 +46,7 @@ private fun Amount.accessibleDescription(): String {
 }
 
 @Composable
-private fun AmountText(amount: Amount, modifier: Modifier = Modifier) {
+internal fun AmountText(amount: Amount, modifier: Modifier = Modifier) {
     // The helper below existed from M6 and was never applied, so every amount was announced
     // as its raw text: TalkBack reads "-12.34 USD" by pronouncing the hyphen or dropping it,
     // which is the one thing ux.md 6 says must not happen. detekt found it as dead code
@@ -131,7 +132,11 @@ private fun AccountRow(account: AccountBalance) {
 }
 
 @Composable
-fun JournalScreen(snapshot: LedgerSnapshot, modifier: Modifier = Modifier) {
+fun JournalScreen(
+    snapshot: LedgerSnapshot,
+    modifier: Modifier = Modifier,
+    onOpenEntry: (JournalEntry) -> Unit = {},
+) {
     LazyColumn(modifier = modifier.fillMaxSize()) {
         if (snapshot.hasErrors) {
             item { ErrorBanner(snapshot.errors) }
@@ -146,15 +151,23 @@ fun JournalScreen(snapshot: LedgerSnapshot, modifier: Modifier = Modifier) {
             }
         }
         items(snapshot.journal, key = { "${it.file}:${it.line}" }) { entry ->
-            JournalRow(entry)
+            JournalRow(entry, onClick = { onOpenEntry(entry) })
             HorizontalDivider()
         }
     }
 }
 
 @Composable
-private fun JournalRow(entry: JournalEntry) {
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+private fun JournalRow(entry: JournalEntry, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            // The whole row, not the text inside it: a row that reads as one thing and
+            // responds only where the words happen to be is one people tap twice.
+            .semantics { contentDescription = "${entry.date}, ${entry.description}" }
+            .padding(16.dp),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
