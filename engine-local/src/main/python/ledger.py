@@ -92,8 +92,13 @@ def inspect(
         counts[name] = counts.get(name, 0) + 1
 
     # Account balances, computed the way Beancount does it rather than by hand.
+    from beancount.core import convert
     from beancount.core import inventory as inventory_lib
+    from beancount.core import prices as prices_lib
 
+    # add_position, not add_amount: the latter keeps only the units and throws the cost
+    # basis away before anything can ask for it, so ten shares could be reported but not
+    # what they cost (B14).
     balances: dict[str, inventory_lib.Inventory] = {}
     for entry in entries:
         if isinstance(entry, data.Transaction):
@@ -102,21 +107,36 @@ def inspect(
                     continue
                 balances.setdefault(
                     posting.account, inventory_lib.Inventory()
-                ).add_amount(posting.units)
+                ).add_position(posting)
+
+    # Prices come from the file's own `price` directives. Nothing is fetched and nothing is
+    # inferred: an asset the ledger never priced is reported at cost by Beancount's own
+    # get_value, which is the honest answer rather than an invented one.
+    price_map = prices_lib.build_price_map(entries)
+    as_of = max((entry.date for entry in entries), default=None)
+
+    def _amounts(inventory, reducer):
+        if inventory is None:
+            return []
+        return [
+            {"number": _decimal_str(pos.units.number), "currency": pos.units.currency}
+            for pos in inventory.reduce(reducer)
+        ]
 
     accounts = sorted(getters.get_accounts(entries))
     account_rows = []
     for account in accounts:
         inventory = balances.get(account)
-        positions = (
-            [
-                {"number": _decimal_str(pos.units.number), "currency": pos.units.currency}
-                for pos in inventory.reduce(lambda p: p.units)
-            ]
-            if inventory is not None
-            else []
+        account_rows.append(
+            {
+                "name": account,
+                "positions": _amounts(inventory, convert.get_units),
+                "at_cost": _amounts(inventory, convert.get_cost),
+                "at_value": _amounts(
+                    inventory, lambda pos: convert.get_value(pos, price_map, as_of)
+                ),
+            }
         )
-        account_rows.append({"name": account, "positions": positions})
 
     journal = []
     for entry in entries[-journal_limit:]:

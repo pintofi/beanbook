@@ -2,6 +2,18 @@
   "account_count": 6,
   "accounts": [
     {
+      "at_cost": [
+        {
+          "currency": "EUR",
+          "number": "1850.00"
+        }
+      ],
+      "at_value": [
+        {
+          "currency": "EUR",
+          "number": "1850.00"
+        }
+      ],
       "name": "Assets:Bank:EUR",
       "positions": [
         {
@@ -11,6 +23,18 @@
       ]
     },
     {
+      "at_cost": [
+        {
+          "currency": "USD",
+          "number": "4875.00"
+        }
+      ],
+      "at_value": [
+        {
+          "currency": "USD",
+          "number": "4875.00"
+        }
+      ],
       "name": "Assets:Bank:USD",
       "positions": [
         {
@@ -20,6 +44,18 @@
       ]
     },
     {
+      "at_cost": [
+        {
+          "currency": "USD",
+          "number": "125.00"
+        }
+      ],
+      "at_value": [
+        {
+          "currency": "USD",
+          "number": "137.50"
+        }
+      ],
       "name": "Assets:Invest:ACME",
       "positions": [
         {
@@ -29,6 +65,26 @@
       ]
     },
     {
+      "at_cost": [
+        {
+          "currency": "USD",
+          "number": "-5000.00"
+        },
+        {
+          "currency": "EUR",
+          "number": "-2000.00"
+        }
+      ],
+      "at_value": [
+        {
+          "currency": "USD",
+          "number": "-5000.00"
+        },
+        {
+          "currency": "EUR",
+          "number": "-2000.00"
+        }
+      ],
       "name": "Equity:Opening-Balances",
       "positions": [
         {
@@ -42,6 +98,18 @@
       ]
     },
     {
+      "at_cost": [
+        {
+          "currency": "EUR",
+          "number": "150.00"
+        }
+      ],
+      "at_value": [
+        {
+          "currency": "EUR",
+          "number": "150.00"
+        }
+      ],
       "name": "Expenses:Travel",
       "positions": [
         {
@@ -51,6 +119,8 @@
       ]
     },
     {
+      "at_cost": [],
+      "at_value": [],
       "name": "Income:Salary",
       "positions": []
     }

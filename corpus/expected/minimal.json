@@ -2,6 +2,18 @@
   "account_count": 3,
   "accounts": [
     {
+      "at_cost": [
+        {
+          "currency": "USD",
+          "number": "957.70"
+        }
+      ],
+      "at_value": [
+        {
+          "currency": "USD",
+          "number": "957.70"
+        }
+      ],
       "name": "Assets:Bank:Checking",
       "positions": [
         {
@@ -11,6 +23,18 @@
       ]
     },
     {
+      "at_cost": [
+        {
+          "currency": "USD",
+          "number": "-1000.00"
+        }
+      ],
+      "at_value": [
+        {
+          "currency": "USD",
+          "number": "-1000.00"
+        }
+      ],
       "name": "Equity:Opening-Balances",
       "positions": [
         {
@@ -20,6 +44,18 @@
       ]
     },
     {
+      "at_cost": [
+        {
+          "currency": "USD",
+          "number": "42.30"
+        }
+      ],
+      "at_value": [
+        {
+          "currency": "USD",
+          "number": "42.30"
+        }
+      ],
       "name": "Expenses:Food:Groceries",
       "positions": [
         {

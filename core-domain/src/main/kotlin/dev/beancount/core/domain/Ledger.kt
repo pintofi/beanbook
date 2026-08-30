@@ -41,7 +41,22 @@ data class LedgerSnapshot(
         ).residuals()
 }
 
-data class AccountBalance(val name: String, val positions: List<Amount>) {
+/**
+ * One account's balance, in the three forms a holding actually has (B14).
+ *
+ * Ten shares, what they cost, and what they are worth are three different answers, and a
+ * ledger that can only give the first cannot answer the question people open the app to ask.
+ *
+ * [atValue] falls back to units for a commodity the ledger never priced -- Beancount's own
+ * behaviour, and the honest one: presenting a purchase price as a current valuation would be
+ * wrong every day after the purchase.
+ */
+data class AccountBalance(
+    val name: String,
+    val positions: List<Amount>,
+    val atCost: List<Amount> = positions,
+    val atValue: List<Amount> = positions,
+) {
     /** The last segment, for display in a tree: "Assets:Bank:Checking" -> "Checking". */
     val leaf: String get() = name.substringAfterLast(':')
 
