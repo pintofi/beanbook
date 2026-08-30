@@ -113,14 +113,35 @@ data class TransactionDraft(
         return builder.toString()
     }
 
-    private companion object {
+    companion object {
         // Shared with every other directive type, so escaping cannot drift between them.
-        val DATE = BeancountText.DATE
-        val ACCOUNT = BeancountText.ACCOUNT
-        val TAG = BeancountText.TAG
-        val VALID_FLAGS = setOf("*", "!")
+        private val DATE = BeancountText.DATE
+        private val ACCOUNT = BeancountText.ACCOUNT
+        private val TAG = BeancountText.TAG
+        private val VALID_FLAGS = setOf("*", "!")
 
-        fun quote(value: String): String = BeancountText.quote(value)
+        private fun quote(value: String): String = BeancountText.quote(value)
+
+        /**
+         * An entry already in the ledger, as a draft that can be entered again (B11).
+         *
+         * [today] rather than the entry's own date, and that is the point: a clone is a *new*
+         * transaction -- this month's rent, not a second copy of last month's. Carrying the
+         * original date over would produce a duplicate that looks deliberate, which is the
+         * failure invariant 6 exists to prevent, reached by hand rather than by a retry.
+         *
+         * The flag carries over. `!` means somebody wanted to look at this again, and cloning
+         * it as `*` would quietly assert the copy is settled.
+         */
+        fun cloneOf(entry: JournalEntry, today: String): TransactionDraft = TransactionDraft(
+            date = today,
+            flag = entry.flag?.takeIf { it.isNotBlank() } ?: "*",
+            payee = entry.payee,
+            narration = entry.narration,
+            tags = entry.tags,
+            links = entry.links,
+            postings = entry.postings.map { PostingDraft(it.account, it.amount) },
+        )
     }
 }
 
