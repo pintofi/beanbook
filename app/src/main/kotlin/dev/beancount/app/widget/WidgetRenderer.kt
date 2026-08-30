@@ -42,7 +42,17 @@ object WidgetRenderer {
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_metric)
 
-        views.setTextViewText(R.id.widget_label, metric.label)
+        // The balance widget says *which* account, because an unlabelled figure on a home
+        // screen is not information (B1). Only the leaf: "Checking" fits where
+        // "Assets:Bank:Checking" would be truncated mid-word.
+        val label = if (metric == WidgetMetric.BALANCE) {
+            snapshot?.primaryBalance?.first?.substringAfterLast(':')
+                ?.let { "${metric.label} · $it" }
+                ?: metric.label
+        } else {
+            metric.label
+        }
+        views.setTextViewText(R.id.widget_label, label)
         views.setOnClickPendingIntent(R.id.widget_value, launchIntent(context, snapshot, metric))
 
         if (snapshot == null) {
@@ -72,7 +82,7 @@ object WidgetRenderer {
                 snapshot.periodIncome?.let { "in  $it" },
                 snapshot.periodExpense?.let { "out $it" },
             ).joinToString("\n").ifBlank { null }
-            WidgetMetric.BALANCE -> snapshot.balances.entries.firstOrNull()?.value
+            WidgetMetric.BALANCE -> snapshot.primaryBalance?.second
             WidgetMetric.QUICK_ADD -> null
         }
 
