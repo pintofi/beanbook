@@ -74,10 +74,16 @@ private fun findDocumentDirective(projectDir: File, rewrite: (String) -> String?
         .mapNotNull { file -> rewrite(file.readText())?.let { file to it } }
         .firstOrNull()
 
-internal fun MainActivity.unlinkDocument(app: BeancountApplication, projectId: String, path: String) {
+internal fun MainActivity.unlinkDocument(
+    app: BeancountApplication,
+    projectId: String,
+    path: String,
+    from: String?,
+) {
     lifecycleScope.launch {
         val holder = findDocumentDirective(app.workspace.projectDir(projectId)) {
-            dev.beancount.core.domain.BeancountText.removeDocumentDirective(it, path)
+            dev.beancount.core.domain.BeancountText
+                .removeDocumentDirective(it, path, from = from)
         }
         if (holder == null) {
             saveMessage = "Nothing in the ledger links to $path."
@@ -109,6 +115,9 @@ internal fun MainActivity.unlinkDocument(app: BeancountApplication, projectId: S
  * A refile is one directive rewritten in place, not an unlink followed by an attach: the
  * two-step version would leave the document unreferenced between the writes, and a failure
  * of the second would lose the link entirely rather than leave it where it was.
+ *
+ * [from] is the account it is filed under now, or `null` for a document the ledger does not
+ * refer to yet -- in which case this files it for the first time by writing a directive.
  */
 internal fun MainActivity.refileDocument(
     app: BeancountApplication,
@@ -117,6 +126,27 @@ internal fun MainActivity.refileDocument(
     newAccount: String,
     from: String?,
 ) {
+    // A document nothing refers to yet has no directive to move, so it gets one written.
+    // The alternative -- offering "refile" and failing because there is nothing to refile --
+    // would leave the unfiled state visible but unresolvable from the screen that shows it.
+    if (from == null) {
+        val directive = DirectiveDraft.Document(
+            date = LocalDate.now().toString(),
+            account = newAccount,
+            path = path,
+        )
+        saveText(
+            app,
+            projectId,
+            directive.render(),
+            operation = "file-document",
+            target = app.workspace.mainFile(projectId),
+        ) { outcome ->
+            saveMessage = outcome
+            refreshDocuments(app, projectId)
+        }
+        return
+    }
     lifecycleScope.launch {
         val holder = findDocumentDirective(app.workspace.projectDir(projectId)) {
             runCatching {

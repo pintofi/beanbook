@@ -80,7 +80,7 @@ fun DocumentsScreen(
     onSave: (String) -> Unit,
     onDiscard: () -> Unit,
     onRefile: (String, String, String?) -> Unit,
-    onUnlink: (String) -> Unit,
+    onUnlink: (String, String?) -> Unit,
     onDeleteFile: (String) -> Unit,
     onShare: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -95,7 +95,7 @@ fun DocumentsScreen(
         mutableStateOf(vocabulary.accounts.firstOrNull { it.startsWith("Expenses") }.orEmpty())
     }
     var granted by remember(hasCamera) { mutableStateOf(hasCamera) }
-    var pendingRemoval by remember { mutableStateOf<Pair<String, DocumentRemoval>?>(null) }
+    var pendingRemoval by remember { mutableStateOf<Pair<DocumentRow, DocumentRemoval>?>(null) }
     var mode by rememberSaveable { mutableStateOf(DocumentsMode.ADD) }
     var refiling by remember { mutableStateOf<DocumentRow?>(null) }
     var expanded by remember { mutableStateOf(emptySet<String>()) }
@@ -251,24 +251,39 @@ fun DocumentsScreen(
                             ) { Text("Share") }
                             // Two separate actions, deliberately worded differently: one
                             // removes the reference, the other removes the file.
+                            // "File" and "Refile" are different acts: one gives a document
+                            // its first directive, the other moves the one it has.
+                            val unfiled = row.status == DocumentStatus.UNFILED
                             TextButton(
                                 onClick = { refiling = row },
                                 modifier = Modifier.semantics {
-                                    contentDescription = "File $path under a different account"
+                                    contentDescription = if (unfiled) {
+                                        "File $path under an account"
+                                    } else {
+                                        "File $path under a different account"
+                                    }
                                 },
-                            ) { Text("Refile") }
-                            TextButton(
-                                onClick = { pendingRemoval = path to DocumentRemoval.UNLINK },
-                                modifier = Modifier.semantics {
-                                    contentDescription = "Unlink $path from its entry"
-                                },
-                            ) { Text("Unlink") }
-                            TextButton(
-                                onClick = { pendingRemoval = path to DocumentRemoval.DELETE_FILE },
-                                modifier = Modifier.semantics {
-                                    contentDescription = "Delete the file $path"
-                                },
-                            ) { Text("Delete file") }
+                            ) { Text(if (unfiled) "File" else "Refile") }
+                            // Each removal is offered only where there is something to
+                            // remove: nothing refers to an unfiled document, and a missing
+                            // one has no file left. Showing them anyway would offer an
+                            // action whose only possible outcome is an error.
+                            if (row.status != DocumentStatus.UNFILED) {
+                                TextButton(
+                                    onClick = { pendingRemoval = row to DocumentRemoval.UNLINK },
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Unlink $path from its entry"
+                                    },
+                                ) { Text("Unlink") }
+                            }
+                            if (row.status != DocumentStatus.MISSING) {
+                                TextButton(
+                                    onClick = { pendingRemoval = row to DocumentRemoval.DELETE_FILE },
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Delete the file $path"
+                                    },
+                                ) { Text("Delete file") }
+                            }
                         }
                     }
                 }
@@ -286,7 +301,15 @@ fun DocumentsScreen(
         var target by remember(row) { mutableStateOf(row.account.orEmpty()) }
         AlertDialog(
             onDismissRequest = { refiling = null },
-            title = { Text("Refile document") },
+            title = {
+                Text(
+                    if (row.status == DocumentStatus.UNFILED) {
+                        "File document"
+                    } else {
+                        "Refile document"
+                    },
+                )
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(path, style = MaterialTheme.typography.bodySmall)
@@ -309,13 +332,14 @@ fun DocumentsScreen(
                     // An account it is not would be written, fail the re-parse and roll back.
                     // Refusing it here says so before the user waits for that.
                     enabled = BeancountText.ACCOUNT.matches(target.trim()),
-                ) { Text("Refile") }
+                ) { Text(if (row.status == DocumentStatus.UNFILED) "File" else "Refile") }
             },
             dismissButton = { TextButton(onClick = { refiling = null }) { Text("Cancel") } },
         )
     }
 
-    pendingRemoval?.let { (path, removal) ->
+    pendingRemoval?.let { (row, removal) ->
+        val path = row.path
         AlertDialog(
             onDismissRequest = { pendingRemoval = null },
             title = {
@@ -331,7 +355,7 @@ fun DocumentsScreen(
                 TextButton(
                     onClick = {
                         when (removal) {
-                            DocumentRemoval.UNLINK -> onUnlink(path)
+                            DocumentRemoval.UNLINK -> onUnlink(path, row.account)
                             DocumentRemoval.DELETE_FILE -> onDeleteFile(path)
                         }
                         pendingRemoval = null

@@ -525,7 +525,7 @@ class MainActivity : ComponentActivity() {
                         onRefileDocument = { path, account, from ->
                             refileDocument(app, activeId!!, path, account, from)
                         },
-                        onUnlinkDocument = { path -> unlinkDocument(app, activeId!!, path) },
+                        onUnlinkDocument = { path, from -> unlinkDocument(app, activeId!!, path, from) },
                         onDeleteDocumentFile = { path ->
                             app.documentCapture.deleteFile(activeId!!, path) {
                                 refreshDocuments(app, activeId!!)
@@ -889,7 +889,7 @@ internal fun LedgerApp(
     onSaveDocument: (String) -> Unit,
     onDiscardPages: () -> Unit,
     onRefileDocument: (String, String, String?) -> Unit,
-    onUnlinkDocument: (String) -> Unit,
+    onUnlinkDocument: (String, String?) -> Unit,
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,
     pendingRestore: RestoreStaged.Ready?,
@@ -1215,7 +1215,7 @@ private fun SurfaceContent(
     onSaveDocument: (String) -> Unit,
     onDiscardPages: () -> Unit,
     onRefileDocument: (String, String, String?) -> Unit,
-    onUnlinkDocument: (String) -> Unit,
+    onUnlinkDocument: (String, String?) -> Unit,
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,
     pendingRestore: RestoreStaged.Ready?,

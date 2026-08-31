@@ -193,6 +193,9 @@ class AccessibilityTest {
                         account = "Assets:Cash",
                         date = "2026-08-24",
                     ),
+                    // An unfiled one too: it is offered a different set of actions, and a
+                    // fixture with only filed documents would never exercise that.
+                    DocumentRow(path = "documents/stray.pdf", status = DocumentStatus.UNFILED),
                 ),
                 vocabulary = vocabulary,
                 onCapture = { _, _ -> },
@@ -203,7 +206,7 @@ class AccessibilityTest {
                 onSave = {},
                 onDiscard = {},
                 onRefile = { _, _, _ -> },
-                onUnlink = {},
+                onUnlink = { _, _ -> },
                 onDeleteFile = {},
                 onShare = {},
                 hasCamera = false,
@@ -236,6 +239,13 @@ class AccessibilityTest {
         ).forEach { label ->
             compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
         }
+        // The unfiled document offers filing, and does not offer to unlink a link it has
+        // not got. Asserting the absence matters as much as the presence: an Unlink there
+        // could only ever produce an error.
+        compose.onNodeWithContentDescription("File documents/stray.pdf under an account")
+            .performScrollTo().assertExists()
+        compose.onNodeWithContentDescription("Unlink documents/stray.pdf from its entry")
+            .assertDoesNotExist()
         assertAccessible()
     }
 
