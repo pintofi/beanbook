@@ -99,4 +99,42 @@ class DocumentDirectiveTest {
             "a longer path was matched by substring",
         )
     }
+
+    @Test
+    fun `removes only the directive under the named account`() {
+        // Beancount allows one document under two accounts, and DocumentIndex lists a row per
+        // directive. Without a target, unlinking one row removed both -- and unlike refiling,
+        // this one destroys the reference rather than moving it, so the second account's
+        // filing would be gone with nothing on screen saying so.
+        val source = """
+            2026-02-01 document Assets:Bank "r.pdf"
+            2026-02-01 document Expenses:Food "r.pdf"
+        """.trimIndent() + "\n"
+
+        val result = BeancountText.removeDocumentDirective(source, "r.pdf", from = "Assets:Bank")
+
+        assertEquals("2026-02-01 document Expenses:Food \"r.pdf\"\n", result)
+    }
+
+    @Test
+    fun `takes the named account's metadata with it and leaves the other's`() {
+        val source = "2026-02-01 document Assets:Bank \"r.pdf\"\n" +
+            "  note: \"mine\"\n" +
+            "2026-02-01 document Expenses:Food \"r.pdf\"\n" +
+            "  note: \"theirs\"\n"
+
+        val result = BeancountText.removeDocumentDirective(source, "r.pdf", from = "Assets:Bank")
+
+        assertEquals(
+            "2026-02-01 document Expenses:Food \"r.pdf\"\n  note: \"theirs\"\n",
+            result,
+        )
+    }
+
+    @Test
+    fun `returns null when no directive for that path sits under the named account`() {
+        val source = "2026-02-01 document Assets:Bank \"r.pdf\"\n"
+
+        assertNull(BeancountText.removeDocumentDirective(source, "r.pdf", from = "Equity:Opening"))
+    }
 }

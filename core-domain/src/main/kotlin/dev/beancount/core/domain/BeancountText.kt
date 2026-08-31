@@ -40,11 +40,19 @@ object BeancountText {
      *
      * Indented lines following the directive go with it. They are its metadata, and leaving
      * them behind would orphan them into a syntax error.
+     *
+     * [from] restricts it to the directive filing the document under that account. Without
+     * it every directive naming [path] goes, which is right for the ordinary single-filing
+     * case and wrong once a document is filed under two accounts -- and unlike refiling,
+     * this destroys the reference rather than moving it, so the other account's filing would
+     * be gone with nothing on screen saying so.
      */
-    fun removeDocumentDirective(source: String, path: String): String? {
-        // date, "document", an account, then the path as a quoted string of its own.
+    fun removeDocumentDirective(source: String, path: String, from: String? = null): String? {
+        // date, "document", an account, then the path as a quoted string of its own. The
+        // account is captured so [from] can restrict the removal to one of several.
         val directive = Regex(
-            """^\s*${DATE.pattern}\s+document\s+${ACCOUNT.pattern}\s+"${Regex.escape(path)}"\s*(;.*)?$"""
+            """^\s*${DATE.pattern}\s+document\s+(?<account>${ACCOUNT.pattern})""" +
+                """\s+"${Regex.escape(path)}"\s*(;.*)?$"""
         )
         val lines = splitKeepingTerminators(source)
         val kept = StringBuilder()
@@ -52,7 +60,8 @@ object BeancountText {
         var index = 0
         while (index < lines.size) {
             val line = lines[index]
-            if (!directive.containsMatchIn(line.trimEnd('\r', '\n'))) {
+            val match = directive.find(line.trimEnd('\r', '\n'))
+            if (match == null || (from != null && match.groups["account"]!!.value != from)) {
                 kept.append(line)
                 index++
                 continue
