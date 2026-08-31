@@ -134,6 +134,47 @@ object BeancountText {
         return if (movedAny) rebuilt.toString() else null
     }
 
+    /**
+     * The paths an `include` directive names, in the order they appear.
+     *
+     * Beancount accepts a directive only at column 0, so an indented `include` is not one --
+     * matching it would treat a file as included when Beancount does not, and that file would
+     * wrongly stop being a root candidate.
+     *
+     * The paths are as written. Resolving them against the including file is
+     * [resolveInclude]'s job, because only the caller knows which file this text came from.
+     */
+    fun includedPaths(source: String): List<String> {
+        val include = Regex("""^include\s+"([^"]*)"\s*(;.*)?$""")
+        return source.lineSequence()
+            .mapNotNull { include.matchEntire(it.trimEnd('\r'))?.groupValues?.get(1) }
+            .filter { it.isNotBlank() }
+            .toList()
+    }
+
+    /**
+     * [include] resolved against the directory of [from], as a project-relative path.
+     *
+     * `.` and `..` are collapsed rather than carried. Left in, "books/../shared.beancount"
+     * would match no entry when compared against the project's own file list, and a file that
+     * really is included would look un-included -- which is exactly the wrong answer for
+     * choosing a root.
+     */
+    fun resolveInclude(from: String, include: String): String {
+        val parts = from.substringBeforeLast('/', missingDelimiterValue = "")
+            .split('/')
+            .filter { it.isNotEmpty() }
+            .toMutableList()
+        for (segment in include.split('/')) {
+            when (segment) {
+                "", "." -> Unit
+                ".." -> if (parts.isNotEmpty()) parts.removeAt(parts.size - 1)
+                else -> parts += segment
+            }
+        }
+        return parts.joinToString("/")
+    }
+
     /** Lines with their own terminators attached, so rejoining cannot change them. */
     private fun splitKeepingTerminators(source: String): List<String> {
         val lines = mutableListOf<String>()
