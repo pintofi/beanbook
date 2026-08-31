@@ -175,6 +175,23 @@ object BeancountText {
         return parts.joinToString("/")
     }
 
+    /**
+     * The metadata key to link one more document to a transaction, given the keys it has.
+     *
+     * `fava.plugins.link_documents` reads `document` and any `document-*` key, which
+     * [JournalEntry.linkedDocuments] mirrors. A second receipt cannot reuse `document`:
+     * metadata is a map, so the first link would be silently replaced by the second.
+     *
+     * Gaps are filled rather than skipped, so removing the second of three attachments and
+     * adding another does not leave the numbering climbing forever.
+     */
+    fun nextDocumentKey(existing: Set<String>): String {
+        if ("document" !in existing) return "document"
+        var index = 2
+        while ("document-$index" in existing) index++
+        return "document-$index"
+    }
+
     /** Lines with their own terminators attached, so rejoining cannot change them. */
     private fun splitKeepingTerminators(source: String): List<String> {
         val lines = mutableListOf<String>()
