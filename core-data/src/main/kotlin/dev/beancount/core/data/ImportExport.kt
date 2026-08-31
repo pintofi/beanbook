@@ -1,5 +1,6 @@
 package dev.beancount.core.data
 
+import dev.beancount.core.domain.BeancountText
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -209,7 +210,6 @@ class ProjectImporter(
         if (plan.problems.isNotEmpty()) return ImportResult.Rejected(plan.problems)
         if (plan.ledgerCandidates.isEmpty()) return ImportResult.NoLedgerFound(plan.files.size)
 
-        val main = preferredMain ?: plan.ledgerCandidates.first()
         val target = workspace.projectDir(projectId)
         require(!target.exists()) { "project already exists: $projectId" }
 
@@ -243,6 +243,13 @@ class ProjectImporter(
                 }
             }
 
+            // Now that the files are on disk -- and past every size check -- the include
+            // graph can be read, which is the only way to tell a root from a file some other
+            // ledger pulls in. Whole tree still imported: a `document` directive's target and
+            // a file not yet included are part of the project and would be lost by taking
+            // only what the root reaches (B22).
+            val main = preferredMain ?: chooseRoot(staging, plan.ledgerCandidates)
+
             // The imported project keeps its own shape; only the root file is normalised,
             // because Fava must be pointed at one file.
             if (main != ProjectWorkspace.MAIN_FILE) {
@@ -267,8 +274,16 @@ class ProjectImporter(
     }
 
     /**
-     * A ledger is a plausible root if it is a `.beancount`/`.bean` file that no other
-     * file includes. Preferring shallower paths matches how people lay projects out.
+     * Every `.beancount`/`.bean` file, best guess first, for offering the user a choice.
+     *
+     * This is a *name* heuristic and nothing more: main.beancount, then shallower paths,
+     * then alphabetical. It cannot tell a root from an included file, because planning
+     * happens before extraction and reading archive entries here would decompress content
+     * before the size checks that make decompressing it safe (R3).
+     *
+     * The actual root is chosen after extraction by [chooseRoot], which can read the files.
+     * An earlier version of this docstring claimed the include rule was implemented here.
+     * It never was: no file was read.
      */
     private fun findLedgerCandidates(paths: List<String>): List<String> {
         val ledgers = paths.filter { it.endsWith(".beancount") || it.endsWith(".bean") }
@@ -280,6 +295,28 @@ class ProjectImporter(
                 { it },
             )
         )
+    }
+
+    /**
+     * The root ledger: the candidate no other ledger in the project includes.
+     *
+     * Falls back to the name heuristic's first choice when the include graph does not
+     * settle it -- a project of several independent ledgers has no single root, and one
+     * whose ledgers all include each other has no un-included file. Guessing consistently
+     * is better than refusing an import that is otherwise fine.
+     */
+    private fun chooseRoot(staging: File, candidates: List<String>): String {
+        val included = buildSet {
+            candidates.forEach { candidate ->
+                val file = File(staging, candidate)
+                if (!file.isFile) return@forEach
+                val text = runCatching { file.readText() }.getOrNull() ?: return@forEach
+                BeancountText.includedPaths(text).forEach { path ->
+                    add(BeancountText.resolveInclude(from = candidate, include = path))
+                }
+            }
+        }
+        return candidates.firstOrNull { it !in included } ?: candidates.first()
     }
 
     /** An entry delivered more bytes than the container said it would. */

@@ -377,4 +377,55 @@ class ImportExportTest {
 
         assertTrue(error is java.io.IOException, "a provider failure must not be swallowed")
     }
+
+    @Test
+    fun `the root is the ledger no other ledger includes, not the first by name`() {
+        // The case the old name heuristic got wrong. "accounts" sorts before "personal", and
+        // both sit at the same depth, so the included file was chosen as the root.
+        val archive = zipOf(
+            "accounts.beancount" to "2026-01-01 open Assets:Bank\n",
+            "personal.beancount" to "include \"accounts.beancount\"\n",
+        )
+
+        val result = importer.import(ZipImportSource(archive), "p1")
+
+        assertTrue(result is ImportResult.Imported, "import failed: $result")
+        assertEquals(
+            "include \"accounts.beancount\"\n",
+            workspace.mainFile("p1").readText(),
+            "main.beancount is not the root ledger",
+        )
+    }
+
+    @Test
+    fun `an include in a subdirectory resolves against its own directory`() {
+        val archive = zipOf(
+            "books/ledger.beancount" to "include \"2026.beancount\"\n",
+            "books/2026.beancount" to "2026-01-01 open Assets:Bank\n",
+        )
+
+        val result = importer.import(ZipImportSource(archive), "p2")
+
+        assertTrue(result is ImportResult.Imported, "import failed: $result")
+        assertEquals("include \"2026.beancount\"\n", workspace.mainFile("p2").readText())
+    }
+
+    @Test
+    fun `every file is imported, not only what the root includes`() {
+        // B22: taking only what the root reaches would lose a document a `document`
+        // directive points at, and any ledger not yet included.
+        val archive = zipOf(
+            "main.beancount" to "include \"a.beancount\"\n",
+            "a.beancount" to "2026-01-01 open Assets:Bank\n",
+            "orphan.beancount" to "2026-01-01 open Expenses:Food\n",
+            "documents/receipt.pdf" to "%PDF-1.4\n",
+        )
+
+        val result = importer.import(ZipImportSource(archive), "p3")
+
+        assertTrue(result is ImportResult.Imported, "import failed: $result")
+        val dir = workspace.projectDir("p3")
+        assertTrue(dir.resolve("orphan.beancount").isFile, "an un-included ledger was dropped")
+        assertTrue(dir.resolve("documents/receipt.pdf").isFile, "a document was dropped")
+    }
 }
