@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import dev.beancount.core.domain.BeancountText
 import dev.beancount.core.domain.Amount
 import dev.beancount.core.domain.DraftProblem
 import dev.beancount.core.domain.EntryTemplate
@@ -88,6 +89,8 @@ fun QuickAddScreen(
     templates: List<EntryTemplate> = emptyList(),
     onSaveTemplate: (EntryTemplate) -> Unit = {},
     onDeleteTemplate: (String) -> Unit = {},
+    /** Photographing a receipt while entering the transaction it belongs to (B17). */
+    capture: DocumentCaptureHandle? = null,
 ) {
     var date by remember { mutableStateOf(today.toString()) }
     var payee by remember { mutableStateOf("") }
@@ -294,6 +297,24 @@ fun QuickAddScreen(
             label = "Details about the whole transaction",
             describe = { "transaction" },
         )
+
+        if (capture != null) {
+            AttachDocumentSection(
+                capture = capture,
+                // Filed under the account the document is evidence for. Blank until the
+                // first posting has one, because the account decides where the file lands
+                // and guessing it would put receipts somewhere nobody looks.
+                account = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty(),
+                attached = metaRows.filter { it.key.startsWith("document") }.map { it.value },
+                onFiled = { path ->
+                    // The link is metadata on the transaction, not a `document` directive:
+                    // the directive files a document under an account, this says which
+                    // transaction it is evidence for. Both are legitimate and different.
+                    val key = BeancountText.nextDocumentKey(metaRows.map { it.key }.toSet())
+                    metaRows += MetadataRow(key, path)
+                },
+            )
+        }
 
         Text("Postings", style = MaterialTheme.typography.titleSmall)
 
@@ -631,4 +652,83 @@ private fun MetadataEditor(
         onClick = { rows.add(MetadataRow()) },
         modifier = Modifier.semantics { contentDescription = "Add another detail to ${describe()}" },
     ) { Text("Add another detail") }
+}
+
+/**
+ * Photograph a receipt while entering the transaction it belongs to (B17).
+ *
+ * The pages are filed as soon as the user says so, before the transaction is saved, so the
+ * ledger never names a file that is not there yet (invariant 5). The cost is that abandoning
+ * the entry leaves the PDF on disk — visible in Organize as an unfiled document, where it can
+ * be filed or deleted, rather than lost.
+ */
+@Composable
+private fun AttachDocumentSection(
+    capture: DocumentCaptureHandle,
+    account: String,
+    attached: List<String>,
+    onFiled: (String) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        attached.forEach { path ->
+            Text(
+                "Attached: ${path.substringAfterLast('/')}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        TextButton(
+            onClick = { open = !open },
+            modifier = Modifier.semantics {
+                contentDescription = if (open) "Hide the camera" else "Attach a photo to this transaction"
+            },
+        ) { Text(if (open) "Done photographing" else "Attach a photo") }
+
+        if (open) {
+            if (account.isBlank()) {
+                // Said rather than silently disabled: the reason is not guessable from a
+                // greyed-out button, and the fix is one field away.
+                Text(
+                    "Give the first posting an account first — it decides where the " +
+                        "document is filed.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            } else {
+                CameraPane(onCapture = capture.onCapture, captureFile = capture.captureFile)
+                capture.pages.pages.forEachIndexed { index, page ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            "Page ${index + 1}",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(
+                            onClick = { capture.onRotate(index) },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Rotate page ${index + 1}"
+                            },
+                        ) { Text("Rotate") }
+                        TextButton(
+                            onClick = { capture.onRemovePage(index) },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Remove page ${index + 1}"
+                            },
+                        ) { Text("Remove") }
+                    }
+                }
+                Button(
+                    onClick = {
+                        capture.onFile(account) { path ->
+                            onFiled(path)
+                            open = false
+                        }
+                    },
+                    enabled = !capture.pages.isEmpty,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("File these pages and link them") }
+            }
+        }
+    }
 }

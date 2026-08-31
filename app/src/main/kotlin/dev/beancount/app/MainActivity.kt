@@ -72,6 +72,7 @@ import dev.beancount.app.ui.PluginsScreen
 import dev.beancount.app.ui.theme.BeancountTheme
 import dev.beancount.app.ui.RemoteScreen
 import dev.beancount.core.data.MirrorAction
+import dev.beancount.app.ui.DocumentCaptureHandle
 import dev.beancount.app.ui.DocumentsScreen
 import dev.beancount.core.data.RestoreStaged
 import dev.beancount.core.domain.CapturedPages
@@ -502,6 +503,26 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         documentPages = documentPages,
+                        // Built once and passed whole: the same six callbacks are needed by
+                        // the documents screen and by transaction entry, and threading them
+                        // separately is what makes detekt's LargeClass bite on this class.
+                        documentCapture = DocumentCaptureHandle(
+                            pages = documentPages,
+                            captureFile = { app.documentCapture.nextCaptureFile() },
+                            onCapture = { file, _ ->
+                                if (file.length() > 0) app.documentCapture.add(file)
+                            },
+                            onRotate = { app.documentCapture.rotate(it) },
+                            onMove = { from, to -> app.documentCapture.move(from, to) },
+                            onRemovePage = { app.documentCapture.remove(it) },
+                            onFile = { account, onFiled ->
+                                app.documentCapture.save(activeId!!, account) { path ->
+                                    onFiled(path)
+                                    app.documentCapture.reset()
+                                    refreshDocuments(app, activeId!!)
+                                }
+                            },
+                        ),
                         // The folder alone cannot say what a document is filed under, nor
                         // tell one the ledger knows from a stray file; the directives alone
                         // cannot say whether the file is still there. Reconciled here,
@@ -879,6 +900,7 @@ internal fun LedgerApp(
     onClearEntitlementMessage: () -> Unit,
     entitlementMessage: String?,
     documentPages: CapturedPages,
+    documentCapture: DocumentCaptureHandle,
     documents: List<DocumentRow>,
     documentMessage: String?,
     onCapture: (JavaFile, (Boolean) -> Unit) -> Unit,
@@ -1090,6 +1112,7 @@ internal fun LedgerApp(
                 twoPane = layout == PaneLayout.EXPANDED,
                 onContribute = { showContribute = true },
                 documentPages = documentPages,
+                documentCapture = documentCapture,
                 documents = documents,
                 documentMessage = documentMessage,
                 onCapture = onCapture,
@@ -1205,6 +1228,7 @@ private fun SurfaceContent(
     selected: Surface,
     onContribute: () -> Unit,
     documentPages: CapturedPages,
+    documentCapture: DocumentCaptureHandle,
     documents: List<DocumentRow>,
     documentMessage: String?,
     onCapture: (JavaFile, (Boolean) -> Unit) -> Unit,
@@ -1357,6 +1381,7 @@ private fun SurfaceContent(
                                 templates = templates,
                                 onSaveTemplate = onSaveTemplate,
                                 onDeleteTemplate = onDeleteTemplate,
+                                capture = documentCapture,
                             )
                         }
                     }

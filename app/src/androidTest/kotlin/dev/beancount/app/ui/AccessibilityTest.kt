@@ -42,6 +42,7 @@ import dev.beancount.core.domain.LedgerVocabulary
 import java.time.LocalDate
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -85,6 +86,41 @@ class AccessibilityTest {
     @Test fun quickAddPassesAccessibilityChecks() {
         compose.setContent { Themed { QuickAddScreen(vocabulary, onSave = {}, today = today) } }
         assertAccessible()
+    }
+
+    /**
+     * Attaching a receipt while entering the transaction it belongs to (B17).
+     *
+     * The control is only useful if it says what it attaches to, and the refusal path has to
+     * be readable too: without an account there is nowhere to file the document, and a
+     * greyed-out button does not say that.
+     */
+    @Test fun attachingADocumentDuringEntryIsLabelled() {
+        var filedUnder: String? = null
+        render(widthDp = 320, fontScale = 2f) {
+            QuickAddScreen(
+                vocabulary = vocabulary,
+                onSave = {},
+                today = today,
+                capture = DocumentCaptureHandle(
+                    pages = CapturedPages(),
+                    captureFile = { java.io.File("unused") },
+                    onCapture = { _, _ -> },
+                    onRotate = {},
+                    onMove = { _, _ -> },
+                    onRemovePage = {},
+                    onFile = { account, _ -> filedUnder = account },
+                ),
+            )
+        }
+
+        compose.onNodeWithContentDescription("Attach a photo to this transaction")
+            .performScrollTo().assertExists()
+        assertAccessible()
+        // Message first: this is org.junit's Assert, as the rest of this file uses. Written
+        // the kotlin.test way round, the message became the "actual" and the assertion
+        // compared the callback's result against a sentence.
+        assertNull("nothing should be filed before the user asks", filedUnder)
     }
 
     @Test fun directiveEntryPassesAccessibilityChecks() {

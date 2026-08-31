@@ -388,7 +388,7 @@ fun rememberCameraPermission(): Boolean {
 
 /** The viewfinder, bound to this composable's lifecycle and unbound when it leaves. */
 @Composable
-private fun CameraPane(
+internal fun CameraPane(
     onCapture: (File, (Boolean) -> Unit) -> Unit,
     captureFile: () -> File,
 ) {
