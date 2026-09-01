@@ -74,6 +74,7 @@ import dev.beancount.app.ui.RemoteScreen
 import dev.beancount.core.data.MirrorAction
 import dev.beancount.app.ui.DocumentCaptureHandle
 import dev.beancount.app.ui.DocumentsScreen
+import dev.beancount.app.ui.EntryEditDialog
 import dev.beancount.core.data.RestoreStaged
 import dev.beancount.core.domain.CapturedPages
 import dev.beancount.core.domain.DirectiveDraft
@@ -126,6 +127,9 @@ class MainActivity : ComponentActivity() {
 
     private var recoveryMessage: String? by mutableStateOf(null)
     internal var saveMessage: String? by mutableStateOf(null)
+
+    /** The entry whose own source is open for editing, if any (B11). */
+    internal var editingEntry: dev.beancount.engine.local.EntrySlice? by mutableStateOf(null)
 
     /** The documents already filed in the open project; refreshed after every change. */
     internal var documents: List<String> by mutableStateOf(emptyList())
@@ -482,6 +486,9 @@ class MainActivity : ComponentActivity() {
 
                     LedgerApp(
                         openOn = requestedSurface,
+                        onEditEntry = { entry ->
+                            activeId?.let { beginEntryEdit(app, it, entry) }
+                        },
                         onDeleteEntry = { entry ->
                             activeId?.let { deleteEntry(app, it, entry) }
                         },
@@ -699,6 +706,17 @@ class MainActivity : ComponentActivity() {
                         },
                         onDiscardDraft = { app.editorController.discardDraft(activeId!!) },
                     )
+
+                    // Over the app rather than inside a screen: an entry can be opened for
+                    // editing from the journal or from its detail view, and the dialog
+                    // should not belong to whichever one happened to open it (B11).
+                    editingEntry?.let { slice ->
+                        EntryEditDialog(
+                            original = slice.text,
+                            onSave = { text -> saveEntryEdit(app, activeId!!, slice, text) },
+                            onDismiss = { editingEntry = null },
+                        )
+                    }
                 }
             }
         }
@@ -891,6 +909,7 @@ internal fun LedgerApp(
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
     onSaveEntry: (TransactionDraft) -> Unit,
+    onEditEntry: (JournalEntry) -> Unit = {},
     onDeleteEntry: (JournalEntry) -> Unit = {},
     templates: List<EntryTemplate>,
     onSaveTemplate: (EntryTemplate) -> Unit,
@@ -1167,6 +1186,7 @@ internal fun LedgerApp(
                     pendingClone = TransactionDraft.cloneOf(entry, LocalDate.now().toString())
                     selected = Surface.ADD
                 },
+                onEditEntry = onEditEntry,
                 onDeleteEntry = onDeleteEntry,
                 onHideWidgetAmounts = onHideWidgetAmounts,
                 pluginRows = pluginRows,
@@ -1284,6 +1304,7 @@ private fun SurfaceContent(
     prefill: TransactionDraft? = null,
     onPrefillApplied: () -> Unit = {},
     onEnterAgain: (JournalEntry) -> Unit = {},
+    onEditEntry: (JournalEntry) -> Unit = {},
     onDeleteEntry: (JournalEntry) -> Unit = {},
     onHideWidgetAmounts: (Boolean) -> Unit,
     pluginRows: List<dev.beancount.app.plugins.PluginRow>,
@@ -1601,6 +1622,7 @@ private fun SurfaceContent(
                             entry = entry,
                             onClone = { onEnterAgain(entry); openEntry = null },
                             onClose = { openEntry = null },
+                            onEdit = { onEditEntry(entry); openEntry = null },
                             onDelete = { onDeleteEntry(entry); openEntry = null },
                             onOpenDocument = onShareDocument,
                             modifier = Modifier.padding(padding),

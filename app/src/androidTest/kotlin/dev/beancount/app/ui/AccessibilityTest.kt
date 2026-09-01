@@ -123,6 +123,26 @@ class AccessibilityTest {
         assertNull("nothing should be filed before the user asks", filedUnder)
     }
 
+    /**
+     * Editing an entry's own source (B11).
+     *
+     * The field holds Beancount, not prose, so it has to be reachable and named: a
+     * multi-line box with no label is unusable without sight, and this one can rewrite a
+     * transaction.
+     */
+    @Test fun editingAnEntrySourceIsLabelled() {
+        var saved: String? = null
+        val original = "2026-02-01 * \"Shop\" \"coffee\"\n  Expenses:Food   12.00 USD\n  Assets:Bank\n"
+        render(widthDp = 320, fontScale = 2f) {
+            EntryEditDialog(original = original, onSave = { saved = it }, onDismiss = {})
+        }
+
+        compose.onNodeWithContentDescription("The source text of this entry").assertExists()
+        assertNull("nothing should be saved until Save is pressed", saved)
+        compose.onNodeWithText("Save").performClick()
+        assertEquals("the entry's own text should be what is saved", original, saved)
+    }
+
     @Test fun directiveEntryPassesAccessibilityChecks() {
         compose.setContent { Themed { DirectiveEntryScreen(vocabulary, onSave = {}, today = today) } }
         assertAccessible()

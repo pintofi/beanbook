@@ -42,6 +42,7 @@ fun EntryDetailScreen(
     onClone: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
     onOpenDocument: ((String) -> Unit)? = null,
 ) {
@@ -131,6 +132,14 @@ fun EntryDetailScreen(
                     contentDescription = "Enter this transaction again"
                 },
             ) { Text("Enter again") }
+            if (onEdit != null && !confirmingDelete) {
+                TextButton(
+                    onClick = onEdit,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Edit the source of this transaction"
+                    },
+                ) { Text("Edit") }
+            }
             if (onDelete != null && !confirmingDelete) {
                 TextButton(
                     onClick = { confirmingDelete = true },

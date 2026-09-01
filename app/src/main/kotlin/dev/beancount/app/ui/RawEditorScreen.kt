@@ -258,7 +258,7 @@ private fun Editor(
  * mode and under a dynamic palette.
  */
 @Composable
-private fun beancountHighlighting(): VisualTransformation {
+internal fun beancountHighlighting(): VisualTransformation {
     val scheme = MaterialTheme.colorScheme
     val palette = mapOf(
         BeancountText.TokenKind.COMMENT to scheme.onSurfaceVariant,

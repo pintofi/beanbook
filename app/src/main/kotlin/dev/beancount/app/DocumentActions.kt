@@ -264,3 +264,77 @@ internal fun MainActivity.deleteEntry(
         app.ledgerState.load(mainFile)
     }
 }
+
+/**
+ * Loads one entry's own source text so it can be edited (B11).
+ *
+ * The entry is edited *as text*, not decomposed into fields and rebuilt. A round trip
+ * through a structured draft would silently drop everything the draft does not model --
+ * a comment inside the entry, metadata the app has no field for, the user's own alignment --
+ * which is exactly what invariant 4 forbids. Replacing the entry's byte range with what the
+ * user wrote touches nothing else in the file.
+ */
+internal fun MainActivity.beginEntryEdit(
+    app: BeancountApplication,
+    projectId: String,
+    entry: dev.beancount.core.domain.JournalEntry,
+) {
+    val file = entry.file
+    val line = entry.line
+    if (file == null || line == null) {
+        saveMessage = "That entry has no recorded position in the file, so it cannot be edited here."
+        return
+    }
+    lifecycleScope.launch {
+        val mainFile = app.workspace.mainFile(projectId).absolutePath
+        val slice = runCatching { app.editor.sliceAt(mainFile, file, line) }.getOrNull()
+        if (slice == null) {
+            saveMessage = "Could not find that entry in the file. Nothing was changed."
+            return@launch
+        }
+        editingEntry = slice
+    }
+}
+
+/**
+ * Writes an edited entry back over the range it came from.
+ *
+ * The file's SHA is checked by the write protocol, so an edit computed against a file that
+ * has since changed underneath -- a sync, a pull, an edit in the raw editor -- is refused
+ * rather than applied to the wrong bytes.
+ */
+internal fun MainActivity.saveEntryEdit(
+    app: BeancountApplication,
+    projectId: String,
+    slice: dev.beancount.engine.local.EntrySlice,
+    newText: String,
+) {
+    lifecycleScope.launch {
+        val target = java.io.File(slice.file)
+        val updated = runCatching {
+            app.editor.contentWithReplacement(slice.file, slice.startLine, slice.endLine, newText)
+        }.getOrElse {
+            saveMessage = "Could not apply that edit: ${it.message}. Nothing was changed."
+            return@launch
+        }
+
+        val result = app.writer.replace(
+            projectId = projectId,
+            file = target,
+            expectedSha = dev.beancount.core.data.WriteJournal.sha256(target),
+            newContent = updated,
+            operation = "edit-entry",
+        )
+        saveMessage = when (result) {
+            // The write protocol re-parses before committing, so a committed edit is one
+            // Beancount accepted -- an entry that no longer parses is rolled back, not saved.
+            is dev.beancount.core.data.WriteResult.Committed ->
+                "Saved. Undo is available if that was not what you meant."
+            is dev.beancount.core.data.WriteResult.RolledBack ->
+                "Not saved: ${result.reason}. Your ledger is unchanged."
+            is dev.beancount.core.data.WriteResult.Refused -> "Not saved: ${result.reason}"
+        }
+        editingEntry = null
+        app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
+    }
+}
