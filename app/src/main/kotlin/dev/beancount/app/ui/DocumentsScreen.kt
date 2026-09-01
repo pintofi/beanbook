@@ -188,7 +188,7 @@ fun DocumentsScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Suggestions(vocabulary.accountsMatching(account), "account") { account = it }
+            Suggestions(vocabulary.accountsMatching(account), "account", current = account) { account = it }
 
             Button(
                 onClick = { onSave(account.trim()) },
@@ -320,7 +320,7 @@ fun DocumentsScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Suggestions(vocabulary.accountsMatching(target), "account") { target = it }
+                    Suggestions(vocabulary.accountsMatching(target), "account", current = target) { target = it }
                 }
             },
             confirmButton = {

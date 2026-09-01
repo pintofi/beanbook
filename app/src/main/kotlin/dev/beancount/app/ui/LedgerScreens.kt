@@ -212,11 +212,25 @@ fun JournalScreen(
         }
         if (snapshot.journal.isEmpty()) {
             item {
-                Text(
-                    text = "No transactions yet.",
-                    modifier = Modifier.padding(24.dp),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
+                // Says what to do next, not just that there is nothing. A bare "No
+                // transactions yet." in an otherwise empty screen tells the user a fact they
+                // can already see and leaves them to find the way forward themselves (D9).
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "No transactions yet",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = "Tap + to write your first one. Everything you add is plain " +
+                            "text in your own ledger file.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
         items(snapshot.journal, key = { "${it.file}:${it.line}" }) { entry ->

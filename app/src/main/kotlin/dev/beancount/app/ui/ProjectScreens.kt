@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -93,7 +94,11 @@ fun OnboardingScreen(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedButton(
+                // Filled, where "Choose folder" and "Choose .zip" are outlined. On the first
+                // screen of the app every control had the same weight, so nothing said which
+                // one to press (D9, Von Restorff). Creating is the path for somebody who has
+                // no ledger yet, which is who this screen is for.
+                Button(
                     onClick = { onCreateNew(title) },
                     enabled = title.isNotBlank(),
                 ) { Text("Create") }

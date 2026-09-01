@@ -139,7 +139,7 @@ fun DirectiveEntryScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         if (firstLabel == "Account") {
-            Suggestions(vocabulary.accountsMatching(account), "account") { account = it }
+            Suggestions(vocabulary.accountsMatching(account), "account", current = account) { account = it }
         }
 
         if (kind == DirectiveKind.PAD) {
@@ -150,7 +150,7 @@ fun DirectiveEntryScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Suggestions(vocabulary.accountsMatching(second), "account") { second = it }
+            Suggestions(vocabulary.accountsMatching(second), "account", current = second) { second = it }
         }
 
         if (kind in setOf(DirectiveKind.BALANCE, DirectiveKind.PRICE)) {

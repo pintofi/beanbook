@@ -246,7 +246,7 @@ fun QuickAddScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        Suggestions(vocabulary.payeesMatching(payee), "payee") { payee = it }
+        Suggestions(vocabulary.payeesMatching(payee), "payee", current = payee) { payee = it }
 
         // "Use what you used last time" — offered, never applied silently, because reusing
         // an old amount without being asked is a way to record the wrong number.
@@ -290,7 +290,7 @@ fun QuickAddScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         // Every commodity the ledger declares or holds, matched like any other field (B6).
-        Suggestions(vocabulary.currenciesMatching(currency), "currency") { currency = it }
+        Suggestions(vocabulary.currenciesMatching(currency), "currency", current = currency) { currency = it }
 
         MetadataEditor(
             rows = metaRows,
@@ -388,7 +388,7 @@ fun QuickAddScreen(
                         removeButton()
                     }
                 }
-                Suggestions(vocabulary.accountsMatching(row.account), "account") {
+                Suggestions(vocabulary.accountsMatching(row.account), "account", current = row.account) {
                     row.account = it
                 }
                 MetadataEditor(
@@ -489,15 +489,24 @@ fun QuickAddScreen(
 }
 
 @Composable
-internal fun Suggestions(values: List<String>, kind: String, onPick: (String) -> Unit) {
-    if (values.isEmpty()) return
+internal fun Suggestions(
+    values: List<String>,
+    kind: String,
+    current: String = "",
+    onPick: (String) -> Unit,
+) {
+    // A suggestion identical to what is already in the field does nothing when tapped, and
+    // reads as though the app has not noticed what was typed -- a lone "USD" chip under a
+    // currency field already saying USD (D9).
+    val offered = values.filter { it != current.trim() }
+    if (offered.isEmpty()) return
     Row(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         // No cap: this row scrolls horizontally, so taking six hid matches the vocabulary had
         // already found rather than saving any space (B7).
-        values.forEach { value ->
+        offered.forEach { value ->
             AssistChip(
                 onClick = { onPick(value) },
                 label = { Text(value.substringAfterLast(':')) },
