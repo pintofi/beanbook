@@ -65,3 +65,13 @@ data class LedgerSummary(
         }
     }
 }
+
+/**
+ * The [count] most recent entries, newest first.
+ *
+ * The journal arrives newest first — the engine reports the last window of entries in file
+ * order and the reader reverses it — so this is a `take`, not a `takeLast`. The home screen
+ * used `takeLast(count).asReversed()`, which on an already-reversed list returns the oldest
+ * entries in the ledger under a heading that says "Recent" (D9).
+ */
+fun LedgerSnapshot.recentEntries(count: Int): List<JournalEntry> = journal.take(count)
