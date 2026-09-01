@@ -1789,13 +1789,13 @@ private fun LedgerNavigationRail(selected: Surface, onSelect: (Surface) -> Unit)
             androidx.compose.material3.NavigationRailItem(
                 selected = selected == surface,
                 onClick = { onSelect(surface) },
-                // The label goes in the icon slot. These destinations have no icons, and with
-                // an empty icon slot the selection indicator draws around nothing while the
-                // label sits outside it — the pill floated above the wrong word.
-                icon = { Text(surface.label) },
-                modifier = Modifier
-                    .padding(vertical = 6.dp)
-                    .semantics { contentDescription = surface.label },
+                // The label used to go in the icon slot, because these destinations had no
+                // icons and an empty slot drew the selection indicator around nothing while
+                // the label sat outside it. They have icons now, so the slots hold what they
+                // are for and the rail matches the bar.
+                icon = { Icon(surface.icon, contentDescription = null) },
+                label = { Text(surface.label) },
+                modifier = Modifier.padding(vertical = 6.dp),
             )
         }
     }

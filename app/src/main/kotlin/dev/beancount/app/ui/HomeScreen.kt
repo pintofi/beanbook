@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.beancount.core.domain.recentEntries
 import dev.beancount.core.domain.JournalEntry
 import dev.beancount.core.domain.LedgerSnapshot
 import dev.beancount.core.domain.LedgerSummary
@@ -77,7 +78,7 @@ fun HomeScreen(
         }
 
         Text("Recent entries", style = MaterialTheme.typography.titleSmall)
-        val recent = ledger.journal.takeLast(RECENT_ENTRIES).asReversed()
+        val recent = ledger.recentEntries(RECENT_ENTRIES)
         if (recent.isEmpty()) {
             Text(
                 "Nothing yet. Anything you add shows up here.",
@@ -86,7 +87,7 @@ fun HomeScreen(
         } else {
             recent.forEach { entry -> RecentEntry(entry, hideAmounts) }
             Text(
-                "Showing the last ${recent.size} of ${ledger.journal.size}. " +
+                "Showing the ${recent.size} most recent of ${ledger.journal.size}. " +
                     "The Journal has all of them.",
                 style = MaterialTheme.typography.bodySmall,
             )
