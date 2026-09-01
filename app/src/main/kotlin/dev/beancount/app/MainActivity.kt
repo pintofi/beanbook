@@ -32,9 +32,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -861,6 +861,7 @@ class MainActivity : ComponentActivity() {
 /** The sections of the More hub. Projects first: it is the one people look for. */
 internal enum class MoreSection(val label: String) {
     PROJECTS("Projects"),
+    FILES("Files"),
     DOCUMENTS("Documents"),
     BACKUP("Backup"),
     MIRROR("Mirror"),
@@ -891,7 +892,6 @@ private enum class Surface(val label: String) {
     JOURNAL("Journal"),
     BALANCES("Balances"),
     REPORTS("Reports"),
-    FILES("Files"),
     // The hub docs/ux.md 2 asks for: documents now, backup and settings as they arrive.
     // Projects lives here rather than in the bar so six destinations still fit a phone.
     MORE("More"),
@@ -1073,6 +1073,12 @@ internal fun LedgerApp(
             // at 200%: a NavigationBar there wrapped the labels mid-word and clipped
             // "Projects" off the screen edge. Below 130% the bar stays as it was; above it,
             // scrolling tabs keep every label whole and every destination reachable.
+            //
+            // "Six" is load-bearing. A seventh was added once and "Balances" wrapped to
+            // "Balance" / "s" on every screen until it was found by looking at the app --
+            // the a11y gate only exercises 200%, where the scrolling path is already in use.
+            // Files moved into More to get back to six. Adding a destination here means
+            // checking the bar by eye at normal text size, or moving another one out.
             if (LocalDensity.current.fontScale > 1.3f) {
                 PrimaryScrollableTabRow(
                     selectedTabIndex = Surface.entries.indexOf(selected),
@@ -1409,19 +1415,6 @@ private fun SurfaceContent(
                 }
             }
 
-            Surface.FILES -> RawEditorScreen(
-                twoPane = twoPane,
-                files = editorFiles,
-                state = editorState,
-                errors = ledger?.errors.orEmpty(),
-                message = editorMessage,
-                onOpen = onOpenFile,
-                onClose = onCloseFile,
-                onTextChanged = onEditorTextChanged,
-                onSave = onSaveFile,
-                onDiscardDraft = onDiscardDraft,
-            )
-
             Surface.MORE -> {
                 val section = moreSection
                 Column(modifier = Modifier.padding(padding)) {
@@ -1451,6 +1444,19 @@ private fun SurfaceContent(
                             dev.beancount.app.update.UpdateSection()
 
                         MoreSection.LICENCES -> dev.beancount.app.ui.LicencesScreen()
+
+                        MoreSection.FILES -> RawEditorScreen(
+                            twoPane = twoPane,
+                            files = editorFiles,
+                            state = editorState,
+                            errors = ledger?.errors.orEmpty(),
+                            message = editorMessage,
+                            onOpen = onOpenFile,
+                            onClose = onCloseFile,
+                            onTextChanged = onEditorTextChanged,
+                            onSave = onSaveFile,
+                            onDiscardDraft = onDiscardDraft,
+                        )
 
                         MoreSection.APPEARANCE ->
                             AppearanceScreen(
@@ -1868,6 +1874,7 @@ private fun ledgerHealth(status: EngineStatus, ledger: LedgerSnapshot?): String?
 private fun MoreMenu(onOpen: (MoreSection) -> Unit) {
     val descriptions = mapOf(
         MoreSection.PROJECTS to "Open, create, import or delete a ledger",
+        MoreSection.FILES to "Read and edit the ledger files themselves",
         MoreSection.DOCUMENTS to "Receipts and statements filed against entries",
         MoreSection.BACKUP to "Write a backup, restore one, or schedule them",
         MoreSection.MIRROR to "Keep a copy in a folder you choose, kept in step",
