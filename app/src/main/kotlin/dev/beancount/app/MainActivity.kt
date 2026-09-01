@@ -82,6 +82,7 @@ import dev.beancount.app.ui.RemoteScreen
 import dev.beancount.core.data.MirrorAction
 import dev.beancount.app.ui.DocumentCaptureHandle
 import dev.beancount.app.ui.DocumentsScreen
+import dev.beancount.app.ui.WelcomeDialog
 import dev.beancount.app.ui.EntryEditDialog
 import dev.beancount.core.data.RestoreStaged
 import dev.beancount.core.domain.CapturedPages
@@ -478,6 +479,21 @@ class MainActivity : ComponentActivity() {
                     val scriptRunning by app.scriptRunner.running.collectAsStateWithLifecycle()
                     val scriptOutcome by app.scriptRunner.outcome.collectAsStateWithLifecycle()
                     val scriptMessage by app.scriptRunner.message.collectAsStateWithLifecycle()
+
+                    // Said once, on a first launch, so the trial does not have to be
+                    // announced above every screen for the life of the install (B27). Above
+                    // the branch below because a first launch usually has no project yet --
+                    // inside it, the greeting would wait until one existed (B27).
+                    var welcoming by remember { mutableStateOf(app.firstRun.isFirstRun) }
+                    if (welcoming) {
+                        WelcomeDialog(
+                            trialDays = entitlement.trialDaysRemaining,
+                            onDismiss = {
+                                app.firstRun.markWelcomed()
+                                welcoming = false
+                            },
+                        )
+                    }
 
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
@@ -894,9 +910,14 @@ class RemoteReports(
 )
 
 
+/**
+ * The places the app can be. Adding an entry is deliberately not one of them: it is an
+ * action, and Material puts an action of the highest importance in a FAB rather than in the
+ * navigation bar, which is for destinations. Removing it is also what brings the bar to the
+ * five destinations Material asks for (B26).
+ */
 private enum class Surface(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     HOME("Home", Icons.Outlined.Home),
-    ADD("Add", Icons.Outlined.Add),
     JOURNAL("Journal", Icons.AutoMirrored.Outlined.List),
     BALANCES("Balances", Icons.Outlined.AccountBalance),
     REPORTS("Reports", Icons.Outlined.BarChart),
@@ -1023,6 +1044,10 @@ internal fun LedgerApp(
     var selected by remember(openOn) {
         mutableStateOf(Surface.entries.firstOrNull { it.name == openOn } ?: Surface.HOME)
     }
+    // The add form, shown over whichever destination is open. The widget's Quick Add tile
+    // still asks for "ADD" by name, and that has to keep working now that it is no longer a
+    // destination -- landing on Home instead of the form would be a silent regression.
+    var adding by remember(openOn) { mutableStateOf(openOn == "ADD") }
     var showContribute by remember { mutableStateOf(false) }
 
     // An entry being entered again (B11). Held here because applying it means switching to
@@ -1038,9 +1063,12 @@ internal fun LedgerApp(
     // sheet, then any surface other than the Journal. Once on the Journal it is not enabled,
     // so the system takes Back and the app closes -- which is what the platform expects of a
     // top-level destination, and what predictive back animates against.
-    BackHandler(enabled = moreSection != null) { moreSection = null }
-    BackHandler(enabled = moreSection == null && showContribute) { showContribute = false }
-    BackHandler(enabled = moreSection == null && !showContribute && selected != Surface.HOME) {
+    BackHandler(enabled = adding) { adding = false }
+    BackHandler(enabled = !adding && moreSection != null) { moreSection = null }
+    BackHandler(enabled = !adding && moreSection == null && showContribute) { showContribute = false }
+    BackHandler(
+        enabled = !adding && moreSection == null && !showContribute && selected != Surface.HOME,
+    ) {
         selected = Surface.HOME
     }
 
@@ -1074,6 +1102,24 @@ internal fun LedgerApp(
                     moreSection = MoreSection.PROJECTS
                 },
             )
+        },
+        floatingActionButton = {
+            // Adding an entry is the app's primary action, so it gets the one control
+            // Material reserves for that, rather than a sixth slot in a bar meant for
+            // destinations (B26). Hidden while the form is open -- a button that opens what
+            // is already open is noise -- and while there is no ledger to add to.
+            // Only on the surfaces that show the ledger. On More it covered a row of the
+            // list, and Reports is a Fava page whose layout is not ours to float things over.
+            val ledgerSurface = selected in setOf(Surface.HOME, Surface.JOURNAL, Surface.BALANCES)
+            if (!adding && ledger != null && ledgerSurface && layout == PaneLayout.COMPACT) {
+                androidx.compose.material3.FloatingActionButton(
+                    onClick = { adding = true },
+                ) {
+                    // The description is on the icon because there is no longer a label to
+                    // carry it. Without it this is an unnamed button to a screen reader.
+                    Icon(Icons.Outlined.Add, contentDescription = "Add an entry")
+                }
+            }
         },
         bottomBar = {
             if (layout != PaneLayout.COMPACT) return@Scaffold
@@ -1137,9 +1183,9 @@ internal fun LedgerApp(
             recoveryNotice?.let { notice ->
                 RecoveryBanner(notice, onDismiss = onDismissRecovery)
             }
-            TrialBanner(entitlement, onClick = { showContribute = true })
             SurfaceContent(
                 selected = selected,
+                adding = adding,
                 moreSection = moreSection,
                 onMoreSection = { moreSection = it },
                 twoPane = layout == PaneLayout.EXPANDED,
@@ -1198,7 +1244,7 @@ internal fun LedgerApp(
                 onPrefillApplied = { pendingClone = null },
                 onEnterAgain = { entry ->
                     pendingClone = TransactionDraft.cloneOf(entry, LocalDate.now().toString())
-                    selected = Surface.ADD
+                    adding = true
                 },
                 onEditEntry = onEditEntry,
                 onDeleteEntry = onDeleteEntry,
@@ -1260,6 +1306,8 @@ internal fun LedgerApp(
 @Composable
 private fun SurfaceContent(
     selected: Surface,
+    /** The add form is open over [selected]; it is an action, not a destination (B26). */
+    adding: Boolean,
     onContribute: () -> Unit,
     documentPages: CapturedPages,
     documentCapture: DocumentCaptureHandle,
@@ -1372,10 +1420,13 @@ private fun SurfaceContent(
 ) {
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
     run {
-        when (selected) {
+        // `null` is the add form, open over `selected`. Written this way so the form is one
+        // branch beside the destinations rather than a second copy of this dispatch.
+        val showing: Surface? = if (adding) null else selected
+        when (showing) {
             Surface.HOME -> HomeScreen(ledger = ledger, hideAmounts = hideWidgetAmounts)
 
-            Surface.ADD -> {
+            null -> {
                 // Entry is free, always: adding entries is never gated
                 // (docs/distribution.md 4.4).
                 if (ledger == null) {
@@ -1431,7 +1482,11 @@ private fun SurfaceContent(
                     // reaching Plugins took three swipes, every time, and nothing on screen
                     // suggested they were there at all.
                     if (section == null) {
-                        MoreMenu(onOpen = onMoreSection)
+                        MoreMenu(
+                            entitlement = entitlement,
+                            onContribute = onContribute,
+                            onOpen = onMoreSection,
+                        )
                         return@Column
                     }
 
@@ -1879,7 +1934,7 @@ private fun ledgerHealth(status: EngineStatus, ledger: LedgerSnapshot?): String?
  * list of bare nouns makes people open things to find out what they are.
  */
 @Composable
-private fun MoreMenu(onOpen: (MoreSection) -> Unit) {
+private fun MoreMenu(entitlement: Entitlement, onContribute: () -> Unit, onOpen: (MoreSection) -> Unit) {
     val descriptions = mapOf(
         MoreSection.PROJECTS to "Open, create, import or delete a ledger",
         MoreSection.FILES to "Read and edit the ledger files themselves",
@@ -1901,6 +1956,10 @@ private fun MoreMenu(onOpen: (MoreSection) -> Unit) {
     }
 
     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        // The entitlement is stated here, once, instead of above every screen. It is a fact
+        // worth being able to find, not one worth being told on the way to everything else
+        // -- a line the user sees on every tab is a line they stop reading (B27).
+        TrialCard(entitlement, onClick = onContribute)
         sections.forEach { entry ->
             androidx.compose.material3.ListItem(
                 headlineContent = { Text(entry.label) },
@@ -1953,40 +2012,54 @@ private fun RecoveryBanner(message: String, onDismiss: () -> Unit) {
 }
 
 /**
- * One quiet line about the trial, and the way to the Contribute screen.
+ * Where the entitlement stands, stated once in More rather than above every screen (B27).
  *
- * A line of text rather than a banner with a button: the trial ending is not an emergency,
- * and a countdown that demands attention every launch is the dark pattern this app promised
- * not to have (docs/distribution.md §4.7).
+ * Deliberately heavier than a journal row: this is a status about the app, not a line of the
+ * user's data, and it sits among a list of plain rows where it would otherwise disappear. It
+ * uses the theme's secondary container rather than a colour of its own, so it reads as
+ * "notice" and not as "error" -- nothing here is wrong, and a trial running out is not a
+ * failure.
+ *
+ * It replaced a line above every screen. A countdown that demands attention on the way to
+ * everything else is the dark pattern this app promised not to have
+ * (docs/distribution.md 4.7); told once and then available where it can be looked up is how
+ * somebody actually keeps the fact.
  */
 @Composable
-internal fun TrialBanner(
-    entitlement: Entitlement,
-    onClick: () -> Unit = {},
-    modifier: Modifier = Modifier,
-) {
-    val text = when (val grant = entitlement.grant) {
+internal fun TrialCard(entitlement: Entitlement, onClick: () -> Unit) {
+    val (headline, detail) = when (val grant = entitlement.grant) {
         is Grant.Trial -> {
             val days = entitlement.trialDaysRemaining ?: 0
-            if (days <= 1) "Trial: last day — everything is unlocked"
-            else "Trial: $days days left — everything is unlocked"
+            val head = if (days <= 1) "Last day of your trial" else "$days days left in your trial"
+            head to "Everything is unlocked. Tap to see what happens when it ends."
         }
         is Grant.TrialEnded ->
-            "Trial ended. Your ledger is untouched and stays fully editable."
-        // The tier, not the email: this line is on screen in every screenshot the user ever
-        // shares, and the address a key was issued to belongs on the Contribute screen
-        // (docs/distribution.md §4.5), not above the ledger.
-        is Grant.Key -> "${grant.tier.label} key · tap to manage"
+            "Your trial has ended" to
+                "Your ledger is untouched and stays fully editable. Tap to see the extras."
+        // The tier, not the email: the address a key was issued to belongs on Contribute
+        // (docs/distribution.md 4.5), and this card is in any screenshot of More.
+        is Grant.Key -> "${grant.tier.label} key" to "Tap to manage your key."
         Grant.Free -> return
     }
-    Text(
-        text = text,
-        modifier = modifier
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .semantics { contentDescription = "$text. Opens Contribute." },
-        style = MaterialTheme.typography.bodySmall,
-    )
+            .semantics { contentDescription = "$headline. $detail" },
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(headline, style = MaterialTheme.typography.titleMedium)
+            Text(detail, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
 }
 
 @Composable

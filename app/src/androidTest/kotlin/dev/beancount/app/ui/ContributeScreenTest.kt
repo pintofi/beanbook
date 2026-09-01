@@ -94,12 +94,16 @@ class ContributeScreenTest {
     }
 
     /**
-     * The banner sits above the ledger on every screen, so it says the tier and nothing more.
-     * The email a key was issued to is identifying information, and a line that is in every
-     * screenshot someone shares is the wrong place for it (docs/distribution.md §4.5).
+     * The card says the tier and nothing more. The email a key was issued to is identifying
+     * information, and this card is in any screenshot of More that somebody shares
+     * (docs/distribution.md §4.5).
+     *
+     * It used to be a banner above every screen; the property it guards did not change when
+     * the banner did (B27), so the test followed it to the card rather than being deleted
+     * with the component.
      */
-    @Test fun theBannerShowsTheTierButNotTheEmail() {
-        compose.setContent { MaterialTheme { dev.beancount.app.TrialBanner(keyed) } }
+    @Test fun theCardShowsTheTierButNotTheEmail() {
+        compose.setContent { MaterialTheme { dev.beancount.app.TrialCard(keyed, onClick = {}) } }
         compose.waitForIdle()
 
         compose.onNodeWithText("Power key", substring = true).assertExists()

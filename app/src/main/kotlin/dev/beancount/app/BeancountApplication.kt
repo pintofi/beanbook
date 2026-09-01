@@ -159,6 +159,11 @@ class BeancountApplication : Application() {
         dev.beancount.app.ui.theme.ThemeSettings(filesDir.resolve("state"))
     }
 
+    /** Whether the app still has to introduce itself (B27). */
+    val firstRun: dev.beancount.app.ui.FirstRun by lazy {
+        dev.beancount.app.ui.FirstRun(filesDir.resolve("state"))
+    }
+
     val projectsState: ProjectsState by lazy {
         ProjectsState(workspace, registry, ProjectImporter(workspace), appScope)
     }
