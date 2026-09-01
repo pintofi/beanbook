@@ -37,7 +37,17 @@ complexity:
     # branch count is its design — DirectiveEntryScreen branches once per directive type
     # Beancount defines, SurfaceContent once per surface — and raising the threshold until
     # they fit would stop the rule meaning anything for the logic code where it matters.
-    excludes: ['**/ui/**', '**/MainActivity.kt']
+    #
+    # The exclusion is by path, so it broke when MainActivity.kt was split: SurfaceContent
+    # and LedgerApp moved to files of their own and detekt started reporting them, though
+    # not one branch had changed. The named files below are the shell that came out of
+    # MainActivity.kt, and they are excluded for exactly the reason above.
+    excludes:
+      - '**/ui/**'
+      - '**/MainActivity.kt'
+      - '**/LedgerApp.kt'
+      - '**/SurfaceContent.kt'
+      - '**/AppChrome.kt'
   NestedBlockDepth:
     threshold: 6
   ComplexCondition:

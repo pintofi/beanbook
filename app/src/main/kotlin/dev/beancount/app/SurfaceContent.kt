@@ -1,0 +1,524 @@
+package dev.beancount.app
+
+import android.net.Uri
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import dev.beancount.app.ui.EntryDetailScreen
+import dev.beancount.core.domain.JournalEntry
+import dev.beancount.app.ui.HomeScreen
+import dev.beancount.app.ui.BalancesScreen
+import dev.beancount.app.ui.JournalScreen
+import dev.beancount.app.ui.ReportsPane
+import dev.beancount.app.ui.EditableFile
+import dev.beancount.app.ui.ProjectPickerScreen
+import dev.beancount.app.ui.RawEditorScreen
+import dev.beancount.app.ui.BackupScreen
+import dev.beancount.app.ui.MirrorScreen
+import dev.beancount.app.ui.AppearanceScreen
+import dev.beancount.app.ui.PluginsScreen
+import dev.beancount.app.ui.RemoteScreen
+import dev.beancount.core.data.MirrorAction
+import dev.beancount.app.ui.DocumentCaptureHandle
+import dev.beancount.app.ui.DocumentsScreen
+import dev.beancount.core.data.RestoreStaged
+import dev.beancount.core.domain.CapturedPages
+import dev.beancount.core.domain.DirectiveDraft
+import dev.beancount.core.domain.DocumentRow
+import java.io.File as JavaFile
+import dev.beancount.app.ui.QuickAddScreen
+import dev.beancount.core.domain.EntryTemplate
+import dev.beancount.core.data.ProjectSummary
+import dev.beancount.core.domain.LedgerVocabulary
+import dev.beancount.core.domain.TransactionDraft
+import dev.beancount.app.web.FavaWebView
+import dev.beancount.app.web.installSessionToken
+import dev.beancount.core.domain.LedgerSnapshot
+import dev.beancount.core.engine.EngineStatus
+import dev.beancount.core.engine.OriginAllowlist
+import dev.beancount.core.engine.ReportPath
+import dev.beancount.core.entitlement.Entitlement
+import dev.beancount.core.entitlement.Feature
+// What each destination renders. Split out of MainActivity.kt; see LedgerApp.kt.
+@Composable
+internal fun SurfaceContent(
+    selected: Surface,
+    /** The add form is open over [selected]; it is an action, not a destination (B26). */
+    adding: Boolean,
+    onContribute: () -> Unit,
+    documentPages: CapturedPages,
+    documentCapture: DocumentCaptureHandle,
+    documents: List<DocumentRow>,
+    documentMessage: String?,
+    onCapture: (JavaFile, (Boolean) -> Unit) -> Unit,
+    captureFile: () -> JavaFile,
+    onRotatePage: (Int) -> Unit,
+    onMovePage: (Int, Int) -> Unit,
+    onRemovePage: (Int) -> Unit,
+    onSaveDocument: (String) -> Unit,
+    onDiscardPages: () -> Unit,
+    onRefileDocument: (String, String, String?) -> Unit,
+    onUnlinkDocument: (String, String?) -> Unit,
+    onDeleteDocumentFile: (String) -> Unit,
+    onShareDocument: (String) -> Unit,
+    pendingRestore: RestoreStaged.Ready?,
+    passphraseNeeded: Boolean,
+    onUnlockRestore: (CharArray) -> Unit,
+    onBackUpNowWithPassphrase: (CharArray?) -> Unit,
+    backupMessage: String?,
+    scheduleEnabled: Boolean,
+    scheduleFolder: String?,
+    lastBackupRun: String?,
+    rollbackPoints: List<String>,
+    onChooseRestoreFile: () -> Unit,
+    onAcceptRestore: () -> Unit,
+    onDiscardRestore: () -> Unit,
+    onChooseScheduleFolder: () -> Unit,
+    onScheduleChanged: (Boolean) -> Unit,
+    mirrorEnabled: Boolean,
+    mirrorFolder: String?,
+    mirrorConflicts: List<MirrorAction.Conflict>,
+    mirrorMessage: String?,
+    onChooseMirrorFolder: () -> Unit,
+    onMirrorEnabledChanged: (Boolean) -> Unit,
+    onMirrorNow: () -> Unit,
+    onKeepMine: (String) -> Unit,
+    onKeepTheirs: (String) -> Unit,
+    remoteStatus: EngineStatus,
+    remoteCapabilities: dev.beancount.engine.remote.ServerCapabilities?,
+    savedRemoteAddress: String?,
+    savedRemoteUsername: String?,
+    remotePendingRetry: Boolean,
+    remoteMessage: String?,
+    remoteReports: RemoteReports?,
+    moreSection: MoreSection?,
+    onMoreSection: (MoreSection?) -> Unit,
+    twoPane: Boolean,
+    themeChoice: dev.beancount.app.ui.theme.ThemeChoice,
+    dynamicColour: Boolean,
+    onThemeChoice: (dev.beancount.app.ui.theme.ThemeChoice) -> Unit,
+    onDynamicColour: (Boolean) -> Unit,
+    hideWidgetAmounts: Boolean,
+    /** An entry being entered again, and the way to ask for one (B11). */
+    prefill: TransactionDraft? = null,
+    onPrefillApplied: () -> Unit = {},
+    onEnterAgain: (JournalEntry) -> Unit = {},
+    onEditEntry: (JournalEntry) -> Unit = {},
+    onDeleteEntry: (JournalEntry) -> Unit = {},
+    onHideWidgetAmounts: (Boolean) -> Unit,
+    pluginRows: List<dev.beancount.app.plugins.PluginRow>,
+    pluginSafeMode: Boolean,
+    pluginMessage: String?,
+    packages: dev.beancount.app.packages.PackagesUi,
+    onInstallPlugin: () -> Unit,
+    scriptRunning: String?,
+    scriptOutcome: dev.beancount.app.plugins.ScriptOutcome?,
+    scriptMessage: String?,
+    onPickScript: () -> Unit,
+    onCancelScript: () -> Unit,
+    onSetPluginEnabled: (String, Boolean) -> Unit,
+    onRemovePlugin: (String) -> Unit,
+    onSetPluginSafeMode: (Boolean) -> Unit,
+    onRemoteConnect: (String, String?, CharArray?) -> Unit,
+    onRemoteDisconnect: () -> Unit,
+    onRemoteForget: () -> Unit,
+    onRemoteRetry: () -> Unit,
+    onRemoteDiscard: () -> Unit,
+    onSaveEntry: (TransactionDraft) -> Unit,
+    templates: List<EntryTemplate>,
+    onSaveTemplate: (EntryTemplate) -> Unit,
+    onDeleteTemplate: (String) -> Unit,
+    onSaveDirective: (dev.beancount.core.domain.DirectiveDraft) -> Unit,
+    saveState: String?,
+    projects: List<ProjectSummary>,
+    activeProjectId: String?,
+    projectMessage: String?,
+    onOpenProject: (String) -> Unit,
+    onCreateProject: (String) -> Unit,
+    onExportProject: () -> Unit,
+    onImportFolder: () -> Unit,
+    onImportArchive: () -> Unit,
+    onDeleteProject: (String) -> Unit,
+    engineStatus: EngineStatus,
+    ledger: LedgerSnapshot?,
+    editionName: String,
+    entitlement: Entitlement,
+    token: String?,
+    debuggingAllowed: Boolean,
+    onOpenExternally: (Uri) -> Unit,
+    editorState: dev.beancount.app.ui.EditorState,
+    editorMessage: String?,
+    editorFiles: List<EditableFile>,
+    onOpenFile: (EditableFile) -> Unit,
+    onCloseFile: () -> Unit,
+    onEditorTextChanged: (String) -> Unit,
+    onSaveFile: () -> Unit,
+    onDiscardDraft: () -> Unit,
+) {
+    val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+    run {
+        // `null` is the add form, open over `selected`. Written this way so the form is one
+        // branch beside the destinations rather than a second copy of this dispatch.
+        val showing: Surface? = if (adding) null else selected
+        when (showing) {
+            Surface.HOME -> HomeScreen(ledger = ledger, hideAmounts = hideWidgetAmounts)
+
+            null -> {
+                // Entry is free, always: adding entries is never gated
+                // (docs/distribution.md 4.4).
+                if (ledger == null) {
+                    LoadingOrError(engineStatus, editionName)
+                } else {
+                    var otherDirectives by androidx.compose.runtime.saveable.rememberSaveable {
+                        androidx.compose.runtime.mutableStateOf(false)
+                    }
+                    androidx.compose.foundation.layout.Column {
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            androidx.compose.material3.FilterChip(
+                                selected = !otherDirectives,
+                                onClick = { otherDirectives = false },
+                                label = { Text("Transaction") },
+                            )
+                            androidx.compose.material3.FilterChip(
+                                selected = otherDirectives,
+                                onClick = { otherDirectives = true },
+                                label = { Text("Other directives") },
+                            )
+                        }
+                        if (otherDirectives) {
+                            dev.beancount.app.ui.DirectiveEntryScreen(
+                                vocabulary = LedgerVocabulary.from(ledger),
+                                onSave = onSaveDirective,
+                                saveState = saveState,
+                            )
+                        } else {
+                            QuickAddScreen(
+                                vocabulary = LedgerVocabulary.from(ledger),
+                                onSave = onSaveEntry,
+                                saveState = saveState,
+                                prefill = prefill,
+                                onPrefillApplied = onPrefillApplied,
+                                templates = templates,
+                                onSaveTemplate = onSaveTemplate,
+                                onDeleteTemplate = onDeleteTemplate,
+                                capture = documentCapture,
+                            )
+                        }
+                    }
+                }
+            }
+
+            Surface.MORE -> {
+                val section = moreSection
+                Column(modifier = Modifier.padding(padding)) {
+                    // A list, not a row of chips. Seven sections never fitted across a phone,
+                    // so the row scrolled horizontally and the last two were off-screen —
+                    // reaching Plugins took three swipes, every time, and nothing on screen
+                    // suggested they were there at all.
+                    if (section == null) {
+                        MoreMenu(
+                            entitlement = entitlement,
+                            onContribute = onContribute,
+                            onOpen = onMoreSection,
+                        )
+                        return@Column
+                    }
+
+                    when (section) {
+                        MoreSection.PROJECTS -> ProjectPickerScreen(
+                            projects = projects,
+                            activeId = activeProjectId,
+                            onOpen = onOpenProject,
+                            onCreateNew = onCreateProject,
+                            onOpenFolder = onImportFolder,
+                            onOpenArchive = onImportArchive,
+                            onExport = onExportProject,
+                            onDelete = onDeleteProject,
+                            busyMessage = projectMessage,
+                        )
+
+                        MoreSection.UPDATES ->
+                            dev.beancount.app.update.UpdateSection()
+
+                        MoreSection.LICENCES -> dev.beancount.app.ui.LicencesScreen()
+
+                        MoreSection.FILES -> RawEditorScreen(
+                            twoPane = twoPane,
+                            files = editorFiles,
+                            state = editorState,
+                            errors = ledger?.errors.orEmpty(),
+                            message = editorMessage,
+                            onOpen = onOpenFile,
+                            onClose = onCloseFile,
+                            onTextChanged = onEditorTextChanged,
+                            onSave = onSaveFile,
+                            onDiscardDraft = onDiscardDraft,
+                        )
+
+                        MoreSection.APPEARANCE ->
+                            AppearanceScreen(
+                                choice = themeChoice,
+                                dynamicColour = dynamicColour,
+                                dynamicColourSupported =
+                                    android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S,
+                                onChoice = onThemeChoice,
+                                onDynamicColour = onDynamicColour,
+                                hideWidgetAmounts = hideWidgetAmounts,
+                                onHideWidgetAmounts = onHideWidgetAmounts,
+                            )
+
+                        MoreSection.SCRIPTS ->
+                            if (!entitlement.allows(Feature.SCRIPTS)) {
+                                LockedFeature(
+                                    title = "Scripts",
+                                    tier = Feature.SCRIPTS.required.label,
+                                    onContribute = onContribute,
+                                )
+                            } else {
+                                dev.beancount.app.ui.ScriptRunnerScreen(
+                                    running = scriptRunning,
+                                    outcome = scriptOutcome,
+                                    message = scriptMessage,
+                                    bridgeAvailable = currentPluginPolicy().allowsAndroidBridge,
+                                    onPick = onPickScript,
+                                    onCancel = onCancelScript,
+                                )
+                            }
+
+                        MoreSection.PLUGINS ->
+                            if (!entitlement.allows(Feature.PLUGINS)) {
+                                LockedFeature(
+                                    title = "Plugins",
+                                    tier = Feature.PLUGINS.required.label,
+                                    onContribute = onContribute,
+                                )
+                            } else {
+                                PluginsScreen(
+                                    rows = pluginRows,
+                                    safeMode = pluginSafeMode,
+                                    policy = currentPluginPolicy(),
+                                    onInstall = onInstallPlugin,
+                                    onSetEnabled = onSetPluginEnabled,
+                                    onRemove = onRemovePlugin,
+                                    onSetSafeMode = onSetPluginSafeMode,
+                                    packages = packages,
+                                    message = pluginMessage,
+                                )
+                            }
+
+                        MoreSection.REMOTE ->
+                            if (!entitlement.allows(Feature.REMOTE_MODE)) {
+                                LockedFeature(
+                                    title = "Your own Fava server",
+                                    tier = Feature.REMOTE_MODE.required.label,
+                                    onContribute = onContribute,
+                                )
+                            } else {
+                                RemoteScreen(
+                                    status = remoteStatus,
+                                    capabilities = remoteCapabilities,
+                                    savedAddress = savedRemoteAddress,
+                                    savedUsername = savedRemoteUsername,
+                                    pendingRetry = remotePendingRetry,
+                                    onConnect = onRemoteConnect,
+                                    onDisconnect = onRemoteDisconnect,
+                                    onForget = onRemoteForget,
+                                    onRetryPending = onRemoteRetry,
+                                    onDiscardPending = onRemoteDiscard,
+                                    message = remoteMessage,
+                                )
+                            }
+
+                        MoreSection.MIRROR ->
+                            if (!entitlement.allows(Feature.AUTO_MIRROR)) {
+                                LockedFeature(
+                                    title = "Mirror to a folder",
+                                    tier = Feature.AUTO_MIRROR.required.label,
+                                    onContribute = onContribute,
+                                )
+                            } else {
+                                MirrorScreen(
+                                    enabled = mirrorEnabled,
+                                    folder = mirrorFolder,
+                                    conflicts = mirrorConflicts,
+                                    onChooseFolder = onChooseMirrorFolder,
+                                    onEnabledChanged = onMirrorEnabledChanged,
+                                    onSyncNow = onMirrorNow,
+                                    onKeepMine = onKeepMine,
+                                    onKeepTheirs = onKeepTheirs,
+                                    message = mirrorMessage,
+                                )
+                            }
+
+                        MoreSection.BACKUP -> BackupScreen(
+                            projectTitle = projects.firstOrNull { it.id == activeProjectId }
+                                ?.title.orEmpty(),
+                            pendingRestore = pendingRestore,
+                            passphraseNeeded = passphraseNeeded,
+                            onUnlockRestore = onUnlockRestore,
+                            scheduleEnabled = scheduleEnabled,
+                            scheduleFolder = scheduleFolder,
+                            lastRun = lastBackupRun,
+                            rollbackPoints = rollbackPoints,
+                            onBackUpNow = onBackUpNowWithPassphrase,
+                            onChooseRestoreFile = onChooseRestoreFile,
+                            onAcceptRestore = onAcceptRestore,
+                            onDiscardRestore = onDiscardRestore,
+                            onChooseScheduleFolder = onChooseScheduleFolder,
+                            onScheduleChanged = onScheduleChanged,
+                            message = backupMessage,
+                        )
+
+                        MoreSection.DOCUMENTS ->
+                            if (!entitlement.allows(Feature.DOCUMENTS)) {
+                                // Tier 2. The ledger, and any document already filed, stay
+                                // readable and exportable — only capturing new ones is gated.
+                                LockedFeature(
+                                    title = "Documents and receipt capture",
+                                    tier = Feature.DOCUMENTS.required.label,
+                                    onContribute = onContribute,
+                                )
+                            } else {
+                                DocumentsScreen(
+                                    pages = documentPages,
+                                    documents = documents,
+                                    vocabulary = ledger?.let { LedgerVocabulary.from(it) }
+                                        ?: LedgerVocabulary(
+                                            accounts = emptyList(),
+                                            payees = emptyList(),
+                                            narrations = emptyList(),
+                                            currencies = emptyList(),
+                                            tags = emptyList(),
+                                        ),
+                                    onCapture = onCapture,
+                                    captureFile = captureFile,
+                                    onRotate = onRotatePage,
+                                    onMove = onMovePage,
+                                    onRemovePage = onRemovePage,
+                                    onSave = onSaveDocument,
+                                    onDiscard = onDiscardPages,
+                                    onRefile = onRefileDocument,
+                                    onUnlink = onUnlinkDocument,
+                                    onDeleteFile = onDeleteDocumentFile,
+                                    onShare = onShareDocument,
+                                    message = documentMessage,
+                                )
+                            }
+                    }
+                }
+            }
+
+            Surface.JOURNAL, Surface.BALANCES -> {
+                if (ledger == null) {
+                    LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
+                } else if (selected == Surface.JOURNAL) {
+                    // The open entry lives here rather than in LedgerApp: it means nothing
+                    // unless the Journal is showing, and its Back behaviour belongs with it.
+                    var openEntry by remember { mutableStateOf<JournalEntry?>(null) }
+                    BackHandler(enabled = openEntry != null) { openEntry = null }
+
+                    val entry = openEntry
+                    if (entry == null) {
+                        JournalScreen(ledger, Modifier.padding(padding)) { openEntry = it }
+                    } else {
+                        EntryDetailScreen(
+                            entry = entry,
+                            onClone = { onEnterAgain(entry); openEntry = null },
+                            onClose = { openEntry = null },
+                            onEdit = { onEditEntry(entry); openEntry = null },
+                            onDelete = { onDeleteEntry(entry); openEntry = null },
+                            onOpenDocument = onShareDocument,
+                            modifier = Modifier.padding(padding),
+                        )
+                    }
+                } else {
+                    BalancesScreen(
+                        ledger,
+                        Modifier.padding(padding),
+                        valuationAllowed = entitlement.allows(Feature.HOLDINGS_VALUATION),
+                    )
+                }
+            }
+
+            Surface.REPORTS -> {
+                val serving = engineStatus as? EngineStatus.Serving
+                if (!entitlement.allows(Feature.FAVA_REPORTS)) {
+                    // Tier 1. The journal, balances and raw editing stay free, and the
+                    // ledger is untouched — only this surface is locked.
+                    LockedFeature(
+                        title = "Reports and charts",
+                        tier = Feature.FAVA_REPORTS.required.label,
+                        onContribute = onContribute,
+                        modifier = Modifier.padding(padding),
+                    )
+                } else if (remoteReports != null) {
+                    // Remote mode wins when it is connected: the user pointed the app at
+                    // their own server, and showing the local ledger's reports instead
+                    // would be showing them someone else's numbers.
+                    var problem by remember(remoteReports.url) { mutableStateOf<String?>(null) }
+                    if (problem != null) {
+                        RemoteReportProblem(problem!!, Modifier.padding(padding))
+                    } else {
+                        FavaWebView(
+                            url = remoteReports.url,
+                            allowlist = OriginAllowlist(remoteReports.origins),
+                            modifier = Modifier.fillMaxSize().padding(padding),
+                            debuggingAllowed = debuggingAllowed,
+                            onExternalLink = onOpenExternally,
+                            httpAuth = remoteReports.auth,
+                            onLoadProblem = { problem = it },
+                        )
+                    }
+                } else if (serving == null) {
+                    LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
+                } else {
+                    if (token != null) installSessionToken(serving.origin, token)
+                    // Starts at the ledger's own index so Fava serves whatever the file's
+                    // default-page option asks for; picking a report from the list overrides
+                    // it from then on (B19).
+                    var report by remember { mutableStateOf(ReportPath.LEDGER_DEFAULT) }
+                    val web: @Composable () -> Unit = {
+                        FavaWebView(
+                            url = "${serving.origin}/${serving.ledgerSlug}/${report.path}"
+                                .trimEnd('/') + "/",
+                            allowlist = OriginAllowlist(setOf(serving.origin)),
+                            modifier = Modifier.fillMaxSize(),
+                            debuggingAllowed = debuggingAllowed,
+                            onExternalLink = onOpenExternally,
+                        )
+                    }
+                    if (twoPane) {
+                        // ux.md 7: on an expanded window the Fava WebView gets the wider
+                        // pane, with the report list beside it (N8).
+                        ReportsPane(
+                            selected = report,
+                            onSelect = { report = it },
+                            modifier = Modifier.fillMaxSize().padding(padding),
+                            report = web,
+                        )
+                    } else {
+                        androidx.compose.foundation.layout.Box(
+                            Modifier.fillMaxSize().padding(padding),
+                        ) { web() }
+                    }
+                }
+            }
+        }
+    }
+}
