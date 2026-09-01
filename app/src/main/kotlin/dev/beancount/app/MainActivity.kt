@@ -33,6 +33,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Tab
@@ -886,15 +894,15 @@ class RemoteReports(
 )
 
 
-private enum class Surface(val label: String) {
-    HOME("Home"),
-    ADD("Add"),
-    JOURNAL("Journal"),
-    BALANCES("Balances"),
-    REPORTS("Reports"),
+private enum class Surface(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    HOME("Home", Icons.Outlined.Home),
+    ADD("Add", Icons.Outlined.Add),
+    JOURNAL("Journal", Icons.AutoMirrored.Outlined.List),
+    BALANCES("Balances", Icons.Outlined.AccountBalance),
+    REPORTS("Reports", Icons.Outlined.BarChart),
     // The hub docs/ux.md 2 asks for: documents now, backup and settings as they arrive.
     // Projects lives here rather than in the bar so six destinations still fit a phone.
-    MORE("More"),
+    MORE("More", Icons.Outlined.MoreHoriz),
 }
 
 @Composable
@@ -1100,7 +1108,7 @@ internal fun LedgerApp(
                             selected = selected == surface,
                             onClick = { selected = surface },
                             label = { Text(surface.label) },
-                            icon = {},
+                            icon = { Icon(surface.icon, contentDescription = null) },
                             // No contentDescription: the label already supplies one, and
                             // setting both made TalkBack say "Reports, Reports" on every
                             // destination.
