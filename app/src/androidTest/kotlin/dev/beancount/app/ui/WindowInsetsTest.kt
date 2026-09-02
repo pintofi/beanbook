@@ -71,7 +71,17 @@ class WindowInsetsTest {
         // Not the root node: `safeDrawingPadding` shrinks what a composable *draws*, and the
         // root still measures the full window, so its bounds say nothing either way. What
         // matters is where the topmost thing a person can actually see begins.
+        // Nodes with an empty rectangle are excluded, and that exclusion is load-bearing. A
+        // composable that exists in the tree but has not been laid out — an item scrolled
+        // past the end of a list, say — reports bounds of (0,0,0,0), and `minOf` then picks
+        // 0 as "the topmost content" and fails a screen that is perfectly well behaved.
+        //
+        // It only appears once there is enough in the ledger to push content off screen,
+        // which is why it lay dormant until a populated project was on the device. The same
+        // zero-rect trap once made the posting-layout test read a stacked column as side by
+        // side.
         val drawn = compose.onAllNodes(hasAnyText()).fetchSemanticsNodes()
+            .filter { !it.boundsInWindow.isEmpty }
         assumeTrue("nothing was rendered to measure", drawn.isNotEmpty())
         val highest = drawn.minOf { it.boundsInWindow.top }
         val label = drawn.minByOrNull { it.boundsInWindow.top }

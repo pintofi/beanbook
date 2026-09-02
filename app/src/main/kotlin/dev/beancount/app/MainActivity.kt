@@ -374,7 +374,19 @@ class MainActivity : ComponentActivity() {
                 // 24dp padding: flush against the bar with no clearance whatsoever. It now
                 // starts at 126px. WindowInsetsTest measures that, and fails if this is
                 // removed.
-                Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+                // The app's own background reaches the screen edges, under the status and
+                // navigation bars, which is what edge-to-edge means and what every current
+                // Android app does. Insetting the whole Surface — which is what this used to
+                // do — put the window behind the bars and then pulled the app back out of
+                // them again, so the platform saw an edge-to-edge app and the user saw a
+                // letterboxed one.
+                //
+                // Clearance is now each component's own business, which is where Material
+                // already puts it: Scaffold gives its top bar the status bar inset and its
+                // bottom bar the navigation bar inset, and hands content the rest. What is
+                // *not* inside a Scaffold — onboarding, and the dialogs — asks for its own,
+                // below.
+                Surface(modifier = Modifier.fillMaxSize()) {
                     val engineStatus by app.engineManager.status.collectAsStateWithLifecycle()
                     val ledger by app.ledgerState.snapshot.collectAsStateWithLifecycle()
                     val projects by app.projectsState.projects.collectAsStateWithLifecycle()
@@ -431,7 +443,11 @@ class MainActivity : ComponentActivity() {
 
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
+                        // Outside the Scaffold, so it takes the insets itself. This is the
+                        // first screen anybody sees and the one where the title once sat
+                        // flush against the status bar.
                         OnboardingScreen(
+                            modifier = Modifier.safeDrawingPadding(),
                             onCreateNew = { title ->
                                 app.projectsState.createNew(title) { openProject(app, it) }
                             },
