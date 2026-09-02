@@ -83,6 +83,29 @@ class RemoteReports(
 
 
 /**
+ * Whether the add button belongs on screen.
+ *
+ * **This takes no layout, and that is the point.** The condition once included
+ * `layout == PaneLayout.COMPACT`, copied from the bottom bar without thinking, and since Add
+ * had stopped being a destination when it became this button, gating the button by screen
+ * width left a tablet with no way to add an entry at all. Every test passed: they render
+ * composables at one width, and none of them asks whether the app can reach its own primary
+ * action.
+ *
+ * Keeping the decision here, with no width to consult, is what stops that being written
+ * again — a test would only catch it afterwards.
+ *
+ * Add appears on the surfaces that show the ledger. Not on More, where it covered a row of
+ * the list; not on Reports, which is a Fava page whose layout is not ours to float things
+ * over; not while the form is already open, where a button that opens it is noise; and not
+ * before there is a ledger to add to.
+ */
+internal fun showsAddAction(selected: Surface, adding: Boolean, hasLedger: Boolean): Boolean =
+    !adding &&
+        hasLedger &&
+        selected in setOf(Surface.HOME, Surface.JOURNAL, Surface.BALANCES)
+
+/**
  * The places the app can be. Adding an entry is deliberately not one of them: it is an
  * action, and Material puts an action of the highest importance in a FAB rather than in the
  * navigation bar, which is for destinations. Removing it is also what brings the bar to the
@@ -280,16 +303,7 @@ internal fun LedgerApp(
             // Material reserves for that, rather than a sixth slot in a bar meant for
             // destinations (B26). Hidden while the form is open -- a button that opens what
             // is already open is noise -- and while there is no ledger to add to.
-            // Only on the surfaces that show the ledger. On More it covered a row of the
-            // list, and Reports is a Fava page whose layout is not ours to float things over.
-            //
-            // Deliberately *not* restricted to the compact layout. It was, briefly, and that
-            // left a tablet with no way to add an entry at all: Add stopped being a
-            // destination when it became this button, so gating the button by width removed
-            // the only route to it. Found by looking at a tablet, which is the only way it
-            // could have been found — every test passed.
-            val ledgerSurface = selected in setOf(Surface.HOME, Surface.JOURNAL, Surface.BALANCES)
-            if (!adding && ledger != null && ledgerSurface) {
+            if (showsAddAction(selected, adding, hasLedger = ledger != null)) {
                 androidx.compose.material3.FloatingActionButton(
                     onClick = { adding = true },
                 ) {
