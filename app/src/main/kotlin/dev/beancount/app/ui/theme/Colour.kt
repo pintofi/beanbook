@@ -1,5 +1,6 @@
 package dev.beancount.app.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
@@ -87,6 +88,31 @@ internal val DarkColours = darkColorScheme(
     inverseOnSurface = Color(0xFF191C1C),
     inversePrimary = Color(0xFF006A6A),
     scrim = Color(0xFF000000),
+)
+
+/**
+ * A dark scheme with a true-black ground, for OLED screens.
+ *
+ * Not a Material concept — there is no `amoledColorScheme()`. It is a display trick: an OLED
+ * pixel showing #000000 is switched off, so a black ground costs no power and has no glow in
+ * a dark room. This is applied *over* whichever dark scheme is in use, so it composes with
+ * dynamic colour rather than replacing it.
+ *
+ * The containers are deliberately *not* black. Making every surface #000000 is the usual
+ * mistake: this app puts figures on cards — the home totals, the trial notice, a document
+ * row — and a card that is the same colour as the page behind it stops being a card. So the
+ * page goes black and the raised roles keep a step above it, which is the elevation Material
+ * expresses with colour in dark themes.
+ */
+internal fun ColorScheme.onBlack(): ColorScheme = copy(
+    background = Color(0xFF000000),
+    surface = Color(0xFF000000),
+    surfaceContainerLowest = Color(0xFF000000),
+    surfaceContainerLow = Color(0xFF0B0E0E),
+    surfaceContainer = Color(0xFF121616),
+    surfaceContainerHigh = Color(0xFF1B1F1F),
+    surfaceContainerHighest = Color(0xFF242828),
+    surfaceDim = Color(0xFF000000),
 )
 
 /**

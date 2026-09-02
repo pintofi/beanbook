@@ -13,10 +13,22 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 
 /** What the user asked for, which is not always what the system is doing. */
+/**
+ * What the user asked for, which is not always what the system is doing.
+ *
+ * Dynamic colour is deliberately *not* one of these. Material treats it as where a palette
+ * comes from, not which mode is on — there is a `dynamicLightColorScheme` and a
+ * `dynamicDarkColorScheme` — so it applies to every entry here and stays a switch of its
+ * own. Listing it beside "Always dark" would make the two look exclusive when they compose.
+ *
+ * BLACK is a dark mode, not a fourth palette: it is [DARK] with the ground taken to #000000
+ * for OLED screens, and it composes with dynamic colour like the others.
+ */
 enum class ThemeChoice(val label: String) {
     SYSTEM("Follow the system"),
     LIGHT("Always light"),
     DARK("Always dark"),
+    BLACK("Always dark, pure black"),
     ;
 
     @Composable
@@ -24,7 +36,7 @@ enum class ThemeChoice(val label: String) {
     fun isDark(): Boolean = when (this) {
         SYSTEM -> isSystemInDarkTheme()
         LIGHT -> false
-        DARK -> true
+        DARK, BLACK -> true
     }
 }
 
@@ -59,12 +71,15 @@ fun BeancountTheme(
     val dark = choice.isDark()
     val context = LocalContext.current
 
-    val colours: ColorScheme = when {
+    val base: ColorScheme = when {
         dynamicColour && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         dark -> DarkColours
         else -> LightColours
     }
+    // Applied over whichever dark scheme won above, so pure black composes with the
+    // wallpaper palette instead of cancelling it.
+    val colours = if (choice == ThemeChoice.BLACK) base.onBlack() else base
 
     CompositionLocalProvider(
         LocalLedgerColours provides if (dark) LedgerColours.Dark else LedgerColours.Light,

@@ -48,7 +48,6 @@ fun AppearanceScreen(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Appearance", style = MaterialTheme.typography.titleMedium)
 
         Text("Theme", style = MaterialTheme.typography.titleSmall)
         ThemeChoice.entries.forEach { option ->
