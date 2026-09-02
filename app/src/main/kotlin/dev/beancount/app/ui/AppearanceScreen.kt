@@ -142,9 +142,21 @@ fun AppearanceScreen(
         Text("Preview", style = MaterialTheme.typography.titleSmall)
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                AmountRow("Assets:Bank:Checking", "1,240.00", positive = true)
-                AmountRow("Expenses:Food:Groceries", "-262.00", positive = false)
-                AmountRow("Income:Salary", "3,000.00", positive = true)
+                // The two sides of one transaction, because that is where the app actually
+                // colours a figure: a posting is a movement and its direction is the point.
+                // Balances are left in the ordinary colour, as Fava leaves them — an Income
+                // or Equity account is negative all the time, and colouring balances by sign
+                // would mark the healthiest accounts in the ledger as though they were wrong.
+                //
+                // The previous preview showed "Income:Salary 3,000.00" in green, which is
+                // neither what the app does nor what Beancount reports: income is negative.
+                AmountRow("Expenses:Food:Groceries", "262.00", positive = true)
+                AmountRow("Assets:Bank:Checking", "-262.00", positive = false)
+                Text(
+                    "Money in and money out, on the two sides of one entry. Balances are not " +
+                        "coloured: in double-entry a negative balance is ordinary.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
                 Text(
                     "Figures use a fixed-width face so decimal points line up down a column.",
                     style = MaterialTheme.typography.bodySmall,

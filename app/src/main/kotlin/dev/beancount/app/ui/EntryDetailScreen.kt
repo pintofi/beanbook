@@ -85,7 +85,7 @@ fun EntryDetailScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f).padding(end = 8.dp),
                 )
-                posting.amount?.let { AmountText(it) }
+                posting.amount?.let { AmountText(it, signed = true) }
                     ?: Text("(elided)", style = MaterialTheme.typography.bodySmall)
             }
         }

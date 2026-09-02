@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.beancount.core.domain.AccountBalance
+import dev.beancount.app.ui.theme.BeancountTheme
 import dev.beancount.core.domain.Amount
 import dev.beancount.core.domain.JournalEntry
 import dev.beancount.core.domain.LedgerError
@@ -52,8 +54,26 @@ private fun Amount.accessibleDescription(): String {
     return "$sign${number.abs().toPlainString()} $currency"
 }
 
+/**
+ * One figure, in the ledger's own type.
+ *
+ * [signed] colours it by direction, and defaults to *off*, which is the part worth
+ * explaining. Fava — whose reports this app also shows, so the two are seen together —
+ * renders balances in the ordinary text colour (`td.num { color: var(--text-color) }`) and
+ * reserves colour for a *difference* (`.tree-table .diff.negative`). That is the right rule
+ * for double-entry rather than a stylistic one: an Income or Equity account carries a credit
+ * balance and shows as negative all the time, so colouring balances by sign would paint the
+ * healthiest accounts in the ledger as though something were wrong with them.
+ *
+ * So a *movement* is coloured — a posting is money going one way or the other, and the
+ * direction is the point of it — and a *balance* is not.
+ *
+ * The colours stay this app's green and amber rather than Fava's green and red. That choice
+ * is already argued in LedgerColours: red and green alone are the classic accessibility
+ * failure, and the sign, not the colour, is what carries the meaning here.
+ */
 @Composable
-internal fun AmountText(amount: Amount, modifier: Modifier = Modifier) {
+internal fun AmountText(amount: Amount, modifier: Modifier = Modifier, signed: Boolean = false) {
     // The helper below existed from M6 and was never applied, so every amount was announced
     // as its raw text: TalkBack reads "-12.34 USD" by pronouncing the hyphen or dropping it,
     // which is the one thing ux.md 6 says must not happen. detekt found it as dead code
@@ -65,7 +85,11 @@ internal fun AmountText(amount: Amount, modifier: Modifier = Modifier) {
         fontFamily = FontFamily.Monospace,
         textAlign = TextAlign.End,
         style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurface,
+        color = when {
+            !signed -> MaterialTheme.colorScheme.onSurface
+            amount.number.signum() < 0 -> BeancountTheme.ledger.negative
+            else -> BeancountTheme.ledger.positive
+        },
     )
 }
 
@@ -111,7 +135,13 @@ fun BalancesScreen(
         }
 
         val needle = filter.trim()
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        // Room at the end for the floating action button, which draws over the list rather
+        // than beside it. Without this the last row's figures sit under the FAB — the cost a
+        // FAB always carries, and one the surfaces it appears on have to pay (B26).
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 88.dp),
+        ) {
             if (snapshot.hasErrors) {
                 item { ErrorBanner(snapshot.errors) }
             }
@@ -206,7 +236,10 @@ fun JournalScreen(
     modifier: Modifier = Modifier,
     onOpenEntry: (JournalEntry) -> Unit = {},
 ) {
-    LazyColumn(modifier = modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 88.dp),
+    ) {
         if (snapshot.hasErrors) {
             item { ErrorBanner(snapshot.errors) }
         }
@@ -289,7 +322,7 @@ private fun JournalRow(entry: JournalEntry, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.weight(1f),
                 )
-                posting.amount?.let { AmountText(it) }
+                posting.amount?.let { AmountText(it, signed = true) }
             }
         }
     }
