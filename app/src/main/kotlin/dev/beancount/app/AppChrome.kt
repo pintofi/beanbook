@@ -14,6 +14,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -149,12 +152,20 @@ internal fun LedgerTopBar(
         },
         navigationIcon = {
             if (sectionTitle != null) {
-                // Text rather than an arrow icon: androidx.compose.material.icons is a
-                // whole artifact for one glyph, and "Back" needs no legend.
-                TextButton(
+                // An arrow, which is what a person expects in this corner. This was the
+                // word "Back", on the grounds that the icon artifact was a whole dependency
+                // for one glyph -- true when it was written, and no longer: the icon set
+                // arrived with the navigation bar and measured +424 bytes in the shipped APK
+                // (B23).
+                //
+                // AutoMirrored, so the arrow points the other way in a right-to-left layout.
+                // A back arrow that keeps pointing left in Arabic or Hebrew points forward.
+                IconButton(
                     onClick = onBack,
                     modifier = Modifier.semantics { contentDescription = "Back to More" },
-                ) { Text("Back") }
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                }
             }
         },
         actions = {

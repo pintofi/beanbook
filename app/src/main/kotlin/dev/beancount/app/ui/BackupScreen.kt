@@ -66,7 +66,6 @@ fun BackupScreen(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Backup", style = MaterialTheme.typography.titleMedium)
         Text(
             "A backup is a single .bcaz file: a zip with a readable manifest and a checksum " +
                 "for every file. Unencrypted, it can be opened anywhere, by any tool, " +

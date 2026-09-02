@@ -20,6 +20,10 @@ import dev.beancount.core.domain.BeancountText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -193,7 +197,16 @@ private fun Editor(
                 .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            TextButton(onClick = onClose) { Text("Back") }
+            // The same arrow as the section top bar, for the same act. It carries its own
+            // description because there is no longer a label to supply one, and it says
+            // where it goes: "Back" alone does not, when a file is open inside a section
+            // that is itself inside More.
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier.semantics { contentDescription = "Back to the file list" },
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+            }
             Text(
                 state.file.relativePath,
                 style = MaterialTheme.typography.titleSmall,
