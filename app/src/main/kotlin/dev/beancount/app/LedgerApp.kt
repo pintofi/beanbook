@@ -282,8 +282,14 @@ internal fun LedgerApp(
             // is already open is noise -- and while there is no ledger to add to.
             // Only on the surfaces that show the ledger. On More it covered a row of the
             // list, and Reports is a Fava page whose layout is not ours to float things over.
+            //
+            // Deliberately *not* restricted to the compact layout. It was, briefly, and that
+            // left a tablet with no way to add an entry at all: Add stopped being a
+            // destination when it became this button, so gating the button by width removed
+            // the only route to it. Found by looking at a tablet, which is the only way it
+            // could have been found — every test passed.
             val ledgerSurface = selected in setOf(Surface.HOME, Surface.JOURNAL, Surface.BALANCES)
-            if (!adding && ledger != null && ledgerSurface && layout == PaneLayout.COMPACT) {
+            if (!adding && ledger != null && ledgerSurface) {
                 androidx.compose.material3.FloatingActionButton(
                     onClick = { adding = true },
                 ) {
