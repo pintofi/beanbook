@@ -306,14 +306,37 @@ class WheelFetcher(
         return connection.use { it.inputStream.readBytes() }
     }
 
-    private fun get(url: String): String? = runCatching {
+    /**
+     * The body, or `null` when the server says there is nothing there.
+     *
+     * **Not reachable and not present are different answers**, and this used to give the
+     * same one for both: every failure became `null`, callers turned `null` into "no wheel",
+     * and a timeout or a 503 was reported to the user as "no Android-compatible wheel for
+     * $name" — telling them a package can never work on Android when the truth was to try
+     * again in a minute. Seen for real: `packaging` resolved in one test and "had no wheel"
+     * in another, in the same run, on the same emulator.
+     *
+     * So only 404 and 410 return `null`. Anything else — a refused connection, a timeout, a
+     * 5xx, a rate limit — is thrown, and `resolve` reports it as what it is.
+     */
+    private fun get(url: String): String? =
         (URL(url).openConnection() as HttpURLConnection).use { connection ->
             connection.connectTimeout = 20_000
             connection.readTimeout = 30_000
-            if (connection.responseCode >= 400) return@runCatching null
-            connection.inputStream.bufferedReader().use { it.readText() }
+            val code = runCatching { connection.responseCode }.getOrElse { cause ->
+                throw java.io.IOException("could not reach $url: ${cause.message}", cause)
+            }
+            when {
+                code == HttpURLConnection.HTTP_NOT_FOUND -> null
+                code == HttpURLConnection.HTTP_GONE -> null
+                code >= 400 -> throw java.io.IOException("$url returned HTTP $code")
+                else -> runCatching {
+                    connection.inputStream.bufferedReader().use { it.readText() }
+                }.getOrElse { cause ->
+                    throw java.io.IOException("could not read $url: ${cause.message}", cause)
+                }
+            }
         }
-    }.getOrNull()
 
     /** An Android wheel from Chaquopy's index, if it has one for this interpreter. */
     private fun fromChaquopy(name: String): Wheel? {
