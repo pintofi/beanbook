@@ -2,11 +2,6 @@ package dev.beancount.app
 
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -314,21 +309,7 @@ internal fun LedgerApp(
             // Material reserves for that, rather than a sixth slot in a bar meant for
             // destinations (B26). Hidden while the form is open -- a button that opens what
             // is already open is noise -- and while there is no ledger to add to.
-            //
-            // Scale-and-fade rather than an abrupt swap. The FAB comes and goes often --
-            // every tab change to and from a surface that cannot add, and every open and
-            // close of the form -- and appearing instantly at full size read as a glitch
-            // next to the bar's own animated selection. Material's motion for a FAB is to
-            // grow from its own centre, which is what `scaleIn` from 0.8 does here.
-            //
-            // Expressive's `MotionScheme` would supply these specs by token, but it is
-            // internal at the pinned Material3 (see BeancountShapes), so the durations are
-            // the stable animation library's defaults and are not hand-tuned numbers.
-            AnimatedVisibility(
-                visible = showsAddAction(selected, adding, hasLedger = ledger != null),
-                enter = scaleIn(initialScale = 0.8f) + fadeIn(),
-                exit = scaleOut(targetScale = 0.8f) + fadeOut(),
-            ) {
+            if (showsAddAction(selected, adding, hasLedger = ledger != null)) {
                 androidx.compose.material3.FloatingActionButton(
                     onClick = { adding = true },
                 ) {
