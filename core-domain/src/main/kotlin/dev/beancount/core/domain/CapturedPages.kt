@@ -11,10 +11,23 @@ data class CapturedPage(
     val source: String,
     /** Clockwise, in degrees; always one of 0, 90, 180, 270. */
     val rotation: Int = 0,
+    /**
+     * The page's four corners within the photograph, or `null` for the whole image.
+     *
+     * Kept as corners rather than as an already-cropped file so the capture on disk stays the
+     * one the camera produced. A crop is then a decision the user can revisit or undo, and a
+     * mistaken drag never destroys the original.
+     */
+    val crop: CropQuad? = null,
 ) {
     init {
         require(rotation in ALLOWED_ROTATIONS) { "rotation must be a quarter turn, got $rotation" }
     }
+
+    /** True when this page has been cropped to something other than the whole image. */
+    val isCropped: Boolean get() = crop != null
+
+    fun croppedTo(quad: CropQuad?): CapturedPage = copy(crop = quad)
 
     fun rotatedClockwise(): CapturedPage = copy(rotation = (rotation + 90) % 360)
 
@@ -63,6 +76,9 @@ data class CapturedPages(val pages: List<CapturedPage> = emptyList()) {
     fun remove(index: Int): CapturedPages =
         if (index in pages.indices) CapturedPages(pages.filterIndexed { i, _ -> i != index })
         else this
+
+    /** The pages with one page's crop set, or cleared when [quad] is null. */
+    fun crop(index: Int, quad: CropQuad?): CapturedPages = replace(index) { it.croppedTo(quad) }
 
     private fun replace(index: Int, transform: (CapturedPage) -> CapturedPage): CapturedPages =
         if (index in pages.indices) {

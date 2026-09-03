@@ -28,4 +28,8 @@ data class DocumentCaptureHandle(
      * it cannot name a file that does not exist yet (invariant 5).
      */
     val onFile: (account: String, onFiled: (String) -> Unit) -> Unit,
+    /** Sets or clears one page's crop corners (B31). */
+    val onCrop: (index: Int, quad: dev.beancount.core.domain.CropQuad?) -> Unit = { _, _ -> },
+    /** The capture on disk for a page, so it can be shown for cropping. */
+    val fileFor: (String) -> File = { File(it) },
 )

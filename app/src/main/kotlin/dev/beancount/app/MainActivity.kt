@@ -495,6 +495,8 @@ class MainActivity : ComponentActivity() {
                             onRotate = { app.documentCapture.rotate(it) },
                             onMove = { from, to -> app.documentCapture.move(from, to) },
                             onRemovePage = { app.documentCapture.remove(it) },
+                            onCrop = { index, quad -> app.documentCapture.crop(index, quad) },
+                            fileFor = { name -> app.documentCapture.fileFor(name) },
                             onFile = { account, onFiled ->
                                 app.documentCapture.save(activeId!!, account) { path ->
                                     onFiled(path)

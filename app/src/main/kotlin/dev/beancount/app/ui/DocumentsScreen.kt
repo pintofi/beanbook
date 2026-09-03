@@ -100,6 +100,7 @@ fun DocumentsScreen(
     var mode by rememberSaveable { mutableStateOf(DocumentsMode.ADD) }
     var refiling by remember { mutableStateOf<DocumentRow?>(null) }
     var expanded by remember { mutableStateOf(emptySet<String>()) }
+    var cropping by remember { mutableStateOf<Int?>(null) }
 
     val askForCamera = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -153,6 +154,12 @@ fun DocumentsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f),
                     )
+                    TextButton(
+                        onClick = { cropping = index },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Crop page ${index + 1}"
+                        },
+                    ) { Text(if (page.isCropped) "Cropped" else "Crop") }
                     TextButton(
                         onClick = { capture.onRotate(index) },
                         modifier = Modifier.semantics {
@@ -289,6 +296,20 @@ fun DocumentsScreen(
                     }
                 }
             }
+        }
+    }
+
+    cropping?.let { index ->
+        capture.pages.pages.getOrNull(index)?.let { page ->
+            CropPageDialog(
+                file = capture.fileFor(page.source),
+                initial = page.crop,
+                onCropped = { quad ->
+                    capture.onCrop(index, quad)
+                    cropping = null
+                },
+                onDismiss = { cropping = null },
+            )
         }
     }
 

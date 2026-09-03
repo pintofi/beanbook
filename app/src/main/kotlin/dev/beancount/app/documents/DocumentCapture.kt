@@ -55,6 +55,10 @@ class DocumentCapture(
         _pages.value = _pages.value.rotate(index, clockwise)
     }
 
+    fun crop(index: Int, quad: dev.beancount.core.domain.CropQuad?) {
+        _pages.value = _pages.value.crop(index, quad)
+    }
+
     fun move(from: Int, to: Int) {
         _pages.value = _pages.value.move(from, to)
     }

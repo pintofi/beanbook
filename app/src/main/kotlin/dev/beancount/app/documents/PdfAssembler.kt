@@ -9,6 +9,7 @@ import android.graphics.Rect
 import android.graphics.pdf.PdfDocument
 import dev.beancount.core.domain.CapturedPage
 import dev.beancount.core.domain.CapturedPages
+import dev.beancount.core.domain.CropQuad
 import java.io.ByteArrayOutputStream
 import java.io.File
 
@@ -36,7 +37,7 @@ class PdfAssembler(private val maxPageEdge: Int = DEFAULT_MAX_EDGE) {
         val document = PdfDocument()
         try {
             pages.pages.forEachIndexed { index, page ->
-                val bitmap = decode(resolve(page.source), page.rotation)
+                val bitmap = decode(resolve(page.source), page.rotation, page.crop)
                     ?: error("page ${index + 1} could not be read: ${page.source}")
                 try {
                     val info = PdfDocument.PageInfo
@@ -70,7 +71,42 @@ class PdfAssembler(private val maxPageEdge: Int = DEFAULT_MAX_EDGE) {
      * receipt needs, and a 12-megapixel page per receipt would make a project unbackupable.
      * The scale is a power of two so the decoder does the work rather than us.
      */
-    private fun decode(file: File, rotation: Int): Bitmap? {
+    /**
+     * Flattens a photographed page onto a rectangle.
+     *
+     * `setPolyToPoly` with four points is a full perspective transform, which is what a
+     * receipt shot at an angle needs: its outline is a general quadrilateral, and a plain
+     * rectangular crop can only cut a box out of that, leaving the page still keystoned.
+     *
+     * The corners are in the pixels of the *decoded* bitmap, which is sampled down from the
+     * capture, so they are scaled by the same factor before use. Getting that wrong crops a
+     * different part of the page than the one the user framed.
+     */
+    private fun applyCrop(bitmap: Bitmap, quad: CropQuad, scale: Float): Bitmap {
+        val (outWidth, outHeight) = quad.outputSize()
+        val width = (outWidth * scale).toInt().coerceAtLeast(1)
+        val height = (outHeight * scale).toInt().coerceAtLeast(1)
+
+        val source = quad.asFloatArray().map { it * scale }.toFloatArray()
+        val destination = floatArrayOf(
+            0f, 0f,
+            width.toFloat(), 0f,
+            width.toFloat(), height.toFloat(),
+            0f, height.toFloat(),
+        )
+        val matrix = Matrix()
+        if (!matrix.setPolyToPoly(source, 0, destination, 0, 4)) return bitmap
+
+        val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        android.graphics.Canvas(output).drawBitmap(
+            bitmap,
+            matrix,
+            android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG),
+        )
+        return output
+    }
+
+    private fun decode(file: File, rotation: Int, crop: CropQuad? = null): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.path, bounds)
         val longestEdge = maxOf(bounds.outWidth, bounds.outHeight)
@@ -81,21 +117,30 @@ class PdfAssembler(private val maxPageEdge: Int = DEFAULT_MAX_EDGE) {
                 .first { longestEdge / it <= maxPageEdge }
         }
         val decoded = BitmapFactory.decodeFile(file.path, options) ?: return null
-        if (rotation == 0) return decoded
+
+        // Cropped before rotating, because the corners were placed on the unrotated capture.
+        val cropped = if (crop == null) {
+            decoded
+        } else {
+            applyCrop(decoded, crop, scale = 1f / options.inSampleSize).also {
+                if (it !== decoded) decoded.recycle()
+            }
+        }
+        if (rotation == 0) return cropped
 
         val rotated = Bitmap.createBitmap(
-            decoded,
+            cropped,
             0,
             0,
-            decoded.width,
-            decoded.height,
+            cropped.width,
+            cropped.height,
             Matrix().apply { postRotate(rotation.toFloat()) },
             true,
         )
         // createBitmap can hand back the very same instance when there is nothing to do, so
         // the source is only recycled when a genuinely different bitmap replaced it —
         // otherwise this would recycle the bitmap it is about to return.
-        if (rotated !== decoded) decoded.recycle()
+        if (rotated !== cropped) cropped.recycle()
         return rotated
     }
 
