@@ -3,7 +3,13 @@
 # 2026-08-17 and exercised by the Phase 0 spikes — see docs/feasibility/phase0-report.md.
 
 [versions]
-# AGP 9.2.0, not 9.3.x: Chaquopy 17.0.0 documents support for AGP 7.3-9.2 (finding C9).
+# AGP 9.2.0, not 9.4.x: Chaquopy 17.0.0 documents support for AGP 7.3-9.2 (finding C9),
+# and 17.0.0 is the newest Chaquopy. 9.4.0 was tried on 2026-09-03 and *works* -- it
+# configures, it assembles every Python task, and 31 engine tests including the on-device
+# golden corpus pass against it. It is still not taken: "builds and passes" is not the same
+# as "supported" for the component that packages CPython into the APK, and the failure mode
+# of an undocumented pairing is a subtle packaging bug in an accounting app rather than a
+# red build. Raise this when Chaquopy documents the wider range.
 agp = "9.2.0"
 kotlin = "2.4.10"
 # Current AndroidX and Compose require compileSdk 37. The SDK package is named
@@ -30,10 +36,11 @@ coreKtx = "1.19.0"
 documentFile = "1.1.0"
 # CameraX for receipt capture (M8). Apache-2.0, like the rest of AndroidX: the engine runs
 # in its own process, which is what keeps that compatible with a GPL-2.0-only app
-# (docs/architecture.md 7.1).
-camerax = "1.5.0"
+# (docs/architecture.md 7.1). 1.5.0 -> 1.6.2 on 2026-09-03, the current stable.
+camerax = "1.6.2"
 # WorkManager for scheduled backups (M9). Apache-2.0, like the rest of AndroidX.
-work = "2.11.0"
+# 2.11.0 -> 2.11.2 on 2026-09-03, a patch release on the same minor.
+work = "2.11.2"
 # Argon2id for backup encryption (M9). Apache-2.0, ~1 MB of native code across both ABIs —
 # Bouncy Castle would have been ~8 MB for the same one function.
 argon2kt = "1.6.0"
