@@ -248,17 +248,29 @@ internal fun LedgerApp(
     var moreSection by remember { mutableStateOf<MoreSection?>(null) }
 
     // Back walks out the way the user came in, rather than leaving the app from wherever
-    // they happen to be standing (B8). Innermost first: a More section, then the Contribute
-    // sheet, then any surface other than the Journal. Once on the Journal it is not enabled,
-    // so the system takes Back and the app closes -- which is what the platform expects of a
-    // top-level destination, and what predictive back animates against.
-    BackHandler(enabled = adding) { adding = false }
-    BackHandler(enabled = !adding && moreSection != null) { moreSection = null }
-    BackHandler(enabled = !adding && moreSection == null && showContribute) { showContribute = false }
-    BackHandler(
-        enabled = !adding && moreSection == null && !showContribute && selected != Surface.HOME,
-    ) {
-        selected = Surface.HOME
+    // they happen to be standing (B8). One handler over one stack: this was four handlers
+    // whose `enabled` conditions each repeated every condition above them, so opening a
+    // fifth thing meant editing the other four -- and forgetting one silently broke Back,
+    // which is what happened when the add form became a button.
+    //
+    // Disabled once the stack has nothing left, so the system takes Back and the app closes
+    // from Home. That is what the platform expects of a top-level destination, and what
+    // predictive back animates against.
+    val stack = Backstack(
+        tab = selected,
+        overlays = buildList {
+            if (showContribute) add(Overlay.Contribute)
+            moreSection?.let { add(Overlay.Section(it)) }
+            if (adding) add(Overlay.AddEntry)
+        },
+    )
+    BackHandler(enabled = stack.back() != null) {
+        stack.back()?.let { previous ->
+            adding = previous.isAdding
+            moreSection = previous.openSection
+            showContribute = previous.isContributing
+            selected = previous.tab
+        }
     }
 
     // Breakpoints from docs/ux.md §7. Measured from the window, not the device: a phone in
