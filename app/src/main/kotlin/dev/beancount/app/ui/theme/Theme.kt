@@ -86,6 +86,7 @@ fun BeancountTheme(
     ) {
         MaterialTheme(
             colorScheme = colours,
+            shapes = BeancountShapes,
             typography = BeancountTypography,
             content = content,
         )
