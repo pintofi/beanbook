@@ -395,8 +395,36 @@ internal fun CameraPane(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val capture = remember { ImageCapture.Builder().build() }
+    val capture = remember {
+        ImageCapture.Builder()
+            // A receipt is read, not glanced at, so the slower path that keeps detail is the
+            // right trade here. The default minimises latency instead.
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            .build()
+    }
     var busy by remember { mutableStateOf(false) }
+
+    // CameraX fixes an ImageCapture's target rotation when it is built, and this activity
+    // declares `configChanges="orientation"`, so it is never recreated to pick up a new one.
+    // Every photo in a session was therefore saved with the rotation the device happened to
+    // have when the camera first appeared: turn the phone sideways to fit a wide receipt and
+    // the page came out sideways. The Rotate button below is a workaround for this, not a
+    // feature.
+    DisposableEffect(capture) {
+        val listener = object : android.view.OrientationEventListener(context) {
+            override fun onOrientationChanged(orientation: Int) {
+                if (orientation == ORIENTATION_UNKNOWN) return
+                capture.targetRotation = when (orientation) {
+                    in 45 until 135 -> android.view.Surface.ROTATION_270
+                    in 135 until 225 -> android.view.Surface.ROTATION_180
+                    in 225 until 315 -> android.view.Surface.ROTATION_90
+                    else -> android.view.Surface.ROTATION_0
+                }
+            }
+        }
+        if (listener.canDetectOrientation()) listener.enable()
+        onDispose { listener.disable() }
+    }
 
     AndroidView(
         factory = { viewContext ->
@@ -432,8 +460,13 @@ internal fun CameraPane(
 
     DisposableEffect(Unit) {
         onDispose {
-            val provider = runCatching { ProcessCameraProvider.getInstance(context).get() }
-            provider.getOrNull()?.unbindAll()
+            // Released through the future's own listener rather than by blocking on `get()`
+            // on the main thread, which is the thread this runs on.
+            val future = ProcessCameraProvider.getInstance(context)
+            future.addListener(
+                { runCatching { future.get().unbindAll() } },
+                ContextCompat.getMainExecutor(context),
+            )
         }
     }
 
