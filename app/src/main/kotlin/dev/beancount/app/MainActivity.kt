@@ -483,7 +483,6 @@ class MainActivity : ComponentActivity() {
                                 saveText(app, activeId!!, draft.render(), "quick-add")
                             }
                         },
-                        documentPages = documentPages,
                         // Built once and passed whole: the same six callbacks are needed by
                         // the documents screen and by transaction entry, and threading them
                         // separately is what makes detekt's LargeClass bite on this class.
@@ -515,13 +514,6 @@ class MainActivity : ComponentActivity() {
                             directives = ledger?.documents.orEmpty(),
                         ),
                         documentMessage = documentMessage,
-                        captureFile = { app.documentCapture.nextCaptureFile() },
-                        onCapture = { file, _ ->
-                            if (file.length() > 0) app.documentCapture.add(file)
-                        },
-                        onRotatePage = { app.documentCapture.rotate(it) },
-                        onMovePage = { from, to -> app.documentCapture.move(from, to) },
-                        onRemovePage = { app.documentCapture.remove(it) },
                         onSaveDocument = { account -> attachDocument(app, activeId!!, account) },
                         onDiscardPages = { app.documentCapture.reset(discardCaptures = true) },
                         onRefileDocument = { path, account, from ->

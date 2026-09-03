@@ -46,7 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import dev.beancount.core.domain.BeancountText
-import dev.beancount.core.domain.CapturedPages
 import dev.beancount.core.domain.DocumentRow
 import dev.beancount.core.domain.DocumentStatus
 import dev.beancount.core.domain.DocumentRemoval
@@ -69,14 +68,16 @@ enum class DocumentsMode(val label: String) {
  */
 @Composable
 fun DocumentsScreen(
-    pages: CapturedPages,
+    /**
+     * The camera, the captured pages and the page controls, as one thing.
+     *
+     * These used to be six separate parameters here *and* a [DocumentCaptureHandle] beside
+     * them, because the handle was added for transaction entry and this screen was not moved
+     * over. Two ways to say the same thing, threaded side by side through three composables.
+     */
+    capture: DocumentCaptureHandle,
     documents: List<DocumentRow>,
     vocabulary: LedgerVocabulary,
-    onCapture: (File, (Boolean) -> Unit) -> Unit,
-    captureFile: () -> File,
-    onRotate: (Int) -> Unit,
-    onMove: (Int, Int) -> Unit,
-    onRemovePage: (Int) -> Unit,
     onSave: (String) -> Unit,
     onDiscard: () -> Unit,
     onRefile: (String, String, String?) -> Unit,
@@ -136,12 +137,12 @@ fun DocumentsScreen(
                 Text("Allow the camera")
             }
         } else {
-            CameraPane(onCapture = onCapture, captureFile = captureFile)
+            CameraPane(onCapture = capture.onCapture, captureFile = capture.captureFile)
         }
 
-        if (!pages.isEmpty) {
+        if (!capture.pages.isEmpty) {
             Text("Pages", style = MaterialTheme.typography.titleSmall)
-            pages.pages.forEachIndexed { index, page ->
+            capture.pages.pages.forEachIndexed { index, page ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -153,27 +154,27 @@ fun DocumentsScreen(
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(
-                        onClick = { onRotate(index) },
+                        onClick = { capture.onRotate(index) },
                         modifier = Modifier.semantics {
                             contentDescription = "Rotate page ${index + 1}"
                         },
                     ) { Text("Rotate") }
                     TextButton(
-                        onClick = { onMove(index, index - 1) },
+                        onClick = { capture.onMove(index, index - 1) },
                         enabled = index > 0,
                         modifier = Modifier.semantics {
                             contentDescription = "Move page ${index + 1} up"
                         },
                     ) { Text("Up") }
                     TextButton(
-                        onClick = { onMove(index, index + 1) },
-                        enabled = index < pages.size - 1,
+                        onClick = { capture.onMove(index, index + 1) },
+                        enabled = index < capture.pages.pages.size - 1,
                         modifier = Modifier.semantics {
                             contentDescription = "Move page ${index + 1} down"
                         },
                     ) { Text("Down") }
                     TextButton(
-                        onClick = { onRemovePage(index) },
+                        onClick = { capture.onRemovePage(index) },
                         modifier = Modifier.semantics {
                             contentDescription = "Remove page ${index + 1}"
                         },

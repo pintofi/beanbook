@@ -59,15 +59,9 @@ internal fun SurfaceContent(
     /** The add form is open over [selected]; it is an action, not a destination (B26). */
     adding: Boolean,
     onContribute: () -> Unit,
-    documentPages: CapturedPages,
     documentCapture: DocumentCaptureHandle,
     documents: List<DocumentRow>,
     documentMessage: String?,
-    onCapture: (JavaFile, (Boolean) -> Unit) -> Unit,
-    captureFile: () -> JavaFile,
-    onRotatePage: (Int) -> Unit,
-    onMovePage: (Int, Int) -> Unit,
-    onRemovePage: (Int) -> Unit,
     onSaveDocument: (String) -> Unit,
     onDiscardPages: () -> Unit,
     onRefileDocument: (String, String, String?) -> Unit,
@@ -396,7 +390,7 @@ internal fun SurfaceContent(
                                 )
                             } else {
                                 DocumentsScreen(
-                                    pages = documentPages,
+                                    capture = documentCapture,
                                     documents = documents,
                                     vocabulary = ledger?.let { LedgerVocabulary.from(it) }
                                         ?: LedgerVocabulary(
@@ -406,11 +400,6 @@ internal fun SurfaceContent(
                                             currencies = emptyList(),
                                             tags = emptyList(),
                                         ),
-                                    onCapture = onCapture,
-                                    captureFile = captureFile,
-                                    onRotate = onRotatePage,
-                                    onMove = onMovePage,
-                                    onRemovePage = onRemovePage,
                                     onSave = onSaveDocument,
                                     onDiscard = onDiscardPages,
                                     onRefile = onRefileDocument,

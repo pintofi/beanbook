@@ -241,7 +241,15 @@ class AccessibilityTest {
     @Test fun documentsScreenIsLabelledAndFitsAtDoubleFontScale() {
         render(widthDp = 320, fontScale = 2f) {
             DocumentsScreen(
-                pages = CapturedPages().add("page-1.jpg").add("page-2.jpg"),
+                capture = DocumentCaptureHandle(
+                    pages = CapturedPages().add("page-1.jpg").add("page-2.jpg"),
+                    captureFile = { java.io.File("unused") },
+                    onCapture = { _, _ -> },
+                    onRotate = {},
+                    onMove = { _, _ -> },
+                    onRemovePage = {},
+                    onFile = { _, _ -> },
+                ),
                 documents = listOf(
                     DocumentRow(
                         path = "documents/Assets/Cash/2026-08-24.abcdef123456.pdf",
@@ -254,11 +262,6 @@ class AccessibilityTest {
                     DocumentRow(path = "documents/stray.pdf", status = DocumentStatus.UNFILED),
                 ),
                 vocabulary = vocabulary,
-                onCapture = { _, _ -> },
-                captureFile = { java.io.File("unused") },
-                onRotate = {},
-                onMove = { _, _ -> },
-                onRemovePage = {},
                 onSave = {},
                 onDiscard = {},
                 onRefile = { _, _, _ -> },
