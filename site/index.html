@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beancount for Android</title>
+<meta name="description" content="Plain-text double-entry accounting on Android. Your books are ordinary text files on your device, readable on a computer at any time.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Beancount for Android</h1>
+  <p class="lede">Plain-text double-entry accounting, with the real Beancount and Fava running on your phone.</p>
+</header>
+
+<nav>
+  <a href="index.html" aria-current="page">Overview</a>
+  <a href="privacy.html">Privacy</a>
+  <a href="keys.html">Contribution keys</a>
+</nav>
+
+<p>
+  Your books are ordinary <a href="https://beancount.github.io/">Beancount</a> text files in a
+  folder you choose. The app embeds CPython and runs upstream Beancount and
+  <a href="https://beancount.github.io/fava/">Fava</a> — not a re-implementation of them — so
+  what you see on your phone is what <code>bean-check</code> and Fava produce on your desktop.
+</p>
+
+<div class="card accent">
+  <h3>Your files stay yours</h3>
+  <p>
+    Nothing is uploaded. There is no account, no sign-in, and no server of ours anywhere in
+    the picture. If you uninstall the app tomorrow, your ledger is still a folder of text
+    files you can open in any editor. See the <a href="privacy.html">privacy policy</a>.
+  </p>
+</div>
+
+<h2>What it does</h2>
+<ul>
+  <li><strong>Write and edit entries</strong> — transactions, balances, prices, every directive Beancount supports, with the raw file editable by hand when you prefer.</li>
+  <li><strong>Read your accounts</strong> — a journal and an account balances list, computed by Beancount itself.</li>
+  <li><strong>Full Fava reports</strong> — balance sheet, income statement, trial balance, holdings, charts, and BQL queries.</li>
+  <li><strong>Attach receipts</strong> — photograph them, crop them, and file them against a transaction as linked documents.</li>
+  <li><strong>Import, export, back up and restore</strong> — always available, in every edition, with no limits.</li>
+  <li><strong>Connect to your own Fava server</strong>, if you already host one.</li>
+</ul>
+
+<h2>Two editions</h2>
+<p>
+  The two editions have the <strong>same features</strong>, including plugins and Fava
+  extensions. They differ only where Google Play's policies require it:
+</p>
+<table>
+  <tr><th>Edition</th><th>Where</th><th>Difference</th></tr>
+  <tr>
+    <td><strong>Play</strong></td>
+    <td>Google Play</td>
+    <td>Runs pure-Python plugins only, and never downloads code. Updates through Play.</td>
+  </tr>
+  <tr>
+    <td><strong>Expert</strong></td>
+    <td>Direct download</td>
+    <td>Can install packages containing native code, and can update itself from a signed package.</td>
+  </tr>
+</table>
+<p>
+  Neither edition contains a billing SDK, a purchase flow, or advertising.
+</p>
+
+<h2>Free, and paid</h2>
+<p>
+  Every install starts with a <strong>30-day trial with everything unlocked</strong>. No
+  account, no card, no network call — the app counts the days on your device.
+</p>
+<p>
+  When the trial ends, <strong>nothing is taken away except the paid features</strong>. Adding,
+  editing and deleting entries keeps working. The journal and balances keep working. Editing
+  the raw files keeps working. <strong>Import, export, backup and restore are never gated</strong>,
+  during the trial or after it — getting your data out is not something you should have to pay
+  for. The <a href="keys.html">contribution keys</a> page has the details.
+</p>
+
+<h2>Free software</h2>
+<p>
+  The app is licensed <strong>GPL-2.0-only</strong>, because Beancount is, and it is built on
+  the work of the Beancount and Fava communities.
+</p>
+
+<footer>
+  <p>Beancount for Android is free software, licensed GPL-2.0-only.</p>
+  <p>Beancount and Fava are independent open-source projects; this app is not affiliated with or endorsed by them.</p>
+</footer>
+</div>
+</body>
+</html>

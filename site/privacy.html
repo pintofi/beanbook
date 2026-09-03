@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy — Beancount for Android</title>
+<meta name="description" content="What Beancount for Android does and does not do with your data. It has no accounts, no analytics, and no servers of ours.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Privacy policy</h1>
+  <p class="lede">Short version: your ledger is a folder of text files on your device, and we never see it.</p>
+</header>
+
+<nav>
+  <a href="index.html">Overview</a>
+  <a href="privacy.html" aria-current="page">Privacy</a>
+  <a href="keys.html">Contribution keys</a>
+</nav>
+
+<p class="updated">Applies to Beancount for Android, both the Play and Expert editions. Last updated 3 September 2026.</p>
+
+<div class="card accent">
+  <h3>The whole policy in five lines</h3>
+  <ul>
+    <li>There is no account to create, and no sign-in anywhere in the app.</li>
+    <li>We operate no server that your data can reach. There is nothing for us to collect.</li>
+    <li>There is no analytics, no crash reporting, no advertising, and no tracking of any kind, in any edition.</li>
+    <li>Your ledger, your receipts and your backups stay in a folder you chose on your device.</li>
+    <li>The app makes network requests only in the specific cases listed below, and each one is something you start.</li>
+  </ul>
+</div>
+
+<h2>What we collect</h2>
+<p>
+  Nothing. We have no servers, no database and no account system, so there is no mechanism by
+  which your information could reach us. This is not a promise about how carefully we handle
+  data we receive — it is a statement that we do not receive any.
+</p>
+
+<h2>What stays on your device</h2>
+<p>Everything you create in the app, specifically:</p>
+<ul>
+  <li><strong>Your ledger files.</strong> Plain-text Beancount files in a folder you pick. You can open them on a computer at any time, and they remain readable if you uninstall the app.</li>
+  <li><strong>Receipt photos and documents.</strong> Captured with the camera or attached from your device, stored alongside your ledger. The app never reads your photo gallery; it only sees images you capture in it or explicitly attach.</li>
+  <li><strong>Backups.</strong> Written where you choose, encrypted with a passphrase you set if you ask for encryption.</li>
+  <li><strong>Settings</strong>, including your theme choice.</li>
+  <li><strong>A contribution key, if you have one.</strong> The key contains the email address it was issued to, so the app can show you which key is installed. It is verified on your device, offline, and is never transmitted.</li>
+  <li><strong>A password for your own server, if you set one.</strong> Encrypted with a key held in the Android Keystore, which the app itself cannot read, and excluded from device backups.</li>
+</ul>
+
+<h2>When the app uses the network</h2>
+<p>
+  In local mode — the default, where the app runs its own accounting engine on your device —
+  <strong>the app makes no network requests at all</strong>. The only cases where it uses the
+  network are these, and each is something you deliberately start:
+</p>
+
+<div class="card">
+  <h3>1. Connecting to your own Fava server (optional)</h3>
+  <p>
+    If you enter the address of a Fava server you host yourself, the app connects to it and
+    sends what is needed to display your ledger — including a username and password if your
+    server asks for them. That destination is a machine you control. We are not involved, and
+    the app has no default server to fall back on.
+  </p>
+  <p>
+    If you type an <code>https://</code> address, certificate errors are fatal and cannot be
+    overridden in any build. If you type an <code>http://</code> address — which is a reasonable
+    choice on your own home network — that traffic is unencrypted, the app tells you so on
+    screen before you connect, and it will never quietly fall back to it.
+  </p>
+</div>
+
+<div class="card">
+  <h3>2. Downloading optional Python packages (Expert edition only)</h3>
+  <p>
+    If you ask the Expert edition to install an optional package — a Beancount plugin, a Fava
+    extension, or a tool such as beangrow — it downloads that package from the public Python
+    Package Index. The request contains the package name. None of your ledger data is sent.
+    The Play edition never downloads code from any network source.
+  </p>
+</div>
+
+<div class="card">
+  <h3>3. Checking for an app update (Expert edition only)</h3>
+  <p>
+    The Expert edition, which is distributed outside Google Play, can check for a signed
+    update. This fetches an update file and, if you accept, the new app package. No
+    information about you or your ledger is sent. The Play edition has no self-update code at
+    all; it updates through Google Play like any other app.
+  </p>
+</div>
+
+<h2>What we deliberately do not do</h2>
+<ul>
+  <li><strong>No analytics or telemetry.</strong> No usage statistics, no event logging, no session recording.</li>
+  <li><strong>No crash reporting.</strong> Crashes are not uploaded anywhere.</li>
+  <li><strong>No advertising, and no advertising identifiers.</strong></li>
+  <li><strong>No device fingerprinting.</strong> The 30-day trial is counted on your device. We could stop you starting a fresh trial by reinstalling, and we choose not to, because doing so would require identifying your device.</li>
+  <li><strong>No third-party SDKs that collect data.</strong> The app is built on Google's own AndroidX libraries plus the open-source Beancount and Fava projects, and includes no analytics, advertising or attribution SDK.</li>
+</ul>
+
+<h2>Permissions the app asks for</h2>
+<ul>
+  <li><strong>Camera</strong> — only to photograph receipts, and only when you open the camera in the app. Images go into your ledger folder.</li>
+  <li><strong>Storage access</strong> — through Android's own folder picker, and limited to the folder you choose. The app cannot see the rest of your device.</li>
+  <li><strong>Internet</strong> — used only for the three cases listed above. It is required because the app runs a local web server on your own device, reachable only from inside your phone, to display reports.</li>
+  <li><strong>Install packages (Expert edition only)</strong> — so it can offer you a signed update. Not present in the Play edition.</li>
+</ul>
+
+<h2>Sharing</h2>
+<p>
+  The app can share a document to another app when you tap Share and choose one. That is a
+  transfer you initiate, to a recipient you pick, and Android grants that app read access to
+  that one file. Nothing is shared automatically.
+</p>
+
+<h2>Children</h2>
+<p>
+  The app is a general-purpose accounting tool. It is not directed at children, and since it
+  collects no data it collects none from anyone of any age.
+</p>
+
+<h2>Deleting your data</h2>
+<p>
+  Uninstalling the app removes the app's own storage, including any stored server password
+  and contribution key. Your ledger folder is yours: it is deliberately left in place, because
+  it is your records and it was there before the app was. Delete it like any other folder if
+  you want it gone. There is no account for us to delete, because there is no account.
+</p>
+
+<h2>Changes to this policy</h2>
+<p>
+  If the app ever gains a feature that changes any of the above, this page changes with it,
+  in the same release. The date at the top says when it last changed.
+</p>
+
+<h2>Contact</h2>
+<p>
+  Questions about this policy, or about the app's behaviour, can be raised on the project's
+  issue tracker.
+</p>
+
+<footer>
+  <p>Beancount for Android is free software, licensed GPL-2.0-only.</p>
+  <p>Beancount and Fava are independent open-source projects; this app is not affiliated with or endorsed by them.</p>
+</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contribution keys — Beancount for Android</title>
+<meta name="description" content="What the paid tiers unlock, what stays free forever, and how a contribution key works.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Contribution keys</h1>
+  <p class="lede">A key is a small signed file you paste into the app once. It is checked on your device, offline.</p>
+</header>
+
+<nav>
+  <a href="index.html">Overview</a>
+  <a href="privacy.html">Privacy</a>
+  <a href="keys.html" aria-current="page">Contribution keys</a>
+</nav>
+
+<div class="card accent">
+  <h3>What is always free</h3>
+  <p>
+    Every accounting operation. Adding, editing, deleting and duplicating any directive; the
+    journal; the account balances list; editing the raw files by hand with highlighting,
+    search and validation; multiple projects; safe mode and diagnostics.
+  </p>
+  <p>
+    <strong>And all of your data, in and out.</strong> Manual import, export, backup creation
+    and restore are free in every edition, forever, with no limits. Getting your records out
+    of an accounting app is not a feature worth charging for, and the files are plain text you
+    could copy by hand anyway.
+  </p>
+</div>
+
+<h2>The 30-day trial</h2>
+<p>
+  Every fresh install unlocks all three tiers for 30 days. There is no account, no card and no
+  network call — the app records the date on your device and counts down. When it ends, the
+  paid features switch off and <strong>nothing else changes</strong>: your ledger is untouched
+  and every file stays where it was.
+</p>
+<p>
+  Winding your device clock backwards does not extend the trial. A reinstall does start a new
+  one — we could prevent that by fingerprinting your device, and we would rather not identify
+  you.
+</p>
+
+<h2>The tiers</h2>
+<p>Each tier includes everything in the one before it.</p>
+<table>
+  <tr><th>Tier</th><th class="price">Price</th><th>Adds</th></tr>
+  <tr>
+    <td><strong>Free</strong></td>
+    <td class="price">—</td>
+    <td>Every directive, the journal, account balances, raw file editing, multiple projects, and all import, export, backup and restore.</td>
+  </tr>
+  <tr>
+    <td><strong>T1 Insight</strong></td>
+    <td class="price">$9.99</td>
+    <td>The full Fava report surface: balance sheet, income statement, trial balance, holdings, commodities, account, payee, tag and link views, charts, and BQL queries.</td>
+  </tr>
+  <tr>
+    <td><strong>T2 Workflow</strong></td>
+    <td class="price">$14.99</td>
+    <td>External documents, camera capture and PDF assembly, home-screen widgets, auto-mirror to a folder, and scheduled backups.</td>
+  </tr>
+  <tr>
+    <td><strong>T3 Power</strong></td>
+    <td class="price">$19.99</td>
+    <td>Remote mode, statement importers, scripts, and Beancount plugins and Fava extensions.</td>
+  </tr>
+</table>
+<p>
+  The organising principle: <strong>free is fully functional but manual; paid is automated and
+  analytical.</strong> A free user can do every accounting operation and move data in and out
+  as often as they like — it simply takes more taps.
+</p>
+
+<h2>How to get a key</h2>
+<!--
+  OWNER: the three links below are placeholders and are deliberately not live. Replace each
+  href with the real checkout URL once the PayPal / Payoneer / GitHub Sponsors accounts
+  exist (docs/distribution.md 4.1), and delete this comment. Do not publish with the
+  placeholders in place: an unresolved payment link on a page that names prices is worse
+  than no page.
+-->
+<div class="card">
+  <p><strong>Payment links are not live yet.</strong> When they are, this section will list the
+  purchase options and the address to send your order to.</p>
+  <p>
+    Keys are bought here, in your browser, never inside the app. After payment you receive a
+    key by email, and you paste it into the app under <span class="mono">More → Contribute →
+    Enter key</span>.
+  </p>
+</div>
+
+<h2>How a key works</h2>
+<ul>
+  <li>It is a short block of text, signed with an Ed25519 key.</li>
+  <li>The app verifies that signature <strong>on your device, with no network call</strong>. There is no licence server, and no check-in.</li>
+  <li>It carries the tier, the email address it was issued to, and an order reference. The app shows the tier in Settings so you can tell which key is installed; the address is only there so a key can be reissued if you lose it.</li>
+  <li>If your trial is still running, the app uses whichever gives you more, so buying during a trial never downgrades you.</li>
+  <li>Upgrading between tiers is a replacement key at the price difference, issued manually.</li>
+</ul>
+
+<h2>Why it works this way</h2>
+<p>
+  The app contains no billing code of any kind — no Play Billing, no payment SDK, nothing. It
+  can check a key, and that is the whole of its payment-related surface. That keeps a
+  proprietary, GPL-incompatible dependency out of a GPL-2.0-only app, and it means the app
+  never has to phone home to decide what you are allowed to do.
+</p>
+
+<footer>
+  <p>Beancount for Android is free software, licensed GPL-2.0-only.</p>
+  <p>Beancount and Fava are independent open-source projects; this app is not affiliated with or endorsed by them.</p>
+</footer>
+</div>
+</body>
+</html>
