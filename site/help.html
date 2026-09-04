@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Getting started, importing a ledger, file locations, troubleshooting, and limitations for Beancount for Android."
+      content="Getting started, importing a ledger, file locations, troubleshooting, and limitations for Beanbook."
     />
     <meta name="theme-color" content="#006a6a" />
-    <title>Help | Beancount for Android</title>
+    <title>Help | Beanbook</title>
     <script>
       try {
         const t = localStorage.getItem("beancount-site-theme");
@@ -27,7 +27,7 @@
       <div class="nav-shell">
         <a class="brand" href="index.html">
           <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
-          <span>Beancount for Android</span>
+          <span>Beanbook</span>
         </a>
         <nav class="primary-nav" aria-label="Primary navigation">
           <a class="nav-link" href="index.html">Home</a
@@ -252,12 +252,16 @@
             </article>
           </div>
           <div class="callout" data-reveal>
-            <strong>Large ledgers cost time.</strong>
+            <strong>Large ledgers cost time once.</strong>
             <p>
               The app was built and measured around roughly 25,000 transactions
-              in about 10 MB. Larger ledgers are not refused, but load time
-              grows with file size and the first parse after a change costs the
-              most.
+              in about 10 MB. Larger ledgers are not refused: just over 100,000
+              entries loads correctly. What it costs is the first load after a
+              change, which runs to tens of seconds at that size. Opening the
+              app again is quick, because the figures the native screens need
+              are cached and re-checked against the contents of your files.
+              Fava reports and BQL queries still do a full load every time, so
+              those stay slow on a large ledger.
             </p>
           </div>
         </div>
@@ -285,7 +289,7 @@
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div>
-          <p><strong>Beancount for Android</strong></p>
+          <p><strong>Beanbook</strong></p>
           <p>Free software licensed GPL-2.0-only.</p>
           <p>
             Built with upstream CPython, Beancount, Fava, beanquery, and
