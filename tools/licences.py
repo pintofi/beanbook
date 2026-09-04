@@ -120,7 +120,7 @@ def android_notices() -> list[dict]:
 def build(apk: Path) -> dict:
     return {
         "app": {
-            "name": "Beancount for Android",
+            "name": "Beanbook",
             "licence": "GPL-2.0-only",
             "text": (REPO / "COPYING").read_text(encoding="utf-8").strip(),
             "note": (

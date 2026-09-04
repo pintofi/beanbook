@@ -308,6 +308,9 @@ internal fun TrialCard(entitlement: Entitlement, onClick: () -> Unit) {
         // The tier, not the email: the address a key was issued to belongs on Contribute
         // (docs/distribution.md 4.5), and this card is in any screenshot of More.
         is Grant.Key -> "${grant.tier.label} key" to "Tap to manage your key."
+        // Named as a purchase rather than a key, because the two are restored and refunded
+        // differently and the user needs to know which one they have.
+        is Grant.Purchase -> "${grant.tier.label}" to "Tap to see what you have."
         Grant.Free -> return
     }
     Card(
@@ -341,7 +344,7 @@ internal fun LoadingOrError(
         modifier = modifier.padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Beancount for Android", style = MaterialTheme.typography.headlineSmall)
+        Text("Beanbook", style = MaterialTheme.typography.headlineSmall)
         Text(
             text = "Edition: $editionName",
             modifier = Modifier.semantics { contentDescription = "Edition $editionName" },

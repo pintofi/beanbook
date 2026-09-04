@@ -681,7 +681,7 @@ class AccessibilityTest {
         val list = compose.onNode(androidx.compose.ui.test.hasScrollAction())
         list.performScrollToNode(
             androidx.compose.ui.test.hasContentDescription(
-                "Beancount for Android is under GPL-2.0-only. Read the full licence.",
+                "Beanbook is under GPL-2.0-only. Read the full licence.",
             ),
         ).assertExists()
         list.performScrollToNode(

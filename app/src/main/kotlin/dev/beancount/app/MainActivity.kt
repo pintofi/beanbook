@@ -51,6 +51,35 @@ import dev.beancount.core.entitlement.Feature
 class MainActivity : ComponentActivity() {
 
     /**
+     * How a contribution is taken, decided by the edition.
+     *
+     * Play talks to Google Play's billing system; Expert returns a controller that reports
+     * nothing to buy, so the Contribute screen offers its key field instead. Created lazily
+     * because the Play implementation opens a connection to the billing service, and there
+     * is no reason to do that before the activity exists.
+     */
+    private val purchases: dev.beancount.app.billing.PurchaseController by lazy {
+        val app = application as BeancountApplication
+        dev.beancount.app.billing.currentPurchaseController(
+            context = this,
+            entitlements = app.entitlements,
+            onEntitlementChanged = { app.entitlementState.refresh() },
+        )
+    }
+
+    /**
+     * Ask the store again on every resume.
+     *
+     * This is how a refund takes effect, how a purchase made on another device arrives, and
+     * how a flow that completed while the app was backgrounded is picked up. The controller
+     * never revokes on a failed query, so doing this often is safe.
+     */
+    override fun onResume() {
+        super.onResume()
+        purchases.refresh()
+    }
+
+    /**
      * What had to be put right at startup — an interrupted write, or a plugin that stopped
      * the app last time.
      *
@@ -676,6 +705,8 @@ class MainActivity : ComponentActivity() {
                         onDiscardDraft = { app.editorController.discardDraft(activeId!!) },
                         refreshing = ledgerLoading,
                         onRefresh = { app.ledgerState.reload() },
+                        purchaseOffers = purchases.offers,
+                        onBuy = { tier -> purchases.buy(this@MainActivity, tier) },
                     )
 
                     // Over the app rather than inside a screen: an entry can be opened for

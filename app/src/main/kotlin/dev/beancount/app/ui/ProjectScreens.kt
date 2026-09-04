@@ -56,7 +56,7 @@ fun OnboardingScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Beancount", style = MaterialTheme.typography.headlineMedium)
+        Text("Beanbook", style = MaterialTheme.typography.headlineMedium)
         Text(
             "Plain-text double-entry accounting. Your files stay on this device and stay " +
                 "yours — ordinary text you can open on a computer at any time.",

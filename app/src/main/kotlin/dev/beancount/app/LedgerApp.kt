@@ -228,6 +228,8 @@ internal fun LedgerApp(
     onDiscardDraft: () -> Unit,
     refreshing: Boolean,
     onRefresh: () -> Unit,
+    purchaseOffers: List<dev.beancount.app.billing.PurchaseController.TierOffer>,
+    onBuy: (dev.beancount.core.entitlement.Tier) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Seeded from the widget that launched the app, when one did. Keyed on `openOn` so a
@@ -296,7 +298,7 @@ internal fun LedgerApp(
             LedgerTopBar(
                 projectName = projects.firstOrNull { it.id == activeProjectId }?.title
                     ?: ledger?.title
-                    ?: "Beancount",
+                    ?: "Beanbook",
                 health = ledgerHealth(engineStatus, ledger),
                 sectionTitle = if (selected == Surface.MORE) moreSection?.label else null,
                 onBack = { moreSection = null },
@@ -367,6 +369,9 @@ internal fun LedgerApp(
         if (showContribute) {
             ContributeScreen(
                 entitlement = entitlement,
+                route = dev.beancount.app.billing.currentPurchaseRoute(),
+                offers = purchaseOffers,
+                onBuy = onBuy,
                 onApplyKey = onApplyKey,
                 onRemoveKey = onRemoveKey,
                 onClose = {

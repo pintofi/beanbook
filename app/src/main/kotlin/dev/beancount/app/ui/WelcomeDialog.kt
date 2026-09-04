@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 fun WelcomeDialog(trialDays: Int?, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Welcome to Beancount") },
+        title = { Text("Welcome to Beanbook") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(

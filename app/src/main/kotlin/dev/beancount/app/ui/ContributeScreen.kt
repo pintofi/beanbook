@@ -25,15 +25,22 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.beancount.core.entitlement.Entitlement
 import dev.beancount.core.entitlement.Grant
+import dev.beancount.app.billing.PurchaseController
 import dev.beancount.core.entitlement.PurchaseRoute
+import dev.beancount.core.entitlement.Tier
 
 /**
  * Contribute: what is unlocked, why, and how to enter a key (docs/distribution.md §4.7).
  *
  * The screen states plainly that the app is GPL-2.0, that anyone can build it without a key,
- * and that a key is a contribution rather than a technical restriction. There is no
- * countdown, no nagging modal, and — because [PurchaseRoute.EnterKeyOnly] neither transacts
- * nor links out — no payment method is named or linked from anywhere in the app.
+ * and that a contribution is support rather than a technical restriction. There is no
+ * countdown and no nagging modal.
+ *
+ * **One route per edition, and never both at once.** The Play edition sells through Google
+ * Play's billing system and does not offer a key field: accepting a key bought elsewhere to
+ * unlock features inside a Play-distributed app is the arrangement the Payments policy is
+ * about, and offering both would be doing it in the open. The Expert edition is not on Play,
+ * so it takes a key and shows no prices. Neither edition links out to a payment page.
  */
 @Composable
 fun ContributeScreen(
@@ -44,6 +51,8 @@ fun ContributeScreen(
     modifier: Modifier = Modifier,
     message: String? = null,
     route: PurchaseRoute = PurchaseRoute.EnterKeyOnly,
+    offers: List<PurchaseController.TierOffer> = emptyList(),
+    onBuy: (Tier) -> Unit = {},
 ) {
     var typed by remember { mutableStateOf("") }
     var confirmingRemoval by remember { mutableStateOf(false) }
@@ -72,23 +81,61 @@ fun ContributeScreen(
         HorizontalDivider()
 
         Text(route.label, style = MaterialTheme.typography.titleSmall)
-        Text(
-            "Paste the key from your confirmation email.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-        OutlinedTextField(
-            value = typed,
-            onValueChange = { typed = it },
-            label = { Text("Contribution key") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "Contribution key" },
-        )
-        Button(
-            onClick = { onApplyKey(typed) },
-            enabled = typed.isNotBlank(),
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Apply key") }
+
+        if (route.transactsInApp) {
+            if (offers.isEmpty()) {
+                // Billing could not start, or the store has not answered yet. Said plainly,
+                // because a screen with a heading and nothing under it reads as broken.
+                Text(
+                    "Prices are not available right now. This needs Google Play, and " +
+                        "everything you already have keeps working without it.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            } else {
+                Text(
+                    "A one-time contribution, through Google Play. Each tier includes the " +
+                        "ones before it.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                offers.forEach { offer ->
+                    val owned = entitlement.tier.includes(offer.tier)
+                    Button(
+                        onClick = { onBuy(offer.tier) },
+                        enabled = !owned,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics {
+                                contentDescription =
+                                    if (owned) "${offer.tier.label}, already unlocked"
+                                    else "Contribute ${offer.formattedPrice} for ${offer.tier.label}"
+                            },
+                    ) {
+                        Text(
+                            if (owned) "${offer.tier.label} — unlocked"
+                            else "${offer.tier.label} · ${offer.formattedPrice}",
+                        )
+                    }
+                }
+            }
+        } else {
+            Text(
+                "Paste the key from your confirmation email.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            OutlinedTextField(
+                value = typed,
+                onValueChange = { typed = it },
+                label = { Text("Contribution key") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Contribution key" },
+            )
+            Button(
+                onClick = { onApplyKey(typed) },
+                enabled = typed.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Apply key") }
+        }
 
         message?.let {
             Text(it, style = MaterialTheme.typography.bodySmall)
@@ -149,5 +196,7 @@ internal fun Entitlement.describeGrant(): String = when (val current = grant) {
             "${dev.beancount.core.entitlement.Tier.WORKFLOW.label} and " +
             "${dev.beancount.core.entitlement.Tier.POWER.label} features are waiting for a key."
     is Grant.Key -> "${current.tier.label}, unlocked by your key."
+    is Grant.Purchase ->
+        "${current.tier.label}, bought through Google Play. Reinstalling restores it."
     Grant.Free -> "The free tier — fully functional, and yours permanently."
 }
