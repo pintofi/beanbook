@@ -1,0 +1,26 @@
+# Authors and copyright holders
+
+Beanbook is licensed GPL-2.0-only ([COPYING](COPYING)), with an additional permission for the
+Google Play Billing Library ([LICENSE-EXCEPTION.md](LICENSE-EXCEPTION.md)). That permission is
+granted by everyone listed here, so this list has to be accurate and complete: an exception is
+only as good as the copyright holders standing behind it.
+
+## Copyright holders
+
+- WildeBeast2521 — application, engine integration, build and release tooling
+
+## Upstream
+
+Beanbook runs the following projects rather than reimplementing them. Their copyright belongs
+to their own authors and none of it is reassigned here.
+
+| Project | Licence |
+|---|---|
+| [Beancount](https://github.com/beancount/beancount) | GPL-2.0-only |
+| [beanquery](https://github.com/beancount/beanquery) | GPL-2.0-only |
+| [beangulp](https://github.com/beancount/beangulp) | GPL-2.0-only |
+| [Fava](https://github.com/beancount/fava) | MIT |
+| CPython | PSF |
+
+The full dependency inventory, with licences, is in [docs/sbom.md](docs/sbom.md), and the
+in-app licence screen is generated from the built APK by `tools/licences.py`.
