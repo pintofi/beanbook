@@ -119,6 +119,10 @@ class WheelFetcher(
         if (!allowed) {
             return FetchResult.Refused("this edition does not download packages")
         }
+        // A root left half-merged by an earlier run is thrown away before this one starts.
+        // Installing *over* it would bury the damage under a good install and leave the
+        // broken files importable (B37).
+        OnDemandPackages.discardIncomplete(root)
         root.mkdirs()
 
         // Unpacked into staging, moved into place only when every wheel has succeeded.
@@ -162,8 +166,31 @@ class WheelFetcher(
 
         // Every wheel succeeded: merge staging into the install root. Not a rename, because
         // the root holds whatever was installed before and this is an addition to it.
+        //
+        // A file-by-file copy is not atomic, so the intent is journalled first: if the
+        // process dies partway, the marker survives and the next run discards the root
+        // instead of importing a half-copied package (B37). Written and flushed before a
+        // single byte moves, because a marker that lands after the copy it describes would
+        // protect nothing.
+        val marker = OnDemandPackages.marker(root)
+        runCatching {
+            marker.parentFile?.mkdirs()
+            java.io.FileOutputStream(marker).use { out ->
+                out.write(wheels.joinToString("\n") { it.name }.toByteArray())
+                out.fd.sync()
+            }
+        }.onFailure { return abandon("the install could not be journalled") }
+
         runCatching { staging.copyRecursively(root, overwrite = true) }
-            .onFailure { return abandon("the packages could not be moved into place") }
+            .onFailure {
+                // The copy failed rather than the process dying, so the damage is here and
+                // now: clear the root and the marker together rather than leaving recovery
+                // to the next run.
+                root.deleteRecursively()
+                marker.delete()
+                return abandon("the packages could not be moved into place")
+            }
+        marker.delete()
         staging.deleteRecursively()
         spool.deleteRecursively()
         return FetchResult.Installed(wheels, total)
@@ -274,7 +301,10 @@ class WheelFetcher(
      * "is numpy here?" answerable with the wrong yes.
      */
     fun installed(): Set<String> =
-        root.listFiles()
+        // A root left half-merged holds directories that look like packages and are not.
+        // Reporting them would put a name on the screen that the engine cannot import.
+        if (OnDemandPackages.isIncomplete(root)) emptySet()
+        else root.listFiles()
             ?.filter { it.isDirectory && !it.name.startsWith(".") && it.name != "chaquopy" }
             ?.map { normalise(it.name) }
             ?.toSet()
@@ -353,7 +383,20 @@ class WheelFetcher(
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
             .joinToString("") { "%02x".format(it) }
         spool.mkdirs()
-        spooledAt(url).writeBytes(bytes)
+        // Written to one side and renamed, so a kill mid-write cannot leave a truncated
+        // file that the next run reads as a complete wheel. The digest check in `install`
+        // would catch those bytes, but it would report them as an index that served the
+        // wrong content -- blaming the network for a local mishap.
+        val spooledFile = spooledAt(url)
+        val partial = File(spool, "${spooledFile.name}.part")
+        java.io.FileOutputStream(partial).use { out ->
+            out.write(bytes)
+            out.fd.sync()
+        }
+        if (!partial.renameTo(spooledFile)) {
+            partial.delete()
+            return null
+        }
         chaquopyRequires[name] = requiresFrom(bytes)
         return Wheel(
             name = name,

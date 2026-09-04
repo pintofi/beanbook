@@ -53,6 +53,15 @@ class PackagesStateTest {
     @After fun clean() {
         project.deleteRecursively()
         ownRoot.deleteRecursively()
+        // The incompleteness marker for the *shared* root, cleared here rather than at the
+        // end of the test that writes it. A trailing `delete()` never runs when the
+        // assertion above it fails, and this marker is not inert litter: it makes the real
+        // install root look half-merged, so the next test to ask for it is handed nothing
+        // and fails for a reason that has nothing to do with itself. Seen for real while
+        // building the negative control for B37.
+        dev.beancount.app.packages.OnDemandPackages
+            .marker(dev.beancount.app.packages.OnDemandPackages.root(context))
+            .delete()
     }
 
     private fun state() = PackagesState(context, currentPluginPolicy(), scope, root = ownRoot)
@@ -179,5 +188,101 @@ class PackagesStateTest {
 
         assertEquals("safe mode let something through", "", plugins.enabledDirectories())
         marker.delete()
+    }
+
+    /**
+     * A merge that never finished must not look like an install (B37).
+     *
+     * The bug this pins: unpacking is staged and digest-checked, but the last step copies
+     * staging over the install root file by file, which is not atomic. Lose the process
+     * partway -- an out-of-memory kill, which is how this was found -- and a half-copied
+     * package is left behind looking exactly like a whole one. Python then failed on import
+     * with a message naming a transitive dependency the user has never heard of.
+     *
+     * The interruption is simulated rather than induced: a package directory beside the
+     * marker is precisely the state a killed merge leaves.
+     */
+    @Test fun aHalfFinishedMergeIsNotReportedAsInstalled() {
+        val root = File(context.cacheDir, "ondemand-b37-${System.nanoTime()}")
+        File(root, "pytz").apply { mkdirs() }
+            .resolve("__init__.py").writeText("# half copied\n")
+
+        // One state instance throughout, and the assertion is on the *transition* it makes.
+        // Asserting `installed.first()` on a fresh instance instead would pass without the
+        // guard ever running: the flow starts empty and `refresh` is asynchronous, so the
+        // initial value arrives before the directory is ever read. Watching a known
+        // non-empty value go back to empty cannot pass that way.
+        val state = PackagesState(context, currentPluginPolicy(), scope, root = root)
+        state.refresh()
+        val beforeMarker = runBlocking { withTimeout(5_000) { state.installed.first { it.isNotEmpty() } } }
+        assertEquals("the fixture did not land", listOf("pytz"), beforeMarker)
+
+        dev.beancount.app.packages.OnDemandPackages.marker(root).writeText("pytz\n")
+        state.refresh()
+        runBlocking {
+            withTimeout(5_000) { state.installed.first { it.isEmpty() } }
+        }
+
+        root.deleteRecursively()
+        dev.beancount.app.packages.OnDemandPackages.marker(root).delete()
+    }
+
+    /** Recovery throws the whole closure away, and says what it was. */
+    @Test fun recoveringAHalfFinishedMergeClearsItAndNamesIt() {
+        val root = File(context.cacheDir, "ondemand-b37-${System.nanoTime()}")
+        File(root, "pytz").apply { mkdirs() }.resolve("__init__.py").writeText("# half\n")
+        File(root, "numpy").apply { mkdirs() }.resolve("__init__.py").writeText("# whole\n")
+        dev.beancount.app.packages.OnDemandPackages.marker(root).writeText("pytz\nnumpy\n")
+
+        val discarded = dev.beancount.app.packages.OnDemandPackages.discardIncomplete(root)
+
+        assertEquals("recovery did not name what it discarded", listOf("pytz", "numpy"), discarded)
+        assertFalse("the half-merged root survived recovery", root.exists())
+        assertFalse(
+            "the marker outlived the root it described",
+            dev.beancount.app.packages.OnDemandPackages.marker(root).exists(),
+        )
+        // A root that was never interrupted is left alone, and says so by returning nothing.
+        val clean = File(context.cacheDir, "ondemand-clean-${System.nanoTime()}")
+        File(clean, "pytz").apply { mkdirs() }
+        assertEquals(emptyList<String>(), dev.beancount.app.packages.OnDemandPackages.discardIncomplete(clean))
+        assertTrue("an untouched root was cleared", clean.exists())
+        clean.deleteRecursively()
+    }
+
+    /**
+     * The engine is the path that actually breaks, so it gets its own test.
+     *
+     * `installed()` refusing to name the packages is not enough: `enabledDirectories` is
+     * what reaches Python, and handing the directory over is what turned a half-copied file
+     * into an import error.
+     */
+    @Test fun aHalfFinishedMergeIsWithheldFromTheEngine() {
+        project.mkdirs()
+        val source = File(project, "src").apply { mkdirs() }
+        File(source, "noop_plugin.py").writeText("__plugins__ = []\n")
+        val store = PluginStore(project)
+        val installed = store.install(source, currentPluginPolicy(), "packages state test")
+        store.setEnabled((installed as InstallResult.Installed).plugin.id, true)
+
+        val fetched = dev.beancount.app.packages.OnDemandPackages.root(context).apply { mkdirs() }
+        val stand_in = File(fetched, "marker-${System.nanoTime()}.py")
+        stand_in.writeText("# stands in for a fetched package\n")
+        val marker = dev.beancount.app.packages.OnDemandPackages.marker(fetched)
+        marker.writeText("pytz\n")
+
+        val plugins = PluginsState(context, currentPluginPolicy(), scope)
+        plugins.openProject(project)
+        val directories = plugins.enabledDirectories().split(",").filter { it.isNotBlank() }
+
+        assertFalse(
+            "a half-merged package directory was handed to the engine: $directories",
+            directories.contains(fetched.absolutePath),
+        )
+        assertTrue(
+            "the plugin's own directory was withheld too, which is more than asked",
+            directories.any { it.contains("plugins") },
+        )
+        stand_in.delete()
     }
 }

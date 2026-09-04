@@ -52,6 +52,59 @@ data class Resolution(
 object OnDemandPackages {
     fun root(context: android.content.Context): java.io.File =
         java.io.File(context.filesDir, "ondemand")
+
+    /**
+     * Written while packages are being merged into [root], deleted once they are all there.
+     *
+     * Its presence means a merge started and did not finish, so **the install root cannot be
+     * trusted** — see [isIncomplete] for what goes wrong without it.
+     *
+     * Beside the root rather than inside it, for the same reason the spool is: anything
+     * inside the root is a candidate package, and a marker there would be reported as one.
+     */
+    fun marker(root: java.io.File): java.io.File =
+        java.io.File(root.parentFile ?: root, "${root.name}-incomplete")
+
+    /**
+     * True when a previous merge into [root] was cut short.
+     *
+     * The failure this exists to stop (B37): unpacking is staged and digest-checked, but the
+     * final step copies staging over the root file by file, and that is not atomic. Lose the
+     * process partway — an out-of-memory kill is the realistic way, and is how this was
+     * found — and the root keeps a half-copied package. Nothing recorded that, so the
+     * directory looked installed, the engine was handed it, and Python failed on import with
+     * `ImportError: cannot import name BaseTzInfo`: a message naming a transitive dependency
+     * the user has never heard of, with nothing anywhere suggesting "clear the app's data".
+     *
+     * A marker is used rather than building a second copy of the root and renaming it into
+     * place. The rename would be properly atomic, but beangrow's closure is ~143 MB unpacked
+     * and doubling that on a phone is the wrong trade (docs/on-demand-packages.md), so this
+     * follows the journal-intent half of the write protocol instead of the rename half.
+     */
+    fun isIncomplete(root: java.io.File): Boolean = marker(root).isFile
+
+    /**
+     * Throws away a root left half-merged, and returns what was being merged when it stopped.
+     *
+     * **All of it, not the packages named in the marker.** They were resolved as a closure,
+     * and this project already refuses to remove one member of a closure and leave the rest
+     * importable and broken (docs/on-demand-packages.md); a merge that overwrote a shared
+     * file partway is the same situation. Re-fetching is what the user faced anyway, and it
+     * is the only outcome that is certainly correct.
+     *
+     * Returns an empty list when there was nothing to recover, so the caller can tell "I
+     * cleaned up after a crash" from "there was no crash".
+     */
+    fun discardIncomplete(root: java.io.File): List<String> {
+        val marker = marker(root)
+        if (!marker.isFile) return emptyList()
+        val names = runCatching {
+            marker.readLines().map { it.trim() }.filter { it.isNotEmpty() }
+        }.getOrDefault(emptyList())
+        root.deleteRecursively()
+        marker.delete()
+        return names
+    }
 }
 
 /** What the screen is showing while a fetch is in progress or has finished. */

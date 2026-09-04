@@ -87,8 +87,18 @@ class PluginsState(
         // Under safe mode this stays empty along with everything else. Not because a library
         // is dangerous, but because safe mode means "load nothing of mine", and a numpy that
         // shadowed something would make that promise false.
+        //
+        // A root whose last merge was interrupted is withheld too. It is the other half of
+        // B37: `installed()` already refuses to name those packages, but this is the path
+        // that actually reaches Python, and handing the directory over is what turned a
+        // half-copied file into an import error. Withheld rather than repaired here --
+        // recovery belongs to the fetcher, on the next install.
         val packages = dev.beancount.app.packages.OnDemandPackages.root(context)
-            .takeIf { plugins.isNotEmpty() && it.isDirectory }
+            .takeIf {
+                plugins.isNotEmpty() &&
+                    it.isDirectory &&
+                    !dev.beancount.app.packages.OnDemandPackages.isIncomplete(it)
+            }
             ?.absolutePath
 
         return (plugins + listOfNotNull(packages)).joinToString(",")
