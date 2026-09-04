@@ -151,6 +151,12 @@ fun BalancesScreen(
                     .filter { needle.isEmpty() || it.name.contains(needle, ignoreCase = true) }
                 if (accounts.isEmpty()) return@forEach
 
+                // Leaf names that appear more than once under this root, so those rows can
+                // fall back to the full account name.
+                val repeatedLeaves = accounts.groupingBy { it.leaf }.eachCount()
+                    .filterValues { it > 1 }
+                    .keys
+
                 item(key = "header-$root") {
                     // The header totals the accounts *shown*, not the whole root: a total
                     // that ignored the filter would be a different number from the rows
@@ -164,7 +170,9 @@ fun BalancesScreen(
                         },
                     )
                 }
-                items(accounts, key = { it.name }) { account -> AccountRow(account, basis) }
+                items(accounts, key = { it.name }) { account ->
+                    AccountRow(account, basis, ambiguous = account.leaf in repeatedLeaves)
+                }
             }
         }
     }
@@ -205,7 +213,11 @@ private fun RootHeader(root: String, totals: List<Amount>) {
 }
 
 @Composable
-private fun AccountRow(account: AccountBalance, basis: Valuation = Valuation.UNITS) {
+private fun AccountRow(
+    account: AccountBalance,
+    basis: Valuation = Valuation.UNITS,
+    ambiguous: Boolean = false,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -218,8 +230,13 @@ private fun AccountRow(account: AccountBalance, basis: Valuation = Valuation.UNI
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The leaf alone, unless another account on screen ends in the same word. A ledger
+        // with both Expenses:Rent and Expenses:Home:Rent showed two rows called "Rent" with
+        // different figures and nothing to tell them apart, because intermediate accounts
+        // are only listed when they hold a balance of their own, so the indent had no
+        // parent to sit under (D9).
         Text(
-            text = account.leaf,
+            text = if (ambiguous) account.name else account.leaf,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f),
         )
