@@ -1,153 +1,247 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Privacy policy — Beancount for Android</title>
-<meta name="description" content="What Beancount for Android does and does not do with your data. It has no accounts, no analytics, and no servers of ours.">
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div class="wrap">
-<header>
-  <h1>Privacy policy</h1>
-  <p class="lede">Short version: your ledger is a folder of text files on your device, and we never see it.</p>
-</header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Privacy policy for Beancount for Android: no accounts, analytics, telemetry, crash reporting, ads, or developer-operated data server."
+    />
+    <meta name="theme-color" content="#006a6a" />
+    <title>Privacy policy | Beancount for Android</title>
+    <script>
+      try {
+        const t = localStorage.getItem("beancount-site-theme");
+        if (t === "light" || t === "dark")
+          document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="nav-shell">
+        <a class="brand" href="index.html">
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <span>Beancount for Android</span>
+        </a>
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a class="nav-link" href="index.html">Home</a
+          ><a class="nav-link" href="features.html">Features</a
+          ><a class="nav-link" href="download.html">Download</a
+          ><a class="nav-link" href="keys.html">Keys</a
+          ><a class="nav-link" href="help.html">Help</a
+          ><a class="nav-link" href="privacy.html" aria-current="page"
+            >Privacy</a
+          >
+        </nav>
+        <button
+          class="theme-toggle"
+          type="button"
+          data-theme-toggle
+          title="Theme: follows your device"
+          aria-label="Theme: follows your device. Activate to change."
+        >
+          <span class="visually-hidden" data-theme-text>Theme: follows your device</span>
+          <svg class="theme-icon theme-icon-system" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor"/>
+          </svg>
+          <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="4.2" fill="currentColor"/>
+            <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4M5.1 5.1l1.7 1.7M17.2 17.2l1.7 1.7M18.9 5.1l-1.7 1.7M6.8 17.2l-1.7 1.7"/>
+            </g>
+          </svg>
+          <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M21 12.9A9.1 9.1 0 1 1 11.1 3a7.1 7.1 0 0 0 9.9 9.9Z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <main id="main">
+      <!-- Every policy claim below traces only to pending-verification.md B35 or threat-model.md. -->
+      <section class="shell hero hero-compact" data-reveal>
+        <div>
+          <p class="eyebrow">Privacy policy</p>
+          <h1>Your ledger is not our data.</h1>
+          <p class="lede">
+            There is no account, sign-in, analytics, telemetry, crash reporting,
+            advertising, or licence server.
+          </p>
+        </div>
+      </section>
 
-<nav>
-  <a href="index.html">Overview</a>
-  <a href="privacy.html" aria-current="page">Privacy</a>
-  <a href="keys.html">Contribution keys</a>
-</nav>
+      <section class="section section-tint">
+        <div class="shell reading prose">
+          <p>
+            <strong
+              >Applies to both the Play and Expert editions. Last updated 4
+              September 2026.</strong
+            >
+          </p>
+          <div class="callout">
+            <strong>Local mode makes zero network requests.</strong>
+            <p>
+              It works with the network off. The local Fava service binds only
+              to <code>127.0.0.1</code> on an ephemeral port and requires a
+              per-process token.
+            </p>
+          </div>
 
-<p class="updated">Applies to Beancount for Android, both the Play and Expert editions. Last updated 3 September 2026.</p>
+          <h2>What the developer collects</h2>
+          <p>
+            Nothing. The app has no user accounts and no developer-operated
+            service that receives your ledger, receipts, balances,
+            contribution-key details, search history, or credentials.
+          </p>
+          <p>
+            There are no analytics, telemetry, crash-reporting, advertising,
+            attribution, or tracking SDKs in either edition. Contribution keys
+            are verified offline. There is no licence server and no phone-home
+            check.
+          </p>
 
-<div class="card accent">
-  <h3>The whole policy in five lines</h3>
-  <ul>
-    <li>There is no account to create, and no sign-in anywhere in the app.</li>
-    <li>We operate no server that your data can reach. There is nothing for us to collect.</li>
-    <li>There is no analytics, no crash reporting, no advertising, and no tracking of any kind, in any edition.</li>
-    <li>Your ledger, your receipts and your backups stay in a folder you chose on your device.</li>
-    <li>The app makes network requests only in the specific cases listed below, and each one is something you start.</li>
-  </ul>
-</div>
+          <h2>Data on the device</h2>
+          <p>
+            Ledger files, financial information, documents and receipt photos,
+            in-app searches, contribution-key details, and remote credentials
+            remain local unless you start a transfer described below.
+          </p>
+          <p>
+            Project data lives in app-private storage protected by Android's
+            device encryption and device lock. Widgets can be set to show a
+            label and a time but no figures, and Android hides widget contents
+            on the lock screen regardless.
+          </p>
+          <p>
+            Remote credentials and tokens are stored through Android Keystore.
+            Entitlement keys are excluded from logs, backups, screenshots,
+            widget previews, and diagnostics.
+          </p>
 
-<h2>What we collect</h2>
-<p>
-  Nothing. We have no servers, no database and no account system, so there is no mechanism by
-  which your information could reach us. This is not a promise about how carefully we handle
-  data we receive — it is a statement that we do not receive any.
-</p>
+          <h2>When data leaves the device</h2>
+          <p>
+            The repository audit found three outbound code paths: the address
+            entered for remote mode and, in the Expert edition only, optional
+            package fetching and update checks. User-initiated sharing can also
+            send a selected document to an app the user chooses.
+          </p>
 
-<h2>What stays on your device</h2>
-<p>Everything you create in the app, specifically:</p>
-<ul>
-  <li><strong>Your ledger files.</strong> Plain-text Beancount files in a folder you pick. You can open them on a computer at any time, and they remain readable if you uninstall the app.</li>
-  <li><strong>Receipt photos and documents.</strong> Captured with the camera or attached from your device, stored alongside your ledger. The app never reads your photo gallery; it only sees images you capture in it or explicitly attach.</li>
-  <li><strong>Backups.</strong> Written where you choose, encrypted with a passphrase you set if you ask for encryption.</li>
-  <li><strong>Settings</strong>, including your theme choice.</li>
-  <li><strong>A contribution key, if you have one.</strong> The key contains the email address it was issued to, so the app can show you which key is installed. It is verified on your device, offline, and is never transmitted.</li>
-  <li><strong>A password for your own server, if you set one.</strong> Encrypted with a key held in the Android Keystore, which the app itself cannot read, and excluded from device backups.</li>
-</ul>
+          <h3>Your Fava server</h3>
+          <p>
+            If you enter a remote Fava address, the app connects to that server.
+            The configured origin is allowlisted exactly. External navigation
+            requires confirmation and opens in the browser.
+          </p>
+          <p>
+            If the address uses <code>https://</code>, certificate errors are
+            fatal and cannot be bypassed. The app never downgrades a failed
+            HTTPS connection. If you explicitly type <code>http://</code>, the
+            connection is unencrypted and can be read or modified on a hostile
+            network, including credentials and entries. The app warns about this
+            while the address is being entered.
+          </p>
 
-<h2>When the app uses the network</h2>
-<p>
-  In local mode — the default, where the app runs its own accounting engine on your device —
-  <strong>the app makes no network requests at all</strong>. The only cases where it uses the
-  network are these, and each is something you deliberately start:
-</p>
+          <h3>Optional packages in Expert</h3>
+          <p>
+            The Expert edition can make network requests to fetch optional
+            Python packages.
+          </p>
 
-<div class="card">
-  <h3>1. Connecting to your own Fava server (optional)</h3>
-  <p>
-    If you enter the address of a Fava server you host yourself, the app connects to it and
-    sends what is needed to display your ledger — including a username and password if your
-    server asks for them. That destination is a machine you control. We are not involved, and
-    the app has no default server to fall back on.
-  </p>
-  <p>
-    If you type an <code>https://</code> address, certificate errors are fatal and cannot be
-    overridden in any build. If you type an <code>http://</code> address — which is a reasonable
-    choice on your own home network — that traffic is unencrypted, the app tells you so on
-    screen before you connect, and it will never quietly fall back to it.
-  </p>
-</div>
+          <h3>Expert update checks</h3>
+          <p>
+            Expert update checks never happen on their own: there is no
+            background check, no automatic download and no automatic install.
+            You ask for one. The Play edition
+            has no self-update code.
+          </p>
 
-<div class="card">
-  <h3>2. Downloading optional Python packages (Expert edition only)</h3>
-  <p>
-    If you ask the Expert edition to install an optional package — a Beancount plugin, a Fava
-    extension, or a tool such as beangrow — it downloads that package from the public Python
-    Package Index. The request contains the package name. None of your ledger data is sent.
-    The Play edition never downloads code from any network source.
-  </p>
-</div>
+          <h3>Sharing a document</h3>
+          <p>
+            A document is shared only after the user chooses Share and selects
+            another app. Android grants that app read access to the selected
+            file rather than the project as a whole.
+          </p>
 
-<div class="card">
-  <h3>3. Checking for an app update (Expert edition only)</h3>
-  <p>
-    The Expert edition, which is distributed outside Google Play, can check for a signed
-    update. This fetches an update file and, if you accept, the new app package. No
-    information about you or your ledger is sent. The Play edition has no self-update code at
-    all; it updates through Google Play like any other app.
-  </p>
-</div>
+          <h2>Diagnostics</h2>
+          <p>
+            Diagnostics remain on the device until the user chooses to share
+            them. The bundle is redacted by default: it excludes ledger content,
+            amounts, account names, credentials, contribution keys, and other
+            secrets, and it is shown before sharing.
+          </p>
 
-<h2>What we deliberately do not do</h2>
-<ul>
-  <li><strong>No analytics or telemetry.</strong> No usage statistics, no event logging, no session recording.</li>
-  <li><strong>No crash reporting.</strong> Crashes are not uploaded anywhere.</li>
-  <li><strong>No advertising, and no advertising identifiers.</strong></li>
-  <li><strong>No device fingerprinting.</strong> The 30-day trial is counted on your device. We could stop you starting a fresh trial by reinstalling, and we choose not to, because doing so would require identifying your device.</li>
-  <li><strong>No third-party SDKs that collect data.</strong> The app is built on Google's own AndroidX libraries plus the open-source Beancount and Fava projects, and includes no analytics, advertising or attribution SDK.</li>
-</ul>
+          <h2>Permissions</h2>
+          <ul>
+            <li>
+              <strong>Camera:</strong> requested at the point of use for receipt
+              capture.
+            </li>
+            <li>
+              <strong>Internet:</strong> required even to open the local
+              loopback socket used by on-device Fava, and used for the
+              user-initiated network cases above.
+            </li>
+            <li>
+              <strong>Notifications:</strong> used for backup and script
+              results.
+            </li>
+          </ul>
+          <p>
+            The app requests no broad storage permission, location, contacts, or
+            account access. User-selected files and folders are reached through
+            Android's Storage Access Framework.
+          </p>
 
-<h2>Permissions the app asks for</h2>
-<ul>
-  <li><strong>Camera</strong> — only to photograph receipts, and only when you open the camera in the app. Images go into your ledger folder.</li>
-  <li><strong>Storage access</strong> — through Android's own folder picker, and limited to the folder you choose. The app cannot see the rest of your device.</li>
-  <li><strong>Internet</strong> — used only for the three cases listed above. It is required because the app runs a local web server on your own device, reachable only from inside your phone, to display reports.</li>
-  <li><strong>Install packages (Expert edition only)</strong> — so it can offer you a signed update. Not present in the Play edition.</li>
-</ul>
+          <h2>No account deletion process</h2>
+          <p>
+            There is no account to delete. The developer cannot delete local
+            data that the developer never receives.
+          </p>
+        </div>
+      </section>
 
-<h2>Sharing</h2>
-<p>
-  The app can share a document to another app when you tap Share and choose one. That is a
-  transfer you initiate, to a recipient you pick, and Android grants that app read access to
-  that one file. Nothing is shared automatically.
-</p>
-
-<h2>Children</h2>
-<p>
-  The app is a general-purpose accounting tool. It is not directed at children, and since it
-  collects no data it collects none from anyone of any age.
-</p>
-
-<h2>Deleting your data</h2>
-<p>
-  Uninstalling the app removes the app's own storage, including any stored server password
-  and contribution key. Your ledger folder is yours: it is deliberately left in place, because
-  it is your records and it was there before the app was. Delete it like any other folder if
-  you want it gone. There is no account for us to delete, because there is no account.
-</p>
-
-<h2>Changes to this policy</h2>
-<p>
-  If the app ever gains a feature that changes any of the above, this page changes with it,
-  in the same release. The date at the top says when it last changed.
-</p>
-
-<h2>Contact</h2>
-<p>
-  Questions about this policy, or about the app's behaviour, can be raised on the project's
-  issue tracker.
-</p>
-
-<footer>
-  <p>Beancount for Android is free software, licensed GPL-2.0-only.</p>
-  <p>Beancount and Fava are independent open-source projects; this app is not affiliated with or endorsed by them.</p>
-</footer>
-</div>
-</body>
+      <section class="section section-strong">
+        <div class="shell split">
+          <div><h2>The cleartext case is not hidden.</h2></div>
+          <div>
+            <p>
+              An address beginning with <code>http://</code> is a user decision
+              for a LAN or VPN setup. It is not encrypted, inferred, or used as
+              a fallback.
+            </p>
+            <div class="actions">
+              <a class="button button-filled" href="help.html"
+                >Read remote help</a
+              ><a class="button button-outlined" href="features.html#remote"
+                >Remote mode</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <p><strong>Beancount for Android</strong></p>
+          <p>Free software licensed GPL-2.0-only.</p>
+          <p>
+            Built with upstream CPython, Beancount, Fava, beanquery, and
+            beangulp. Beancount and Fava are independent projects; this app is
+            not affiliated with or endorsed by them.
+          </p>
+        </div>
+        <nav class="footer-links" aria-label="Footer navigation">
+          <a href="privacy.html">Privacy</a><a href="help.html">Help</a
+          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
 </html>

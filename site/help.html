@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Getting started, importing a ledger, file locations, troubleshooting, and limitations for Beancount for Android."
+    />
+    <meta name="theme-color" content="#006a6a" />
+    <title>Help | Beancount for Android</title>
+    <script>
+      try {
+        const t = localStorage.getItem("beancount-site-theme");
+        if (t === "light" || t === "dark")
+          document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="nav-shell">
+        <a class="brand" href="index.html">
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <span>Beancount for Android</span>
+        </a>
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a class="nav-link" href="index.html">Home</a
+          ><a class="nav-link" href="features.html">Features</a
+          ><a class="nav-link" href="download.html">Download</a
+          ><a class="nav-link" href="keys.html">Keys</a
+          ><a class="nav-link" href="help.html" aria-current="page">Help</a
+          ><a class="nav-link" href="privacy.html">Privacy</a>
+        </nav>
+        <button
+          class="theme-toggle"
+          type="button"
+          data-theme-toggle
+          title="Theme: follows your device"
+          aria-label="Theme: follows your device. Activate to change."
+        >
+          <span class="visually-hidden" data-theme-text>Theme: follows your device</span>
+          <svg class="theme-icon theme-icon-system" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor"/>
+          </svg>
+          <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="4.2" fill="currentColor"/>
+            <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4M5.1 5.1l1.7 1.7M17.2 17.2l1.7 1.7M18.9 5.1l-1.7 1.7M6.8 17.2l-1.7 1.7"/>
+            </g>
+          </svg>
+          <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M21 12.9A9.1 9.1 0 1 1 11.1 3a7.1 7.1 0 0 0 9.9 9.9Z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <main id="main">
+      <section class="shell hero hero-compact" data-reveal>
+        <div>
+          <p class="eyebrow">Help</p>
+          <h1>Start with a project, not an account.</h1>
+          <p class="lede">
+            Create a ledger or import a complete project tree. The app reads the
+            same Beancount syntax used on desktop.
+          </p>
+        </div>
+      </section>
+
+      <!-- Sources: AppChrome.kt Projects description; storage-and-backup.md 2 and 4. -->
+      <section class="section section-tint">
+        <div class="shell">
+          <div class="section-header" data-reveal><h2>Getting started</h2></div>
+          <ol class="steps">
+            <li data-reveal>
+              <strong>Open Projects.</strong>Create a new ledger, select a
+              folder tree, or select an archive.
+            </li>
+            <li data-reveal style="--reveal-index: 1">
+              <strong>Keep the whole tree together.</strong>Import the project
+              rather than only one file so includes and document links remain
+              valid.
+            </li>
+            <li data-reveal style="--reveal-index: 2">
+              <strong>Fix ordinary parse errors.</strong>Import completes even
+              if Beancount reports errors, so you can correct them in the raw
+              editor with file, line, and column information.
+            </li>
+            <li data-reveal style="--reveal-index: 3">
+              <strong>Export a copy.</strong>Keep an ordinary folder for desktop
+              use, create a backup archive, or configure Tier 2 mirroring.
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Source: storage-and-backup.md 1, 1.1, 2, 4, 5. -->
+      <section class="section">
+        <div class="shell split">
+          <div data-reveal><h2>Importing an existing ledger</h2></div>
+          <div class="prose" data-reveal style="--reveal-index: 1">
+            <p>
+              Import the whole folder tree or an archive, not only the root
+              <code>.beancount</code> file. That keeps included files and linked
+              documents together.
+            </p>
+            <p>
+              Imported projects keep their own layout. The app does not require
+              the folder names used for a new project.
+            </p>
+            <p>
+              Before writing anything, import rejects path traversal, absolute
+              paths, archive symlinks, zip bombs, case collisions, and duplicate
+              names. It imports into a new project rather than overwriting an
+              existing one.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-tint">
+        <div class="shell">
+          <div class="section-header" data-reveal>
+            <h2>Where your files live</h2>
+            <p>
+              The app-private workspace is canonical. This is required because
+              Python and Fava need real POSIX paths, while Android's folder
+              picker provides content URIs.
+            </p>
+          </div>
+          <div class="card-grid">
+            <article class="card card-primary" data-reveal>
+              <h3>Canonical workspace</h3>
+              <p>
+                Projects live in app-private storage. Modern file managers
+                cannot browse that location.
+              </p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>In-app raw editor</h3>
+              <p>
+                Every included file remains directly editable inside the app.
+                This is permanently free.
+              </p>
+            </article>
+            <article class="card" data-reveal>
+              <h3>Portable copies</h3>
+              <p>
+                Import, export, and mirror connect the private workspace to a
+                folder chosen through Android's Storage Access Framework.
+              </p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>Clean project tree</h3>
+              <p>
+                Caches, logs, credentials, generated state, and entitlement keys
+                live outside the portable project tree.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sources: known-limitations.md; threat-model.md; storage-and-backup.md. -->
+      <section class="section">
+        <div class="shell split">
+          <div><h2>Troubleshooting</h2></div>
+          <div class="prose" data-reveal style="--reveal-index: 1">
+            <h3>A ledger will not load</h3>
+            <p>
+              Open the reported file, line, and column in the raw editor. A file
+              Beancount cannot parse is reported rather than silently
+              interpreted.
+            </p>
+            <h3>A save was refused</h3>
+            <p>
+              The file may have changed since the editor opened. Stale-write
+              detection refuses last-write-wins and offers a conflict view.
+            </p>
+            <h3>A plugin stops startup</h3>
+            <p>
+              Use safe mode to disable third-party code and open the ledger
+              read-only. Recovery mode remains available after a startup
+              failure.
+            </p>
+            <h3>A remote server will not connect</h3>
+            <p>
+              Check the scheme and certificate. Certificate errors for
+              <code>https://</code> are fatal. The app never retries over
+              <code>http://</code>.
+            </p>
+            <h3>An Expert package will not install</h3>
+            <p>
+              Some dependencies have no compatible Android wheel. The package
+              resolver shows what is available before downloading.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Source: known-limitations.md, written for this audience. -->
+      <section class="section section-tint">
+        <div class="shell">
+          <div class="section-header" data-reveal>
+            <h2>What it does not do</h2>
+            <p>These are product limits, not hidden roadmap promises.</p>
+          </div>
+          <div class="card-grid">
+            <article class="card" data-reveal>
+              <h3>No Git integration</h3>
+              <p>
+                The app can edit a working tree but leaves version control to
+                you.
+              </p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>No remote offline cache</h3>
+              <p>
+                Remote mode requires the server and provides reports plus
+                quick-add, not existing-entry editing or two-way sync.
+              </p>
+            </article>
+            <article class="card" data-reveal>
+              <h3>No 32-bit support</h3>
+              <p>Only arm64-v8a and x86_64 builds are provided.</p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>No OCR in v1</h3>
+              <p>
+                Camera capture and PDF assembly ship first. OCR is deferred.
+              </p>
+            </article>
+            <article class="card" data-reveal>
+              <h3>No plugin marketplace</h3>
+              <p>
+                You supply plugin files. The app does not provide a vetted
+                catalog.
+              </p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>English UI only</h3>
+              <p>
+                The UI is prepared for localization, but translations do not
+                exist yet.
+              </p>
+            </article>
+          </div>
+          <div class="callout" data-reveal>
+            <strong>Large ledgers cost time.</strong>
+            <p>
+              The app was built and measured around roughly 25,000 transactions
+              in about 10 MB. Larger ledgers are not refused, but load time
+              grows with file size and the first parse after a change costs the
+              most.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-strong">
+        <div class="shell split">
+          <div><h2>Before relying on it</h2></div>
+          <div>
+            <p>
+              Review the privacy policy and edition boundaries, especially if
+              you plan to use remote mode or user Python.
+            </p>
+            <div class="actions">
+              <a class="button button-filled" href="privacy.html"
+                >Read privacy</a
+              ><a class="button button-outlined" href="download.html"
+                >Compare editions</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <p><strong>Beancount for Android</strong></p>
+          <p>Free software licensed GPL-2.0-only.</p>
+          <p>
+            Built with upstream CPython, Beancount, Fava, beanquery, and
+            beangulp. Beancount and Fava are independent projects; this app is
+            not affiliated with or endorsed by them.
+          </p>
+        </div>
+        <nav class="footer-links" aria-label="Footer navigation">
+          <a href="privacy.html">Privacy</a><a href="help.html">Help</a
+          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

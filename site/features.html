@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Entries, reports, documents, backups, remote mode, plugins, and scripts in Beancount for Android."
+    />
+    <meta name="theme-color" content="#006a6a" />
+    <title>Features | Beancount for Android</title>
+    <script>
+      try {
+        const t = localStorage.getItem("beancount-site-theme");
+        if (t === "light" || t === "dark")
+          document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="nav-shell">
+        <a class="brand" href="index.html">
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <span>Beancount for Android</span>
+        </a>
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a class="nav-link" href="index.html">Home</a
+          ><a class="nav-link" href="features.html" aria-current="page"
+            >Features</a
+          ><a class="nav-link" href="download.html">Download</a
+          ><a class="nav-link" href="keys.html">Keys</a
+          ><a class="nav-link" href="help.html">Help</a
+          ><a class="nav-link" href="privacy.html">Privacy</a>
+        </nav>
+        <button
+          class="theme-toggle"
+          type="button"
+          data-theme-toggle
+          title="Theme: follows your device"
+          aria-label="Theme: follows your device. Activate to change."
+        >
+          <span class="visually-hidden" data-theme-text>Theme: follows your device</span>
+          <svg class="theme-icon theme-icon-system" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor"/>
+          </svg>
+          <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="4.2" fill="currentColor"/>
+            <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4M5.1 5.1l1.7 1.7M17.2 17.2l1.7 1.7M18.9 5.1l-1.7 1.7M6.8 17.2l-1.7 1.7"/>
+            </g>
+          </svg>
+          <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M21 12.9A9.1 9.1 0 1 1 11.1 3a7.1 7.1 0 0 0 9.9 9.9Z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <main id="main">
+      <section class="shell hero hero-compact" data-reveal>
+        <div>
+          <p class="eyebrow">Features</p>
+          <h1>Beancount, from entries to reports.</h1>
+          <p class="lede">
+            The accounting engine is upstream Beancount. The reporting surface
+            is upstream Fava. The Android app makes both usable on a phone.
+          </p>
+        </div>
+      </section>
+
+      <!-- Sources: existing site/index.html; AppChrome.kt descriptions; storage-and-backup.md section 3. -->
+      <section class="section section-tint" id="entries">
+        <div class="shell split">
+          <div data-reveal>
+            <h2>Entries and editing</h2>
+            <p>
+              Use guided entry for common work and raw text when the file is the
+              clearest interface.
+            </p>
+          </div>
+          <div class="card-grid">
+            <article class="card card-primary" data-reveal>
+              <h3>Guided entry</h3>
+              <p>
+                Use guided entry for common directives. Edit, delete, or
+                duplicate existing entries while keeping the ledger as ordinary
+                Beancount text.
+              </p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>Raw files</h3>
+              <p>
+                Read and edit the ledger files themselves with highlighting,
+                search, validation, and stale-write detection.
+              </p>
+            </article>
+            <article class="card" data-reveal>
+              <h3>Durable writes</h3>
+              <p>
+                Writes are locked, snapshotted, journalled, atomically replaced,
+                and re-parsed before success is shown.
+              </p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>Unknown syntax survives</h3>
+              <p>
+                Unknown directives, metadata, comments, whitespace outside an
+                edited region, includes, and relative paths are preserved.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sources: distribution.md 2 and 4.4; existing site/index.html. -->
+      <section class="section" id="reports">
+        <div class="shell">
+          <div class="section-header" data-reveal>
+            <h2>Reports computed by Fava</h2>
+            <p>
+              Tier 1 opens the full Fava report surface. The free tier keeps the
+              journal, account balances, and raw editor.
+            </p>
+          </div>
+          <div class="chip-row" data-reveal>
+            <span class="chip">Balance sheet</span
+            ><span class="chip">Income statement</span
+            ><span class="chip">Trial balance</span
+            ><span class="chip">Holdings</span
+            ><span class="chip">Commodities</span
+            ><span class="chip">Accounts</span><span class="chip">Payees</span
+            ><span class="chip">Tags and links</span
+            ><span class="chip">Charts</span
+            ><span class="chip">BQL queries</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sources: AppChrome.kt descriptions; storage-and-backup.md sections 6-8. -->
+      <section class="section section-tint" id="documents">
+        <div class="shell">
+          <div class="section-header" data-reveal>
+            <h2>Documents, mirroring, and backup</h2>
+            <p>
+              The app keeps the private workspace canonical and provides
+              explicit routes to portable copies.
+            </p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card" data-reveal>
+              <h3>Receipts and statements</h3>
+              <p>
+                Capture or attach documents, assemble PDFs, and file them
+                against entries. Documents live inside the portable project
+                tree.
+              </p>
+            </article>
+            <article class="feature-card" data-reveal style="--reveal-index: 1">
+              <h3>Manual copies</h3>
+              <p>
+                Export to an ordinary folder or a backup archive. Manual import,
+                export, backup, and restore are always free.
+              </p>
+            </article>
+            <article class="feature-card" data-reveal>
+              <h3>Auto-mirror</h3>
+              <p>
+                Tier 2 can keep a copy in a chosen SAF folder. Conflicts
+                preserve both versions and wait for your decision.
+              </p>
+            </article>
+            <article class="feature-card" data-reveal style="--reveal-index: 1">
+              <h3>Scheduled backup</h3>
+              <p>
+                Tier 2 can schedule backups with configurable retention.
+                Optional passphrase encryption uses AES-256-GCM with Argon2id.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sources: known-limitations.md Remote; threat-model.md 3.5. -->
+      <section class="section" id="remote">
+        <div class="shell split">
+          <div data-reveal><h2>Remote mode is deliberately narrower</h2></div>
+          <div class="prose" data-reveal style="--reveal-index: 1">
+            <p>
+              Remote mode is a hardened client for a Fava server you host. It
+              provides reports and quick-add while the server is reachable.
+            </p>
+            <p>
+              It does not keep an offline copy, edit existing remote entries, or
+              attempt two-way sync. An <code>https://</code> certificate error
+              is fatal. An <code>http://</code> connection is used only when you
+              type that scheme and is disclosed as unencrypted before
+              connection.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sources: distribution.md 2; known-limitations.md Plugins; on-demand-packages.md. -->
+      <section class="section section-tint" id="plugins">
+        <div class="shell">
+          <div class="section-header" data-reveal>
+            <h2>Plugins and scripts</h2>
+            <p>
+              Tier 3 can load user-supplied Beancount plugins, Fava extensions,
+              beangulp importers, and Python scripts.
+            </p>
+          </div>
+          <div class="card-grid">
+            <article class="card card-tonal" data-reveal>
+              <h3>Code you choose</h3>
+              <p>
+                User Python is unsandboxed and can access anything the app can.
+                Loading is off by default, controlled per project, and disabled
+                in safe mode.
+              </p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>Play edition</h3>
+              <p>
+                User extensions must be pure Python. The Android bridge is
+                withheld, and the edition never downloads code.
+              </p>
+            </article>
+            <article class="card" data-reveal>
+              <h3>Expert edition</h3>
+              <p>
+                User Python can use the Android bridge. Optional compatible
+                packages can be fetched on demand after the app shows the
+                closure.
+              </p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>Large packages stay optional</h3>
+              <p>
+                The beangrow dependency closure is a 37 MB download and occupies
+                about 143 MB unpacked, so it is not bundled in every install.
+              </p>
+            </article>
+          </div>
+          <div class="callout callout-warning" data-reveal>
+            <strong>Not a security boundary.</strong> Plugin restrictions in the
+            Play edition are policy compliance. User Python is unsandboxed in
+            both editions.
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-strong">
+        <div class="shell split">
+          <div><h2>Check the edition before installing.</h2></div>
+          <div>
+            <p>
+              The ledger format is identical in both editions, but package and
+              update behavior differs.
+            </p>
+            <div class="actions">
+              <a class="button button-filled" href="download.html"
+                >Compare editions</a
+              ><a class="button button-outlined" href="keys.html"
+                >Compare tiers</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <p><strong>Beancount for Android</strong></p>
+          <p>Free software licensed GPL-2.0-only.</p>
+          <p>
+            Built with upstream CPython, Beancount, Fava, beanquery, and
+            beangulp. Beancount and Fava are independent projects; this app is
+            not affiliated with or endorsed by them.
+          </p>
+        </div>
+        <nav class="footer-links" aria-label="Footer navigation">
+          <a href="privacy.html">Privacy</a><a href="help.html">Help</a
+          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

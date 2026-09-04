@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Compare the Play and Expert editions of Beancount for Android, requirements, sizes, and availability."
+    />
+    <meta name="theme-color" content="#006a6a" />
+    <title>Download | Beancount for Android</title>
+    <script>
+      try {
+        const t = localStorage.getItem("beancount-site-theme");
+        if (t === "light" || t === "dark")
+          document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="nav-shell">
+        <a class="brand" href="index.html">
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <span>Beancount for Android</span>
+        </a>
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a class="nav-link" href="index.html">Home</a
+          ><a class="nav-link" href="features.html">Features</a
+          ><a class="nav-link" href="download.html" aria-current="page"
+            >Download</a
+          ><a class="nav-link" href="keys.html">Keys</a
+          ><a class="nav-link" href="help.html">Help</a
+          ><a class="nav-link" href="privacy.html">Privacy</a>
+        </nav>
+        <button
+          class="theme-toggle"
+          type="button"
+          data-theme-toggle
+          title="Theme: follows your device"
+          aria-label="Theme: follows your device. Activate to change."
+        >
+          <span class="visually-hidden" data-theme-text>Theme: follows your device</span>
+          <svg class="theme-icon theme-icon-system" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor"/>
+          </svg>
+          <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="4.2" fill="currentColor"/>
+            <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4M5.1 5.1l1.7 1.7M17.2 17.2l1.7 1.7M18.9 5.1l-1.7 1.7M6.8 17.2l-1.7 1.7"/>
+            </g>
+          </svg>
+          <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M21 12.9A9.1 9.1 0 1 1 11.1 3a7.1 7.1 0 0 0 9.9 9.9Z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <main id="main">
+      <!-- Sources: distribution.md section 2; known-limitations.md Devices; verified facts in site brief. -->
+      <section class="shell hero hero-compact" data-reveal>
+        <div>
+          <p class="eyebrow">Download</p>
+          <h1>Choose by where code may come from.</h1>
+          <p class="lede">
+            Both editions read the same projects and use the same contribution
+            tiers. Google Play policy creates three practical differences.
+          </p>
+        </div>
+      </section>
+
+      <div class="section section-tint">
+        <div class="shell">
+          <div class="download-status" data-reveal>
+            <strong>Downloads are not live yet.</strong>
+            <p>
+              There are no download links on this page yet. Play and Expert
+              links will appear here when they are available.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <section class="section">
+        <div class="shell">
+          <div class="section-header" data-reveal>
+            <h2>Edition comparison</h2>
+            <p>
+              Everything not listed as a difference is shared, including local
+              Beancount and Fava, reports, editing, documents, backups, remote
+              mode, and contribution tiers.
+            </p>
+          </div>
+          <div
+            class="table-wrap"
+            data-reveal
+            tabindex="0"
+            role="region"
+            aria-label="Edition comparison table"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Capability</th>
+                  <th scope="col">Play</th>
+                  <th scope="col">Expert</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Local Beancount and Fava</th>
+                  <td class="check">Included</td>
+                  <td class="check">Included</td>
+                </tr>
+                <tr>
+                  <th scope="row">User plugins and extensions</th>
+                  <td>Pure Python only</td>
+                  <td>Pure Python and compatible native packages</td>
+                </tr>
+                <tr>
+                  <th scope="row">Android bridge in user Python</th>
+                  <td>Withheld</td>
+                  <td>Available</td>
+                </tr>
+                <tr>
+                  <th scope="row">Optional package downloads</th>
+                  <td>None</td>
+                  <td>User-confirmed</td>
+                </tr>
+                <tr>
+                  <th scope="row">App updates</th>
+                  <td>Google Play</td>
+                  <td>Signed package, user-confirmed</td>
+                </tr>
+                <tr>
+                  <th scope="row">Billing or purchase flow in app</th>
+                  <td>None</td>
+                  <td>None</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sources: verified facts in site brief; known-limitations.md Devices. -->
+      <section class="section section-tint">
+        <div class="shell">
+          <div class="section-header" data-reveal>
+            <h2>Requirements and size</h2>
+          </div>
+          <div class="card-grid">
+            <article class="card card-primary" data-reveal>
+              <h3>Android</h3>
+              <p>Android 10 (API 29) or later. Android 9 is not supported.</p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>Processor</h3>
+              <p>arm64-v8a and x86_64. There is no 32-bit build.</p>
+            </article>
+            <article class="card" data-reveal>
+              <h3>Per architecture</h3>
+              <p>About 48.5 MB to download.</p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>Universal package</h3>
+              <p>About 59.3 MB to download.</p>
+            </article>
+          </div>
+          <div class="callout" data-reveal>
+            <strong>Optional packages use more space.</strong>
+            <p>
+              The Expert edition can fetch some packages only when requested.
+              Beangrow's closure downloads 37 MB and occupies about 143 MB after
+              unpacking.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell split">
+          <div data-reveal><h2>Which edition should you use?</h2></div>
+          <div class="prose" data-reveal style="--reveal-index: 1">
+            <h3>Play</h3>
+            <p>
+              Use it when you want store-managed updates and do not need native
+              Python packages or the Android bridge from your own code.
+            </p>
+            <h3>Expert</h3>
+            <p>
+              Use it when your plugins need compatible native packages,
+              on-demand packages, or Android APIs, and you are comfortable
+              installing signed releases directly.
+            </p>
+            <p>
+              Files are identical between editions. A project created in one
+              opens unchanged in the other and in desktop Beancount.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-strong">
+        <div class="shell split">
+          <div><h2>New to the app?</h2></div>
+          <div>
+            <p>
+              Read the storage and import model before moving an existing
+              ledger.
+            </p>
+            <div class="actions">
+              <a class="button button-filled" href="help.html"
+                >Getting started</a
+              ><a class="button button-outlined" href="privacy.html"
+                >Read privacy</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <p><strong>Beancount for Android</strong></p>
+          <p>Free software licensed GPL-2.0-only.</p>
+          <p>
+            Built with upstream CPython, Beancount, Fava, beanquery, and
+            beangulp. Beancount and Fava are independent projects; this app is
+            not affiliated with or endorsed by them.
+          </p>
+        </div>
+        <nav class="footer-links" aria-label="Footer navigation">
+          <a href="privacy.html">Privacy</a><a href="help.html">Help</a
+          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

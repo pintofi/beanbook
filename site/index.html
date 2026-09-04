@@ -1,96 +1,242 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Beancount for Android</title>
-<meta name="description" content="Plain-text double-entry accounting on Android. Your books are ordinary text files on your device, readable on a computer at any time.">
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div class="wrap">
-<header>
-  <h1>Beancount for Android</h1>
-  <p class="lede">Plain-text double-entry accounting, with the real Beancount and Fava running on your phone.</p>
-</header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Real Beancount and Fava on Android, with plain-text files, local processing, and no account or telemetry."
+    />
+    <meta name="theme-color" content="#006a6a" />
+    <title>Beancount for Android</title>
+    <script>
+      try {
+        const t = localStorage.getItem("beancount-site-theme");
+        if (t === "light" || t === "dark")
+          document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="nav-shell">
+        <a class="brand" href="index.html">
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <span>Beancount for Android</span>
+        </a>
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a class="nav-link" href="index.html" aria-current="page">Home</a>
+          <a class="nav-link" href="features.html">Features</a>
+          <a class="nav-link" href="download.html">Download</a>
+          <a class="nav-link" href="keys.html">Keys</a>
+          <a class="nav-link" href="help.html">Help</a>
+          <a class="nav-link" href="privacy.html">Privacy</a>
+        </nav>
+        <button
+          class="theme-toggle"
+          type="button"
+          data-theme-toggle
+          title="Theme: follows your device"
+          aria-label="Theme: follows your device. Activate to change."
+        >
+          <span class="visually-hidden" data-theme-text>Theme: follows your device</span>
+          <svg class="theme-icon theme-icon-system" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor"/>
+          </svg>
+          <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="4.2" fill="currentColor"/>
+            <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4M5.1 5.1l1.7 1.7M17.2 17.2l1.7 1.7M18.9 5.1l-1.7 1.7M6.8 17.2l-1.7 1.7"/>
+            </g>
+          </svg>
+          <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M21 12.9A9.1 9.1 0 1 1 11.1 3a7.1 7.1 0 0 0 9.9 9.9Z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </header>
 
-<nav>
-  <a href="index.html" aria-current="page">Overview</a>
-  <a href="privacy.html">Privacy</a>
-  <a href="keys.html">Contribution keys</a>
-</nav>
+    <main id="main">
+      <!-- Sources: existing site/index.html; CLAUDE.md What this is; verified facts in site brief. -->
+      <section class="shell hero">
+        <div data-reveal>
+          <p class="eyebrow">Plain-text accounting on Android</p>
+          <h1>Your books, running locally.</h1>
+          <p class="lede">
+            Real Beancount and Fava run on CPython on your device. No account,
+            telemetry, or server of ours.
+          </p>
+          <div class="actions">
+            <a class="button button-filled" href="download.html">Download</a>
+            <a class="button button-outlined" href="help.html"
+              >Read the guide</a
+            >
+          </div>
+        </div>
+        <aside
+          class="hero-panel"
+          data-reveal
+          style="--reveal-index: 1"
+          aria-label="Embedded engine versions"
+        >
+          <strong>Upstream tools, not substitutes</strong>
+          <p>
+            The app ships the projects desktop Beancount users already know.
+          </p>
+          <dl class="version-list">
+            <div>
+              <dt>CPython</dt>
+              <dd>3.13</dd>
+            </div>
+            <div>
+              <dt>Beancount</dt>
+              <dd>3.2.3</dd>
+            </div>
+            <div>
+              <dt>Fava</dt>
+              <dd>1.30.15</dd>
+            </div>
+            <div>
+              <dt>beanquery</dt>
+              <dd>0.2.0</dd>
+            </div>
+            <div>
+              <dt>beangulp</dt>
+              <dd>0.2.0</dd>
+            </div>
+          </dl>
+        </aside>
+      </section>
 
-<p>
-  Your books are ordinary <a href="https://beancount.github.io/">Beancount</a> text files in a
-  folder you choose. The app embeds CPython and runs upstream Beancount and
-  <a href="https://beancount.github.io/fava/">Fava</a> — not a re-implementation of them — so
-  what you see on your phone is what <code>bean-check</code> and Fava produce on your desktop.
-</p>
+      <!-- Sources: storage-and-backup.md sections 1-3; distribution.md sections 2 and 4.4. -->
+      <section class="section section-tint">
+        <div class="shell">
+          <div class="section-header" data-reveal>
+            <h2>Built around the ledger</h2>
+            <p>
+              The app keeps Beancount text, includes, documents, and formatting
+              intact rather than hiding them behind a private database format.
+            </p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card" data-reveal>
+              <h3>Edit without giving up text</h3>
+              <p>
+                Use guided entry for transactions and common directives, or edit
+                every included file directly with highlighting, search,
+                validation, and stale-write detection.
+              </p>
+              <a class="link" href="features.html#entries"
+                >Entries and editing</a
+              >
+            </article>
+            <article class="feature-card" data-reveal style="--reveal-index: 1">
+              <h3>Read the full reports</h3>
+              <p>
+                Use Fava reports, charts, account views, and BQL queries from
+                the device.
+              </p>
+              <a class="link" href="features.html#reports">Reports</a>
+            </article>
+            <article class="feature-card" data-reveal>
+              <h3>Move data manually, free</h3>
+              <p>
+                Import, export, backup, and restore stay available in every tier
+                and both editions.
+              </p>
+              <a class="link" href="keys.html">What stays free</a>
+            </article>
+            <article class="feature-card" data-reveal style="--reveal-index: 1">
+              <h3>Keep control of network use</h3>
+              <p>
+                Local mode makes zero network requests. Remote mode connects
+                only to the Fava server address you enter.
+              </p>
+              <a class="link" href="privacy.html">Privacy policy</a>
+            </article>
+          </div>
+        </div>
+      </section>
 
-<div class="card accent">
-  <h3>Your files stay yours</h3>
-  <p>
-    Nothing is uploaded. There is no account, no sign-in, and no server of ours anywhere in
-    the picture. If you uninstall the app tomorrow, your ledger is still a folder of text
-    files you can open in any editor. See the <a href="privacy.html">privacy policy</a>.
-  </p>
-</div>
+      <!-- Sources: verified facts in site brief; known-limitations.md Devices and Privacy. -->
+      <div class="section">
+        <div class="shell fact-band" data-reveal>
+          <div class="fact">
+            <strong>Android 10+</strong><span>API 29 or later</span>
+          </div>
+          <div class="fact">
+            <strong>2 ABIs</strong><span>arm64-v8a and x86_64</span>
+          </div>
+          <div class="fact">
+            <strong>0 tracking</strong
+            ><span>No analytics, ads, or crash reporting</span>
+          </div>
+        </div>
+      </div>
 
-<h2>What it does</h2>
-<ul>
-  <li><strong>Write and edit entries</strong> — transactions, balances, prices, every directive Beancount supports, with the raw file editable by hand when you prefer.</li>
-  <li><strong>Read your accounts</strong> — a journal and an account balances list, computed by Beancount itself.</li>
-  <li><strong>Full Fava reports</strong> — balance sheet, income statement, trial balance, holdings, charts, and BQL queries.</li>
-  <li><strong>Attach receipts</strong> — photograph them, crop them, and file them against a transaction as linked documents.</li>
-  <li><strong>Import, export, back up and restore</strong> — always available, in every edition, with no limits.</li>
-  <li><strong>Connect to your own Fava server</strong>, if you already host one.</li>
-</ul>
+      <!-- Sources: screenshots decision in site brief. No product image is fabricated. -->
+      <section class="section section-tint">
+        <div class="shell screenshot-note" data-reveal>
+          <div>
+            <h2>Real screens will go here</h2>
+            <p>
+              The app is still being finished. Screenshots will be captured once
+              from a real device, then added without changing this layout.
+            </p>
+          </div>
+          <ul class="capture-list" aria-label="Planned screenshots">
+            <li><strong>Home</strong><br />Light theme</li>
+            <li><strong>Journal</strong><br />Dark theme</li>
+            <li><strong>Reports</strong><br />Fava on device</li>
+            <li><strong>Documents</strong><br />Organize view</li>
+          </ul>
+        </div>
+      </section>
 
-<h2>Two editions</h2>
-<p>
-  The two editions have the <strong>same features</strong>, including plugins and Fava
-  extensions. They differ only where Google Play's policies require it:
-</p>
-<table>
-  <tr><th>Edition</th><th>Where</th><th>Difference</th></tr>
-  <tr>
-    <td><strong>Play</strong></td>
-    <td>Google Play</td>
-    <td>Runs pure-Python plugins only, and never downloads code. Updates through Play.</td>
-  </tr>
-  <tr>
-    <td><strong>Expert</strong></td>
-    <td>Direct download</td>
-    <td>Can install packages containing native code, and can update itself from a signed package.</td>
-  </tr>
-</table>
-<p>
-  Neither edition contains a billing SDK, a purchase flow, or advertising.
-</p>
+      <!-- Sources: distribution.md sections 2 and 4. -->
+      <section class="section section-strong">
+        <div class="shell split">
+          <div data-reveal><h2>Two editions. The same ledger format.</h2></div>
+          <div data-reveal style="--reveal-index: 1">
+            <p>
+              Play and Expert share the same core features and contribution
+              tiers. Their differences are limited to package loading, the
+              Android bridge for user Python, and app updates.
+            </p>
+            <div class="actions">
+              <a class="button button-filled" href="download.html"
+                >Compare editions</a
+              ><a class="button button-outlined" href="features.html"
+                >See all features</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
 
-<h2>Free, and paid</h2>
-<p>
-  Every install starts with a <strong>30-day trial with everything unlocked</strong>. No
-  account, no card, no network call — the app counts the days on your device.
-</p>
-<p>
-  When the trial ends, <strong>nothing is taken away except the paid features</strong>. Adding,
-  editing and deleting entries keeps working. The journal and balances keep working. Editing
-  the raw files keeps working. <strong>Import, export, backup and restore are never gated</strong>,
-  during the trial or after it — getting your data out is not something you should have to pay
-  for. The <a href="keys.html">contribution keys</a> page has the details.
-</p>
-
-<h2>Free software</h2>
-<p>
-  The app is licensed <strong>GPL-2.0-only</strong>, because Beancount is, and it is built on
-  the work of the Beancount and Fava communities.
-</p>
-
-<footer>
-  <p>Beancount for Android is free software, licensed GPL-2.0-only.</p>
-  <p>Beancount and Fava are independent open-source projects; this app is not affiliated with or endorsed by them.</p>
-</footer>
-</div>
-</body>
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <p><strong>Beancount for Android</strong></p>
+          <p>Free software licensed GPL-2.0-only.</p>
+          <p>
+            Built with upstream CPython, Beancount, Fava, beanquery, and
+            beangulp. Beancount and Fava are independent projects; this app is
+            not affiliated with or endorsed by them.
+          </p>
+        </div>
+        <nav class="footer-links" aria-label="Footer navigation">
+          <a href="privacy.html">Privacy</a><a href="help.html">Help</a
+          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
 </html>

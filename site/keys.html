@@ -1,123 +1,265 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contribution keys — Beancount for Android</title>
-<meta name="description" content="What the paid tiers unlock, what stays free forever, and how a contribution key works.">
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div class="wrap">
-<header>
-  <h1>Contribution keys</h1>
-  <p class="lede">A key is a small signed file you paste into the app once. It is checked on your device, offline.</p>
-</header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Contribution tiers, the 30-day trial, and offline keys for Beancount for Android."
+    />
+    <meta name="theme-color" content="#006a6a" />
+    <title>Contribution keys | Beancount for Android</title>
+    <script>
+      try {
+        const t = localStorage.getItem("beancount-site-theme");
+        if (t === "light" || t === "dark")
+          document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="nav-shell">
+        <a class="brand" href="index.html">
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <span>Beancount for Android</span>
+        </a>
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a class="nav-link" href="index.html">Home</a
+          ><a class="nav-link" href="features.html">Features</a
+          ><a class="nav-link" href="download.html">Download</a
+          ><a class="nav-link" href="keys.html" aria-current="page">Keys</a
+          ><a class="nav-link" href="help.html">Help</a
+          ><a class="nav-link" href="privacy.html">Privacy</a>
+        </nav>
+        <button
+          class="theme-toggle"
+          type="button"
+          data-theme-toggle
+          title="Theme: follows your device"
+          aria-label="Theme: follows your device. Activate to change."
+        >
+          <span class="visually-hidden" data-theme-text>Theme: follows your device</span>
+          <svg class="theme-icon theme-icon-system" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor"/>
+          </svg>
+          <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="4.2" fill="currentColor"/>
+            <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4M5.1 5.1l1.7 1.7M17.2 17.2l1.7 1.7M18.9 5.1l-1.7 1.7M6.8 17.2l-1.7 1.7"/>
+            </g>
+          </svg>
+          <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M21 12.9A9.1 9.1 0 1 1 11.1 3a7.1 7.1 0 0 0 9.9 9.9Z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <main id="main">
+      <!-- Source: distribution.md section 4. -->
+      <section class="shell hero hero-compact" data-reveal>
+        <div>
+          <p class="eyebrow">Contribution keys</p>
+          <h1>Free stays useful. Keys add analysis and automation.</h1>
+          <p class="lede">
+            A signed key is checked offline on your device. There is no account,
+            billing SDK, licence server, or activation limit.
+          </p>
+        </div>
+      </section>
 
-<nav>
-  <a href="index.html">Overview</a>
-  <a href="privacy.html">Privacy</a>
-  <a href="keys.html" aria-current="page">Contribution keys</a>
-</nav>
+      <section class="section section-tint">
+        <div class="shell">
+          <div class="section-header" data-reveal>
+            <h2>The 30-day trial</h2>
+            <p>
+              Every fresh install starts with all three tiers unlocked. No card,
+              account, device fingerprint, or network call is required.
+            </p>
+          </div>
+          <div class="card-grid">
+            <article class="card card-primary" data-reveal>
+              <h3>During the trial</h3>
+              <p>
+                Insight, Workflow, and Power features are available for 30 days.
+              </p>
+            </article>
+            <article class="card" data-reveal style="--reveal-index: 1">
+              <h3>After it ends</h3>
+              <p>
+                The ledger stays untouched. Writing, editing, the journal,
+                balances, raw files, and every manual data transfer remain
+                available.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
 
-<div class="card accent">
-  <h3>What is always free</h3>
-  <p>
-    Every accounting operation. Adding, editing, deleting and duplicating any directive; the
-    journal; the account balances list; editing the raw files by hand with highlighting,
-    search and validation; multiple projects; safe mode and diagnostics.
-  </p>
-  <p>
-    <strong>And all of your data, in and out.</strong> Manual import, export, backup creation
-    and restore are free in every edition, forever, with no limits. Getting your records out
-    of an accounting app is not a feature worth charging for, and the files are plain text you
-    could copy by hand anyway.
-  </p>
-</div>
+      <section class="section">
+        <div class="shell">
+          <div class="section-header" data-reveal>
+            <h2>What each tier adds</h2>
+            <p>
+              Each paid tier includes the one before it. Prices are in US
+              dollars.
+            </p>
+          </div>
+          <div
+            class="table-wrap"
+            data-reveal
+            tabindex="0"
+            role="region"
+            aria-label="Contribution tier table"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Tier</th>
+                  <th scope="col">Price</th>
+                  <th scope="col">What it adds</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Free</th>
+                  <td class="price">Free</td>
+                  <td>
+                    All directive editing, journal, account balances, raw files,
+                    multiple projects, diagnostics, safe mode, and all manual
+                    import, export, backup, and restore.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">T1 Insight</th>
+                  <td class="price">$9.99</td>
+                  <td>Full Fava reports, charts, views, and BQL queries.</td>
+                </tr>
+                <tr>
+                  <th scope="row">T2 Workflow</th>
+                  <td class="price">$14.99</td>
+                  <td>
+                    T1 plus external documents, camera, PDF assembly,
+                    home-screen widgets, auto-mirror, and scheduled backups.
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row">T3 Power</th>
+                  <td class="price">$19.99</td>
+                  <td>
+                    T2 plus remote mode, statement importers, scripts, Beancount
+                    plugins, and Fava extensions.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="callout" data-reveal>
+            <strong
+              >Data in, data out, and recovery are never paywalled.</strong
+            >
+            Manual import, export, backup, and restore remain free with no count
+            limits.
+          </p>
+        </div>
+      </section>
 
-<h2>The 30-day trial</h2>
-<p>
-  Every fresh install unlocks all three tiers for 30 days. There is no account, no card and no
-  network call — the app records the date on your device and counts down. When it ends, the
-  paid features switch off and <strong>nothing else changes</strong>: your ledger is untouched
-  and every file stays where it was.
-</p>
-<p>
-  Winding your device clock backwards does not extend the trial. A reinstall does start a new
-  one — we could prevent that by fingerprinting your device, and we would rather not identify
-  you.
-</p>
+      <section class="section section-tint">
+        <div class="shell split">
+          <div data-reveal><h2>Payment links are not live yet.</h2></div>
+          <div data-reveal style="--reveal-index: 1">
+            <p>
+              No payment account has been connected to this page. It is
+              publishable as-is, but there is currently no way to buy a key
+              here.
+            </p>
+            <p>
+              When sales open, keys will be purchased in a normal browser
+              outside the app. The app itself will continue to offer only an
+              <strong>Enter key</strong> field.
+            </p>
+          </div>
+        </div>
+      </section>
 
-<h2>The tiers</h2>
-<p>Each tier includes everything in the one before it.</p>
-<table>
-  <tr><th>Tier</th><th class="price">Price</th><th>Adds</th></tr>
-  <tr>
-    <td><strong>Free</strong></td>
-    <td class="price">—</td>
-    <td>Every directive, the journal, account balances, raw file editing, multiple projects, and all import, export, backup and restore.</td>
-  </tr>
-  <tr>
-    <td><strong>T1 Insight</strong></td>
-    <td class="price">$9.99</td>
-    <td>The full Fava report surface: balance sheet, income statement, trial balance, holdings, commodities, account, payee, tag and link views, charts, and BQL queries.</td>
-  </tr>
-  <tr>
-    <td><strong>T2 Workflow</strong></td>
-    <td class="price">$14.99</td>
-    <td>External documents, camera capture and PDF assembly, home-screen widgets, auto-mirror to a folder, and scheduled backups.</td>
-  </tr>
-  <tr>
-    <td><strong>T3 Power</strong></td>
-    <td class="price">$19.99</td>
-    <td>Remote mode, statement importers, scripts, and Beancount plugins and Fava extensions.</td>
-  </tr>
-</table>
-<p>
-  The organising principle: <strong>free is fully functional but manual; paid is automated and
-  analytical.</strong> A free user can do every accounting operation and move data in and out
-  as often as they like — it simply takes more taps.
-</p>
+      <section class="section">
+        <div class="shell">
+          <div class="section-header" data-reveal>
+            <h2>How a contribution key works</h2>
+          </div>
+          <ol class="steps">
+            <li data-reveal>
+              <strong>You receive signed text.</strong>The format begins with
+              <code>BCA1</code> and carries the tier, issue email, order
+              reference, issue date, and signing-key identifier.
+            </li>
+            <li data-reveal style="--reveal-index: 1">
+              <strong>You enter it once.</strong>The raw key is stored in
+              app-private storage and does not appear in logs, backups,
+              screenshots, widgets, or diagnostics.
+            </li>
+            <li data-reveal style="--reveal-index: 2">
+              <strong>The app checks it offline.</strong>Ed25519 verification
+              uses public keys compiled into the app. There is no licence server
+              or network call.
+            </li>
+            <li data-reveal style="--reveal-index: 3">
+              <strong>The better grant wins.</strong>An active trial cannot
+              reduce the tier from a key you already entered.
+            </li>
+          </ol>
+          <div class="callout" data-reveal>
+            <strong>Unlimited devices, soft email binding.</strong>
+            <p>
+              The email is a social deterrent, not a device lock. There is no
+              activation counter.
+            </p>
+          </div>
+        </div>
+      </section>
 
-<h2>How to get a key</h2>
-<!--
-  OWNER: the three links below are placeholders and are deliberately not live. Replace each
-  href with the real checkout URL once the PayPal / Payoneer / GitHub Sponsors accounts
-  exist (docs/distribution.md 4.1), and delete this comment. Do not publish with the
-  placeholders in place: an unresolved payment link on a page that names prices is worse
-  than no page.
--->
-<div class="card">
-  <p><strong>Payment links are not live yet.</strong> When they are, this section will list the
-  purchase options and the address to send your order to.</p>
-  <p>
-    Keys are bought here, in your browser, never inside the app. After payment you receive a
-    key by email, and you paste it into the app under <span class="mono">More → Contribute →
-    Enter key</span>.
-  </p>
-</div>
-
-<h2>How a key works</h2>
-<ul>
-  <li>It is a short block of text, signed with an Ed25519 key.</li>
-  <li>The app verifies that signature <strong>on your device, with no network call</strong>. There is no licence server, and no check-in.</li>
-  <li>It carries the tier, the email address it was issued to, and an order reference. The app shows the tier in Settings so you can tell which key is installed; the address is only there so a key can be reissued if you lose it.</li>
-  <li>If your trial is still running, the app uses whichever gives you more, so buying during a trial never downgrades you.</li>
-  <li>Upgrading between tiers is a replacement key at the price difference, issued manually.</li>
-</ul>
-
-<h2>Why it works this way</h2>
-<p>
-  The app contains no billing code of any kind — no Play Billing, no payment SDK, nothing. It
-  can check a key, and that is the whole of its payment-related surface. That keeps a
-  proprietary, GPL-incompatible dependency out of a GPL-2.0-only app, and it means the app
-  never has to phone home to decide what you are allowed to do.
-</p>
-
-<footer>
-  <p>Beancount for Android is free software, licensed GPL-2.0-only.</p>
-  <p>Beancount and Fava are independent open-source projects; this app is not affiliated with or endorsed by them.</p>
-</footer>
-</div>
-</body>
+      <section class="section section-strong">
+        <div class="shell split">
+          <div><h2>Open source, stated plainly.</h2></div>
+          <div>
+            <p>
+              The app is GPL-2.0-only. Anyone may build it without a key. A key
+              records a contribution and unlocks the distributed build's paid
+              features.
+            </p>
+            <div class="actions">
+              <a class="button button-filled" href="features.html"
+                >See features</a
+              ><a class="button button-outlined" href="download.html"
+                >Compare editions</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <p><strong>Beancount for Android</strong></p>
+          <p>Free software licensed GPL-2.0-only.</p>
+          <p>
+            Built with upstream CPython, Beancount, Fava, beanquery, and
+            beangulp. Beancount and Fava are independent projects; this app is
+            not affiliated with or endorsed by them.
+          </p>
+        </div>
+        <nav class="footer-links" aria-label="Footer navigation">
+          <a href="privacy.html">Privacy</a><a href="help.html">Help</a
+          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
 </html>

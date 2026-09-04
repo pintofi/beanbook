@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Beancount for Android">
+  <!--
+    Balanced Columns, the app's own icon, translated from
+    app/src/main/res/drawable/ic_launcher_foreground.xml with the geometry unaltered.
+
+    The Android drawable scales the mark by 72/108 inside a group, because a launcher shows
+    only the inner 72 of a 108 adaptive viewport. There is no such mask on the web, so these
+    are the designer's original coordinates — the composition of docs/store/play-icon-512.png,
+    which is the finished tile.
+
+    Drawn rather than linked as a PNG so it stays sharp at every size the site uses it, from
+    a 16px favicon to the header mark, in one 1 KB file and no runtime request to anyone.
+  -->
+  <rect width="512" height="512" rx="112" fill="#006A6A"/>
+  <g fill="none" stroke-linecap="round">
+    <!-- Left bracket, white: the account side. -->
+    <path d="M211,150 H148 Q126,150 126,172 V340 Q126,362 148,362 H211" stroke="#FFFFFF" stroke-width="27"/>
+    <!-- Right bracket, light teal: the amount side. -->
+    <path d="M301,150 H364 Q386,150 386,172 V340 Q386,362 364,362 H301" stroke="#9CF1F0" stroke-width="27"/>
+    <!-- Two rules of equal length: the balance. -->
+    <path d="M213,235 H299" stroke="#FFFFFF" stroke-width="22"/>
+    <path d="M213,285 H299" stroke="#9CF1F0" stroke-width="22"/>
+  </g>
+</svg>
