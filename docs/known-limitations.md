@@ -20,8 +20,11 @@ means the app inherits Beancount's rules exactly — including that a file which
 cannot be shown, only reported on with a file, line and column.
 
 **Scale.** Built and measured against roughly 25,000 transactions in about 10 MB across
-several files. Larger ledgers are not refused and are not tested; expect load time to grow
-with file size, and the first parse after a change to cost the most.
+several files. Larger ledgers are not refused: a ledger of a little over 100,000 entries loads
+correctly. What it costs is the first load after a change, which runs to tens of seconds at
+that size. Opening the app again is quick, because the figures the native screens need are
+cached and re-checked against the contents of your files. Fava reports and BQL queries still do
+a full load every time, so those stay slow on a large ledger.
 
 **Unknown directives are preserved, not understood.** Anything the app does not have an
 editor for — including directives from plugins it has never heard of — survives editing,
