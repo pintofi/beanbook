@@ -1,6 +1,7 @@
 package dev.beancount.engine.local
 
 import android.content.Context
+import android.util.Log
 import dev.beancount.core.domain.AccountBalance
 import dev.beancount.core.domain.Amount
 import dev.beancount.core.domain.DocumentDirective
@@ -8,6 +9,7 @@ import dev.beancount.core.domain.JournalEntry
 import dev.beancount.core.domain.JournalPosting
 import dev.beancount.core.domain.LedgerError
 import dev.beancount.core.domain.LedgerSnapshot
+import java.io.File
 import java.math.BigDecimal
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +35,15 @@ class LedgerReader(
 ) {
 
     /**
+     * Answers from previous loads, so opening a large ledger does not wait for a full one.
+     *
+     * See [SnapshotCache] for why this exists and what makes an entry valid. In the app's
+     * own cache directory, so the platform may reclaim it: losing it costs a slow load, and
+     * nothing else.
+     */
+    private val cache = SnapshotCache(File(context.cacheDir, "ledger-snapshots"))
+
+    /**
      * @param pluginDirs the enabled plugins' directories, comma-separated. Beancount imports
      *   a plugin itself when it reaches a `plugin` directive; all this does is make them
      *   findable for the duration of the load.
@@ -44,6 +55,26 @@ class LedgerReader(
         allowBridge: Boolean = true,
     ): Result<LedgerSnapshot> =
         withContext(io) {
+            val inputs = SnapshotCache.Inputs(journalLimit, pluginDirs, allowBridge)
+
+            // The cached answer first, and only if it still applies to the files on disk.
+            // This is the whole of the large-ledger startup fix (B21): the native screens
+            // need a 200-row window and a per-account balance, neither of which grows with
+            // the ledger, so there is no reason for opening one to cost a full load.
+            val started = System.nanoTime()
+            cache.read(ledgerPath, inputs)?.let { cached ->
+                runCatching { parse(JSONObject(cached)) }
+                    .onSuccess { snapshot ->
+                        val elapsed = (System.nanoTime() - started) / 1_000_000
+                        Log.i(TAG, "snapshot served from cache in ${elapsed} ms")
+                        // The stored load_ms describes the load that filled the cache, not
+                        // this one. Reporting it would overstate what just happened by
+                        // several seconds, in the one number anyone would use to judge it.
+                        return@withContext Result.success(snapshot.copy(loadMillis = elapsed))
+                    }
+                    .onFailure { Log.w(TAG, "cached snapshot did not parse; loading instead", it) }
+            }
+
             // The summary comes back through a cache file: for a large ledger the JSON
             // (every account, plus the journal window) is not safely inside Binder's ~1 MB
             // transaction budget.
@@ -60,7 +91,20 @@ class LedgerReader(
                 }
                 .mapCatching { result ->
                     check(result == "ok") { result.removePrefix("error: ") }
-                    parse(JSONObject(payload.consumeText()))
+                    val text = payload.consumeText()
+                    val snapshot = parse(JSONObject(text))
+                    // Cached against the files this load actually read, which is what makes
+                    // an added `include` invalidate it next time.
+                    cache.write(ledgerPath, snapshot.includedFiles + ledgerPath, inputs, text)
+                    // Wall clock, not the engine's own `load_ms`, and on both paths.
+                    //
+                    // The engine reports how long Beancount spent, which excludes starting
+                    // the call, writing the payload and reading it back. Left as it was, a
+                    // cached load -- which is measured end to end -- would compare against a
+                    // number that never included those costs, and on a small ledger appeared
+                    // *slower* than a real load: 36 ms against 1 ms, for work that skips
+                    // seconds of booking. One meaning, measured at one boundary.
+                    snapshot.copy(loadMillis = (System.nanoTime() - started) / 1_000_000)
                 }
         }
 
@@ -132,6 +176,10 @@ class LedgerReader(
         line = if (isNull("line")) null else optInt("line"),
         type = optString("type"),
     )
+
+    private companion object {
+        const val TAG = "LedgerReader"
+    }
 }
 
 private fun JSONObject.optStringOrNull(key: String): String? =
