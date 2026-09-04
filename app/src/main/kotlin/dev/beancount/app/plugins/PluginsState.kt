@@ -109,8 +109,7 @@ class PluginsState(
             withContext(Dispatchers.IO) { safe()?.isSafeMode = on }
             _safeMode.value = on
             _message.value = if (on) {
-                "Safe mode is on. No plugins will load, and the ones you had turned on stay " +
-                    "turned on for when you switch it off."
+                "Safe mode is on. No plugins load, and your choices are kept."
             } else {
                 "Safe mode is off. Your plugins will load again the next time the ledger does."
             }
@@ -169,8 +168,7 @@ class PluginsState(
     private fun describe(result: InstallResult?): String = when (result) {
         null -> "Open a project first."
         is InstallResult.Installed ->
-            "Installed \"${result.plugin.name}\". It is off until you turn it on — keeping a " +
-                "copy of somebody else's code and running it are separate decisions."
+            "Installed \"${result.plugin.name}\". It is off until you turn it on."
         is InstallResult.Failed -> "That could not be installed: ${result.reason}."
         is InstallResult.Refused -> refusal(result.verdict)
     }

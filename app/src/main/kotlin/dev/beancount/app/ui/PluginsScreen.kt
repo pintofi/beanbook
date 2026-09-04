@@ -78,9 +78,8 @@ fun PluginsScreen(
 
         if (!policy.allowsNativeCode) {
             Text(
-                "This edition installs pure-Python plugins only. A package containing " +
-                    "compiled code is refused, and the reason is shown rather than a " +
-                    "generic failure.",
+                "This edition installs pure-Python plugins only. Anything with compiled " +
+                    "code is refused.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -115,8 +114,7 @@ fun PluginsScreen(
             Column(Modifier.weight(1f).padding(end = 12.dp)) {
                 Text("Safe mode", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "Load no plugins at all, without forgetting which ones you had on. " +
-                        "Turn it off and they come back exactly as they were.",
+                    "No plugins load. Your choices are remembered.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -133,8 +131,7 @@ fun PluginsScreen(
 
         if (rows.isEmpty()) {
             Text(
-                "No plugins installed. Your ledger works perfectly well without any — they " +
-                    "add extra checks and transformations that Beancount itself does not.",
+                "No plugins installed. They add extra checks and transformations to a ledger.",
                 style = MaterialTheme.typography.bodySmall,
             )
         } else {
@@ -171,17 +168,14 @@ private fun UnsandboxedWarning(policy: PluginPolicy) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("A plugin is a program you are trusting", style = MaterialTheme.typography.titleSmall)
             Text(
-                "It runs with this app's permissions. It can read your whole ledger, change " +
-                    "it, and use the network. There is no way to run one and not give it " +
-                    "that, so only install plugins from somewhere you would take a program " +
-                    "from.",
+                "It runs with this app's permissions: it can read and change your whole " +
+                    "ledger, and use the network. Install plugins only from a source you trust.",
                 style = MaterialTheme.typography.bodySmall,
             )
             if (!policy.allowsAndroidBridge) {
                 Text(
-                    "This edition also keeps plugins away from Android's own APIs. That is a " +
-                        "store rule, not protection for your ledger — the paragraph above " +
-                        "still applies in full.",
+                    "This edition also keeps plugins away from Android APIs. That is a store " +
+                        "rule, not protection for your ledger.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -242,10 +236,8 @@ private fun PluginCard(
             when (val integrity = row.integrity) {
                 PluginIntegrity.Unchanged -> Unit
                 is PluginIntegrity.Changed -> Warning(
-                    "The files have changed since you installed this, so it is not being " +
-                        "loaded. That may have been you editing it, or something else writing " +
-                        "into the project — a folder you mirror, or a restore. Install it " +
-                        "again to have it checked and run.",
+                    "The files have changed since you installed this, so it is not loaded. " +
+                        "Install it again to check and run it.",
                 )
                 PluginIntegrity.Missing -> Warning(
                     "Its files are gone, so it is not being loaded. Remove it to tidy up.",
@@ -328,21 +320,17 @@ private fun PackagesSection(policy: PluginPolicy, packages: PackagesUi) {
 
         if (!policy.allowsPackageDownload) {
             Text(
-                "This edition installs no packages beyond the ones built in. A plugin that " +
-                    "needs numpy or pandas will say which module was missing when it runs, " +
-                    "and will not work here. The version from the project's own site can " +
-                    "fetch them.",
+                "This edition installs no packages beyond the ones built in. A plugin " +
+                    "that needs numpy or pandas will name the missing module and stop.",
                 style = MaterialTheme.typography.bodySmall,
             )
             return@Column
         }
 
         Text(
-            "Some plugins need libraries the app does not carry — beangrow's returns " +
-                "reports need numpy, pandas and matplotlib. They are downloaded only when " +
-                "you ask, kept afterwards, and you are shown the size before anything is " +
-                "fetched. This is the only thing in the app that uses the network while " +
-                "your ledger is on this device.",
+            "Some plugins need libraries the app does not carry, such as numpy or " +
+                "pandas. They download only when you ask, and the size is shown first. " +
+                "This is the only network use while your ledger is on this device.",
             style = MaterialTheme.typography.bodySmall,
         )
 
@@ -383,8 +371,7 @@ private fun PackagesSection(policy: PluginPolicy, packages: PackagesUi) {
                     // compressed, so what unpacks onto the device is several times what
                     // crosses the network, and quoting only the download would understate it.
                     Text(
-                        "They will take noticeably more room once unpacked than they do to " +
-                            "download. Removing them afterwards is one button, below.",
+                        "They take noticeably more room unpacked than they do to download.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     if (resolution.unavailable.isNotEmpty()) {
@@ -397,9 +384,8 @@ private fun PackagesSection(policy: PluginPolicy, packages: PackagesUi) {
                         )
                     }
                     Text(
-                        "These come from the Python package index over the internet. They are " +
-                            "somebody else's code and will run with this app's permissions, " +
-                            "exactly as a plugin does.",
+                        "From the Python package index. Somebody else's code, running with this " +
+                            "app's permissions, exactly as a plugin does.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

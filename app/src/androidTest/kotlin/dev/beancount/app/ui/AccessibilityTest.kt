@@ -661,8 +661,8 @@ class AccessibilityTest {
             // The outcome is a live region, and its description is what a screen reader
             // announces when a run ends — including the case the engine takes care to
             // report honestly, a script that ignored its deadline.
-            "tag_large.py: Stopped — but it kept running for 1s after being asked, " +
-                "because it was inside a call that cannot be interrupted.",
+            "tag_large.py: Stopped. It ran 1s longer, inside a call that cannot " +
+                "be interrupted.",
         ).forEach { label ->
             compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
         }

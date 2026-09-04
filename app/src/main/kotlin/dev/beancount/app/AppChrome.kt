@@ -75,14 +75,15 @@ internal fun LockedFeature(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(title, style = MaterialTheme.typography.headlineSmall)
-        Text("Unlocked by the $tier contribution key.")
+        Text("Part of the $tier tier.")
         Text(
-            "Your ledger, the journal, balances, raw editing, and import and export all " +
-                "stay free. This app is open source: you can also build it yourself.",
+            "The ledger, journal, balances, raw editing, import and export stay free.",
             style = MaterialTheme.typography.bodySmall,
         )
+        // The route decides the wording: the Play edition sells, the Expert edition takes a
+        // pasted key. Hardcoding "Enter key" showed a Play user a control that is not there.
         androidx.compose.material3.TextButton(onClick = onContribute) {
-            Text(dev.beancount.core.entitlement.PurchaseRoute.EnterKeyOnly.label)
+            Text(dev.beancount.app.billing.currentPurchaseRoute().label)
         }
     }
 }

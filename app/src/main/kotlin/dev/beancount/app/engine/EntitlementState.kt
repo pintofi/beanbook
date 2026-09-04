@@ -55,7 +55,7 @@ class EntitlementState(
                     withContext(Dispatchers.IO) { entitlements.applyKey(result.key.stored()) }
                     refresh()
                     _message.value =
-                        "Key accepted — ${result.key.tier.label} unlocked. Thank you."
+                        "Key accepted. ${result.key.tier.label} unlocked."
                 }
                 is KeyCheck.Rejected -> _message.value = result.problem.describe()
             }
@@ -66,7 +66,7 @@ class EntitlementState(
         scope.launch {
             withContext(Dispatchers.IO) { entitlements.removeKey() }
             refresh()
-            _message.value = "Key removed. It still works — you can enter it again any time."
+            "Key removed. It still works and can be entered again."
         }
     }
 

@@ -49,9 +49,8 @@ fun MirrorScreen(
     ) {
         Text("Mirror to a folder", style = MaterialTheme.typography.titleMedium)
         Text(
-            "A copy of your project is kept in a folder you choose — your own cloud folder, " +
-                "an SD card, anywhere the file picker can reach. The copy on this device " +
-                "stays the original; the folder is a mirror of it, not a second ledger.",
+            "A copy of your project is kept in a folder you choose. The version on this " +
+                "device stays the original.",
             style = MaterialTheme.typography.bodySmall,
         )
 
@@ -96,8 +95,8 @@ fun MirrorScreen(
                 color = MaterialTheme.colorScheme.error,
             )
             Text(
-                "Nothing has been overwritten. Both versions are kept until you choose — the " +
-                    "folder's copy is saved beside yours with a \".conflict-\" suffix.",
+                "Nothing has been overwritten. The folder's copy is saved beside yours with " +
+                    "a \".conflict-\" suffix until you choose.",
                 style = MaterialTheme.typography.bodySmall,
             )
 

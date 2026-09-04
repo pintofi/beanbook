@@ -67,8 +67,7 @@ fun BackupScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            "A backup is a single .bcaz file: a zip with a readable manifest and a checksum " +
-                "for every file. Unencrypted, it can be opened anywhere, by any tool, " +
+            "A single .bcaz file. Without a passphrase it is an ordinary zip, openable " +
                 "without this app.",
             style = MaterialTheme.typography.bodySmall,
         )
@@ -102,10 +101,8 @@ fun BackupScreen(
                 ),
             ) {
                 Text(
-                    "If you forget this passphrase, the backup is gone. Not difficult to " +
-                        "recover — gone. There is no reset, no recovery code, and no way for " +
-                        "us to help: we never see it, and the archive cannot be opened " +
-                        "without it. Write it down somewhere safe before you continue.",
+                    "If you forget this passphrase, the backup cannot be opened. There is " +
+                        "no reset and no recovery code. Write it down before you continue.",
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -155,9 +152,7 @@ fun BackupScreen(
         Text("Restore", style = MaterialTheme.typography.titleSmall)
         if (pendingRestore == null) {
             Text(
-                "Restoring never overwrites straight away: the backup is checked, unpacked " +
-                    "beside your project, and you see exactly what would change before " +
-                    "anything happens.",
+                "Nothing is overwritten until you confirm. You see what would change first.",
                 style = MaterialTheme.typography.bodySmall,
             )
             TextButton(onClick = onChooseRestoreFile) { Text("Choose a backup file") }
@@ -220,8 +215,7 @@ fun BackupScreen(
         }
         // Said plainly rather than implied: Android decides when this actually runs.
         Text(
-            "About once a day, when the device has battery and storage to spare. Android " +
-                "decides the exact moment, so this is not a guaranteed time.",
+            "About once a day. Android decides the exact moment.",
             style = MaterialTheme.typography.bodySmall,
         )
         TextButton(onClick = onChooseScheduleFolder) {

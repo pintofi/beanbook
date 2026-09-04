@@ -37,12 +37,12 @@ data class ScriptOutcome(
      */
     fun summary(): String = when {
         cancelled && overranByMs > 500 ->
-            "Stopped — but it kept running for ${overranByMs / 1000}s after being asked, " +
-                "because it was inside a call that cannot be interrupted."
+            "Stopped. It ran ${overranByMs / 1000}s longer, inside a call that cannot " +
+                "be interrupted."
         cancelled -> "Stopped at your request."
         timedOut && overranByMs > 500 ->
-            "Out of time — and it ran ${overranByMs / 1000}s past the deadline, because it " +
-                "was inside a call that cannot be interrupted."
+            "Out of time. It ran ${overranByMs / 1000}s past the deadline, inside a " +
+                "call that cannot be interrupted."
         timedOut -> "Out of time."
         ok -> "Finished in ${durationMs}ms."
         else -> "$errorType: $error"
@@ -94,7 +94,7 @@ class ScriptRunnerState(
             return
         }
         if (ledgerPath.isEmpty()) {
-            _message.value = "Open a project first — a script runs against a ledger."
+            _message.value = "Open a project first. A script runs against a ledger."
             return
         }
 

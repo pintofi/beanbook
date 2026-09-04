@@ -108,8 +108,8 @@ class ProjectsState(
             }
             _message.value = outcome.fold(
                 onSuccess = { count ->
-                    "Exported $count file(s) to the folder you chose. This copy is not kept " +
-                        "in step with the original — use Mirror for that."
+                    "Exported $count file(s). This copy is not kept in step with the " +
+                        "original; use Mirror for that."
                 },
                 onFailure = {
                     // Named rather than generic: SAF providers fail for reasons the user can

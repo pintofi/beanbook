@@ -110,10 +110,9 @@ class AllowlistWebViewClient(
     ) {
         handler.cancel()
         onLoadProblem(
-            "The server's certificate could not be verified, so nothing was loaded " +
-                "(${describe(error)}). There is no way to continue past this — a " +
-                "certificate that does not check out means something is between you and " +
-                "your server.",
+            "The server's certificate could not be verified (${describe(error)}), so " +
+                "nothing was loaded. There is no way past this: a certificate that does " +
+                "not check out can mean something is between you and your server.",
         )
     }
 

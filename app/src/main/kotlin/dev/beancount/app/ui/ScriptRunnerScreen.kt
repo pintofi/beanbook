@@ -73,9 +73,8 @@ fun ScriptRunnerScreen(
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
-                    "It is stopped after 30 seconds. A script stuck inside a single call " +
-                        "cannot be interrupted and will finish that call first — if that " +
-                        "happens, the result below says so.",
+                    "It is stopped after 30 seconds. A script stuck inside one call finishes " +
+                        "that call first.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
