@@ -53,6 +53,15 @@ espresso = "3.7.0"
 # Apache-2.0, so it raises no GPL-2.0-only question for the same reason espresso and
 # compose-ui-test do not: it is never linked into a shipped APK.
 uiautomator = "2.4.0"
+# Google Play Billing, play flavor only (M1 in gradle/play-boundaries.gradle.kts).
+#
+# Proprietary, under Google's Android Software Development Kit licence, so it is the one
+# shipped dependency that is not open source. It is permitted here because the app process
+# links no GPL-2.0-only code -- Beancount, Fava and CPython run in the :engine process
+# (docs/architecture.md 7.1) -- and because the project grants an exception for its own
+# code. It is never on the expert classpath, which the boundary gate checks.
+billing = "9.1.0"
+
 # Ed25519 for offline key verification. The platform only gained Ed25519 in API 33 and
 # minSdk is 29, so it cannot come from java.security.
 eddsa = "0.3.0"
@@ -87,6 +96,7 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 # net.i2p.crypto:eddsa is public domain (CC0 1.0), so it raises no GPL-2.0-only question,
 # and it is ~90 KB rather than the several megabytes a full provider would add.
 eddsa = { module = "net.i2p.crypto:eddsa", version.ref = "eddsa" }
+billing = { module = "com.android.billingclient:billing-ktx", version.ref = "billing" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

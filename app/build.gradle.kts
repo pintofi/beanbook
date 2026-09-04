@@ -179,6 +179,10 @@ dependencies {
     implementation(libs.camera.view)
     implementation(libs.androidx.work.runtime)
     implementation(libs.argon2kt)
+    // Play Billing, play flavor only. `playImplementation` rather than `implementation` is
+    // what keeps it off the expert classpath; :verifyPlayFlavorBoundaries fails if that
+    // changes (M1).
+    "playImplementation"(libs.billing)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime)
     implementation(libs.androidx.lifecycle.process)

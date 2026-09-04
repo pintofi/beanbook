@@ -115,26 +115,112 @@ class GatingTest {
     }
 
     @Test
-    fun `there is exactly one purchase route, and it takes no money in the app`() {
-        // Exhaustive rather than reflective: a second implementation of PurchaseRoute stops
-        // this `when` compiling, so a billing decision cannot arrive as a quiet addition.
-        val route: PurchaseRoute = PurchaseRoute.EnterKeyOnly
-        val name = when (route) {
-            PurchaseRoute.EnterKeyOnly -> "EnterKeyOnly"
+    fun `every purchase route is accounted for, and none of them links out`() {
+        // Exhaustive rather than reflective: a third implementation of PurchaseRoute stops
+        // this `when` compiling, so a billing decision still cannot arrive as a quiet
+        // addition. It arrived as a deliberate one when Play Billing was adopted, and this
+        // test changed with it rather than being deleted.
+        val routes = listOf<PurchaseRoute>(PurchaseRoute.EnterKeyOnly, PurchaseRoute.PlayBilling)
+
+        val names = routes.map { route ->
+            when (route) {
+                PurchaseRoute.EnterKeyOnly -> "EnterKeyOnly"
+                PurchaseRoute.PlayBilling -> "PlayBilling"
+            }
+        }
+        assertEquals(listOf("EnterKeyOnly", "PlayBilling"), names)
+
+        // The rule that survived the change: anti-steering. Play forbids directing users to
+        // another payment method from inside the app, and the Expert build matches it so the
+        // two editions differ only where policy forces them to.
+        routes.forEach { route ->
+            assertFalse(route.linksOut, "${'$'}{route.label} may not steer the user to a payment page")
         }
 
-        assertEquals("EnterKeyOnly", name)
-        assertEquals("Enter key", route.label)
-        assertFalse(route.transactsInApp, "no route may take money inside the app")
-        assertFalse(route.linksOut, "no route may steer the user to a payment page")
+        assertFalse(PurchaseRoute.EnterKeyOnly.transactsInApp, "pasting a key takes no money")
+        assertTrue(PurchaseRoute.PlayBilling.transactsInApp, "Play Billing is the route that does")
+    }
+
+    @Test
+    fun `a store purchase grants its tier, and says it was a purchase`() {
+        val storage = InMemoryStorage()
+        val entitlements = Entitlements(storage)
+        entitlements.applyPurchase(StoredPurchase(Tier.WORKFLOW, "GPA.1234-5678"))
+
+        val now = Instant.parse("2026-01-01T00:00:00Z")
+        val current = entitlements.current(now)
+
+        assertEquals(Tier.WORKFLOW, current.tier)
+        assertEquals(Grant.Purchase(Tier.WORKFLOW, "GPA.1234-5678"), current.grant)
+    }
+
+    @Test
+    fun `the better of a key and a purchase wins, whichever it is`() {
+        val now = Instant.parse("2026-01-01T00:00:00Z")
+
+        val purchaseHigher = Entitlements(InMemoryStorage()).apply {
+            applyKey(StoredKey(Tier.INSIGHT, "a@example.com", "PP-1", "BCA1.x.y"))
+            applyPurchase(StoredPurchase(Tier.POWER, "GPA.9"))
+        }.current(now)
+        assertEquals(Tier.POWER, purchaseHigher.tier)
+        assertTrue(purchaseHigher.grant is Grant.Purchase)
+
+        val keyHigher = Entitlements(InMemoryStorage()).apply {
+            applyKey(StoredKey(Tier.POWER, "a@example.com", "PP-1", "BCA1.x.y"))
+            applyPurchase(StoredPurchase(Tier.INSIGHT, "GPA.9"))
+        }.current(now)
+        assertEquals(Tier.POWER, keyHigher.tier)
+        assertTrue(keyHigher.grant is Grant.Key)
+    }
+
+    /**
+     * A refund, or a purchase the store no longer reports, drops the tier back.
+     *
+     * The store is the authority. What must not happen is the opposite: `applyPurchase(null)`
+     * is only ever called with the store's actual answer, never because it could not be
+     * reached, which is why being offline leaves the cached purchase alone.
+     */
+    @Test
+    fun `a purchase the store stops reporting is given up`() {
+        val storage = InMemoryStorage()
+        val entitlements = Entitlements(storage)
+        val now = Instant.parse("2026-01-01T00:00:00Z")
+
+        entitlements.applyPurchase(StoredPurchase(Tier.POWER, "GPA.9"))
+        assertEquals(Tier.POWER, entitlements.current(now).tier)
+
+        entitlements.applyPurchase(null)
+
+        assertEquals(Tier.FREE, entitlements.current(now).tier)
+    }
+
+    /** A running trial still beats a smaller purchase, and neither is destroyed by the other. */
+    @Test
+    fun `a trial outranks a lower purchase without replacing it`() {
+        val storage = InMemoryStorage()
+        val entitlements = Entitlements(storage)
+        val start = Instant.parse("2026-01-01T00:00:00Z")
+        entitlements.onAppStart(start)
+        entitlements.applyPurchase(StoredPurchase(Tier.INSIGHT, "GPA.9"))
+
+        val during = entitlements.current(start.plus(Duration.ofDays(1)))
+        assertEquals(Tier.POWER, during.tier, "the trial unlocks everything while it runs")
+        assertTrue(during.grant is Grant.Trial)
+
+        val after = entitlements.current(start.plus(Duration.ofDays(400)))
+        assertEquals(Tier.INSIGHT, after.tier, "the purchase is still there once the trial ends")
+        assertTrue(after.grant is Grant.Purchase)
     }
 
     private class InMemoryStorage : EntitlementStorage {
         private var trial: TrialRecord? = null
         private var key: StoredKey? = null
+        private var purchase: StoredPurchase? = null
         override fun readTrial(): TrialRecord? = trial
         override fun writeTrial(record: TrialRecord) { trial = record }
         override fun readKey(): StoredKey? = key
         override fun writeKey(key: StoredKey?) { this.key = key }
+        override fun readPurchase(): StoredPurchase? = purchase
+        override fun writePurchase(purchase: StoredPurchase?) { this.purchase = purchase }
     }
 }

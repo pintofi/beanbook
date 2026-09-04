@@ -7,18 +7,32 @@
 //   D2  play must not expose the Java/Android bridge to user plugin code
 //   D3  play must not contain self-update / APK-installer code
 //
-// plus the monetization rule that applies to *both* editions: no billing SDK, no purchase
-// flow, no payment library anywhere in the app (docs/distribution.md 4.1).
+// plus the monetization rules (docs/distribution.md 4.1):
+//
+//   M1  Play Billing belongs to the play edition and nowhere else. The expert build is not
+//       distributed through Play, so shipping Play Billing in it would carry a proprietary
+//       library that cannot work, into the one edition users install by hand.
+//   M2  no third-party payment SDK in either edition, ever.
 //
 // Each check below can fail a real build. `./gradlew :app:verifyPlayFlavorBoundaries`
 // must be run for every release.
 
 val forbiddenPlayDependencies = listOf(
-    "com.android.billingclient",          // Play Billing — not used in either edition
-    "com.google.android.gms:play-services-billing",
-    "com.paypal",                          // no payment SDKs, per the monetization design
+    "com.paypal",                          // M2: no third-party payment SDKs
     "com.stripe",
     "com.braintreepayments",
+)
+
+/**
+ * M1: Play Billing may reach the expert classpath through nothing at all.
+ *
+ * The play edition needs it, so it cannot simply be forbidden everywhere. What must hold is
+ * that it stays on the play side: `playImplementation` in app/build.gradle.kts is what puts
+ * it there, and this is what notices when someone changes that to `implementation`.
+ */
+val forbiddenExpertDependencies = listOf(
+    "com.android.billingclient",
+    "com.google.android.gms:play-services-billing",
 )
 
 /** Patterns that must not appear in code compiled into the play edition. */
@@ -26,7 +40,6 @@ val forbiddenPlaySourcePatterns = listOf(
     Regex("""PackageInstaller"""),         // D3: installing APKs
     Regex("""ACTION_INSTALL_PACKAGE"""),   // D3
     Regex("""REQUEST_INSTALL_PACKAGES"""), // D3
-    Regex("""BillingClient"""),            // monetization rule
     Regex("""allowsNativeCode\s*=\s*true"""),   // D1
     Regex("""allowsAndroidBridge\s*=\s*true"""), // D2
     Regex("""allowsPackageDownload\s*=\s*true"""), // D1: no fetching code, native or not
@@ -40,6 +53,12 @@ val forbiddenPlaySourcePatterns = listOf(
  * source set passed every check while removing the restriction entirely. A boundary has to be
  * asserted, not merely not-contradicted.
  */
+val forbiddenSharedSourcePatterns = listOf(
+    // M1: billing code lives in src/play only. In src/main it would compile into the expert
+    // build too, which is the thing this rule exists to stop.
+    Regex("""BillingClient"""),
+)
+
 val requiredPlaySourcePatterns = listOf(
     Regex("""allowsNativeCode\s*=\s*false"""),    // D1
     Regex("""allowsAndroidBridge\s*=\s*false"""), // D2
@@ -141,6 +160,10 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
         "playDebugRuntimeClasspath",
         "playReleaseRuntimeClasspath",
     )
+    val expertConfigurationNames = listOf(
+        "expertDebugRuntimeClasspath",
+        "expertReleaseRuntimeClasspath",
+    )
 
     // Resolve dependency coordinates at configuration time is discouraged; do it lazily.
     val resolvedCoordinates = provider {
@@ -152,6 +175,22 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
             }.getOrElse { emptyList() }
         }
     }
+
+    val resolvedExpertCoordinates = provider {
+        expertConfigurationNames.flatMap { name ->
+            val configuration = configurations.findByName(name) ?: return@flatMap emptyList()
+            if (!configuration.isCanBeResolved) return@flatMap emptyList()
+            runCatching {
+                configuration.incoming.resolutionResult.allComponents.map { it.id.displayName }
+            }.getOrElse { emptyList() }
+        }
+    }
+
+    // Shared sources: everything compiled into *both* editions.
+    val sharedSourceDirs = listOf(file("src/main")) + listOf(
+        "core-domain", "core-data", "core-engine", "core-entitlement",
+        "engine-local", "engine-remote",
+    ).map { File(rootDir, "$it/src/main") }
 
     inputs.files(playSourceDirs.filter { it.exists() }.map { fileTree(it) })
 
@@ -167,6 +206,15 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
             }
         }
 
+        for (coordinate in resolvedExpertCoordinates.get()) {
+            for (forbidden in forbiddenExpertDependencies) {
+                if (coordinate.contains(forbidden)) {
+                    violations += "M1: Play Billing on the expert classpath: $coordinate " +
+                        "(it belongs to the play edition only)"
+                }
+            }
+        }
+
         // --- source check -----------------------------------------------------------
         for (dir in playSourceDirs) {
             if (!dir.exists()) continue
@@ -178,6 +226,23 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
                         if (pattern.containsMatchIn(text)) {
                             violations += "forbidden pattern /${pattern.pattern}/ in " +
                                 "${source.relativeTo(projectDir)} (compiled into play)"
+                        }
+                    }
+                }
+        }
+
+        // --- shared-source check: billing must not be compiled into both editions -----
+        for (dir in sharedSourceDirs) {
+            if (!dir.exists()) continue
+            dir.walkTopDown()
+                .filter { it.isFile && (it.extension == "kt" || it.extension == "java") }
+                .forEach { source ->
+                    val text = stripComments(source.readText())
+                    for (pattern in forbiddenSharedSourcePatterns) {
+                        if (pattern.containsMatchIn(text)) {
+                            violations += "M1: /${pattern.pattern}/ in " +
+                                "${source.relativeTo(rootDir)}, which compiles into both " +
+                                "editions; billing code belongs in src/play"
                         }
                     }
                 }

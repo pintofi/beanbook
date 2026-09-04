@@ -4,14 +4,21 @@ package dev.beancount.core.entitlement
  * How a contribution can be made — the seam that keeps a billing decision out of the app's
  * architecture (docs/distribution.md §4.2).
  *
- * There is exactly one implementation today, [EnterKeyOnly], and it is the same in both
- * editions: keys are bought on the website, in a browser, and pasted in. The app contains no
- * billing SDK, no purchase flow, and — in the `play` build — no link to any payment method.
+ * Two routes, one per edition, and the edition decides which is in force:
  *
- * The interface exists because the residual risk is a *review* risk, not a technical one. If
- * Google ever objects to externally-purchased keys, adding a Play Billing route is a new
- * implementation of this interface in the play flavor; `:core-entitlement` does not change,
- * and neither does anything that gates a feature.
+ * * **Play** uses [PlayBilling]. Google Play's Payments policy requires its billing system
+ *   for unlocking "app functionality or content", and a key bought elsewhere but consumed
+ *   inside a Play-distributed app is not covered by the exemption for goods consumed outside
+ *   it. Taking the money through Play is the compliant answer, not a workaround.
+ * * **Expert** keeps [EnterKeyOnly]. It is not distributed through Play, Play Billing would
+ *   have nothing to talk to, and a signed key the user holds is the right shape there.
+ *
+ * What both share: neither may **link out** to a payment page from inside the app. For Play
+ * that is the anti-steering rule; for Expert it is consistency, since two builds that differ
+ * in more than policy requires stop being the same product.
+ *
+ * `:core-entitlement` still knows nothing about any billing library. It names the route and
+ * stops there; the Play flavor supplies the implementation.
  */
 sealed interface PurchaseRoute {
 
@@ -29,10 +36,23 @@ sealed interface PurchaseRoute {
      */
     val linksOut: Boolean
 
-    /** Paste a key bought outside the app. The only route that exists. */
+    /** Paste a key bought outside the app. The Expert edition's route. */
     data object EnterKeyOnly : PurchaseRoute {
         override val label: String = "Enter key"
         override val transactsInApp: Boolean = false
+        override val linksOut: Boolean = false
+    }
+
+    /**
+     * Buy a tier through Google Play. The Play edition's route.
+     *
+     * Three one-time products, one per tier, rather than subscriptions: the tiers are a
+     * one-off contribution and billing someone monthly for a local accounting app would be
+     * a different product than the one described everywhere else.
+     */
+    data object PlayBilling : PurchaseRoute {
+        override val label: String = "Contribute"
+        override val transactsInApp: Boolean = true
         override val linksOut: Boolean = false
     }
 }

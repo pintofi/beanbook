@@ -77,6 +77,20 @@ sealed interface Grant {
 
     /** A contribution key. [email] is shown in Settings so the user can identify it. */
     data class Key(val tier: Tier, val email: String, val orderId: String) : Grant
+
+    /**
+     * A purchase made through the store the app was installed from.
+     *
+     * Distinct from [Key] rather than folded into it, because the two differ in ways the
+     * user can see: a store purchase is restored by the store on a new device and is
+     * refunded through the store, while a key is a file they hold and can paste anywhere.
+     * The Contribute screen says which one is in force, and telling them apart is the only
+     * way it can.
+     *
+     * There is no email here. A store purchase does not give the app one, and inventing a
+     * placeholder would put a fake address on a screen that shows it.
+     */
+    data class Purchase(val tier: Tier, val orderId: String) : Grant
 }
 
 /**
@@ -158,17 +172,37 @@ class Entitlements(
 
     fun current(now: Instant): Entitlement {
         val key = storage.readKey()
+        val purchase = storage.readPurchase()
         val trialGrant = policy.evaluate(storage.readTrial(), now)
         val trialTier = if (trialGrant is Grant.Trial) policy.tier else Tier.FREE
 
+        // The best of the three, never a fight between them. Someone who bought Tier 1 in
+        // the store and later pasted a Tier 3 key gets Tier 3, and an expiring trial can
+        // still not take away anything paid for.
+        //
+        // A key wins ties with a purchase only because it has to be decided somehow; at
+        // equal tiers the entitlement is identical and only the wording differs.
+        val paid: Grant? = when {
+            key != null && purchase != null ->
+                if (purchase.tier.level > key.tier.level) {
+                    Grant.Purchase(purchase.tier, purchase.orderId)
+                } else {
+                    Grant.Key(key.tier, key.email, key.orderId)
+                }
+            key != null -> Grant.Key(key.tier, key.email, key.orderId)
+            purchase != null -> Grant.Purchase(purchase.tier, purchase.orderId)
+            else -> null
+        }
+        val paidTier = when (paid) {
+            is Grant.Key -> paid.tier
+            is Grant.Purchase -> paid.tier
+            else -> Tier.FREE
+        }
+
         return when {
-            key != null && key.tier.level >= trialTier.level ->
-                Entitlement(key.tier, Grant.Key(key.tier, key.email, key.orderId))
-
+            paid != null && paidTier.level >= trialTier.level -> Entitlement(paidTier, paid)
             trialGrant is Grant.Trial -> Entitlement(trialTier, trialGrant)
-
-            key != null -> Entitlement(key.tier, Grant.Key(key.tier, key.email, key.orderId))
-
+            paid != null -> Entitlement(paidTier, paid)
             else -> Entitlement(Tier.FREE, trialGrant)
         }
     }
@@ -177,7 +211,25 @@ class Entitlements(
     fun applyKey(key: StoredKey) = storage.writeKey(key)
 
     fun removeKey() = storage.writeKey(null)
+
+    /**
+     * Records what the store says is owned, or `null` when it says nothing is.
+     *
+     * Called with the store's answer, not with a guess: passing `null` because the store
+     * could not be reached would revoke a paid tier over a bad connection.
+     */
+    fun applyPurchase(purchase: StoredPurchase?) = storage.writePurchase(purchase)
 }
+
+/**
+ * A store purchase the app has seen, cached so entitlement survives being offline.
+ *
+ * The store remains the authority: this is refreshed whenever the store can be reached, and
+ * a purchase that has been refunded or is no longer owned clears it. Caching only decides
+ * what happens between those checks, and it errs towards the user keeping what they paid
+ * for rather than losing it in a tunnel.
+ */
+data class StoredPurchase(val tier: Tier, val orderId: String)
 
 /** A contribution key that has already been verified. */
 data class StoredKey(
@@ -198,4 +250,6 @@ interface EntitlementStorage {
     fun writeTrial(record: TrialRecord)
     fun readKey(): StoredKey?
     fun writeKey(key: StoredKey?)
+    fun readPurchase(): StoredPurchase?
+    fun writePurchase(purchase: StoredPurchase?)
 }

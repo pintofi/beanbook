@@ -17,6 +17,7 @@ class FileEntitlementStorage(private val directory: File) : EntitlementStorage {
 
     private val trialFile: File get() = File(directory, "trial")
     private val keyFile: File get() = File(directory, "key")
+    private val purchaseFile: File get() = File(directory, "purchase")
 
     override fun readTrial(): TrialRecord? {
         val text = trialFile.takeIf { it.isFile }?.readText()?.trim() ?: return null
@@ -51,5 +52,23 @@ class FileEntitlementStorage(private val directory: File) : EntitlementStorage {
         val tmp = File(directory, "key.tmp")
         tmp.writeText("${key.tier.level}\n${key.email}\n${key.orderId}\n${key.raw}\n")
         tmp.renameTo(keyFile)
+    }
+
+    override fun readPurchase(): StoredPurchase? {
+        val lines = purchaseFile.takeIf { it.isFile }?.readLines() ?: return null
+        if (lines.size < 2) return null
+        val tier = lines[0].toIntOrNull()?.let { Tier.ofLevel(it) } ?: return null
+        return StoredPurchase(tier = tier, orderId = lines[1])
+    }
+
+    override fun writePurchase(purchase: StoredPurchase?) {
+        directory.mkdirs()
+        if (purchase == null) {
+            purchaseFile.delete()
+            return
+        }
+        val tmp = File(directory, "purchase.tmp")
+        tmp.writeText("${purchase.tier.level}\n${purchase.orderId}\n")
+        tmp.renameTo(purchaseFile)
     }
 }
