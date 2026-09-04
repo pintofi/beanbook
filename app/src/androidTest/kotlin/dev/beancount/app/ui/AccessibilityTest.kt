@@ -389,7 +389,7 @@ class AccessibilityTest {
             .performClick()
         compose.onNodeWithContentDescription("Confirm deleting this transaction")
             .performScrollTo().assertExists()
-        compose.onNodeWithContentDescription("Yes, delete this transaction")
+        compose.onNodeWithContentDescription("Delete this transaction")
             .performScrollTo().assertExists()
         assertAccessible()
     }

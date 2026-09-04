@@ -218,8 +218,8 @@ private fun Editor(
         if (state.restoredDraft) {
             Text(
                 text = if (state.draftIsStale) {
-                    "Restored unsaved changes — but this file has changed since. Saving will " +
-                        "be refused so nothing is overwritten; copy what you need first."
+                    "Restored unsaved changes, but the file has changed since. Saving will be " +
+                        "refused; copy what you need first."
                 } else {
                     "Restored unsaved changes from your last session."
                 },

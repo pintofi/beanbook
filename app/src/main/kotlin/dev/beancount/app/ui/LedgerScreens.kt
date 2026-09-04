@@ -258,8 +258,7 @@ fun JournalScreen(
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
-                        text = "Tap + to write your first one. Everything you add is plain " +
-                            "text in your own ledger file.",
+                        "Tap + to write your first one.",
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                     )

@@ -212,7 +212,7 @@ fun DocumentsScreen(
 
         if (mode == DocumentsMode.ORGANIZE && documents.isEmpty()) {
             Text(
-                "No documents yet. Add one from the other tab and it will be listed here.",
+                "No documents yet. Add one from the Add tab.",
                 style = MaterialTheme.typography.bodyMedium,
             )
         }

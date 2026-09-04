@@ -178,7 +178,7 @@ fun EntryDetailScreen(
                         Button(
                             onClick = { confirmingDelete = false; onDelete() },
                             modifier = Modifier.semantics {
-                                contentDescription = "Yes, delete this transaction"
+                                contentDescription = "Delete this transaction"
                             },
                         ) { Text("Delete it") }
                         TextButton(onClick = { confirmingDelete = false }) { Text("Keep it") }
@@ -188,8 +188,8 @@ fun EntryDetailScreen(
         }
 
         Text(
-            "\"Enter again\" opens the Add tab with these details and today's date. Nothing is " +
-                "written until you save it there.",
+            "\"Enter again\" copies these details into the Add tab with today's date. " +
+                "Nothing is written until you save.",
             style = MaterialTheme.typography.bodySmall,
         )
     }

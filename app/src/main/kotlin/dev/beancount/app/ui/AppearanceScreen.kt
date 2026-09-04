@@ -92,8 +92,8 @@ fun AppearanceScreen(
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
                     Text("Colours from my wallpaper", style = MaterialTheme.typography.titleSmall)
                     Text(
-                        "Match the rest of your phone. Turn it off if your wallpaper gives " +
-                            "the app a palette that makes the numbers harder to read.",
+                        "Match the rest of your phone. Turn it off if the palette makes figures " +
+                            "harder to read.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }

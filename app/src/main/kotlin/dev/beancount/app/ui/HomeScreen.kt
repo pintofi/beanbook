@@ -69,8 +69,7 @@ fun HomeScreen(
                 ),
             ) {
                 Text(
-                    "${ledger.errors.size} thing(s) in this ledger did not parse. The figures " +
-                        "above are what could be read, not the whole file.",
+                    "The figures above are what could be read, not the whole file.",
                     Modifier.padding(12.dp),
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -87,8 +86,7 @@ fun HomeScreen(
         } else {
             recent.forEach { entry -> RecentEntry(entry, hideAmounts) }
             Text(
-                "Showing the ${recent.size} most recent of ${ledger.journal.size}. " +
-                    "The Journal has all of them.",
+                "Showing ${recent.size} of ${ledger.journal.size}. The Journal has all of them.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }
