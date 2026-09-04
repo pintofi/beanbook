@@ -389,6 +389,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val engineStatus by app.engineManager.status.collectAsStateWithLifecycle()
                     val ledger by app.ledgerState.snapshot.collectAsStateWithLifecycle()
+                    val ledgerLoading by app.ledgerState.loading.collectAsStateWithLifecycle()
                     val projects by app.projectsState.projects.collectAsStateWithLifecycle()
                     val activeId by app.projectsState.activeId.collectAsStateWithLifecycle()
                     val projectMessage by app.projectsState.message.collectAsStateWithLifecycle()
@@ -673,6 +674,8 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onDiscardDraft = { app.editorController.discardDraft(activeId!!) },
+                        refreshing = ledgerLoading,
+                        onRefresh = { app.ledgerState.reload() },
                     )
 
                     // Over the app rather than inside a screen: an entry can be opened for

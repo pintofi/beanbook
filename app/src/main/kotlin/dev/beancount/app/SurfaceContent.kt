@@ -161,6 +161,8 @@ internal fun SurfaceContent(
     onEditorTextChanged: (String) -> Unit,
     onSaveFile: () -> Unit,
     onDiscardDraft: () -> Unit,
+    refreshing: Boolean,
+    onRefresh: () -> Unit,
 ) {
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
     run {
@@ -168,7 +170,9 @@ internal fun SurfaceContent(
         // branch beside the destinations rather than a second copy of this dispatch.
         val showing: Surface? = if (adding) null else selected
         when (showing) {
-            Surface.HOME -> HomeScreen(ledger = ledger, hideAmounts = hideWidgetAmounts)
+            Surface.HOME -> Refreshable(refreshing, onRefresh) {
+                HomeScreen(ledger = ledger, hideAmounts = hideWidgetAmounts)
+            }
 
             null -> {
                 // Entry is free, always: adding entries is never gated
@@ -424,7 +428,9 @@ internal fun SurfaceContent(
 
                     val entry = openEntry
                     if (entry == null) {
-                        JournalScreen(ledger, Modifier.padding(padding)) { openEntry = it }
+                        Refreshable(refreshing, onRefresh) {
+                            JournalScreen(ledger, Modifier.padding(padding)) { openEntry = it }
+                        }
                     } else {
                         EntryDetailScreen(
                             entry = entry,
@@ -437,11 +443,13 @@ internal fun SurfaceContent(
                         )
                     }
                 } else {
-                    BalancesScreen(
-                        ledger,
-                        Modifier.padding(padding),
-                        valuationAllowed = entitlement.allows(Feature.HOLDINGS_VALUATION),
-                    )
+                    Refreshable(refreshing, onRefresh) {
+                        BalancesScreen(
+                            ledger,
+                            Modifier.padding(padding),
+                            valuationAllowed = entitlement.allows(Feature.HOLDINGS_VALUATION),
+                        )
+                    }
                 }
             }
 
@@ -509,5 +517,38 @@ internal fun SurfaceContent(
                 }
             }
         }
+    }
+}
+
+/**
+ * Pull down to read the open ledger from disk again.
+ *
+ * The app has no file watcher — `watchfiles` is bundled for Fava's benefit, nothing of ours
+ * uses it, and there is no `FileObserver` — so a mirror pull, a restore, or an edit made on a
+ * desktop inside a synced folder leaves the screen showing the ledger as it was. Before this
+ * the only ways out were to switch project and back, or to restart the app (B26).
+ *
+ * **Only on the three surfaces that draw ledger data.** Reports is Fava's own page inside a
+ * WebView and has its own reload; the file editor holds an unsaved draft that a reload would
+ * be entitled to lose; and the entry detail view is about one entry, which a reload could
+ * remove from under it. Adding the gesture there would offer a promise this cannot keep.
+ *
+ * The indicator is worth the wiring rather than being decoration: a reload is seconds, not
+ * milliseconds, on a large ledger — far past the point where a user assumes the pull did
+ * nothing and pulls again (the Doherty Threshold, B26).
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun Refreshable(
+    refreshing: Boolean,
+    onRefresh: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = refreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        content()
     }
 }

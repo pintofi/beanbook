@@ -226,6 +226,8 @@ internal fun LedgerApp(
     onEditorTextChanged: (String) -> Unit,
     onSaveFile: () -> Unit,
     onDiscardDraft: () -> Unit,
+    refreshing: Boolean,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Seeded from the widget that launched the app, when one did. Keyed on `openOn` so a
@@ -489,6 +491,8 @@ internal fun LedgerApp(
                 onEditorTextChanged = onEditorTextChanged,
                 onSaveFile = onSaveFile,
                 onDiscardDraft = onDiscardDraft,
+                refreshing = refreshing,
+                onRefresh = onRefresh,
             )
         }
     }
