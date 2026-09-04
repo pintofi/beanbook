@@ -38,19 +38,23 @@ object WidgetRenderer {
         snapshot: WidgetSnapshot?,
         redacted: Boolean,
         nowEpochMs: Long = System.currentTimeMillis(),
+        chosenAccount: String? = null,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_metric)
 
         // The balance widget says *which* account, because an unlabelled figure on a home
         // screen is not information (B1). Only the leaf: "Checking" fits where
         // "Assets:Bank:Checking" would be truncated mid-word.
-        val label = if (metric == WidgetMetric.BALANCE) {
-            snapshot?.primaryBalance?.first?.substringAfterLast(':')
-                ?.let { "${metric.label} · $it" }
-                ?: metric.label
+        // The account this widget is for: the one the user picked when they placed it, and
+        // otherwise the deterministic default. Resolved before the snapshot is checked so the
+        // label is right even when there is nothing to show yet.
+        val account = if (metric == WidgetMetric.BALANCE) {
+            chosenAccount ?: snapshot?.primaryBalance?.first
         } else {
-            metric.label
+            null
         }
+        val label = account?.substringAfterLast(':')?.let { "${metric.label} · $it" }
+            ?: metric.label
         views.setTextViewText(R.id.widget_label, label)
         views.setOnClickPendingIntent(R.id.widget_value, launchIntent(context, snapshot, metric))
 
@@ -77,7 +81,7 @@ object WidgetRenderer {
 
         val value = when (metric) {
             WidgetMetric.NET_WORTH -> snapshot.netWorth
-            WidgetMetric.BALANCE -> snapshot.primaryBalance?.second
+            WidgetMetric.BALANCE -> account?.let { snapshot.balances[it] }
             WidgetMetric.QUICK_ADD -> null
         }
 
@@ -89,7 +93,18 @@ object WidgetRenderer {
                 else -> value
             },
         )
-        views.setTextViewText(R.id.widget_footnote, footnote(snapshot, nowEpochMs, redacted))
+
+        // An account the user chose that the ledger no longer has is said plainly, and the
+        // widget does **not** quietly fall back to the default account. Falling back would
+        // put a different account's money under this widget's label, which is precisely the
+        // "plausible but outdated number" this class exists to prevent -- and worse, because
+        // it would not even be the same account.
+        val missing = metric == WidgetMetric.BALANCE && account != null && value == null
+        views.setTextViewText(
+            R.id.widget_footnote,
+            if (missing) "$account is not in this ledger any more."
+            else footnote(snapshot, nowEpochMs, redacted),
+        )
         return views
     }
 

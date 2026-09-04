@@ -9,4 +9,5 @@
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_metric"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen|keyguard" />
+    android:widgetCategory="home_screen|keyguard"
+    android:configure="dev.beancount.app.widget.BalanceWidgetConfigureActivity" />

@@ -45,6 +45,26 @@
           broadcast an update to them, and the figures they carry are somebody's finances.
           Android delivers APPWIDGET_UPDATE to a non-exported receiver perfectly well.
         -->
+        <!--
+          Exported, because a launcher in another process is what starts a widget's
+          configuration screen; there is no way to offer one otherwise. It is the second
+          exported component this app has, after the launcher activity (B34), so the
+          app-widget id it is handed is validated against our own provider before anything
+          is written; the activity says how.
+
+          No launcher icon and no MAIN/LAUNCHER filter: it is reachable only through the
+          widget placement flow, not from the app drawer.
+        -->
+        <activity
+            android:name=".widget.BalanceWidgetConfigureActivity"
+            android:exported="true"
+            android:label="Which balance?"
+            android:theme="@style/Theme.Beancount">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".widget.BalanceWidget"
             android:label="Account balance"

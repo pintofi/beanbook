@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only components. Absent from every release build, which the release manifest test
+  and `assemble*Release` both prove.
+
+  PickerActivity exists for SafExportTest (V14), which needs the *app* package to launch the
+  document picker: the test APK runs under a different uid, so a tree grant it obtained
+  would not be usable by the app's ContentResolver, the thing under test. It
+  cannot use MainActivity either, since that starts the engine and loads a ledger for a test
+  about writing files.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name="dev.beancount.app.PickerActivity"
+            android:exported="false" />
+    </application>
+</manifest>

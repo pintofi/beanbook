@@ -29,6 +29,8 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
         val snapshot = WidgetCache(context.filesDir.resolve("state")).read()
         val hideAmounts = WidgetPreferences(context).hideAmounts()
 
+        val accounts = WidgetAccounts(context)
+
         widgetIds.forEach { id ->
             manager.updateAppWidget(
                 id,
@@ -37,9 +39,15 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
                     metric = metric,
                     snapshot = snapshot,
                     redacted = WidgetRenderer.shouldRedact(context, id, hideAmounts),
+                    chosenAccount = accounts.accountFor(id),
                 ),
             )
         }
+    }
+
+    /** A removed widget's account choice goes with it -- ids are reused. */
+    override fun onDeleted(context: Context, widgetIds: IntArray) {
+        WidgetAccounts(context).forget(widgetIds)
     }
 
     /** A widget moved to or from the lock screen has to be redrawn, not just resized. */
@@ -88,6 +96,62 @@ object WidgetRefresh {
             ).putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
             context.sendBroadcast(intent)
         }
+    }
+}
+
+/**
+ * Which account each balance widget was told to show (B1).
+ *
+ * A default was never enough. `WidgetSnapshot.primaryBalance` picks assets-then-alphabetical
+ * so the figure at least means something, but somebody with two current accounts cannot put
+ * the *other* one on their home screen, and two balance widgets could only ever show the
+ * same number.
+ *
+ * Keyed by app-widget id, because the choice belongs to the placed widget rather than to the
+ * app: two of them are the point.
+ *
+ * A flat `id=account` file, like [WidgetPreferences] beside it. An account name cannot
+ * contain `=` or a newline in Beancount, so the format needs no escaping, and the whole
+ * store is a handful of lines that must be readable from a broadcast receiver without
+ * touching the engine.
+ */
+class WidgetAccounts(private val context: Context) {
+
+    private val file get() = context.filesDir.resolve("state/widget-accounts")
+
+    private fun all(): Map<Int, String> =
+        if (!file.isFile) emptyMap()
+        else file.readLines().mapNotNull { line ->
+            val at = line.indexOf('=')
+            if (at <= 0) null else line.take(at).toIntOrNull()?.let { it to line.substring(at + 1) }
+        }.toMap()
+
+    private fun save(entries: Map<Int, String>) {
+        file.parentFile?.mkdirs()
+        if (entries.isEmpty()) {
+            file.delete()
+        } else {
+            file.writeText(entries.entries.joinToString("\n") { "${it.key}=${it.value}" })
+        }
+    }
+
+    /** The account chosen for [widgetId], or `null` to mean "whatever the default picks". */
+    fun accountFor(widgetId: Int): String? = all()[widgetId]
+
+    fun setAccountFor(widgetId: Int, account: String) {
+        save(all() + (widgetId to account))
+    }
+
+    /**
+     * Forgets [widgetIds].
+     *
+     * Called from `onDeleted`, because ids are reused: without this, a new widget could
+     * inherit the account a deleted one was showing, which looks like the app choosing at
+     * random.
+     */
+    fun forget(widgetIds: IntArray) {
+        val remaining = all() - widgetIds.toSet()
+        save(remaining)
     }
 }
 

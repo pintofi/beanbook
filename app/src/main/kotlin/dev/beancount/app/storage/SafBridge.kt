@@ -2,6 +2,7 @@ package dev.beancount.app.storage
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import dev.beancount.core.data.ExportTarget
 import dev.beancount.core.data.ImportSource
@@ -91,6 +92,27 @@ class SafExportTarget(
         existing?.delete()
         val file = directory.createFile(mimeTypeFor(name), name)
             ?: throw java.io.IOException("cannot create $relativePath")
+
+        // A DocumentsProvider may not honour the name it was given.
+        //
+        // `ExternalStorageProvider.createDocument` runs the name through
+        // `FileUtils.buildUniqueFile`, which **appends the extension it considers correct for
+        // the MIME type** whenever the supplied extension does not map to it. `.beancount` is
+        // not a known extension for `text/plain`, so "main.beancount" was silently written as
+        // "main.beancount.txt" -- and with it, every `include "files/accounts.beancount"` in
+        // the exported copy pointed at a file that no longer existed by that name. That
+        // breaks invariant 5 across export, and no `java.io.File` test could see it: it only
+        // happens on the far side of a real provider (V14).
+        //
+        // `renameDocument` does not re-derive the extension, so the name is put back.
+        if (file.name != name) {
+            val renamed = DocumentsContract.renameDocument(resolver, file.uri, name)
+                ?: throw java.io.IOException(
+                    "the provider stored $relativePath as ${file.name} and would not rename it",
+                )
+            return resolver.openOutputStream(renamed)
+                ?: throw java.io.IOException("provider refused to write $relativePath")
+        }
 
         return resolver.openOutputStream(file.uri)
             ?: throw java.io.IOException("provider refused to write $relativePath")
