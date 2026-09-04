@@ -71,10 +71,10 @@ fun ContributeScreen(
         }
 
         Text(
-            "This app is free software under the GPL-2.0. You can build it yourself from " +
-                "source and every feature works, with no key. A key is a way to support the " +
-                "work, not a lock on your data — your ledger, the journal, balances, raw " +
-                "editing, import, export, backup and restore are free and always will be.",
+            "Beanbook is free software under the GPL-2.0, and you can build it from source " +
+                "with every feature working. Contributing supports the work rather than " +
+                "unlocking your data: the ledger, journal, balances, raw editing, import, " +
+                "export, backup and restore are free in every tier.",
             style = MaterialTheme.typography.bodySmall,
         )
 
@@ -189,14 +189,14 @@ fun ContributeScreen(
 /** The reason for the current tier, in the user's words. */
 internal fun Entitlement.describeGrant(): String = when (val current = grant) {
     is Grant.Trial ->
-        "Trial: ${trialDaysRemaining ?: 0} days left — everything is unlocked."
+        "Trial: ${trialDaysRemaining ?: 0} days left. Everything is unlocked."
     is Grant.TrialEnded ->
-        "The trial has ended. Everything free is still here and your ledger is untouched; " +
-            "the ${dev.beancount.core.entitlement.Tier.INSIGHT.label}, " +
+        "The trial has ended. Your ledger is untouched and everything free still works. " +
+            "${dev.beancount.core.entitlement.Tier.INSIGHT.label}, " +
             "${dev.beancount.core.entitlement.Tier.WORKFLOW.label} and " +
-            "${dev.beancount.core.entitlement.Tier.POWER.label} features are waiting for a key."
+            "${dev.beancount.core.entitlement.Tier.POWER.label} are paid."
     is Grant.Key -> "${current.tier.label}, unlocked by your key."
     is Grant.Purchase ->
         "${current.tier.label}, bought through Google Play. Reinstalling restores it."
-    Grant.Free -> "The free tier — fully functional, and yours permanently."
+    Grant.Free -> "Free tier. Fully functional, and yours permanently."
 }

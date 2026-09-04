@@ -51,7 +51,7 @@ private fun CleartextWarning(hasPassword: Boolean) {
             Text("This address is not encrypted", style = MaterialTheme.typography.titleSmall)
             Text(
                 "With http://, everything between this device and your server can be read " +
-                    "and changed by anything on the way — your whole ledger, and any entry " +
+                    "and changed by anything on the way: your whole ledger, and any entry " +
                     "you add. On your own home network or a VPN that may be a fair trade. " +
                     "On shared or public Wi-Fi it is not.",
                 style = MaterialTheme.typography.bodySmall,
@@ -107,8 +107,8 @@ fun RemoteScreen(
     ) {
         Text("Your own Fava server", style = MaterialTheme.typography.titleMedium)
         Text(
-            "Connect to a Fava you host yourself. The ledger stays on the server — this app " +
-                "shows it and can add entries to it, and keeps no copy here.",
+            "Connect to a Fava server you host. The ledger stays there: this app shows it " +
+                "and can add entries, but keeps no copy on the device.",
             style = MaterialTheme.typography.bodySmall,
         )
 
@@ -123,9 +123,9 @@ fun RemoteScreen(
                 .semantics { contentDescription = "Server address" },
         )
         Text(
-            "https:// is checked strictly — if the certificate cannot be verified the " +
-                "connection stops, and there is no way to continue past that. http:// works " +
-                "too, for a server on your own network.",
+            "https:// is checked strictly: if the certificate cannot be verified, the " +
+                "connection stops and there is no way past it. http:// also works, for a " +
+                "server on your own network.",
             style = MaterialTheme.typography.bodySmall,
         )
 

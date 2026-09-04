@@ -45,9 +45,8 @@ fun WelcomeDialog(trialDays: Int?, onDismiss: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
-                    "When the trial ends, writing entries, editing and exporting all keep " +
-                        "working. Some extras need a key. You will find the details under " +
-                        "More.",
+                    "When the trial ends, writing, editing and exporting keep working. " +
+                        "Some features become paid. Details are under More.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }

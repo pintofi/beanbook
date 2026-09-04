@@ -58,8 +58,8 @@ fun OnboardingScreen(
     ) {
         Text("Beanbook", style = MaterialTheme.typography.headlineMedium)
         Text(
-            "Plain-text double-entry accounting. Your files stay on this device and stay " +
-                "yours — ordinary text you can open on a computer at any time.",
+            "Plain-text double-entry accounting. Your files are ordinary text on this " +
+                "device, and you can open them on a computer at any time.",
             style = MaterialTheme.typography.bodyMedium,
         )
 
@@ -67,8 +67,8 @@ fun OnboardingScreen(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Open an existing project", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Import a folder or a .zip you already keep on this device or in cloud " +
-                        "storage. Free, and as often as you like.",
+                    "Import a folder or a .zip you already keep, on this device or in " +
+                        "cloud storage.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 // Wraps rather than squeezing: side by side these two buttons stop fitting
