@@ -173,7 +173,7 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
         file("src/main"),
     ) + listOf(
         "core-domain", "core-data", "core-engine", "core-entitlement",
-        "engine-local", "engine-remote",
+        "engine-local", "engine-remote", "scanner",
     ).map { File(rootDir, "$it/src/main") }
     val manifestFiles = playSourceDirs.map { File(it, "AndroidManifest.xml") }
     val configurationNames = listOf(

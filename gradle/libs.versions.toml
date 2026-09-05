@@ -73,6 +73,18 @@ billing = "9.1.0"
 # minSdk is 29, so it cannot come from java.security.
 eddsa = "0.3.0"
 
+# OpenCV, for document edge detection and perspective correction (B45).
+#
+# Apache-2.0. Permitted here for the reason architecture.md 7.1 already gives for AndroidX:
+# the GPL-2.0-only code -- Beancount, Fava, CPython -- runs in the `:engine` process and this
+# never touches it. It is bundled rather than fetched, so D1/D3 are untouched and both
+# editions get the scanner.
+#
+# Size, measured from the published AAR rather than estimated: 117.7 MB across four ABIs, of
+# which arm64-v8a is 24.8 MB and x86_64 57.1 MB of `.so`. Only those two are built. Trimming
+# to core+imgproc is recorded as D10, not done.
+opencv = "4.12.0"
+
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentFile" }
@@ -104,6 +116,7 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 # net.i2p.crypto:eddsa is public domain (CC0 1.0), so it raises no GPL-2.0-only question,
 # and it is ~90 KB rather than the several megabytes a full provider would add.
 eddsa = { module = "net.i2p.crypto:eddsa", version.ref = "eddsa" }
+opencv = { module = "org.opencv:opencv", version.ref = "opencv" }
 billing = { module = "com.android.billingclient:billing-ktx", version.ref = "billing" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
