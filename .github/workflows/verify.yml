@@ -85,12 +85,41 @@ jobs:
         # CLAUDE.md, non-negotiable: certificate errors are fatal and no trustAll code may
         # exist in this repository.
         run: |
-          if grep -rnE 'trustAll|TrustAllCerts|ALLOW_ALL_HOSTNAME|checkServerTrusted\s*\([^)]*\)\s*\{\s*\}' \
+          if grep -arnE 'trustAll|TrustAllCerts|ALLOW_ALL_HOSTNAME|checkServerTrusted\s*\([^)]*\)\s*\{\s*\}' \
               --include='*.kt' --include='*.java' --include='*.py' . ; then
             echo "::error::TLS verification bypass found"
             exit 1
           fi
           echo "no TLS bypass found"
+
+      - name: No source file contains a NUL byte
+        # GNU grep treats a file containing a NUL as binary and reports nothing for it, so a
+        # single stray NUL makes a source file invisible to every grep-based gate above --
+        # including the trustAll scan, which is release-blocking.
+        #
+        # Not hypothetical: RemoteState.kt, which handles remote credentials and TLS, carried a
+        # literal NUL because `fill('\u0000')` was written with the character rather than the
+        # escape. It compiled, it behaved correctly, and it was invisible to grep the whole
+        # time. The escape is identical at runtime, so no source file needs the raw byte.
+        #
+        # Written in Python because a shell pattern cannot contain a NUL: bash truncates
+        # $'\x00' to the empty string, which matches every line of every file. A guard written
+        # that way fires on everything, which reads as "working" only until you look.
+        run: |
+          python3 - <<'EOF'
+          import subprocess, sys
+          files = subprocess.run(
+              ["git", "ls-files", "-z", "--", "*.kt", "*.java", "*.py", "*.xml", "*.kts",
+               "*.pro", "*.aidl", "*.md", "*.yml", "*.toml"],
+              capture_output=True, check=True,
+          ).stdout.split(b"\0")
+          bad = [f.decode() for f in files if f and b"\0" in open(f, "rb").read()]
+          for f in bad:
+              print(f"::error file={f}::contains a NUL byte, which hides it from every "
+                    f"grep-based gate in this workflow")
+          sys.exit(1 if bad else 0)
+          EOF
+          echo "no NUL bytes in tracked source"
 
       - name: No silent downgrade from https to cleartext
         # Cleartext is allowed in remote mode, but only when the user typed http:// in full.
@@ -98,7 +127,7 @@ jobs:
         # suggestion, and it would look like ordinary string handling in review
         # (docs/threat-model.md 3.5).
         run: |
-          if grep -rnE '"https".*(replace|removePrefix).*"http"|replace\(\s*"https"|"http://" *\+ *(host|origin|address)' \
+          if grep -arnE '"https".*(replace|removePrefix).*"http"|replace\(\s*"https"|"http://" *\+ *(host|origin|address)' \
               --include='*.kt' engine-remote/src/main app/src/main ; then
             echo "::error::something rewrites an https address into a cleartext one"
             exit 1
@@ -110,7 +139,7 @@ jobs:
         # working "accept anyway" button, and it looks like ordinary error handling in review
         # (CLAUDE.md, security rules).
         run: |
-          if grep -rn -A20 'onReceivedSslError' --include='*.kt' . | grep -E 'handler\.proceed|\bproceed\(\)' ; then
+          if grep -arn -A20 'onReceivedSslError' --include='*.kt' . | grep -E 'handler\.proceed|\bproceed\(\)' ; then
             echo "::error::an SSL error handler proceeds past a bad certificate"
             exit 1
           fi

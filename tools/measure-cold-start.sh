@@ -28,7 +28,7 @@ echo "=== clearing app data so the interpreter is unpacked from cold"
 
 # One class, on its own, so nothing else has started Python first.
 "${ADB[@]}" shell am instrument -w \
-    -e class dev.beancount.app.ColdStartTimingTest \
+    -e class io.github.pintofi.beanbook.app.ColdStartTimingTest \
     "$RUNNER" >/dev/null 2>&1 || true
 
 echo "=== phases"

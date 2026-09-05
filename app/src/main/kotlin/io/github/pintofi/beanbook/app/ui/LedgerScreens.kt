@@ -1,0 +1,381 @@
+package io.github.pintofi.beanbook.app.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import io.github.pintofi.beanbook.core.domain.LedgerSummary
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import io.github.pintofi.beanbook.core.domain.AccountBalance
+import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
+import io.github.pintofi.beanbook.core.domain.Amount
+import io.github.pintofi.beanbook.core.domain.JournalEntry
+import io.github.pintofi.beanbook.core.domain.LedgerError
+import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
+
+/**
+ * The free-tier native surfaces: the account balances list and the journal
+ * (docs/distribution.md §4.4). Both read from a [LedgerSnapshot] that Beancount produced,
+ * so the app displays accounting facts rather than computing its own.
+ */
+
+/**
+ * Amounts are announced with sign and currency in words, and carry an explicit sign in
+ * text — never colour alone (docs/ux.md §6).
+ */
+private fun Amount.accessibleDescription(): String {
+    val sign = when (number.signum()) {
+        -1 -> "minus "
+        else -> ""
+    }
+    return "$sign${number.abs().toPlainString()} $currency"
+}
+
+/**
+ * One figure, in the ledger's own type.
+ *
+ * [signed] colours it by direction, and defaults to *off*, which is the part worth
+ * explaining. Fava — whose reports this app also shows, so the two are seen together —
+ * renders balances in the ordinary text colour (`td.num { color: var(--text-color) }`) and
+ * reserves colour for a *difference* (`.tree-table .diff.negative`). That is the right rule
+ * for double-entry rather than a stylistic one: an Income or Equity account carries a credit
+ * balance and shows as negative all the time, so colouring balances by sign would paint the
+ * healthiest accounts in the ledger as though something were wrong with them.
+ *
+ * So a *movement* is coloured — a posting is money going one way or the other, and the
+ * direction is the point of it — and a *balance* is not.
+ *
+ * The colours stay this app's green and amber rather than Fava's green and red. That choice
+ * is already argued in LedgerColours: red and green alone are the classic accessibility
+ * failure, and the sign, not the colour, is what carries the meaning here.
+ */
+@Composable
+internal fun AmountText(amount: Amount, modifier: Modifier = Modifier, signed: Boolean = false) {
+    // The helper below existed from M6 and was never applied, so every amount was announced
+    // as its raw text: TalkBack reads "-12.34 USD" by pronouncing the hyphen or dropping it,
+    // which is the one thing ux.md 6 says must not happen. detekt found it as dead code
+    // (docs/milestones/m14-part16.md).
+    val spoken = amount.accessibleDescription()
+    Text(
+        text = amount.format(),
+        modifier = modifier.semantics { contentDescription = spoken },
+        fontFamily = FontFamily.Monospace,
+        textAlign = TextAlign.End,
+        style = MaterialTheme.typography.bodyMedium,
+        color = when {
+            !signed -> MaterialTheme.colorScheme.onSurface
+            amount.number.signum() < 0 -> BeancountTheme.ledger.negative
+            else -> BeancountTheme.ledger.positive
+        },
+    )
+}
+
+@Composable
+fun BalancesScreen(
+    snapshot: LedgerSnapshot,
+    modifier: Modifier = Modifier,
+    /** Cost and market value are Tier 3; the units everyone can see (B14). */
+    valuationAllowed: Boolean = false,
+) {
+    val roots = listOf("Assets", "Liabilities", "Equity", "Income", "Expenses")
+    var filter by remember { mutableStateOf("") }
+    var basis by remember { mutableStateOf(Valuation.UNITS) }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = filter,
+            onValueChange = { filter = it },
+            label = { Text("Filter accounts") },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .semantics { contentDescription = "Filter accounts by name" },
+        )
+
+        if (valuationAllowed) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Valuation.entries.forEach { option ->
+                    FilterChip(
+                        selected = basis == option,
+                        onClick = { basis = option },
+                        label = { Text(option.label) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Show balances ${option.label}"
+                        },
+                    )
+                }
+            }
+        }
+
+        val needle = filter.trim()
+        // Room at the end for the floating action button, which draws over the list rather
+        // than beside it. Without this the last row's figures sit under the FAB — the cost a
+        // FAB always carries, and one the surfaces it appears on have to pay (B26).
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 88.dp),
+        ) {
+            if (snapshot.hasErrors) {
+                item { ErrorBanner(snapshot.errors) }
+            }
+            roots.forEach { root ->
+                val accounts = snapshot.accounts
+                    .filter { it.name == root || it.name.startsWith("$root:") }
+                    .filter { needle.isEmpty() || it.name.contains(needle, ignoreCase = true) }
+                if (accounts.isEmpty()) return@forEach
+
+                // Leaf names that appear more than once under this root, so those rows can
+                // fall back to the full account name.
+                val repeatedLeaves = accounts.groupingBy { it.leaf }.eachCount()
+                    .filterValues { it > 1 }
+                    .keys
+
+                item(key = "header-$root") {
+                    // The header totals the accounts *shown*, not the whole root: a total
+                    // that ignored the filter would be a different number from the rows
+                    // under it, which reads as an arithmetic error.
+                    RootHeader(
+                        root = root,
+                        totals = if (needle.isEmpty()) {
+                            snapshot.totalFor(root)
+                        } else {
+                            LedgerSummary.sumByCurrency(accounts.flatMap { basis.of(it) })
+                        },
+                    )
+                }
+                items(accounts, key = { it.name }) { account ->
+                    AccountRow(account, basis, ambiguous = account.leaf in repeatedLeaves)
+                }
+            }
+        }
+    }
+}
+
+/** Which of an account's three figures to show (B14). */
+enum class Valuation(val label: String) {
+    UNITS("Units"),
+    COST("At cost"),
+    VALUE("Market value");
+
+    fun of(account: AccountBalance): List<Amount> = when (this) {
+        UNITS -> account.positions
+        COST -> account.atCost
+        VALUE -> account.atValue
+    }
+}
+
+@Composable
+private fun RootHeader(root: String, totals: List<Amount>) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(root, style = MaterialTheme.typography.titleMedium)
+        Column(horizontalAlignment = Alignment.End) {
+            if (totals.isEmpty()) {
+                Text("—", style = MaterialTheme.typography.bodyMedium)
+            } else {
+                totals.forEach { AmountText(it) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountRow(
+    account: AccountBalance,
+    basis: Valuation = Valuation.UNITS,
+    ambiguous: Boolean = false,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = (16 + account.depth * 12).dp,
+                end = 16.dp,
+                top = 8.dp,
+                bottom = 8.dp,
+            ),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // The leaf alone, unless another account on screen ends in the same word. A ledger
+        // with both Expenses:Rent and Expenses:Home:Rent showed two rows called "Rent" with
+        // different figures and nothing to tell them apart, because intermediate accounts
+        // are only listed when they hold a balance of their own, so the indent had no
+        // parent to sit under (D9).
+        Text(
+            text = if (ambiguous) account.name else account.leaf,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Column(horizontalAlignment = Alignment.End) {
+            basis.of(account).forEach { AmountText(it) }
+        }
+    }
+    HorizontalDivider()
+}
+
+@Composable
+fun JournalScreen(
+    snapshot: LedgerSnapshot,
+    modifier: Modifier = Modifier,
+    onOpenEntry: (JournalEntry) -> Unit = {},
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 88.dp),
+    ) {
+        if (snapshot.hasErrors) {
+            item { ErrorBanner(snapshot.errors) }
+        }
+        if (snapshot.journal.isEmpty()) {
+            item {
+                // Says what to do next, not just that there is nothing. A bare "No
+                // transactions yet." in an otherwise empty screen tells the user a fact they
+                // can already see and leaves them to find the way forward themselves (D9).
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "No transactions yet",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        "Tap + to write your first one.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+        items(snapshot.journal, key = { "${it.file}:${it.line}" }) { entry ->
+            JournalRow(entry, onClick = { onOpenEntry(entry) })
+            HorizontalDivider()
+        }
+    }
+}
+
+@Composable
+private fun JournalRow(entry: JournalEntry, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            // The whole row, not the text inside it: a row that reads as one thing and
+            // responds only where the words happen to be is one people tap twice.
+            .semantics { contentDescription = "${entry.date}, ${entry.description}" }
+            .padding(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(entry.date, fontFamily = FontFamily.Monospace)
+            // The flag is shown as a character, not a colour: "!" means needs review.
+            entry.flag?.let { Text(it, fontFamily = FontFamily.Monospace) }
+        }
+        Text(entry.description, style = MaterialTheme.typography.bodyLarge)
+        // Says a receipt is attached without opening anything: the row is a list item, and
+        // the document itself belongs on the detail screen (B17).
+        if (entry.linkedDocuments.isNotEmpty()) {
+            Text(
+                if (entry.linkedDocuments.size == 1) {
+                    "Has a document"
+                } else {
+                    "Has ${entry.linkedDocuments.size} documents"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        if (entry.tags.isNotEmpty() || entry.links.isNotEmpty()) {
+            Text(
+                text = (entry.tags.map { "#$it" } + entry.links.map { "^$it" }).joinToString(" "),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        entry.postings.forEach { posting ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = posting.account,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f),
+                )
+                posting.amount?.let { AmountText(it, signed = true) }
+            }
+        }
+    }
+}
+
+/**
+ * A ledger with errors is a normal state, so this informs rather than blocks
+ * (docs/ux.md §2). Positions are shown in `file:line` form, which is what the user needs
+ * to fix them.
+ */
+@Composable
+fun ErrorBanner(errors: List<LedgerError>, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(16.dp),
+    ) {
+        Text(
+            text = if (errors.size == 1) "1 error in this ledger" else "${errors.size} errors in this ledger",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+        )
+        errors.take(5).forEach { error ->
+            Text(
+                text = listOfNotNull(error.position, error.message).joinToString("  "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        if (errors.size > 5) {
+            Text(
+                text = "and ${errors.size - 5} more",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
+    }
+}

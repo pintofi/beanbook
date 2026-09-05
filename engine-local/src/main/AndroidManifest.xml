@@ -14,7 +14,7 @@
           EngineService). Not exported: nothing outside this app may bind to it.
         -->
         <service
-            android:name="dev.beancount.engine.local.EngineService"
+            android:name="io.github.pintofi.beanbook.engine.local.EngineService"
             android:process=":engine"
             android:exported="false" />
     </application>

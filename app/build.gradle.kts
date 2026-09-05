@@ -28,12 +28,12 @@ tasks.matching {
 }
 
 android {
-    // The Kotlin package tree is still `dev.beancount.*` while `applicationId` is not. That
+    // The Kotlin package tree is still `io.github.pintofi.beanbook.*` while `applicationId` is not. That
     // split is deliberate, not drift: the application id is the identity Play records and can
     // never be changed after the first publish, so it moved as soon as the organisation name
     // was settled. The namespace is internal, changeable at any time, and moving it touches
     // every source file in the repository, so it is its own change (B38).
-    namespace = "dev.beancount.app"
+    namespace = "io.github.pintofi.beanbook.app"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {

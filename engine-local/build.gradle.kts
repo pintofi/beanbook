@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.beancount.engine.local"
+    namespace = "io.github.pintofi.beanbook.engine.local"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {

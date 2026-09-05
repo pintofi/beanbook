@@ -12,7 +12,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity
-            android:name="dev.beancount.app.PickerActivity"
+            android:name="io.github.pintofi.beanbook.app.PickerActivity"
             android:exported="false" />
     </application>
 </manifest>
