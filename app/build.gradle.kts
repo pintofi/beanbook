@@ -182,6 +182,7 @@ dependencies {
     implementation(project(":core-entitlement"))
     implementation(project(":engine-local"))
     implementation(project(":engine-remote"))
+    implementation(project(":scanner"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.documentfile)

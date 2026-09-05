@@ -1,5 +1,7 @@
 package io.github.pintofi.beanbook.scanner
 
+import io.github.pintofi.beanbook.core.domain.CropPoint
+import io.github.pintofi.beanbook.core.domain.CropQuad
 import org.opencv.core.CvType
 import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint2f
@@ -38,7 +40,7 @@ object PageWarp {
      * opposing edges: a page seen at an angle has one short edge and one long one, and the
      * long one is closer to the truth about how much detail is there.
      */
-    fun straighten(source: Mat, quad: Quad, style: ScanStyle = ScanStyle.COLOUR): Mat {
+    fun straighten(source: Mat, quad: CropQuad, style: ScanStyle = ScanStyle.COLOUR): Mat {
         val width = max(
             distance(quad.topLeft, quad.topRight),
             distance(quad.bottomLeft, quad.bottomRight),
@@ -49,7 +51,12 @@ object PageWarp {
         )
         if (width < 1 || height < 1) return source
 
-        val from = MatOfPoint2f(quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft)
+        val from = MatOfPoint2f(
+            quad.topLeft.asPoint(),
+            quad.topRight.asPoint(),
+            quad.bottomRight.asPoint(),
+            quad.bottomLeft.asPoint(),
+        )
         val to = MatOfPoint2f(
             Point(0.0, 0.0),
             Point(width - 1, 0.0),
@@ -96,5 +103,8 @@ object PageWarp {
         return out
     }
 
-    private fun distance(a: Point, b: Point) = hypot(a.x - b.x, a.y - b.y)
+    private fun CropPoint.asPoint() = Point(x.toDouble(), y.toDouble())
+
+    private fun distance(a: CropPoint, b: CropPoint) =
+        hypot((a.x - b.x).toDouble(), (a.y - b.y).toDouble())
 }

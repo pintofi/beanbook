@@ -63,8 +63,8 @@ class PageDetectorTest {
         // downscale-then-rescale each move a corner by a pixel or two. Tight enough that
         // returning the frame's own corners -- the obvious wrong answer -- fails.
         found.forEachIndexed { index, point ->
-            assertEquals("corner $index x", drawn[index][0].toDouble(), point.x, 25.0)
-            assertEquals("corner $index y", drawn[index][1].toDouble(), point.y, 25.0)
+            assertEquals("corner $index x", drawn[index][0], point.x, 25f)
+            assertEquals("corner $index y", drawn[index][1], point.y, 25f)
         }
     }
 

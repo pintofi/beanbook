@@ -44,6 +44,9 @@ android {
 }
 
 dependencies {
+    // The crop is expressed in the domain's own `CropQuad`, so OpenCV's types never reach the
+    // app module. That is what keeps this dependency contained: `implementation`, not `api`.
+    api(project(":core-domain"))
     implementation(libs.opencv)
     implementation(libs.androidx.core.ktx)
     testImplementation(libs.junit)

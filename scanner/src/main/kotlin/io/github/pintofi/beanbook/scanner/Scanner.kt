@@ -2,6 +2,7 @@ package io.github.pintofi.beanbook.scanner
 
 import android.graphics.Bitmap
 import android.util.Log
+import io.github.pintofi.beanbook.core.domain.CropQuad
 import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
 import org.opencv.core.Mat
@@ -30,7 +31,7 @@ object Scanner {
     }
 
     /** The page in [photo], or null when none is found or OpenCV is unavailable. */
-    fun detect(photo: Bitmap): Quad? {
+    fun detect(photo: Bitmap): CropQuad? {
         if (!available) return null
         val mat = photo.toMat()
         return runCatching { PageDetector.detect(mat) }
@@ -44,7 +45,7 @@ object Scanner {
      * Returns the photo unchanged when OpenCV is unavailable, so a caller never has to decide
      * what to show instead — an unstraightened receipt is still a receipt.
      */
-    fun straighten(photo: Bitmap, quad: Quad, style: ScanStyle): Bitmap {
+    fun straighten(photo: Bitmap, quad: CropQuad, style: ScanStyle): Bitmap {
         if (!available) return photo
         return runCatching {
             val out = PageWarp.straighten(photo.toMat(), quad, style)

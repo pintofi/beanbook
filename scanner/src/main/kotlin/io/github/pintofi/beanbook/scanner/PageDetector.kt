@@ -1,5 +1,7 @@
 package io.github.pintofi.beanbook.scanner
 
+import io.github.pintofi.beanbook.core.domain.CropPoint
+import io.github.pintofi.beanbook.core.domain.CropQuad
 import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint
 import org.opencv.core.MatOfPoint2f
@@ -7,15 +9,6 @@ import org.opencv.core.Point
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
 
-/** A page found in a frame, as four corners in the frame's own pixel coordinates. */
-data class Quad(
-    val topLeft: Point,
-    val topRight: Point,
-    val bottomRight: Point,
-    val bottomLeft: Point,
-) {
-    val points: List<Point> get() = listOf(topLeft, topRight, bottomRight, bottomLeft)
-}
 
 /**
  * Finds the page in a photograph.
@@ -54,7 +47,7 @@ object PageDetector {
     /** Above this it is the frame itself — a table edge, or the phone's own shadow. */
     private const val MAX_AREA_FRACTION = 0.98
 
-    fun detect(source: Mat): Quad? {
+    fun detect(source: Mat): CropQuad? {
         if (source.empty()) return null
 
         val scale = WORKING_HEIGHT / source.rows().toDouble()
@@ -86,24 +79,17 @@ object PageDetector {
             .asSequence()
             .mapNotNull { asQuadrilateral(it) }
             .filter { quad ->
-                val area = Imgproc.contourArea(MatOfPoint(*quad.points.toTypedArray()))
+                val area = Imgproc.contourArea(MatOfPoint(*quad.asPoints().toTypedArray()))
                 area > frameArea * MIN_AREA_FRACTION && area < frameArea * MAX_AREA_FRACTION
             }
-            .maxByOrNull { Imgproc.contourArea(MatOfPoint(*it.points.toTypedArray())) }
+            .maxByOrNull { Imgproc.contourArea(MatOfPoint(*it.asPoints().toTypedArray())) }
 
         val inverse = if (scale < 1.0) 1.0 / scale else 1.0
-        return best?.let { quad ->
-            Quad(
-                topLeft = quad.topLeft.scaled(inverse),
-                topRight = quad.topRight.scaled(inverse),
-                bottomRight = quad.bottomRight.scaled(inverse),
-                bottomLeft = quad.bottomLeft.scaled(inverse),
-            )
-        }
+        return best?.scaled(inverse)
     }
 
     /** A contour that reduces to four convex corners, ordered, or null. */
-    private fun asQuadrilateral(contour: MatOfPoint): Quad? {
+    private fun asQuadrilateral(contour: MatOfPoint): CropQuad? {
         val curve = MatOfPoint2f(*contour.toArray())
         val perimeter = Imgproc.arcLength(curve, true)
         val approximation = MatOfPoint2f()
@@ -126,16 +112,26 @@ object PageDetector {
      * the top-left has the smallest x+y, the bottom-right the largest, and the other two
      * separate on y-x.
      */
-    private fun order(corners: Array<Point>): Quad {
+    private fun order(corners: Array<Point>): CropQuad {
         val bySum = corners.sortedBy { it.x + it.y }
         val byDiff = corners.sortedBy { it.y - it.x }
-        return Quad(
-            topLeft = bySum.first(),
-            bottomRight = bySum.last(),
-            topRight = byDiff.first(),
-            bottomLeft = byDiff.last(),
+        return CropQuad(
+            topLeft = bySum.first().asCropPoint(),
+            topRight = byDiff.first().asCropPoint(),
+            bottomRight = bySum.last().asCropPoint(),
+            bottomLeft = byDiff.last().asCropPoint(),
         )
     }
 
-    private fun Point.scaled(factor: Double) = Point(x * factor, y * factor)
+    private fun Point.asCropPoint() = CropPoint(x.toFloat(), y.toFloat())
+
+    private fun CropQuad.scaled(factor: Double): CropQuad {
+        val f = factor.toFloat()
+        fun CropPoint.times() = CropPoint(x * f, y * f)
+        return CropQuad(topLeft.times(), topRight.times(), bottomRight.times(), bottomLeft.times())
+    }
+
+    /** The corners as OpenCV points, for area tests inside this file. */
+    internal fun CropQuad.asPoints(): List<Point> =
+        listOf(topLeft, topRight, bottomRight, bottomLeft).map { Point(it.x.toDouble(), it.y.toDouble()) }
 }
