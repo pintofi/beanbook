@@ -209,7 +209,7 @@ fun BalancesScreen(
                     RootHeader(
                         root = root,
                         totals = if (needle.isEmpty()) {
-                            snapshot.totalFor(root)
+                            snapshot.totalFor(root, basis::of)
                         } else {
                             LedgerSummary.sumByCurrency(accounts.flatMap { basis.of(it) })
                         },

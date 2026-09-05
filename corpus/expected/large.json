@@ -8,6 +8,12 @@
           "number": "-2862998.98"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "-2862998.98"
+        }
+      ],
       "at_value": [
         {
           "currency": "USD",
@@ -24,12 +30,19 @@
     },
     {
       "at_cost": [],
+      "at_operating": [],
       "at_value": [],
       "name": "Assets:Cash",
       "positions": []
     },
     {
       "at_cost": [
+        {
+          "currency": "USD",
+          "number": "-100000.00"
+        }
+      ],
+      "at_operating": [
         {
           "currency": "USD",
           "number": "-100000.00"
@@ -56,6 +69,12 @@
           "number": "533236.87"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "533236.87"
+        }
+      ],
       "at_value": [
         {
           "currency": "USD",
@@ -72,6 +91,12 @@
     },
     {
       "at_cost": [
+        {
+          "currency": "USD",
+          "number": "517332.47"
+        }
+      ],
+      "at_operating": [
         {
           "currency": "USD",
           "number": "517332.47"
@@ -98,6 +123,12 @@
           "number": "516924.91"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "516924.91"
+        }
+      ],
       "at_value": [
         {
           "currency": "USD",
@@ -114,6 +145,12 @@
     },
     {
       "at_cost": [
+        {
+          "currency": "USD",
+          "number": "520258.24"
+        }
+      ],
+      "at_operating": [
         {
           "currency": "USD",
           "number": "520258.24"
@@ -140,6 +177,12 @@
           "number": "519147.31"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "519147.31"
+        }
+      ],
       "at_value": [
         {
           "currency": "USD",
@@ -161,6 +204,12 @@
           "number": "531099.18"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "531099.18"
+        }
+      ],
       "at_value": [
         {
           "currency": "USD",
@@ -177,6 +226,12 @@
     },
     {
       "at_cost": [
+        {
+          "currency": "USD",
+          "number": "-175000.00"
+        }
+      ],
+      "at_operating": [
         {
           "currency": "USD",
           "number": "-175000.00"

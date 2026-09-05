@@ -50,6 +50,18 @@ def _errors_with_plugin_failure(errors: Any, plugin_failure) -> list:
     return out
 
 
+def _display_round(value):
+    """Two decimal places, for a figure that exists only to be read.
+
+    Used for operating-currency conversions. An operating currency is a unit of account a
+    person keeps books in, so two places is what they expect to see; the unrounded value is
+    still what Beancount computed, and nothing here feeds a write.
+    """
+    from decimal import Decimal, ROUND_HALF_UP
+
+    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
 def _meta_str(value) -> str:
     """A metadata value as text.
 
@@ -133,6 +145,42 @@ def inspect(
             for pos in inventory.reduce(reducer)
         ]
 
+    # The ledger's own operating currency, when it declares one. Everything on the home
+    # surface and in the widgets is a single headline figure, and a headline that reads
+    # "1,200.00 USD 340.00 EUR 0.5 BTC" answers nothing -- so those surfaces want one number
+    # in one currency. This is the currency to put it in.
+    operating = (options_map.get("operating_currency") or [None])[0]
+
+    def _in_operating(inventory):
+        """An inventory converted to the operating currency, or [] if it cannot be.
+
+        `convert_position` falls back to the position's own currency when no price connects
+        it to the target, exactly as `get_value` falls back to cost. So a holding the ledger
+        never priced is reported in its own currency rather than silently counted as though
+        it were operating-currency units, and the sum below keeps it as a separate figure
+        instead of adding pounds to dollars.
+        """
+        if inventory is None or operating is None:
+            return []
+        converted = inventory_lib.Inventory()
+        for pos in inventory:
+            converted.add_amount(
+                convert.convert_position(pos, operating, price_map, as_of)
+            )
+        return [
+            {
+                # Quantised for display. Multiplying a balance by a rate gives as many
+                # decimal places as the rate has -- 1850.00 EUR at 1.085 came out as
+                # "2007.250000 USD" on the home screen. This rounds the *presentation* of a
+                # converted figure and nothing else: no converted number is ever written to a
+                # ledger, and the units, cost and market-value figures beside it are
+                # untouched, so invariant 1 still holds where it is about the books.
+                "number": _decimal_str(_display_round(pos.units.number)),
+                "currency": pos.units.currency,
+            }
+            for pos in converted
+        ]
+
     accounts = sorted(getters.get_accounts(entries))
     account_rows = []
     for account in accounts:
@@ -145,6 +193,7 @@ def inspect(
                 "at_value": _amounts(
                     inventory, lambda pos: convert.get_value(pos, price_map, as_of)
                 ),
+                "at_operating": _in_operating(inventory),
             }
         )
 

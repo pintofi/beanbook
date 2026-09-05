@@ -8,6 +8,12 @@
           "number": "1744.80"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "1744.80"
+        }
+      ],
       "at_value": [
         {
           "currency": "USD",
@@ -24,6 +30,12 @@
     },
     {
       "at_cost": [
+        {
+          "currency": "USD",
+          "number": "-3000.00"
+        }
+      ],
+      "at_operating": [
         {
           "currency": "USD",
           "number": "-3000.00"
@@ -50,6 +62,12 @@
           "number": "55.20"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "55.20"
+        }
+      ],
       "at_value": [
         {
           "currency": "USD",
@@ -66,6 +84,12 @@
     },
     {
       "at_cost": [
+        {
+          "currency": "USD",
+          "number": "1200.00"
+        }
+      ],
+      "at_operating": [
         {
           "currency": "USD",
           "number": "1200.00"

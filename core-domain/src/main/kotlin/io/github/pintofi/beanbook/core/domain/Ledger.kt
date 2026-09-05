@@ -35,11 +35,23 @@ data class LedgerSnapshot(
      * Beancount account names are colon-separated, so a prefix match is the whole of the
      * tree logic — no separate hierarchy needs maintaining.
      */
-    fun totalFor(prefix: String): List<Amount> =
+    fun totalFor(
+        prefix: String,
+        /**
+         * Which of an account's three figures to total.
+         *
+         * This used to be fixed at [AccountBalance.positions]. The Balances screen offers
+         * units, cost and market value, and the rows honoured the choice while the totals
+         * above them did not — so switching to At cost changed every row and left the
+         * Assets, Liabilities, Equity, Income and Expenses lines showing units, which is a
+         * heading that disagrees with its own contents.
+         */
+        select: (AccountBalance) -> List<Amount> = AccountBalance::positions,
+    ): List<Amount> =
         Balance.of(
             accounts
                 .filter { it.name == prefix || it.name.startsWith("$prefix:") }
-                .flatMap { it.positions }
+                .flatMap(select)
         ).residuals()
 }
 
@@ -58,6 +70,15 @@ data class AccountBalance(
     val positions: List<Amount>,
     val atCost: List<Amount> = positions,
     val atValue: List<Amount> = positions,
+    /**
+     * The balance converted into the ledger's operating currency.
+     *
+     * Empty when the ledger declares no `operating_currency`. A holding the ledger never
+     * priced stays in its own currency here rather than being counted as though it were
+     * already operating-currency units, so a total built from this can still come out as
+     * more than one figure — which is honest, and rare.
+     */
+    val atOperating: List<Amount> = positions,
 ) {
     /** The last segment, for display in a tree: "Assets:Bank:Checking" -> "Checking". */
     val leaf: String get() = name.substringAfterLast(':')

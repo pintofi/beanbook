@@ -24,14 +24,26 @@ data class LedgerSummary(
 ) {
     companion object {
 
-        fun of(ledger: LedgerSnapshot): LedgerSummary = LedgerSummary(
-            // Assets *plus* liabilities, not minus: Beancount already stores what you owe as
-            // a negative balance, so negating it made debt increase net worth.
-            netWorth = format(sumByCurrency(ledger.totalFor("Assets") + ledger.totalFor("Liabilities"))),
-            // Income is stored negative as well, and "-3000.00 earned" reads as a loss.
-            income = format(sumByCurrency(negated(ledger.totalFor("Income")))),
-            expenses = format(sumByCurrency(ledger.totalFor("Expenses"))),
-        )
+        fun of(ledger: LedgerSnapshot): LedgerSummary {
+            // In the operating currency where the ledger declares one. These are single
+            // headline figures, and a headline reading "1200.00 USD 340.00 EUR 0.5 BTC"
+            // answers nothing -- it is a list of holdings, not a net worth. Where no
+            // operating currency is declared, `atOperating` is the units and this behaves
+            // exactly as it used to.
+            val select = AccountBalance::atOperating
+            return LedgerSummary(
+                // Assets *plus* liabilities, not minus: Beancount already stores what you
+                // owe as a negative balance, so negating it made debt increase net worth.
+                netWorth = format(
+                    sumByCurrency(
+                        ledger.totalFor("Assets", select) + ledger.totalFor("Liabilities", select),
+                    ),
+                ),
+                // Income is stored negative as well, and "-3000.00 earned" reads as a loss.
+                income = format(sumByCurrency(negated(ledger.totalFor("Income", select)))),
+                expenses = format(sumByCurrency(ledger.totalFor("Expenses", select))),
+            )
+        }
 
         fun negated(amounts: List<Amount>): List<Amount> =
             amounts.map { Amount(it.number.negate(), it.currency) }

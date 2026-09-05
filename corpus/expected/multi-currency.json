@@ -8,6 +8,12 @@
           "number": "1850.00"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "2007.25"
+        }
+      ],
       "at_value": [
         {
           "currency": "EUR",
@@ -24,6 +30,12 @@
     },
     {
       "at_cost": [
+        {
+          "currency": "USD",
+          "number": "4875.00"
+        }
+      ],
+      "at_operating": [
         {
           "currency": "USD",
           "number": "4875.00"
@@ -50,6 +62,12 @@
           "number": "125.00"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "137.50"
+        }
+      ],
       "at_value": [
         {
           "currency": "USD",
@@ -73,6 +91,12 @@
         {
           "currency": "EUR",
           "number": "-2000.00"
+        }
+      ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "-7170.00"
         }
       ],
       "at_value": [
@@ -104,6 +128,12 @@
           "number": "150.00"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "162.75"
+        }
+      ],
       "at_value": [
         {
           "currency": "EUR",
@@ -120,6 +150,7 @@
     },
     {
       "at_cost": [],
+      "at_operating": [],
       "at_value": [],
       "name": "Income:Salary",
       "positions": []

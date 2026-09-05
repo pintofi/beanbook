@@ -8,6 +8,12 @@
           "number": "957.70"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "957.70"
+        }
+      ],
       "at_value": [
         {
           "currency": "USD",
@@ -29,6 +35,12 @@
           "number": "-1000.00"
         }
       ],
+      "at_operating": [
+        {
+          "currency": "USD",
+          "number": "-1000.00"
+        }
+      ],
       "at_value": [
         {
           "currency": "USD",
@@ -45,6 +57,12 @@
     },
     {
       "at_cost": [
+        {
+          "currency": "USD",
+          "number": "42.30"
+        }
+      ],
+      "at_operating": [
         {
           "currency": "USD",
           "number": "42.30"

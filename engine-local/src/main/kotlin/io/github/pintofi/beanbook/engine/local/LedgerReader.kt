@@ -138,6 +138,7 @@ class LedgerReader(
         positions = optJSONArray("positions").map { it.toAmount() }.filterNotNull(),
         atCost = optJSONArray("at_cost").map { it.toAmount() }.filterNotNull(),
         atValue = optJSONArray("at_value").map { it.toAmount() }.filterNotNull(),
+        atOperating = optJSONArray("at_operating").map { it.toAmount() }.filterNotNull(),
     )
 
     private fun JSONObject.toAmount(): Amount? {
