@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -116,13 +117,19 @@ private fun Figure(
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium)
-            Text(
+            // Through MoneyText like every other figure. These are read against each other --
+            // Income beside Expenses, both against Net worth -- which is the comparison the
+            // fixed-width face exists for. Left-aligned within the card because a card is not
+            // a column; the face is what matters here, not the trailing edge.
+            MoneyText(
                 shown,
+                modifier = Modifier.fillMaxWidth(),
                 style = if (prominent) {
                     MaterialTheme.typography.headlineSmall
                 } else {
                     MaterialTheme.typography.titleMedium
                 },
+                textAlign = TextAlign.Start,
             )
         }
     }
@@ -148,10 +155,18 @@ private fun RecentEntry(entry: JournalEntry, hideAmounts: Boolean) {
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                 )
-                Text(entry.date, style = MaterialTheme.typography.bodySmall)
+                MoneyText(
+                    entry.date,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Start,
+                )
             }
             if (shown.isNotEmpty()) {
-                Text(shown, style = MaterialTheme.typography.bodyMedium)
+                // These *are* a column -- five rows read straight down -- so this is the case
+                // the fixed-width face was argued for, and the one that was rendering
+                // proportionally. Also the date above uses the same face for the same reason.
+                MoneyText(shown)
             }
         }
     }

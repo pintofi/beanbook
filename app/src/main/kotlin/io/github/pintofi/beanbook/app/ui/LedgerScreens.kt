@@ -26,6 +26,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import io.github.pintofi.beanbook.app.ui.theme.AmountTextStyle
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -72,6 +75,39 @@ private fun Amount.accessibleDescription(): String {
  * is already argued in LedgerColours: red and green alone are the classic accessibility
  * failure, and the sign, not the colour, is what carries the meaning here.
  */
+/**
+ * Money, drawn one way.
+ *
+ * Everything that shows a figure goes through here so the fixed-width face and the trailing
+ * alignment are properties of *money in this app*, not of whichever screen remembered. Home
+ * used to build its own strings in the proportional default face, which is precisely the
+ * column the Appearance preview points at when it says decimal points line up.
+ *
+ * [text] rather than an `Amount` because a figure is sometimes not one: Home shows an em dash
+ * for "nothing to say" and bullets when amounts are hidden, and those should sit in the same
+ * column, in the same face, as the numbers they stand in for.
+ */
+@Composable
+internal fun MoneyText(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    color: Color = Color.Unspecified,
+    // Applied after the merge, because `merge` lets the argument win and the argument here is
+    // AmountTextStyle -- so a caller passing `style = ....copy(textAlign = Start)` was
+    // silently overridden back to End. A figure standing alone under its own label reads
+    // better beneath it than pushed to the far edge of the card; a figure in a column does
+    // not. Both are money, so both keep the face, and only the alignment differs.
+    textAlign: TextAlign = TextAlign.End,
+) {
+    Text(
+        text = text,
+        modifier = modifier,
+        style = style.merge(AmountTextStyle).copy(textAlign = textAlign),
+        color = color,
+    )
+}
+
 @Composable
 internal fun AmountText(amount: Amount, modifier: Modifier = Modifier, signed: Boolean = false) {
     // The helper below existed from M6 and was never applied, so every amount was announced
@@ -79,12 +115,9 @@ internal fun AmountText(amount: Amount, modifier: Modifier = Modifier, signed: B
     // which is the one thing ux.md 6 says must not happen. detekt found it as dead code
     // (docs/milestones/m14-part16.md).
     val spoken = amount.accessibleDescription()
-    Text(
+    MoneyText(
         text = amount.format(),
         modifier = modifier.semantics { contentDescription = spoken },
-        fontFamily = FontFamily.Monospace,
-        textAlign = TextAlign.End,
-        style = MaterialTheme.typography.bodyMedium,
         color = when {
             !signed -> MaterialTheme.colorScheme.onSurface
             amount.number.signum() < 0 -> BeancountTheme.ledger.negative

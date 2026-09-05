@@ -3,9 +3,7 @@ package io.github.pintofi.beanbook.app.ui.theme
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.sp
 
 /**
  * The type scale, and the one place this app deviates from Material's defaults.
@@ -24,11 +22,18 @@ import androidx.compose.ui.unit.sp
  */
 internal val BeancountTypography = Typography()
 
-/** Tabular figures for anything the user compares vertically. */
+/**
+ * Tabular figures for anything the user compares vertically.
+ *
+ * Deliberately carries **no size**. It used to fix 15sp and Medium, which meant it could only
+ * ever be one thing — and so it was used in exactly one place, a preview, while every real
+ * amount in the app hand-rolled `FontFamily.Monospace` beside a type-scale style. Merging this
+ * over a scale style instead lets a headline figure on Home and a posting in the journal be
+ * the same face at the size each surface calls for, which is what makes the column argument
+ * above hold everywhere rather than in one screen.
+ */
 val AmountTextStyle: TextStyle = TextStyle(
     fontFamily = FontFamily.Monospace,
-    fontWeight = FontWeight.Medium,
-    fontSize = 15.sp,
     // Amounts are right-aligned for the same reason they are monospaced: the decimal point
     // is the thing the eye follows down the column.
     textAlign = TextAlign.End,

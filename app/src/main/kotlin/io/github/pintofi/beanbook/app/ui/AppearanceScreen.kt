@@ -177,10 +177,12 @@ private fun AmountRow(account: String, amount: String, positive: Boolean) {
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(end = 12.dp),
         )
-        Text(
+        // The same composable the journal draws with, so this preview cannot drift from what
+        // it claims to preview. It used to render `BeancountTheme.amount` directly -- a style
+        // nothing else in the app used -- and so advertised a fixed-width face while Home was
+        // still proportional.
+        MoneyText(
             amount,
-            style = BeancountTheme.amount,
-            textAlign = TextAlign.End,
             color = if (positive) BeancountTheme.ledger.positive else BeancountTheme.ledger.negative,
         )
     }

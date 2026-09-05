@@ -47,7 +47,6 @@ object BeancountTheme {
     val ledger: LedgerColours
         @Composable @ReadOnlyComposable get() = LocalLedgerColours.current
 
-    val amount get() = AmountTextStyle
 }
 
 /**
