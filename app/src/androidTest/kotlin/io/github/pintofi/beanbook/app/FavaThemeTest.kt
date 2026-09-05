@@ -4,6 +4,7 @@ import android.webkit.WebView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.pintofi.beanbook.app.ui.theme.DarkColoursForTest
+import io.github.pintofi.beanbook.app.ui.theme.LedgerColours
 import io.github.pintofi.beanbook.app.ui.theme.LightColoursForTest
 import io.github.pintofi.beanbook.app.web.AllowlistWebViewClient
 import io.github.pintofi.beanbook.app.web.FavaTheme
@@ -89,7 +90,7 @@ class FavaThemeTest {
         var webView: WebView? = null
 
         val scheme = if (dark) DarkColoursForTest else LightColoursForTest
-        val script = FavaTheme.script(scheme, dark)
+        val script = FavaTheme.script(scheme, dark, ledgerFor(dark))
 
         instrumentation.runOnMainSync {
             webView = WebView(instrumentation.targetContext).apply {
@@ -144,7 +145,7 @@ class FavaThemeTest {
         val loaded = CountDownLatch(1)
         val answer = AtomicReference("")
         var webView: WebView? = null
-        val script = FavaTheme.script(DarkColoursForTest, dark = true)
+        val script = FavaTheme.script(DarkColoursForTest, dark = true, LedgerColours.Dark)
 
         instrumentation.runOnMainSync {
             webView = WebView(instrumentation.targetContext).apply {
@@ -186,7 +187,7 @@ class FavaThemeTest {
     }
 
     @Test fun theScriptCarriesNoValueThatCouldCloseItsOwnStringLiteral() {
-        val script = FavaTheme.script(LightColoursForTest, dark = false)
+        val script = FavaTheme.script(LightColoursForTest, dark = false, LedgerColours.Light)
 
         // Everything interpolated is a #rrggbb this app generated. If a colour ever arrived
         // from somewhere else, this is the assertion that would notice.
@@ -201,3 +202,6 @@ class FavaThemeTest {
         assertTrue(script.contains("#006a6a"))
     }
 }
+
+/** The ledger pair that goes with a scheme, matching what `BeancountTheme` provides. */
+private fun ledgerFor(dark: Boolean) = if (dark) LedgerColours.Dark else LedgerColours.Light

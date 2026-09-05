@@ -4,9 +4,22 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
+import io.github.pintofi.beanbook.app.ui.theme.LedgerColours
 
 /**
  * Makes Fava's reports look like the rest of the app (docs/ux.md §3).
+ *
+ * **Only variables Fava itself defines and consumes.** That is the whole reason this is safe
+ * to keep across upgrades: every property set here is part of Fava's own theming surface, so
+ * if a release renames one the override simply stops applying and Fava's default renders. It
+ * fails to *their* design, never to a broken page.
+ *
+ * That is also why the radii are left alone, though ux.md §3 mentions them. Fava exposes no
+ * radius custom property — its variables are colour, spacing and shadow only — so matching
+ * the app's rounded shapes would mean writing element and class selectors against Fava's
+ * markup. That reaches past the contract into a structure they are free to change, and a
+ * radius applied to the wrong box clips content rather than merely looking wrong. Checked
+ * against the bundled stylesheet rather than assumed.
  *
  * Fava themes itself entirely through CSS custom properties and honours an explicit
  * `:root[data-color-scheme=dark|light]`, which is a considerable piece of luck: the whole
@@ -33,7 +46,7 @@ object FavaTheme {
      * [ColorScheme]. None of it comes from a ledger, a filename, or anything a user typed, so
      * there is nothing here that could close the string and start executing.
      */
-    fun script(scheme: ColorScheme, dark: Boolean): String {
+    fun script(scheme: ColorScheme, dark: Boolean, ledger: LedgerColours): String {
         val css = buildString {
             // `:root[data-color-scheme]`, not plain `:root`. Fava sets its dark values on
             // `:root[data-color-scheme=dark]`, which is a more specific selector than `:root`
@@ -62,6 +75,27 @@ object FavaTheme {
             val placeholderText = lerp(scheme.primary, scheme.onPrimary, 0.62f)
             append("--header-placeholder-background:${placeholder.css()};")
             append("--header-placeholder-color:${placeholderText.css()};")
+
+            // The gain/loss *text* colour, so a figure does not change colour when the user
+            // crosses from the journal into a report. Fava's own pair is green and red; this
+            // app uses green and amber deliberately, because red/green alone is the classic
+            // colour-blindness failure and the sign is what carries the meaning here
+            // (`LedgerColours`).
+            //
+            // `--diff-green`/`--diff-red` rather than `--diff-positive`/`--diff-negative`:
+            // Fava defines the latter in terms of the former and swaps which way round they
+            // map for users who prefer the opposite convention, so overriding the source pair
+            // keeps that preference working.
+            //
+            // **This does not reach the charts, and nothing here can.** The bars on the
+            // income statement are coloured in Fava's JavaScript by a D3 scale, with no CSS
+            // custom property behind them — `--diff-*` is consumed by exactly one rule in
+            // their stylesheet, and it is a text colour. Recolouring the charts would mean
+            // reaching into their scripts, which is the coupling this file exists not to
+            // have. So the reports keep Fava's chart palette, and that is a deliberate limit
+            // rather than an oversight.
+            append("--diff-green:${ledger.positive.css()};")
+            append("--diff-red:${ledger.negative.css()};")
             append("}")
         }
 

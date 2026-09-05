@@ -97,7 +97,11 @@ class TemplateEntryTest {
         // The accounts are already prefilled from the ledger, which is the state someone is
         // actually in when they decide to keep a form as a template.
         compose.onNodeWithText("Payee").performTextInput("Landlord")
-        compose.onNodeWithText("Amount", substring = false).performTextInput("750.00")
+        // The first posting's amount. Every posting's field is labelled "Amount" now — the
+        // second used to say "Amount (optional)", which made an exact match unique by
+        // accident, until that qualifier moved to supporting text because it was long enough
+        // to wrap inside the field.
+        compose.onAllNodesWithText("Amount", substring = false)[0].performTextInput("750.00")
 
         compose.onNodeWithText("Save as template").performScrollTo().performClick()
         compose.onNodeWithText("Template name").performTextInput("Rent")

@@ -219,8 +219,11 @@ fun FavaWebView(
     // next load without restarting anything.
     val scheme = androidx.compose.material3.MaterialTheme.colorScheme
     val dark = scheme.background.luminance() < 0.5f
-    val themeScript = androidx.compose.runtime.remember(scheme, dark) {
-        FavaTheme.script(scheme, dark)
+    // The same green and amber the journal draws movements in, so a figure keeps its colour
+    // across the boundary between the app's own screens and Fava's.
+    val ledger = io.github.pintofi.beanbook.app.ui.theme.BeancountTheme.ledger
+    val themeScript = androidx.compose.runtime.remember(scheme, dark, ledger) {
+        FavaTheme.script(scheme, dark, ledger)
     }
     val currentTheme = androidx.compose.runtime.rememberUpdatedState(themeScript)
 
