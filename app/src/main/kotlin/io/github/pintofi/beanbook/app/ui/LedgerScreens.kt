@@ -23,12 +23,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import io.github.pintofi.beanbook.app.ui.theme.readableMeasure
 import io.github.pintofi.beanbook.app.ui.theme.AmountTextStyle
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -177,7 +183,7 @@ fun BalancesScreen(
         // than beside it. Without this the last row's figures sit under the FAB — the cost a
         // FAB always carries, and one the surfaces it appears on have to pay (B26).
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().readableMeasure(),
             contentPadding = PaddingValues(bottom = 88.dp),
         ) {
             if (snapshot.hasErrors) {
@@ -292,7 +298,7 @@ fun JournalScreen(
     onOpenEntry: (JournalEntry) -> Unit = {},
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().readableMeasure(),
         contentPadding = PaddingValues(bottom = 88.dp),
     ) {
         if (snapshot.hasErrors) {
@@ -303,10 +309,18 @@ fun JournalScreen(
                 // Says what to do next, not just that there is nothing. A bare "No
                 // transactions yet." in an otherwise empty screen tells the user a fact they
                 // can already see and leaves them to find the way forward themselves (D9).
+                //
+                // `fillParentMaxHeight` so it settles in the middle of the screen rather than
+                // against the top with two thirds of the viewport empty beneath it. An empty
+                // state anchored to the top reads as content that failed to load; centred, it
+                // reads as the screen's whole message, which is what it is.
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    modifier = Modifier
+                        .fillParentMaxHeight()
+                        .fillMaxWidth()
+                        .padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
                 ) {
                     Text(
                         text = "No transactions yet",
@@ -386,34 +400,69 @@ private fun JournalRow(entry: JournalEntry, onClick: () -> Unit) {
  * A ledger with errors is a normal state, so this informs rather than blocks
  * (docs/ux.md §2). Positions are shown in `file:line` form, which is what the user needs
  * to fix them.
+ *
+ * **Collapsed by default, because it was reading as an alarm.** It used to print five
+ * messages plus "and N more" unconditionally, which on a phone took about a third of the
+ * viewport and pushed the journal below the fold — permanently, since a ledger with errors
+ * stays that way until someone fixes it, and ux.md calls that normal. In dark mode the
+ * error container is a strong red, so a third of the screen went vivid for a state the
+ * specification says is ordinary.
+ *
+ * So the count leads and the detail is behind a tap. The count is where the emphasis
+ * belongs anyway: the header above already says "14 errors" in plain body text, and this
+ * was shouting the same fact underneath it.
  */
 @Composable
 fun ErrorBanner(errors: List<LedgerError>, modifier: Modifier = Modifier) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val count = if (errors.size == 1) "1 error in this ledger" else "${errors.size} errors in this ledger"
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.errorContainer)
-            .padding(16.dp),
+            .clickable { expanded = !expanded }
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .semantics {
+                contentDescription = if (expanded) {
+                    "$count. Showing the first ${minOf(errors.size, 5)}. Tap to hide them."
+                } else {
+                    "$count. Tap to see them."
+                }
+            },
     ) {
-        Text(
-            text = if (errors.size == 1) "1 error in this ledger" else "${errors.size} errors in this ledger",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-        )
-        errors.take(5).forEach { error ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = listOfNotNull(error.position, error.message).joinToString("  "),
-                style = MaterialTheme.typography.bodySmall,
+                text = count,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                // The row already carries a description saying what tapping does; announcing
+                // the chevron separately would say it twice.
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
             )
         }
-        if (errors.size > 5) {
-            Text(
-                text = "and ${errors.size - 5} more",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-            )
+        if (expanded) {
+            errors.take(5).forEach { error ->
+                Text(
+                    text = listOfNotNull(error.position, error.message).joinToString("  "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            if (errors.size > 5) {
+                Text(
+                    text = "and ${errors.size - 5} more",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
         }
     }
 }

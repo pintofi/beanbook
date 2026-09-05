@@ -24,6 +24,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
@@ -187,10 +188,17 @@ class AccessibilityTest {
         // scrolling column has not laid out, and adding controls above the postings pushed
         // this one below the fold. A zero rect reads as "side by side" and fails for the
         // wrong reason.
-        compose.onNodeWithText("Amount").performScrollTo()
+        //
+        // `onAllNodesWithText(...)[0]` rather than `onNodeWithText`: every posting's amount
+        // field is labelled "Amount" now. It used to say "Amount (optional)" from the second
+        // row down, which made the plain label unique by accident — and made that label long
+        // enough to wrap in its own field, which is why it moved to supporting text. The
+        // first posting is the one this measures, so take it by index.
+        val amountFields = compose.onAllNodesWithText("Amount")
+        amountFields[0].performScrollTo()
 
         val account = compose.onNodeWithText("Account 1").fetchSemanticsNode().boundsInRoot
-        val amount = compose.onNodeWithText("Amount").fetchSemanticsNode().boundsInRoot
+        val amount = amountFields[0].fetchSemanticsNode().boundsInRoot
         assertTrue(
             "account ($account) and amount ($amount) are still side by side",
             amount.top >= account.bottom - 1f,

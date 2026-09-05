@@ -30,6 +30,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
+import io.github.pintofi.beanbook.app.R
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.data.ProjectSummary
 
@@ -56,12 +73,10 @@ fun OnboardingScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Beanbook", style = MaterialTheme.typography.headlineMedium)
-        Text(
-            "Plain-text double-entry accounting. Your files are ordinary text on this " +
-                "device, and you can open them on a computer at any time.",
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        WelcomeHeader()
+        WhatThisIs()
+
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -222,5 +237,117 @@ fun ProjectPickerScreen(
                 TextButton(onClick = { pendingDelete = null }) { Text("Keep it") }
             },
         )
+    }
+}
+
+/**
+ * The mark, the name, and one sentence.
+ *
+ * The icon is rebuilt from its two layers rather than loaded, because `painterResource`
+ * cannot take the `AdaptiveIconDrawable` that `@mipmap/ic_launcher` resolves to, and the
+ * foreground is a 108dp drawable whose visible area is the central 72 — the same reason and
+ * the same arithmetic as the About screen.
+ */
+@Composable
+private fun WelcomeHeader() {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(colorResource(R.color.ic_launcher_background)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_launcher_foreground),
+                contentDescription = null,
+                modifier = Modifier.size(108.dp),
+            )
+        }
+        Text("Beanbook", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "Plain-text double-entry accounting, on your device.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/**
+ * What the app does, before asking for anything.
+ *
+ * The screen used to open on two cards headed "Open an existing project" and "Start a new
+ * project", which asks a decision of somebody who has not been told what they are deciding
+ * about. These four lines are the answer, and they are deliberately **facts rather than
+ * claims**: each one is either a property of the file format or something the app provably
+ * does, so none of it is marketing that a user could later find untrue.
+ *
+ * No illustrations and no screenshots of itself. The audience keeps books in a text editor;
+ * a carousel of stock imagery would be the wrong register, and a tour of screens they have
+ * not reached yet teaches nothing they can act on.
+ */
+@Composable
+private fun WhatThisIs() {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Highlight(
+            Icons.Filled.Description,
+            "Your ledger is plain text",
+            "Ordinary Beancount files in a folder you can open on a computer whenever you like. " +
+                "Nothing is locked in a database only this app can read.",
+        )
+        Highlight(
+            Icons.Filled.Insights,
+            "Beancount and Fava, running here",
+            "The same engine and the same reports you would run on a desktop, on the phone. " +
+                "No account to make and no server to trust.",
+        )
+        Highlight(
+            Icons.Filled.CloudOff,
+            "Works with the network off",
+            "Nothing is uploaded and nothing is tracked. Turn the radio off and the whole app " +
+                "still works.",
+        )
+        Highlight(
+            Icons.Filled.PhotoCamera,
+            "Receipts kept with the entry",
+            "Photograph a receipt and file it against the transaction it belongs to, so the " +
+                "paper and the books stay together.",
+        )
+    }
+}
+
+/** One capability: an icon to anchor the eye, a claim, and the detail under it. */
+@Composable
+private fun Highlight(icon: ImageVector, title: String, detail: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        // Top, so the icon sits beside the heading rather than floating against the middle
+        // of a paragraph whose height depends on the font scale.
+        verticalAlignment = Alignment.Top,
+        // One description for the pair. Read separately a screen reader announces an
+        // unlabelled image and then an orphaned sentence.
+        modifier = Modifier.semantics(mergeDescendants = true) {
+            contentDescription = "$title. $detail"
+        },
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

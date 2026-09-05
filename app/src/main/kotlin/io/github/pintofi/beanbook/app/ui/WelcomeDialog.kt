@@ -13,11 +13,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 /**
- * Says what the app is and where the trial stands, once, on a first launch (B27).
+ * Says where the trial stands, once, on a first launch (B27).
  *
  * This exists so the trial does not have to be announced on every screen forever. Told once
  * at the start and then kept somewhere it can be looked up is how a person learns a fact;
  * a line above every tab is how they learn to stop seeing it.
+ *
+ * It used to open by saying the books are plain text files that go nowhere. The welcome
+ * screen behind it now says that, at more length and with the rest of what the app does, so
+ * repeating it here made the dialog a summary of the page it was covering. What is left is
+ * the one thing the page cannot state as a fact about the app, because it is a fact about
+ * this install: how long is left.
  *
  * The wording states what the trial does *not* take away, because that is the question
  * somebody trusting an accounting app with their records actually has. It is true of this
@@ -28,14 +34,9 @@ import androidx.compose.ui.unit.dp
 fun WelcomeDialog(trialDays: Int?, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Welcome to Beanbook") },
+        title = { Text("Your trial") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Your books are plain text files on this device. You can open them on a " +
-                        "computer at any time, and nothing here sends them anywhere.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
                 Text(
                     when {
                         trialDays == null -> "Everything is unlocked while you try the app."
@@ -55,7 +56,7 @@ fun WelcomeDialog(trialDays: Int?, onDismiss: () -> Unit) {
             TextButton(
                 onClick = onDismiss,
                 modifier = Modifier.semantics {
-                    contentDescription = "Close the welcome and start using the app"
+                    contentDescription = "Close this and start using the app"
                 },
             ) { Text("Get started") }
         },
