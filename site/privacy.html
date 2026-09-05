@@ -126,10 +126,10 @@
 
           <h2>When data leaves the device</h2>
           <p>
-            The repository audit found three outbound code paths: the address
+            The repository audit found two outbound code paths: the address
             entered for remote mode and, in the Expert edition only, optional
-            package fetching and update checks. User-initiated sharing can also
-            send a selected document to an app the user chooses.
+            package fetching. User-initiated sharing can also send a selected
+            document to an app the user chooses.
           </p>
 
           <h3>Your Fava server</h3>
@@ -153,12 +153,14 @@
             Python packages.
           </p>
 
-          <h3>Expert update checks</h3>
+          <h3>Updates</h3>
           <p>
-            Expert update checks never happen on their own: there is no
-            background check, no automatic download and no automatic install.
-            You ask for one. The Play edition
-            has no self-update code.
+            Neither edition checks for updates, and neither can install a
+            package: no build requests the Android permission that would take.
+            Play delivers updates for the Play edition. The Expert edition is
+            installed from a file, so a new version arrives the way the first
+            one did &mdash; you download it and open it, and Android refuses any
+            file not signed with the key that signed the app you have.
           </p>
 
           <h3>Sharing a document</h3>

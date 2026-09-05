@@ -57,16 +57,18 @@ on.
 from the Python Package Index. The request contains the package name; none of your ledger goes
 with it. The Play edition never downloads code from anywhere.
 
-**An update check, Expert edition only.** Nothing happens on its own: there is no background
-check, no automatic download, and no automatic install. You ask, and then you confirm. The Play
-edition has no self-update code at all and updates through the store.
-
 **Buying a tier, Play edition only.** The purchase runs through Google Play. The app asks Play
 what you own when it starts and when you open the Contribute screen, which is also how a refund
 takes effect and how a purchase follows you to a new device.
 
 Sharing a document to another app is a fourth transfer, but it happens only when you tap Share
 and choose the recipient. Android grants that app read access to the one file.
+
+**Updates are not one of those paths.** Neither edition checks for one, and neither can install
+a package: no build requests `REQUEST_INSTALL_PACKAGES`. Play delivers updates for the Play
+edition; the Expert edition is installed from a file, so a new version arrives the way the
+first one did, and Android refuses any file not signed with the key that signed the app you
+have.
 
 ## `https` and `http`
 

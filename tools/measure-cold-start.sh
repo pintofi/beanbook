@@ -19,7 +19,7 @@ SERIAL="${1:-${ANDROID_SERIAL:-}}"
 [ -n "$SERIAL" ] || { echo "usage: $0 <adb-serial>" >&2; exit 2; }
 ADB=(adb -s "$SERIAL")
 
-PKG=dev.beancount.app.expert.debug
+PKG=io.github.pintofi.beanbook.expert.debug
 RUNNER="$PKG.test/androidx.test.runner.AndroidJUnitRunner"
 
 echo "=== clearing app data so the interpreter is unpacked from cold"

@@ -37,12 +37,27 @@ val forbiddenExpertDependencies = listOf(
 
 /** Patterns that must not appear in code compiled into the play edition. */
 val forbiddenPlaySourcePatterns = listOf(
-    Regex("""PackageInstaller"""),         // D3: installing APKs
-    Regex("""ACTION_INSTALL_PACKAGE"""),   // D3
-    Regex("""REQUEST_INSTALL_PACKAGES"""), // D3
     Regex("""allowsNativeCode\s*=\s*true"""),   // D1
     Regex("""allowsAndroidBridge\s*=\s*true"""), // D2
     Regex("""allowsPackageDownload\s*=\s*true"""), // D1: no fetching code, native or not
+)
+
+/**
+ * D3, widened: **no** edition may install a package.
+ *
+ * These three were play-only rules, because Expert shipped a self-updater and needed the API
+ * and the permission. That updater is gone (B40): Android already refuses any package not
+ * signed with the key that signed the installed app, which is the check that protects an
+ * update, so ours only added a paste-a-code step and a sensitive permission. With no caller
+ * left in either flavor, the honest rule is the stronger one — and it is what stops the
+ * subsystem being rebuilt without a decision, in Expert as much as in Play.
+ *
+ * Scanned across `src/main`, `src/play` and `src/expert`, and their manifests.
+ */
+val forbiddenInstallerPatterns = listOf(
+    Regex("""PackageInstaller"""),
+    Regex("""ACTION_INSTALL_PACKAGE"""),
+    Regex("""REQUEST_INSTALL_PACKAGES"""),
 )
 
 /**
@@ -59,10 +74,15 @@ val forbiddenSharedSourcePatterns = listOf(
     Regex("""BillingClient"""),
 )
 
+//
+// D3 is deliberately not in this list any more. It was `allowsSelfUpdate = false`, and the
+// flag was deleted with the self-updater: nothing read it, and a policy object asserting a
+// capability the app does not have is an assertion about nothing. D3 is now enforced by
+// `forbiddenInstallerPatterns` across every edition, which is a stronger claim than a play-side
+// declaration was — absence everywhere, rather than a false stated in one source set.
 val requiredPlaySourcePatterns = listOf(
     Regex("""allowsNativeCode\s*=\s*false"""),    // D1
     Regex("""allowsAndroidBridge\s*=\s*false"""), // D2
-    Regex("""allowsSelfUpdate\s*=\s*false"""),    // D3
     Regex("""allowsPackageDownload\s*=\s*false"""), // D1
 )
 
@@ -262,7 +282,7 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
             }
         }
 
-        // --- R9: no interpreter in the app process ------------------------------------
+        // --- R9 and D3: neither an interpreter nor an installer in the app process -----
         val appProcessDirs = listOf(file("src/main"), file("src/play"), file("src/expert"))
         for (dir in appProcessDirs) {
             if (!dir.exists()) continue
@@ -277,7 +297,26 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
                                 "interpreter in the app process; go through the engine binder"
                         }
                     }
+                    for (pattern in forbiddenInstallerPatterns) {
+                        if (pattern.containsMatchIn(text)) {
+                            violations += "D3: /${pattern.pattern}/ in " +
+                                "${source.relativeTo(projectDir)} would install a package; " +
+                                "no edition does that any more (B40)"
+                        }
+                    }
                 }
+        }
+
+        // Both editions' manifests, not only play's: the permission is forbidden everywhere.
+        for (manifest in appProcessDirs.map { File(it, "AndroidManifest.xml") }) {
+            if (!manifest.exists()) continue
+            val text = manifest.readText()
+            for (pattern in forbiddenInstallerPatterns) {
+                if (pattern.containsMatchIn(text)) {
+                    violations += "D3: /${pattern.pattern}/ in " +
+                        "${manifest.relativeTo(projectDir)}"
+                }
+            }
         }
 
         // --- manifest check ---------------------------------------------------------
@@ -307,7 +346,8 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
                 "(${forbiddenPlayDependencies.size} dependency rules, " +
                 "${forbiddenPlaySourcePatterns.size} forbidden + " +
                 "${requiredPlaySourcePatterns.size} required + " +
-                "${forbiddenAppProcessPatterns.size} process-separation source rules, " +
+                "${forbiddenAppProcessPatterns.size} process-separation + " +
+                "${forbiddenInstallerPatterns.size} installer source rules, " +
                 "${forbiddenPlayPermissions.size} permission rules)"
         )
     }

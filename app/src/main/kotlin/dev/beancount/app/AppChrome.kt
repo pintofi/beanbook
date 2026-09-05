@@ -214,16 +214,15 @@ internal fun MoreMenu(entitlement: Entitlement, onContribute: () -> Unit, onOpen
         MoreSection.REMOTE to "Use a Fava server you host yourself",
         MoreSection.PLUGINS to "Extra checks and transformations, from files you supply",
         MoreSection.APPEARANCE to "Theme, dark mode and colours",
-        MoreSection.UPDATES to "Check for a signed update to this app",
         MoreSection.SCRIPTS to "Run a Python script once against the open ledger",
         MoreSection.LICENCES to "This app's licence, and everything it is built on",
+        MoreSection.ABOUT to "Version, licence and contact",
     )
 
-    // Updates are the one section that is not in both editions: the Play build has no
-    // self-update anything, by policy, so offering the entry would be offering a dead end.
-    val sections = MoreSection.entries.filter {
-        it != MoreSection.UPDATES || currentPluginPolicy().allowsSelfUpdate
-    }
+    // Every section is in both editions. Updates used to be the exception -- the Play build
+    // has no self-update anything, by policy, so the entry would have been a dead end -- but
+    // neither edition self-updates now, and both have a version worth showing.
+    val sections = MoreSection.entries
 
     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
         // The entitlement is stated here, once, instead of above every screen. It is a fact

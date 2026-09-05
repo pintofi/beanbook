@@ -28,11 +28,16 @@ tasks.matching {
 }
 
 android {
+    // The Kotlin package tree is still `dev.beancount.*` while `applicationId` is not. That
+    // split is deliberate, not drift: the application id is the identity Play records and can
+    // never be changed after the first publish, so it moved as soon as the organisation name
+    // was settled. The namespace is internal, changeable at any time, and moving it touches
+    // every source file in the repository, so it is its own change (B38).
     namespace = "dev.beancount.app"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "dev.beancount.app"
+        applicationId = "io.github.pintofi.beanbook"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
@@ -219,15 +224,14 @@ apply(from = "$rootDir/gradle/play-boundaries.gradle.kts")
 /**
  * Prints the SHA-256 of every release APK.
  *
- * This is the join between the release pipeline and the expert edition's self-update: an
- * update manifest carries the checksum of the APK it offers, and the app refuses a download
- * whose bytes do not match (`ApkUpdate`, docs/milestones/m11-part5.md). Publishing a release
- * therefore means taking these values to `issue-update.sh`.
+ * The expert APKs are installed from a file, with no store vouching for them, so the release
+ * publishes these values beside the artifacts and a user can check what they downloaded. They
+ * used to feed `issue-update.sh` as well, which signed an update manifest for the in-app
+ * self-updater; that updater is gone (`UpdateSection`), so this task now has one purpose.
  *
- * The manifest is **not** signed here on purpose. Signing needs the Ed25519 private key,
- * which lives beside the issuance script outside this repository and does not belong in CI
- * secrets: a key that CI can use is a key that anyone who can change a workflow file can use.
- * CI publishes the artifacts and their checksums; a person issues the manifest offline.
+ * Nothing is signed here on purpose. The signing key lives outside this repository and does
+ * not belong in CI secrets: a key that CI can use is a key that anyone who can change a
+ * workflow file can use. CI publishes the artifacts and their checksums; a person signs.
  */
 tasks.register("releaseChecksums") {
     group = "publishing"

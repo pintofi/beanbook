@@ -44,7 +44,7 @@ and on desktop Beancount.
 |---|---|---|
 | D1 | Play user-plugins must be **pure Python**; no wheels containing `.so` | [DNA policy](https://support.google.com/googleplay/android-developer/answer/9888379): "an app may not download executable code (such as dex, JAR, .so files) from a source other than Google Play." Native code for Play must arrive via the APK/AAB or Play Feature Delivery. |
 | D2 | Play user-plugins run with the **Java/Android bridge withheld** | The DNA exception covers interpreters providing *indirect* access to Android APIs. Chaquopy's bridge is direct access, so the Play build withholds it from user code to stay inside the exception. |
-| D3 | No self-update in `play` | Play apps update through Play. |
+| D3 | No self-update or installer code in `play` | Play apps update through Play. Neither edition has any now, but the gate stays: it is what stops one being reintroduced. |
 
 Everything else — including Fava extensions in Tier 3 — is identical across editions.
 
@@ -84,11 +84,11 @@ fails if:
 | Edition | Mechanism |
 |---|---|
 | `play` | Google Play releases only. No self-update, no APK/`.so`/`dex` fetching. Play Feature Delivery may later deliver optional on-device components (the beangrow stack) — from Play, therefore compliant. |
-| `expert` | Opt-in check (default **off**, user-configurable frequency) against GitHub Releases over TLS → release notes → **explicit user action** downloads the APK → signature and SHA-256 verified against the release manifest → `PackageInstaller` → user confirms in the system dialog. Never silent, never automatic. |
+| `expert` | None in the app. It is installed from a file, so it updates like any sideloaded app: the user downloads the new APK themselves and opens it, and Android refuses one not signed with the key that signed the installed build. The About section says which build is installed and where a newer one comes from; both editions have it. |
 
-Downgrades are rejected unless the user explicitly enables recovery-downgrade. The Python
-runtime is never replaced while executing; an update that changes it requires an engine
-stop and a ledger-compatibility snapshot first.
+Android handles both halves of that: it refuses a package signed with a different key, and it
+refuses one whose version code is lower than the installed build's. Neither is something this
+app implements or can weaken.
 
 ---
 

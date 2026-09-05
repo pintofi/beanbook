@@ -64,9 +64,9 @@ internal enum class MoreSection(val label: String) {
     REMOTE("Remote"),
     PLUGINS("Plugins"),
     APPEARANCE("Appearance"),
-    UPDATES("Updates"),
     SCRIPTS("Scripts"),
     LICENCES("Licences"),
+    ABOUT("About"),
 }
 
 /**

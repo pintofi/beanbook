@@ -14,7 +14,6 @@ object ExpertPluginPolicy : PluginPolicy {
     override val allowsUserCode = true
     override val allowsNativeCode = true
     override val allowsAndroidBridge = true
-    override val allowsSelfUpdate = true
     override val allowsPackageDownload = true
     override val name = "expert"
 }

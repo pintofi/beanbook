@@ -251,8 +251,9 @@ internal fun SurfaceContent(
                             busyMessage = projectMessage,
                         )
 
-                        MoreSection.UPDATES ->
-                            dev.beancount.app.update.UpdateSection()
+                        MoreSection.ABOUT -> dev.beancount.app.about.AboutSection(
+                            onOpenLicences = { onMoreSection(MoreSection.LICENCES) },
+                        )
 
                         MoreSection.LICENCES -> dev.beancount.app.ui.LicencesScreen()
 

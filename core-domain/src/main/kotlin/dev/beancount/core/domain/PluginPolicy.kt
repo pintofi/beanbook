@@ -26,9 +26,6 @@ interface PluginPolicy {
      */
     val allowsAndroidBridge: Boolean
 
-    /** Whether the app may download and install an APK update itself. Never on Play. */
-    val allowsSelfUpdate: Boolean
-
     /**
      * Whether the app may **fetch** a Python package from the network on the user's request.
      *

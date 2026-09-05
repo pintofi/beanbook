@@ -14,7 +14,6 @@ object PlayPluginPolicy : PluginPolicy {
     override val allowsUserCode = true
     override val allowsNativeCode = false      // D1: no .so from a non-Play source
     override val allowsAndroidBridge = false   // D2: interpreter exception is about indirect access
-    override val allowsSelfUpdate = false      // D3: Play delivers updates
     override val allowsPackageDownload = false // D1: no fetching code, native or not
     override val name = "play"
 }

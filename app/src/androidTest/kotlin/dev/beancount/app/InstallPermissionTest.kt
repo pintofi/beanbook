@@ -4,56 +4,42 @@ import android.content.pm.PackageManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The permission the Expert edition's self-update needs, and the Play edition must not have.
+ * Neither edition may install packages.
  *
- * `ApkUpdate` commits a `PackageInstaller` session in `MODE_FULL_INSTALL`. Android requires
- * `REQUEST_INSTALL_PACKAGES` for that from API 26 onwards, so without it a verified, downloaded
- * update fails at the final step — after the signature check, the checksum check and the
- * certificate check have all passed.
+ * This test used to assert the opposite for Expert: that edition shipped a self-updater which
+ * committed a `PackageInstaller` session, and so had to declare `REQUEST_INSTALL_PACKAGES`.
+ * Both are gone. Updating a sideloaded build is now what it is for any app installed from a
+ * file — the user downloads the new one and opens it, and Android refuses anything not signed
+ * with the key that signed the installed app.
  *
- * `:verifyPlayFlavorBoundaries` already fails the build if this permission appears in the Play
- * edition. That rule guards nothing unless the Expert edition actually declares it, which is
- * the half no build gate was checking and no test reached: `UpdateFlowTest` verifies the
- * manifest, the checksum and the discard path, and stops deliberately short of installing.
- *
- * Asserted from the installed package rather than the source manifest, because what matters is
- * what the merged manifest granted the running app.
+ * So the permission is now a thing to keep out rather than a thing to check for, in both
+ * flavors, and the assertion is the same for both. `:verifyPlayFlavorBoundaries` covers the
+ * Play half at build time (D3, docs/distribution.md 2.1); this covers both at run time, from
+ * the merged manifest of the installed package rather than from a source file, because what
+ * matters is what the running app was actually granted.
  */
 @RunWith(AndroidJUnit4::class)
 class InstallPermissionTest {
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
-    private fun declaredPermissions(): List<String> {
+    @Test fun noEditionMayInstallPackages() {
         val info = context.packageManager.getPackageInfo(
             context.packageName,
             PackageManager.GET_PERMISSIONS,
         )
-        return info.requestedPermissions?.toList().orEmpty()
-    }
-
-    @Test fun theEditionThatCanUpdateItselfMayInstallPackages() {
-        val declared = declaredPermissions()
+        val declared = info.requestedPermissions?.toList().orEmpty()
         val install = "android.permission.REQUEST_INSTALL_PACKAGES"
 
-        if (currentPluginPolicy().allowsSelfUpdate) {
-            assertTrue(
-                "this edition ships a self-update that commits a PackageInstaller session, " +
-                    "but does not declare $install — the install would fail after every " +
-                    "verification passed. Declared: $declared",
-                declared.contains(install),
-            )
-        } else {
-            assertFalse(
-                "the Play edition must not be able to install packages (docs/distribution.md " +
-                    "2.1): $install is declared",
-                declared.contains(install),
-            )
-        }
+        assertFalse(
+            "no edition installs packages any more: the self-updater was removed and " +
+                "updating a sideloaded build is download-and-open. $install is declared, " +
+                "so something reintroduced it. Declared: $declared",
+            declared.contains(install),
+        )
     }
 }
