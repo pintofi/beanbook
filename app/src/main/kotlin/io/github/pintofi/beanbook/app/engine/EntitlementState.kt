@@ -66,7 +66,12 @@ class EntitlementState(
         scope.launch {
             withContext(Dispatchers.IO) { entitlements.removeKey() }
             refresh()
-            "Key removed. It still works and can be entered again."
+            // Assigned, not merely constructed. This string sat here as a bare expression
+            // that the compiler warned was unused, so removing a key changed the tier and
+            // said nothing -- while applying one said "Key accepted". The screen renders
+            // whatever `message` holds, so the whole feedback path existed and was simply
+            // never given the value.
+            _message.value = "Key removed. It still works and can be entered again."
         }
     }
 
