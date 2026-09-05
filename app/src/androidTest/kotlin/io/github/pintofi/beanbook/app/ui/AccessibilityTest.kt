@@ -225,9 +225,27 @@ class AccessibilityTest {
         render(widthDp = 320, fontScale = 2f) {
             OnboardingScreen(onCreateNew = {}, onOpenFolder = {}, onOpenArchive = {})
         }
+        // The welcome is its own page now, and the ways in are behind it. Both halves are
+        // checked at this size: the action that moves between them has to be reachable, or
+        // the second page cannot be got to at all — which is the same failure this test was
+        // written for, one page further along.
+        // By description, not by text: the button carries an accessible name that says where
+        // it goes as well as what it is called, and that replaces the visible label on the
+        // merged node. The name still begins with the label a sighted user reads.
+        // Asserted present without scrolling to it, deliberately: it sits in the scaffold's
+        // floating slot rather than in the scrolling column, so it is on screen whatever the
+        // content does. Trying to scroll to it fails with "no parent layout with a Scroll
+        // SemanticsAction", which is this property being demonstrated rather than a fault.
+        val onward = compose.onNodeWithContentDescription("Get started", substring = true)
+        onward.assertExists()
+        assertAccessible()
+
+        onward.performClick()
+
         compose.onNodeWithText("Choose folder").performScrollTo().assertExists()
         compose.onNodeWithText("Choose .zip").performScrollTo().assertExists()
         compose.onNodeWithText("Create").performScrollTo().assertExists()
+        compose.onNodeWithContentDescription("Back to the welcome").assertExists()
         assertAccessible()
     }
 
