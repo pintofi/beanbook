@@ -20,6 +20,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -233,6 +245,11 @@ internal fun MoreMenu(entitlement: Entitlement, onContribute: () -> Unit, onOpen
             androidx.compose.material3.ListItem(
                 headlineContent = { Text(entry.label) },
                 supportingContent = descriptions[entry]?.let { { Text(it) } },
+                // An anchor for the eye. Eleven rows of two-line text read as one block, and
+                // the row you want is found by reading each label rather than by recognising
+                // a shape. Decorative in the semantics sense -- the description beside it
+                // already names the row -- so it carries no contentDescription of its own.
+                leadingContent = { Icon(iconFor(entry), contentDescription = null) },
                 modifier = Modifier
                     .clickable { onOpen(entry) }
                     .semantics {
@@ -357,4 +374,19 @@ internal fun LoadingOrError(
             }
         }
     }
+}
+
+/** One icon per More section. Chosen to be recognisable rather than clever. */
+private fun iconFor(section: MoreSection): ImageVector = when (section) {
+    MoreSection.PROJECTS -> Icons.Filled.FolderOpen
+    MoreSection.FILES -> Icons.Filled.Description
+    MoreSection.DOCUMENTS -> Icons.Filled.PhotoLibrary
+    MoreSection.BACKUP -> Icons.Filled.Backup
+    MoreSection.MIRROR -> Icons.Filled.Sync
+    MoreSection.REMOTE -> Icons.Filled.Dns
+    MoreSection.PLUGINS -> Icons.Filled.Extension
+    MoreSection.APPEARANCE -> Icons.Filled.Palette
+    MoreSection.SCRIPTS -> Icons.Filled.Terminal
+    MoreSection.LICENCES -> Icons.Filled.Gavel
+    MoreSection.ABOUT -> Icons.Filled.Info
 }

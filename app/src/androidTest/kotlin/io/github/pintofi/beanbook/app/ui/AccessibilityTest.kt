@@ -361,7 +361,7 @@ class AccessibilityTest {
     /**
      * The entry detail, which is where the destructive and duplicating actions live (B11).
      *
-     * "Enter again" writes nothing by itself, but it is the control that leads to a second
+     * "Clone" writes nothing by itself, but it is the control that leads to a second
      * transaction, so it has to say what it does rather than relying on an icon.
      */
     @Test fun entryDetailIsLabelledAndFitsAtDoubleFontScale() {
@@ -387,7 +387,7 @@ class AccessibilityTest {
             EntryDetailScreen(entry = entry, onClone = {}, onClose = {})
         }
 
-        compose.onNodeWithContentDescription("Enter this transaction again")
+        compose.onNodeWithContentDescription("Clone this transaction into a new entry")
             .performScrollTo().assertExists()
         assertAccessible()
     }

@@ -32,7 +32,7 @@ import io.github.pintofi.beanbook.core.entitlement.Tier
 /**
  * Contribute: what is unlocked, why, and how to enter a key (docs/distribution.md §4.7).
  *
- * The screen states plainly that the app is GPL-2.0, that anyone can build it without a key,
+ * The screen states plainly what a contribution does and does not buy,
  * and that a contribution is support rather than a technical restriction. There is no
  * countdown and no nagging modal.
  *
@@ -71,10 +71,9 @@ fun ContributeScreen(
         }
 
         Text(
-            "Beanbook is free software under the GPL-2.0, and you can build it from source " +
-                "with every feature working. Contributing supports the work rather than " +
-                "unlocking your data: the ledger, journal, balances, raw editing, import, " +
-                "export, backup and restore are free in every tier.",
+            "Contributing supports the work rather than unlocking your data: the ledger, " +
+                "journal, balances, raw editing, import, export, backup and restore are " +
+                "free in every tier.",
             style = MaterialTheme.typography.bodySmall,
         )
 

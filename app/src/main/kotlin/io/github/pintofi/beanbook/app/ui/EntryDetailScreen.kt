@@ -129,9 +129,9 @@ fun EntryDetailScreen(
             Button(
                 onClick = onClone,
                 modifier = Modifier.semantics {
-                    contentDescription = "Enter this transaction again"
+                    contentDescription = "Clone this transaction into a new entry"
                 },
-            ) { Text("Enter again") }
+            ) { Text("Clone") }
             if (onEdit != null && !confirmingDelete) {
                 TextButton(
                     onClick = onEdit,
@@ -187,10 +187,5 @@ fun EntryDetailScreen(
             }
         }
 
-        Text(
-            "\"Enter again\" copies these details into the Add tab with today's date. " +
-                "Nothing is written until you save.",
-            style = MaterialTheme.typography.bodySmall,
-        )
     }
 }
