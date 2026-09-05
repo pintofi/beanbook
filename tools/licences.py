@@ -124,8 +124,8 @@ def build(apk: Path) -> dict:
             "licence": "GPL-2.0-only",
             "text": (REPO / "COPYING").read_text(encoding="utf-8").strip(),
             "note": (
-                "This app is free software under the GNU General Public License, version 2 "
-                "— that version only, because Beancount is licensed that way and "
+                "This app is free software under the GNU General Public License, version 2, "
+                "and that version only, because Beancount is licensed that way and "
                 "explicitly not \"or later\". You may use, study, share and change it, and "
                 "anything you distribute that is built from it must come with the same "
                 "freedoms and its source."

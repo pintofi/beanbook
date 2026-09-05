@@ -54,7 +54,7 @@ fun ScriptRunnerScreen(
         )
         Text(
             "A Python script, run once against the ledger you have open. It is given the " +
-                "path in `ledger_path`; anything it prints appears below.",
+                "path in ledger_path; anything it prints appears below.",
             style = MaterialTheme.typography.bodySmall,
         )
 

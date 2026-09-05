@@ -113,11 +113,6 @@ fun LicencesScreen(modifier: Modifier = Modifier) {
                 Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    "Licences",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.semantics { heading() },
-                )
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -134,7 +129,7 @@ fun LicencesScreen(modifier: Modifier = Modifier) {
                         Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text("${app.name} — ${app.version}", style = MaterialTheme.typography.titleSmall)
+                        Text("${app.name}, ${app.version}", style = MaterialTheme.typography.titleSmall)
                         Text(app.source, style = MaterialTheme.typography.bodySmall)
                         Text("Read the full licence", style = MaterialTheme.typography.labelLarge)
                     }

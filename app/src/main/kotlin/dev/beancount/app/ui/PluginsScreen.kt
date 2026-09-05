@@ -65,7 +65,6 @@ fun PluginsScreen(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Plugins", style = MaterialTheme.typography.titleMedium)
 
         UnsandboxedWarning(policy)
 

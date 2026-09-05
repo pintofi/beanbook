@@ -148,13 +148,6 @@ private fun FileList(
         if (errors.isNotEmpty()) item { ErrorBanner(errors) }
         message?.let { item { Text(it, Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall) } }
 
-        item {
-            Text(
-                "Files",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp),
-            )
-        }
         items(files, key = { it.absolutePath }) { file ->
             Row(
                 modifier = Modifier
@@ -165,7 +158,7 @@ private fun FileList(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(file.relativePath, style = MaterialTheme.typography.bodyLarge)
-                Text("${file.sizeBytes} B", style = MaterialTheme.typography.bodySmall)
+                Text(fileSize(file.sizeBytes), style = MaterialTheme.typography.bodySmall)
             }
             HorizontalDivider()
         }
@@ -299,4 +292,17 @@ internal fun beancountHighlighting(): VisualTransformation {
         }
         TransformedText(annotated, OffsetMapping.Identity)
     }
+}
+
+/**
+ * A file size a person can read at a glance. "5115 B" for a ledger file was accurate and
+ * unreadable.
+ *
+ * Units match `ProjectRegistry.describe`, which already says "KB" on the Projects screen;
+ * two spellings of a kilobyte in one app is the kind of detail that looks like a bug.
+ */
+private fun fileSize(bytes: Long): String = when {
+    bytes < 1_000 -> "$bytes B"
+    bytes < 1_000_000 -> "${bytes / 1_000} KB"
+    else -> "%.1f MB".format(bytes / 1_000_000.0)
 }

@@ -130,13 +130,6 @@ fun ProjectPickerScreen(
     var newTitle by remember { mutableStateOf("") }
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
-        item {
-            Text(
-                "Projects",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp),
-            )
-        }
 
         items(projects, key = { it.id }) { project ->
             Row(
@@ -177,7 +170,7 @@ fun ProjectPickerScreen(
                     HorizontalDivider()
                     Text("The open project", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Write a copy of it into a folder you choose — the ledger, everything " +
+                        "Write a copy into a folder you choose: the ledger, everything " +
                             "it includes, and its documents. It is a copy taken now, not kept " +
                             "in step afterwards; Mirror is the one that stays in step.",
                         style = MaterialTheme.typography.bodySmall,
@@ -192,7 +185,7 @@ fun ProjectPickerScreen(
                 OutlinedTextField(
                     value = newTitle,
                     onValueChange = { newTitle = it },
-                    label = { Text("Or create a new one") },
+                    label = { Text("Name") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
