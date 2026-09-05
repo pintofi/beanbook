@@ -164,6 +164,13 @@ android {
 }
 
 dependencies {
+    // Raises the floor rather than adding a dependency: androidx.fragment is never used
+    // directly, but Play Billing puts an old one on the play compile classpath. See the
+    // note beside `fragment` in the version catalog.
+    constraints {
+        implementation(libs.androidx.fragment)
+    }
+
     implementation(project(":core-domain"))
     implementation(project(":core-data"))
     implementation(project(":core-engine"))

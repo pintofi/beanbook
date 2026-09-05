@@ -134,7 +134,7 @@ class GatingTest {
         // another payment method from inside the app, and the Expert build matches it so the
         // two editions differ only where policy forces them to.
         routes.forEach { route ->
-            assertFalse(route.linksOut, "${'$'}{route.label} may not steer the user to a payment page")
+            assertFalse(route.linksOut, "${route.label} may not steer the user to a payment page")
         }
 
         assertFalse(PurchaseRoute.EnterKeyOnly.transactsInApp, "pasting a key takes no money")

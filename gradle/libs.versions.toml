@@ -34,6 +34,13 @@ activityCompose = "1.13.0"
 lifecycle = "2.11.0"
 coreKtx = "1.19.0"
 documentFile = "1.1.0"
+# androidx.fragment is not used directly. It is pinned because Play Billing drags
+# fragment 1.0.0 onto the play *compile* classpath, where it resolves to 1.1.0 -- below the
+# 1.3.0 that registerForActivityResult requires, which lint reports as eight errors in the
+# play flavor and none in expert. The runtime classpath already resolves to 1.5.4; the
+# constraint in app/build.gradle.kts makes the compile classpath agree instead of leaving
+# the two to differ. Apache-2.0, like the rest of AndroidX.
+fragment = "1.5.4"
 # CameraX for receipt capture (M8). Apache-2.0, like the rest of AndroidX: the engine runs
 # in its own process, which is what keeps that compatible with a GPL-2.0-only app
 # (docs/architecture.md 7.1). 1.5.0 -> 1.6.2 on 2026-09-03, the current stable.
@@ -69,6 +76,7 @@ eddsa = "0.3.0"
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentFile" }
+androidx-fragment = { module = "androidx.fragment:fragment", version.ref = "fragment" }
 
 camera-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
 camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
