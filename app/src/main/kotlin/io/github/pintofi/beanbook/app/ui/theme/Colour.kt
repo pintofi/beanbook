@@ -52,6 +52,21 @@ internal val LightColours = lightColorScheme(
     inverseOnSurface = Color(0xFFEFF1F1),
     inversePrimary = Color(0xFF80D5D4),
     scrim = Color(0xFF000000),
+
+    // The neutrals every raised surface is actually drawn from. Material 3 fills these from
+    // its purple baseline when they are not given, and `Card`, `NavigationBar`, menus and
+    // sheets all read them -- so leaving them out produced teal accents sitting on lilac
+    // containers, which is the exact failure the note at the top of this file warns about.
+    // Tinted towards the same green-grey as `surfaceVariant` so a card recedes behind the
+    // figures on it instead of introducing a second hue.
+    surfaceBright = Color(0xFFFAFDFC),
+    surfaceDim = Color(0xFFD9E0DF),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF4FAF9),
+    surfaceContainer = Color(0xFFEEF4F3),
+    surfaceContainerHigh = Color(0xFFE8EEED),
+    surfaceContainerHighest = Color(0xFFE2E9E8),
+    surfaceTint = Color(0xFF006A6A),
 )
 
 internal val DarkColours = darkColorScheme(
@@ -88,6 +103,18 @@ internal val DarkColours = darkColorScheme(
     inverseOnSurface = Color(0xFF191C1C),
     inversePrimary = Color(0xFF006A6A),
     scrim = Color(0xFF000000),
+
+    // The same roles as the light scheme, for the same reason. `onBlack()` below already set
+    // five of these, which is how the omission survived: the AMOLED variant looked right and
+    // the ordinary dark theme quietly used Material's baseline neutrals.
+    surfaceBright = Color(0xFF353A39),
+    surfaceDim = Color(0xFF111414),
+    surfaceContainerLowest = Color(0xFF0B0F0F),
+    surfaceContainerLow = Color(0xFF191C1C),
+    surfaceContainer = Color(0xFF1D2121),
+    surfaceContainerHigh = Color(0xFF282B2B),
+    surfaceContainerHighest = Color(0xFF323636),
+    surfaceTint = Color(0xFF80D5D4),
 )
 
 /**
