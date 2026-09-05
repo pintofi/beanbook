@@ -519,7 +519,7 @@ class MainActivity : ComponentActivity() {
                         documentCapture = DocumentCaptureHandle(
                             pages = documentPages,
                             captureFile = { app.documentCapture.nextCaptureFile() },
-                            onCapture = { file, _ ->
+                            onCapture = { file ->
                                 if (file.length() > 0) app.documentCapture.add(file)
                             },
                             onRotate = { app.documentCapture.rotate(it) },

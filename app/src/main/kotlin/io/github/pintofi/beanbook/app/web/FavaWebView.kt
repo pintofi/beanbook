@@ -166,6 +166,10 @@ fun WebView.applyBeancountHardening(debuggingAllowed: Boolean = false) {
         javaScriptCanOpenWindowsAutomatically = false
         setSupportMultipleWindows(false)
         setGeolocationEnabled(false)
+        // A no-op since API 26, so at minSdk 29 this changes nothing. Kept and
+        // suppressed rather than deleted: WebViewHardeningTest asserts the posture,
+        // and the line is where a reader looks to see that form data was considered.
+        @Suppress("DEPRECATION")
         saveFormData = false
         cacheMode = WebSettings.LOAD_DEFAULT
     }

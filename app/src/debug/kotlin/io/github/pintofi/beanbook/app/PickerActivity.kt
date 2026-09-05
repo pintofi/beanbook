@@ -3,6 +3,8 @@ package io.github.pintofi.beanbook.app
 import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * A bare activity that opens the tree picker and holds the result.
@@ -12,7 +14,12 @@ import android.content.Intent
  */
 class PickerActivity : Activity() {
     @Volatile private var result: Instrumentation.ActivityResult? = null
-    private val lock = Object()
+
+    // A latch rather than synchronized/wait/notify on a bare lock object. The old form used
+    // `java.lang.Object` as the monitor, which Kotlin warns against, and `kotlin.Any` is not
+    // a drop-in replacement because it does not expose wait/notify at all. A one-shot latch
+    // is what this actually needs: one result, awaited once, with a timeout.
+    private val arrived = CountDownLatch(1)
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,19 +30,12 @@ class PickerActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        synchronized(lock) {
-            result = Instrumentation.ActivityResult(resultCode, data)
-            lock.notifyAll()
-        }
+        result = Instrumentation.ActivityResult(resultCode, data)
+        arrived.countDown()
     }
 
     fun awaitResult(timeoutMs: Long): Intent? {
-        val deadline = System.currentTimeMillis() + timeoutMs
-        synchronized(lock) {
-            while (result == null && System.currentTimeMillis() < deadline) {
-                lock.wait(200)
-            }
-        }
+        arrived.await(timeoutMs, TimeUnit.MILLISECONDS)
         return result?.takeIf { it.resultCode == RESULT_OK }?.resultData
     }
 

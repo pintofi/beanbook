@@ -16,7 +16,14 @@ import java.io.File
 data class DocumentCaptureHandle(
     val pages: CapturedPages,
     val captureFile: () -> File,
-    val onCapture: (File, (Boolean) -> Unit) -> Unit,
+    /**
+     * Called with the file a page was written to.
+     *
+     * It took a `(Boolean) -> Unit` completion callback until 2026-09-05, which nothing
+     * ever called: the implementation decides success from the file itself, and both
+     * call sites passed a lambda that ignored the argument.
+     */
+    val onCapture: (File) -> Unit,
     val onRotate: (Int) -> Unit,
     val onMove: (Int, Int) -> Unit,
     val onRemovePage: (Int) -> Unit,

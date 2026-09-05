@@ -19,8 +19,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
@@ -39,8 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.contentDescription
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -113,7 +113,11 @@ fun DocumentsScreen(
         // Two jobs, kept apart. Beyond being what the user asked for, it is what keeps the
         // camera unbound while somebody is only tidying up: CameraPane below is reached only
         // in ADD, so ORGANIZE never opens the device.
-        TabRow(selectedTabIndex = mode.ordinal) {
+        // SecondaryTabRow, not PrimaryTabRow: plain `TabRow` is deprecated in favour of
+        // both, and the secondary one keeps the indicator these tabs already had. The
+        // primary variant draws a wider, rounded indicator, which would be a visual
+        // change smuggled in under a deprecation fix.
+        SecondaryTabRow(selectedTabIndex = mode.ordinal) {
             DocumentsMode.entries.forEach { entry ->
                 Tab(
                     selected = mode == entry,
@@ -411,7 +415,7 @@ fun rememberCameraPermission(): Boolean {
 /** The viewfinder, bound to this composable's lifecycle and unbound when it leaves. */
 @Composable
 internal fun CameraPane(
-    onCapture: (File, (Boolean) -> Unit) -> Unit,
+    onCapture: (File) -> Unit,
     captureFile: () -> File,
 ) {
     val context = LocalContext.current
@@ -502,12 +506,12 @@ internal fun CameraPane(
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(result: ImageCapture.OutputFileResults) {
                         busy = false
-                        onCapture(target) { }
+                        onCapture(target)
                     }
 
                     override fun onError(exception: ImageCaptureException) {
                         busy = false
-                        onCapture(target) { false }
+                        onCapture(target)
                     }
                 },
             )

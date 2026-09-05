@@ -105,7 +105,7 @@ class AccessibilityTest {
                 capture = DocumentCaptureHandle(
                     pages = CapturedPages(),
                     captureFile = { java.io.File("unused") },
-                    onCapture = { _, _ -> },
+                    onCapture = { },
                     onRotate = {},
                     onMove = { _, _ -> },
                     onRemovePage = {},
@@ -244,7 +244,7 @@ class AccessibilityTest {
                 capture = DocumentCaptureHandle(
                     pages = CapturedPages().add("page-1.jpg").add("page-2.jpg"),
                     captureFile = { java.io.File("unused") },
-                    onCapture = { _, _ -> },
+                    onCapture = { },
                     onRotate = {},
                     onMove = { _, _ -> },
                     onRemovePage = {},
