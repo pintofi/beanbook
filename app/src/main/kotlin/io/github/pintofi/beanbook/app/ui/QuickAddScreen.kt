@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.imePadding
@@ -18,6 +19,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -223,22 +227,19 @@ fun QuickAddScreen(
         // Cleared or pending, as two chips rather than free text: these are the only two
         // flags Beancount accepts on a transaction, and typing is not the right way to pick
         // from a closed set of two (B15).
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FilterChip(
+        SingleChoiceSegmentedButtonRow {
+            SegmentedButton(
                 selected = flag == "*",
                 onClick = { flag = "*" },
-                label = { Text("Cleared") },
+                shape = SegmentedButtonDefaults.itemShape(0, 2),
                 modifier = Modifier.semantics { contentDescription = "Cleared transaction" },
-            )
-            FilterChip(
+            ) { Text("Cleared") }
+            SegmentedButton(
                 selected = flag == "!",
                 onClick = { flag = "!" },
-                label = { Text("Pending") },
+                shape = SegmentedButtonDefaults.itemShape(1, 2),
                 modifier = Modifier.semantics { contentDescription = "Pending transaction" },
-            )
+            ) { Text("Pending") }
         }
 
         OutlinedTextField(
@@ -331,6 +332,9 @@ fun QuickAddScreen(
         // Side by side, an account and an amount stop fitting once the text is large: at
         // 200% font the amount field is narrow enough that its own label wraps mid-word.
         // Above 130% they stack instead, which costs a line and keeps both readable.
+        // Below this the three fields sit in a row; above it the account takes its own line.
+        // The row layout is sized for the label text at ordinary scales, so the threshold is
+        // the point past which no fixed width would hold rather than an arbitrary cutoff.
         val stacked = LocalDensity.current.fontScale > 1.3f
 
         rows.forEachIndexed { index, row ->
@@ -348,7 +352,13 @@ fun QuickAddScreen(
                     OutlinedTextField(
                         value = row.amount,
                         onValueChange = { row.amount = it },
-                        label = { Text(if (index == 0) "Amount" else "Amount (optional)") },
+                        label = { Text("Amount") },
+                        // "optional" as supporting text rather than inside the label. In the
+                        // label it made the string long enough to wrap in a field this width,
+                        // so one posting's Amount box came out two lines taller than the one
+                        // above it. Below the field it says the same thing and costs the row
+                        // nothing -- and it is where Material puts this kind of qualifier.
+                        supportingText = if (index == 0) null else { { Text("optional") } },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = fieldModifier,
@@ -390,11 +400,21 @@ fun QuickAddScreen(
                 } else {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        // Top, not centre. These fields do not always come out the same
+                        // height -- "Amount (optional)" wraps to two lines where "Amount"
+                        // does not -- and centring ragged heights is what made the row look
+                        // like it was sagging in the middle.
+                        verticalAlignment = Alignment.Top,
                     ) {
-                        accountField(Modifier.weight(3f))
-                        amountField(Modifier.weight(2f))
-                        currencyField(Modifier.weight(1f))
+                        // Amount and currency are sized to their contents; the account name
+                        // takes whatever is left, because it is the one that is never long
+                        // enough. Currency was `weight(1f)`, which at this width left it too
+                        // narrow for its own label: "Cur." wrapped, putting the full stop on a
+                        // line of its own and making the field taller than its neighbours.
+                        // That stray dot under the label was the label.
+                        accountField(Modifier.weight(1f))
+                        amountField(Modifier.width(AMOUNT_FIELD_WIDTH))
+                        currencyField(Modifier.width(CURRENCY_FIELD_WIDTH))
                         removeButton()
                     }
                 }
@@ -751,3 +771,9 @@ private fun AttachDocumentSection(
         }
     }
 }
+
+/** Wide enough for a figure with two decimal places, and for the "Amount" label above it. */
+private val AMOUNT_FIELD_WIDTH = 116.dp
+
+/** Wide enough for a three-letter code, and for the "Cur." label that used to wrap onto two. */
+private val CURRENCY_FIELD_WIDTH = 92.dp

@@ -9,12 +9,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.ui.EntryDetailScreen
@@ -184,20 +188,23 @@ internal fun SurfaceContent(
                         androidx.compose.runtime.mutableStateOf(false)
                     }
                     androidx.compose.foundation.layout.Column {
-                        androidx.compose.foundation.layout.Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        // One or the other, never both: a segmented row rather than chips,
+                        // matching the flag and valuation selectors elsewhere.
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
                         ) {
-                            androidx.compose.material3.FilterChip(
+                            SegmentedButton(
                                 selected = !otherDirectives,
                                 onClick = { otherDirectives = false },
-                                label = { Text("Transaction") },
-                            )
-                            androidx.compose.material3.FilterChip(
+                                shape = SegmentedButtonDefaults.itemShape(0, 2),
+                            ) { Text("Transaction") }
+                            SegmentedButton(
                                 selected = otherDirectives,
                                 onClick = { otherDirectives = true },
-                                label = { Text("Other directives") },
-                            )
+                                shape = SegmentedButtonDefaults.itemShape(1, 2),
+                            ) { Text("Other directives") }
                         }
                         if (otherDirectives) {
                             io.github.pintofi.beanbook.app.ui.DirectiveEntryScreen(

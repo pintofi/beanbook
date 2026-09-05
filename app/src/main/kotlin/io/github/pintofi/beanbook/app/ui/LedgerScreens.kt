@@ -20,6 +20,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.contentDescription
@@ -150,19 +153,21 @@ fun BalancesScreen(
         )
 
         if (valuationAllowed) {
-            Row(
+            // Segmented buttons, not chips. These are one basis at a time -- the same figures
+            // valued three ways -- and a segmented row is what Material uses to say "pick one
+            // of these". Chips read as filters that combine, which is the opposite.
+            SingleChoiceSegmentedButtonRow(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Valuation.entries.forEach { option ->
-                    FilterChip(
+                Valuation.entries.forEachIndexed { index, option ->
+                    SegmentedButton(
                         selected = basis == option,
                         onClick = { basis = option },
-                        label = { Text(option.label) },
+                        shape = SegmentedButtonDefaults.itemShape(index, Valuation.entries.size),
                         modifier = Modifier.semantics {
                             contentDescription = "Show balances ${option.label}"
                         },
-                    )
+                    ) { Text(option.label) }
                 }
             }
         }
