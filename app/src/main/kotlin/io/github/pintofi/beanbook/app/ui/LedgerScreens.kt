@@ -6,6 +6,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import io.github.pintofi.beanbook.core.domain.LedgerSummary
@@ -297,6 +298,14 @@ fun JournalScreen(
     modifier: Modifier = Modifier,
     onOpenEntry: (JournalEntry) -> Unit = {},
 ) {
+    // How many rows are composed, not how many the engine returned. The engine now sends the
+    // whole journal, and drawing 25 000 rows at once is neither necessary nor free -- but the
+    // entries are already in memory, so growing this window costs a recomposition rather than
+    // a re-parse. That is why it grows on scroll instead of behind a button: there is nothing
+    // to wait for, so asking the user to ask would be ceremony.
+    var shown by rememberSaveable(snapshot.journal.size) { mutableStateOf(JOURNAL_PAGE) }
+    val visible = remember(snapshot.journal, shown) { snapshot.journal.take(shown) }
+
     LazyColumn(
         modifier = modifier.fillMaxSize().readableMeasure(),
         contentPadding = PaddingValues(bottom = 88.dp),
@@ -334,12 +343,31 @@ fun JournalScreen(
                 }
             }
         }
-        items(snapshot.journal, key = { "${it.file}:${it.line}" }) { entry ->
+        items(visible, key = { "${it.file}:${it.line}" }) { entry ->
             JournalRow(entry, onClick = { onOpenEntry(entry) })
             HorizontalDivider()
         }
+        if (shown < snapshot.journal.size) {
+            item {
+                // Composing this row is what asks for the next page: reaching it means the
+                // reader is at the end of what is drawn. It states the count rather than
+                // spinning, because the wait is a frame and a spinner would imply otherwise.
+                val remaining = snapshot.journal.size - shown
+                LaunchedEffect(shown) { shown = (shown + JOURNAL_PAGE).coerceAtMost(snapshot.journal.size) }
+                Text(
+                    text = "$remaining older " + if (remaining == 1) "entry" else "entries",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                )
+            }
+        }
     }
 }
+
+/** Rows added each time the reader reaches the end of what is drawn. */
+private const val JOURNAL_PAGE = 30
 
 @Composable
 private fun JournalRow(entry: JournalEntry, onClick: () -> Unit) {

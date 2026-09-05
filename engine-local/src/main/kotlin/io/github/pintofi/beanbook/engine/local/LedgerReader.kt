@@ -50,7 +50,8 @@ class LedgerReader(
      */
     suspend fun read(
         ledgerPath: String,
-        journalLimit: Int = 200,
+        /** 0 for every transaction. See the note beside `journal_limit` in ledger.py. */
+        journalLimit: Int = 0,
         pluginDirs: String = "",
         allowBridge: Boolean = true,
     ): Result<LedgerSnapshot> =

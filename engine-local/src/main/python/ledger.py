@@ -62,7 +62,7 @@ def _meta_str(value) -> str:
 
 def inspect(
     ledger_path: str,
-    journal_limit: int = 200,
+    journal_limit: int = 0,
     plugin_dirs: str = "",
     allow_bridge: bool = True,
 ) -> str:
@@ -148,8 +148,14 @@ def inspect(
             }
         )
 
+    # 0 means every transaction. The window used to be 200 so the JSON stayed small and the
+    # cold-start budget held (B21), but 200 is also all the Journal screen could ever show,
+    # which is not what a ledger is for. Measured on the 25k corpus: the whole journal costs
+    # +0.55 s in here and takes the JSON from 0.08 MB to 10.03 MB. The result crosses to the
+    # app as a file, not over the Binder, so size is a parse cost rather than a hard limit.
     journal = []
-    for entry in entries[-journal_limit:]:
+    window = entries if journal_limit <= 0 else entries[-journal_limit:]
+    for entry in window:
         if not isinstance(entry, data.Transaction):
             continue
         journal.append(
