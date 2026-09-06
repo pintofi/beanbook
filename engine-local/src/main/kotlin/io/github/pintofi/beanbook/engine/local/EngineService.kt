@@ -45,6 +45,21 @@ class EngineService : Service() {
             python().getModule("engine").callAttr("stop").toString()
         }
 
+        /**
+         * Ends this process, after asking the server to stop.
+         *
+         * The blunt instrument is the point: the interpreter's module cache is what makes a
+         * newly fetched package invisible, and no API unloads Python modules safely. The
+         * connection rebinds on the next call, which starts a fresh process.
+         */
+        override fun quitProcess() {
+            runCatching { python().getModule("engine").callAttr("stop") }
+            Log.i(TAG, "ending the engine process at the app's request")
+            android.os.Process.killProcess(android.os.Process.myPid())
+        }
+
+        override fun processPid(): Int = android.os.Process.myPid()
+
         override fun engineVersions(): String = guarded {
             python().getModule("engine").callAttr("versions").toString()
         }

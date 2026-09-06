@@ -121,11 +121,15 @@ internal fun SurfaceContent(
     pluginSafeMode: Boolean,
     pluginMessage: String?,
     packages: io.github.pintofi.beanbook.app.packages.PackagesUi,
+    engineRestart: io.github.pintofi.beanbook.app.engine.EngineRestartUi,
     onInstallPlugin: () -> Unit,
     scriptRunning: String?,
     scriptOutcome: io.github.pintofi.beanbook.app.plugins.ScriptOutcome?,
     scriptMessage: String?,
     onPickScript: () -> Unit,
+    savedScripts: List<io.github.pintofi.beanbook.app.plugins.SavedScript>,
+    onRunSavedScript: (String) -> Unit,
+    onForgetSavedScript: (String) -> Unit,
     onCancelScript: () -> Unit,
     onSetPluginEnabled: (String, Boolean) -> Unit,
     onRemovePlugin: (String) -> Unit,
@@ -304,6 +308,9 @@ internal fun SurfaceContent(
                                     bridgeAvailable = currentPluginPolicy().allowsAndroidBridge,
                                     onPick = onPickScript,
                                     onCancel = onCancelScript,
+                                    saved = savedScripts,
+                                    onRunSaved = onRunSavedScript,
+                                    onForgetSaved = onForgetSavedScript,
                                 )
                             }
 
@@ -324,6 +331,7 @@ internal fun SurfaceContent(
                                     onRemove = onRemovePlugin,
                                     onSetSafeMode = onSetPluginSafeMode,
                                     packages = packages,
+                                    restart = engineRestart,
                                     message = pluginMessage,
                                 )
                             }

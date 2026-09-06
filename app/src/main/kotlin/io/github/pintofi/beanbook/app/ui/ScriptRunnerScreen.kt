@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import io.github.pintofi.beanbook.app.plugins.SavedScript
 import io.github.pintofi.beanbook.app.plugins.ScriptOutcome
 
 /**
@@ -42,6 +43,10 @@ fun ScriptRunnerScreen(
     onPick: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Scripts kept from earlier runs (B49). */
+    saved: List<SavedScript> = emptyList(),
+    onRunSaved: (String) -> Unit = {},
+    onForgetSaved: (String) -> Unit = {},
 ) {
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
@@ -103,6 +108,16 @@ fun ScriptRunnerScreen(
             ) { Text("Choose a script…") }
         }
 
+        if (saved.isNotEmpty()) {
+            Text("Your scripts", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "Kept when you ran them, so you do not have to find the file again. They are " +
+                    "copies: editing the original does not change these.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            saved.forEach { script -> SavedScriptCard(script, running == null, onRunSaved, onForgetSaved) }
+        }
+
         message?.let {
             Text(
                 it,
@@ -114,6 +129,49 @@ fun ScriptRunnerScreen(
         outcome?.let { Outcome(it) }
     }
 }
+
+/**
+ * One kept script: what it is, when it was kept, and the checksum of the copy.
+ *
+ * The same three facts a plugin shows, for the same reason — this is code the user chose to
+ * trust, and "where did this come from" is the question asked six months later.
+ */
+@Composable
+private fun SavedScriptCard(
+    script: SavedScript,
+    runnable: Boolean,
+    onRun: (String) -> Unit,
+    onForget: (String) -> Unit,
+) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(script.name, style = MaterialTheme.typography.titleSmall)
+            Text(
+                "Kept ${dateOf(script.savedAtEpochMs)} · checksum ${script.sha256.take(12)}…",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { onRun(script.id) },
+                    enabled = runnable,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Run the saved script ${script.name}"
+                    },
+                ) { Text("Run") }
+                TextButton(
+                    onClick = { onForget(script.id) },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Remove the saved script ${script.name}"
+                    },
+                ) { Text("Remove") }
+            }
+        }
+    }
+}
+
+private fun dateOf(epochMillis: Long): String =
+    java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        .format(java.util.Date(epochMillis))
 
 @Composable
 private fun Outcome(outcome: ScriptOutcome) {

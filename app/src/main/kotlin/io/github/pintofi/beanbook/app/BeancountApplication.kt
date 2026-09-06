@@ -128,6 +128,16 @@ class BeancountApplication : Application() {
     }
 
     /**
+     * Whether the running interpreter is behind the plugins and packages on disk (B49).
+     *
+     * Owned here rather than by either store, because both of them can put it out of date
+     * and only one of them can be asked about it.
+     */
+    val engineRestart: io.github.pintofi.beanbook.app.engine.EngineRestartState by lazy {
+        io.github.pintofi.beanbook.app.engine.EngineRestartState()
+    }
+
+    /**
      * Installed plugins for the open project.
      *
      * Takes the edition's policy from [currentPluginPolicy] once, here, so there is exactly
@@ -135,7 +145,12 @@ class BeancountApplication : Application() {
      * one by accident.
      */
     val pluginsState: io.github.pintofi.beanbook.app.plugins.PluginsState by lazy {
-        io.github.pintofi.beanbook.app.plugins.PluginsState(this, currentPluginPolicy(), appScope)
+        io.github.pintofi.beanbook.app.plugins.PluginsState(
+            this,
+            currentPluginPolicy(),
+            appScope,
+            onEngineStale = engineRestart::markNeeded,
+        )
     }
 
     /**
@@ -143,7 +158,12 @@ class BeancountApplication : Application() {
      * edition's inability to download is decided in one place rather than two.
      */
     val packagesState: io.github.pintofi.beanbook.app.packages.PackagesState by lazy {
-        io.github.pintofi.beanbook.app.packages.PackagesState(this, currentPluginPolicy(), appScope)
+        io.github.pintofi.beanbook.app.packages.PackagesState(
+            this,
+            currentPluginPolicy(),
+            appScope,
+            onEngineStale = engineRestart::markNeeded,
+        )
     }
 
     /** Running a user script against the open ledger (Tier 3). Same policy, chosen once. */

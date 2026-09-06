@@ -452,9 +452,14 @@ class MainActivity : ComponentActivity() {
                     val packagesMessage by app.packagesState.message.collectAsStateWithLifecycle()
                     val packages = app.packagesState
                         .ui(packagesInstalled, packagesStatus, packagesMessage)
+                    val restartNeeded by app.engineRestart.needed.collectAsStateWithLifecycle()
+                    val engineRestart = io.github.pintofi.beanbook.app.engine.EngineRestartUi(
+                        needed = restartNeeded,
+                    ) { restartEngine(app, activeId) }
                     val scriptRunning by app.scriptRunner.running.collectAsStateWithLifecycle()
                     val scriptOutcome by app.scriptRunner.outcome.collectAsStateWithLifecycle()
                     val scriptMessage by app.scriptRunner.message.collectAsStateWithLifecycle()
+                    val savedScripts by app.scriptRunner.saved.collectAsStateWithLifecycle()
 
                     // Said once, on a first launch, so the trial does not have to be
                     // announced above every screen for the life of the install (B27). Above
@@ -632,11 +637,15 @@ class MainActivity : ComponentActivity() {
                         pluginSafeMode = pluginSafeMode,
                         pluginMessage = pluginMessage,
                         packages = packages,
+                        engineRestart = engineRestart,
                         onInstallPlugin = { pluginPicker.launch(arrayOf("*/*")) },
                         scriptRunning = scriptRunning,
                         scriptOutcome = scriptOutcome,
                         scriptMessage = scriptMessage,
                         onPickScript = { scriptPicker.launch(arrayOf("*/*")) },
+                        savedScripts = savedScripts,
+                        onRunSavedScript = { app.scriptRunner.runSaved(it) },
+                        onForgetSavedScript = { app.scriptRunner.forget(it) },
                         onCancelScript = { app.scriptRunner.cancel() },
                         onSetPluginEnabled = { id, on -> app.pluginsState.setEnabled(id, on) },
                         onRemovePlugin = { app.pluginsState.remove(it) },

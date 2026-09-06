@@ -24,6 +24,24 @@ interface IEngineService {
     /** Stops the server and joins its non-daemon threads. */
     String stopEngine();
 
+    /**
+     * Stops the server and ends the engine process.
+     *
+     * Not `oneway`: a one-way call returns before the kill happens, and the caller then
+     * binds the process that is still on its way out and is told the engine is already
+     * running. Blocking means the transaction fails with a dead binder, which is the honest
+     * signal that the process has gone.
+     *
+     * The point is the interpreter: Python caches every module it has imported, so a package
+     * fetched after start is not importable in a process that has already looked for it, and
+     * an upgraded one keeps its old code. Only a new process reads the new files. Nothing in
+     * this process writes to a project, so there is nothing to lose by ending it.
+     */
+    void quitProcess();
+
+    /** The engine process's pid, so a caller can tell a restarted process from the old one. */
+    int processPid();
+
     /** "python=3.13.1 beancount=3.2.3 fava=1.30.15 …", for manifests and diagnostics. */
     String engineVersions();
 

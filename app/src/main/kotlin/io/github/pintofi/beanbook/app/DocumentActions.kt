@@ -372,3 +372,22 @@ internal fun MainActivity.EntryEditor(
         },
     )
 }
+
+/**
+ * Ends the engine process and starts a new one on the open project (B49).
+ *
+ * An extension rather than a member: `MainActivity` is already the largest class in the app,
+ * and this reads the same two collaborators every other action here does.
+ */
+internal fun MainActivity.restartEngine(app: BeancountApplication, projectId: String?) {
+    val id = projectId ?: return
+    saveMessage = "Restarting the engine…"
+    app.engineManager.restart()
+    app.engineRestart.cleared()
+    lifecycleScope.launch {
+        // The ledger is re-read afterwards because a plugin that has just been turned on
+        // changes what a load produces -- errors it raises, directives it inserts.
+        app.ledgerState.load(app.workspace.mainFile(id).absolutePath)
+        saveMessage = "The engine restarted with what is installed now."
+    }
+}

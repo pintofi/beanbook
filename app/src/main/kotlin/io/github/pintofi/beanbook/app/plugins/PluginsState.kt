@@ -36,6 +36,13 @@ class PluginsState(
     private val context: Context,
     private val policy: PluginPolicy,
     private val scope: CoroutineScope,
+    /**
+     * Called when the interpreter's idea of what is installed has gone out of date (B49).
+     *
+     * Installing, removing or turning a plugin on changes what a load *would* import and
+     * nothing about what the running Python has already imported.
+     */
+    private val onEngineStale: () -> Unit = {},
 ) {
     private var projectRoot: File? = null
 
@@ -108,6 +115,7 @@ class PluginsState(
         scope.launch {
             withContext(Dispatchers.IO) { safe()?.isSafeMode = on }
             _safeMode.value = on
+            onEngineStale()
             _message.value = if (on) {
                 "Safe mode is on. No plugins load, and your choices are kept."
             } else {
@@ -120,6 +128,7 @@ class PluginsState(
     fun setEnabled(id: String, enabled: Boolean) {
         scope.launch {
             withContext(Dispatchers.IO) { store()?.setEnabled(id, enabled) }
+            onEngineStale()
             refresh()
         }
     }
@@ -128,6 +137,7 @@ class PluginsState(
         scope.launch {
             withContext(Dispatchers.IO) { store()?.remove(id) }
             _message.value = "Removed. Its files are gone from this project."
+            onEngineStale()
             refresh()
         }
     }
@@ -161,6 +171,7 @@ class PluginsState(
                 }
             }
             _message.value = describe(result)
+            if (result is InstallResult.Installed) onEngineStale()
             refresh()
         }
     }

@@ -44,6 +44,12 @@ class PackagesState(
      * failed because `BeangrowOnDeviceTest` had put 143 MB there earlier in the same run.
      */
     val root: File = OnDemandPackages.root(context),
+    /**
+     * Called when packages on disk no longer match what the running interpreter imported
+     * (B49). Python answers an import once and caches the answer, so a package fetched now
+     * is not importable until a new process looks for it.
+     */
+    private val onEngineStale: () -> Unit = {},
 ) {
 
     private fun fetcher() = WheelFetcher(
@@ -121,10 +127,11 @@ class PackagesState(
                 }
             }
             _status.value = PackagesStatus.Idle
+            if (result is FetchResult.Installed) onEngineStale()
             _message.value = when (result) {
                 is FetchResult.Installed ->
                     "Installed ${result.wheels.size} packages, ${result.bytes / 1_000_000} MB. " +
-                        "Reopen the ledger for a plugin to be able to use them."
+                        "Restart the engine below so a plugin can import them."
                 is FetchResult.Refused -> result.reason
                 is FetchResult.Failed -> "Nothing was installed: ${result.reason}"
             }
@@ -144,8 +151,9 @@ class PackagesState(
                 bytes
             }
             Log.i(TAG, "removed fetched packages, freed ${freed / 1_000_000} MB")
+            onEngineStale()
             _message.value = "Removed the fetched packages, freeing ${freed / 1_000_000} MB. " +
-                "Anything that needed them will say so the next time the ledger loads."
+                "Anything that needed them will say so once the engine restarts."
             refresh()
         }
     }

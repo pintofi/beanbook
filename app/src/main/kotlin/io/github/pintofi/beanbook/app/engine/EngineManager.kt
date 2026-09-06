@@ -61,6 +61,30 @@ class EngineManager(
         }
     }
 
+    /**
+     * Ends the engine process and starts it again on the same project (B49).
+     *
+     * What a "restart" has to mean here: not a new Fava server in the same interpreter, but
+     * a new interpreter. A package fetched or a plugin installed after Python started is
+     * invisible to it, because the module cache has already answered the question.
+     */
+    fun restart() {
+        shutdownJob?.cancel()
+        shutdownJob = null
+        val project = currentProject ?: return
+        scope.launch {
+            (engine as? io.github.pintofi.beanbook.engine.local.LocalEngineClient)
+                ?.restartProcess()
+                ?: engine.stop()
+            (engine as? io.github.pintofi.beanbook.engine.local.LocalEngineClient)?.pluginDirs =
+                pluginDirectories()
+            val result = engine.start(project)
+            if (result is EngineStatus.Failed) {
+                Log.w(TAG, "engine failed to restart: ${result.message}")
+            }
+        }
+    }
+
     fun stopNow() {
         shutdownJob?.cancel()
         shutdownJob = null

@@ -65,6 +65,39 @@ class ScriptRunnerState(
 ) {
     private val loader by lazy { PluginLoader(context) }
 
+    private val store by lazy { SavedScripts(context.filesDir.resolve("state")) }
+
+    private val _saved = MutableStateFlow<List<SavedScript>>(emptyList())
+
+    /** The scripts kept from earlier runs, so one can be run again without the picker (B49). */
+    val saved: StateFlow<List<SavedScript>> = _saved.asStateFlow()
+
+    fun refreshSaved() {
+        scope.launch {
+            _saved.value = withContext(Dispatchers.IO) { store.list() }
+        }
+    }
+
+    /** Runs a script the user kept. */
+    fun runSaved(id: String, timeoutSeconds: Double = DEFAULT_TIMEOUT) {
+        val script = store.find(id)
+        if (script == null) {
+            _message.value = "That script is no longer saved."
+            refreshSaved()
+            return
+        }
+        run(script.file, script.name, timeoutSeconds, deleteAfterwards = false)
+    }
+
+    /** Forgets a saved script and deletes the copy. */
+    fun forget(id: String) {
+        scope.launch {
+            withContext(Dispatchers.IO) { store.remove(id) }
+            _message.value = "Removed from your saved scripts. Nothing else was touched."
+            refreshSaved()
+        }
+    }
+
     private val _running = MutableStateFlow<String?>(null)
     /** The name of the script now running, or null. */
     val running: StateFlow<String?> = _running.asStateFlow()
@@ -80,13 +113,15 @@ class ScriptRunnerState(
 
     fun onProjectOpened(mainFile: File?) {
         ledgerPath = mainFile?.absolutePath.orEmpty()
+        refreshSaved()
     }
 
     /**
-     * Copies the picked script somewhere the engine process can read, then runs it.
+     * Copies the picked script somewhere the engine process can read, keeps it, then runs it.
      *
      * A content URI is granted to *this* process, so the engine — a different process — cannot
-     * open it. The copy lands in the app's cache and is deleted afterwards.
+     * open it. The copy is kept as a saved script rather than deleted, because a SAF grant
+     * does not outlive the launch and the same script is usually run more than once (B49).
      */
     fun runFrom(uri: Uri, name: String, timeoutSeconds: Double = DEFAULT_TIMEOUT) {
         if (_running.value != null) {
@@ -98,6 +133,51 @@ class ScriptRunnerState(
             return
         }
 
+        scope.launch {
+            val scratch = File(context.cacheDir, "scripts").apply { mkdirs() }
+            val copy = File(scratch, "${UUID.randomUUID()}.py")
+            val copied = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        copy.outputStream().use { output -> input.copyTo(output) }
+                    } ?: throw java.io.IOException("that file could not be opened")
+                }
+            }
+            if (copied.isFailure) {
+                Log.w(TAG, "could not read the picked script", copied.exceptionOrNull())
+                _message.value = "That file could not be read."
+                copy.delete()
+                return@launch
+            }
+            // Kept, then run from the kept copy. A SAF grant lasts for this launch, so a
+            // script picked today could not be run again tomorrow without finding it in the
+            // picker again (B49).
+            val script = withContext(Dispatchers.IO) { store.save(copy, name) }
+            copy.delete()
+            refreshSaved()
+            run(script.file, script.name, timeoutSeconds, deleteAfterwards = false)
+        }
+    }
+
+    /**
+     * Runs a script that is already a real file this process owns.
+     *
+     * @param deleteAfterwards for a scratch copy that is nobody's script. A saved one stays.
+     */
+    private fun run(
+        file: File,
+        name: String,
+        timeoutSeconds: Double,
+        deleteAfterwards: Boolean,
+    ) {
+        if (_running.value != null) {
+            _message.value = "A script is already running."
+            return
+        }
+        if (ledgerPath.isEmpty()) {
+            _message.value = "Open a project first. A script runs against a ledger."
+            return
+        }
         val id = UUID.randomUUID().toString()
         handle = id
         _running.value = name
@@ -105,24 +185,9 @@ class ScriptRunnerState(
         _message.value = null
 
         scope.launch {
-            val scratch = File(context.cacheDir, "scripts").apply { mkdirs() }
-            val copy = File(scratch, "$id.py")
             try {
-                val copied = withContext(Dispatchers.IO) {
-                    runCatching {
-                        context.contentResolver.openInputStream(uri)?.use { input ->
-                            copy.outputStream().use { output -> input.copyTo(output) }
-                        } ?: throw java.io.IOException("that file could not be opened")
-                    }
-                }
-                copied.onFailure { problem ->
-                    Log.w(TAG, "could not read the picked script", problem)
-                    _message.value = "That file could not be read."
-                    return@launch
-                }
-
                 val json = loader.runScript(
-                    scriptPath = copy.absolutePath,
+                    scriptPath = file.absolutePath,
                     ledgerPath = ledgerPath,
                     timeoutSeconds = timeoutSeconds,
                     allowBridge = policy.allowsAndroidBridge,
@@ -146,7 +211,7 @@ class ScriptRunnerState(
                     },
                 )
             } finally {
-                copy.delete()
+                if (deleteAfterwards) file.delete()
                 _running.value = null
                 handle = null
             }

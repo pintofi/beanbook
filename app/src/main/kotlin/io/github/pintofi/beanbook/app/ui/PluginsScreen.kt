@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.data.PluginIntegrity
 import io.github.pintofi.beanbook.core.domain.PluginPolicy
+import io.github.pintofi.beanbook.app.engine.EngineRestartUi
 import io.github.pintofi.beanbook.app.packages.PackagesStatus
 import io.github.pintofi.beanbook.app.packages.PackagesUi
 import io.github.pintofi.beanbook.app.plugins.PluginRow
@@ -58,6 +59,7 @@ fun PluginsScreen(
     onRemove: (String) -> Unit,
     onSetSafeMode: (Boolean) -> Unit,
     packages: PackagesUi,
+    restart: EngineRestartUi,
     modifier: Modifier = Modifier,
     message: String? = null,
 ) {
@@ -122,15 +124,26 @@ fun PluginsScreen(
             Switch(checked = safeMode, onCheckedChange = null)
         }
 
-        HorizontalDivider()
-
-        PackagesSection(policy, packages)
+        RestartCard(restart)
 
         HorizontalDivider()
+
+        PackagesSection(policy, packages, noPluginsLeft = rows.isEmpty())
+
+        HorizontalDivider()
+
+        Text("Plugins", style = MaterialTheme.typography.titleSmall)
 
         if (rows.isEmpty()) {
+            // Says *plugin files*, because the section above lists installed **packages** and
+            // the two sat one after the other: fetching beangrow put "Installed: beangrow"
+            // on the screen directly above "No plugins installed", which reads as the app
+            // contradicting itself (B49). A package is a library; a plugin is a file you add
+            // here. Both headings now say which is which.
             Text(
-                "No plugins installed. They add extra checks and transformations to a ledger.",
+                "No plugins added. A plugin is a Python file you install here; it adds extra " +
+                    "checks and transformations to a ledger. Packages above are libraries a " +
+                    "plugin can use, and are not plugins themselves.",
                 style = MaterialTheme.typography.bodySmall,
             )
         } else {
@@ -277,6 +290,41 @@ private fun PluginCard(
     }
 }
 
+/**
+ * Offers the only thing that actually picks up a newly installed plugin or package (B49).
+ *
+ * "Reopen the ledger" was the previous advice and it does not work: reopening re-parses
+ * inside the same interpreter, and Python has already cached the answer to every import it
+ * has been asked. A new engine process is what reads the files on disk.
+ *
+ * Shown only when something has changed under the running engine, so it is a consequence of
+ * what the user just did rather than a button that is always there.
+ */
+@Composable
+private fun RestartCard(restart: EngineRestartUi) {
+    if (!restart.needed) return
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "The engine is running older code than is installed" },
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Restart needed", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "What you just changed is on disk, but the running engine has already loaded " +
+                    "Python and will not see it. Restarting takes a few seconds and touches " +
+                    "nothing in your ledger.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+            Button(
+                onClick = restart.onRestart,
+                modifier = Modifier.semantics { contentDescription = "Restart the engine now" },
+            ) { Text("Restart the engine") }
+        }
+    }
+}
+
 @Composable
 private fun Warning(text: String) {
     Card(
@@ -305,7 +353,11 @@ private fun dateOf(epochMillis: Long): String =
  * edition's `WheelFetcher` refusing, not this composable being hidden.
  */
 @Composable
-private fun PackagesSection(policy: PluginPolicy, packages: PackagesUi) {
+private fun PackagesSection(
+    policy: PluginPolicy,
+    packages: PackagesUi,
+    noPluginsLeft: Boolean,
+) {
     val installed = packages.installed
     val status = packages.status
     val message = packages.message
@@ -315,7 +367,7 @@ private fun PackagesSection(policy: PluginPolicy, packages: PackagesUi) {
     val onRemoveAll = packages.onRemoveAll
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Extra Python packages", style = MaterialTheme.typography.titleSmall)
+        Text("Extra Python packages (libraries)", style = MaterialTheme.typography.titleSmall)
 
         if (!policy.allowsPackageDownload) {
             Text(
@@ -432,9 +484,20 @@ private fun PackagesSection(policy: PluginPolicy, packages: PackagesUi) {
 
         if (installed.isNotEmpty()) {
             Text(
-                "Installed: " + installed.joinToString(", "),
+                "Fetched and available to plugins: " + installed.joinToString(", "),
                 style = MaterialTheme.typography.bodySmall,
             )
+            if (noPluginsLeft) {
+                // Item 21's other half, as far as it can honestly go. A package is fetched by
+                // name because the user asked for it, not declared by a plugin, so the app
+                // has no dependency graph to work out which packages a removed plugin was the
+                // only user of. What it can say truthfully is that nothing is left to use
+                // them, and offer the removal that already exists.
+                Text(
+                    "No plugins are installed any more, and these are only useful to plugins.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             TextButton(
                 onClick = onRemoveAll,
                 modifier = Modifier.semantics {

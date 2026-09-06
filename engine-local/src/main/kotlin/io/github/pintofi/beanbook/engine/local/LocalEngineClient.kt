@@ -105,6 +105,49 @@ class LocalEngineClient(
         _status.value = EngineStatus.Stopped
     }
 
+    /**
+     * Ends the engine process, so the next start reads the packages and plugins on disk now.
+     *
+     * Stopping the server is not enough: Python caches every module it has imported, so a
+     * package fetched after the interpreter started is not importable and an upgraded one
+     * keeps its old code (B49). The connection binds again on the next call, which forks a
+     * new process.
+     */
+    suspend fun restartProcess() = lifecycleLock.withLock {
+        withContext(io) {
+            val before = connection.withEngine { it.processPid() }.getOrNull()
+            // The reply never arrives -- the process is killed inside the call -- so a dead
+            // binder here is success, not a failure worth reporting.
+            connection.withEngine { it.quitProcess() }
+            connection.release()
+            awaitNewProcess(before)
+        }
+        token = null
+        _status.value = EngineStatus.Stopped
+    }
+
+    /** The pid of the process the engine is answering from, for tests and diagnostics. */
+    suspend fun enginePid(): Int? = withContext(io) {
+        connection.withEngine { it.processPid() }.getOrNull()
+    }
+
+    /**
+     * Waits until the engine answers from a pid that is not [before].
+     *
+     * By pid, because every other signal lies: a bind succeeds while the old process is
+     * still shutting down, and the module it answers from is the one with Fava already
+     * running and the old imports cached.
+     */
+    private suspend fun awaitNewProcess(before: Int?) {
+        repeat(PROCESS_EXIT_POLLS) {
+            kotlinx.coroutines.delay(PROCESS_EXIT_POLL_MILLIS)
+            val now = connection.withEngine { it.processPid() }.getOrNull()
+            if (now != null && now != before) return
+            if (now == before) connection.release()
+        }
+        Log.w(TAG, "the engine process did not come back within the wait")
+    }
+
     override fun urlFor(report: ReportPath): String {
         val serving = status.value as? EngineStatus.Serving
             ?: error("engine is not serving")
@@ -142,5 +185,9 @@ class LocalEngineClient(
     private companion object {
         const val TAG = "LocalEngine"
         const val TOKEN_BYTES = 32
+
+        /** Two seconds in total, which is far longer than a process takes to go and come back. */
+        const val PROCESS_EXIT_POLLS = 20
+        const val PROCESS_EXIT_POLL_MILLIS = 100L
     }
 }
