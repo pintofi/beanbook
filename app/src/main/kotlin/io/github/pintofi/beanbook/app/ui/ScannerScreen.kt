@@ -24,6 +24,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.MotionPhotosAuto
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -35,6 +39,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -122,10 +129,96 @@ fun ScannerScreen(
     /** A page opened for a proper look, rather than removed by the tap that opened it. */
     var previewing by remember { mutableStateOf<Int?>(null) }
 
+    // The three controls a scanner needs that a viewfinder does not, taken from what
+    // OSS-DocumentScanner does (MIT; read, not copied — see B56): a torch for a receipt on a
+    // dark table, zoom for a page you cannot get closer to, and a shutter that fires itself
+    // once the page is squarely in frame.
+    var camera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
+    var torch by remember { mutableStateOf(false) }
+    var zoom by remember { mutableStateOf(0f) }
+    var autoCapture by rememberSaveable { mutableStateOf(true) }
+    var previewView by remember { mutableStateOf<PreviewView?>(null) }
+    var aimed by remember { mutableStateOf(false) }
+
+    /**
+     * Takes one page: shoot, detect, hand the crop up with the file.
+     *
+     * Hoisted out of the shutter because the automatic trigger fires the same thing. Two
+     * copies of a camera capture is how one of them ends up not detecting the page.
+     */
+    fun shoot() {
+        if (busy) return
+        busy = true
+        aimed = false
+        val target = captureFile()
+        capture.takePicture(
+            ImageCapture.OutputFileOptions.Builder(target).build(),
+            ContextCompat.getMainExecutor(context),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(result: ImageCapture.OutputFileResults) {
+                    // Detect here, once, and hand the crop up with the file. The overlay
+                    // reads the same result, so a page is never analysed twice for one shot.
+                    scope.launch {
+                        val quad = withContext(Dispatchers.Default) {
+                            io.github.pintofi.beanbook.app.documents.Photos
+                                .decodeUpright(target)?.let { shot ->
+                                    shotSize = androidx.compose.ui.unit.IntSize(shot.width, shot.height)
+                                    Scanner.detect(shot)
+                                }
+                        }
+                        lastQuad = quad
+                        onCaptured(target, quad, style)
+                        busy = false
+                    }
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    busy = false
+                }
+            },
+        )
+    }
+
+    // Fires the shutter when the page is squarely in frame, which is what a scanner does
+    // that a camera does not (B56). Sampled from the preview a few times a second rather
+    // than through a second analysis pipeline: the detector only needs a small bitmap, and a
+    // full ImageAnalysis stream costs another camera surface and its battery for a hint.
+    //
+    // Two consecutive frames have to agree before it fires. One is a hand passing over the
+    // table; two is a page held still.
+    LaunchedEffect(autoCapture, previewView) {
+        if (!autoCapture) return@LaunchedEffect
+        val view = previewView ?: return@LaunchedEffect
+        var steady = 0
+        while (true) {
+            kotlinx.coroutines.delay(AUTO_SAMPLE_MILLIS)
+            if (busy) continue
+            val frame = view.bitmap ?: continue
+            val found = withContext(Dispatchers.Default) {
+                val small = frame.scale()
+                Scanner.detect(small) != null
+            }
+            aimed = found
+            steady = if (found) steady + 1 else 0
+            if (steady >= 2) {
+                steady = 0
+                shoot()
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
+            // Pinch to zoom, for a page you cannot lean closer to.
+            .pointerInput(camera) {
+                detectTransformGestures { _, _, gestureZoom, _ ->
+                    val control = camera?.cameraControl ?: return@detectTransformGestures
+                    zoom = (zoom + (gestureZoom - 1f)).coerceIn(0f, 1f)
+                    control.setLinearZoom(zoom)
+                }
+            }
             // The preview runs under the system bars; the controls must not.
             .systemBarsPadding(),
     ) {
@@ -140,11 +233,12 @@ fun ScannerScreen(
                     // camera saw and everything looked zoomed in (B55). Letterboxing shows
                     // the whole frame, which is the one the shutter actually captures.
                     preview.scaleType = PreviewView.ScaleType.FIT_CENTER
+                    previewView = preview
                     val future = ProcessCameraProvider.getInstance(viewContext)
                     future.addListener({
                         val provider = future.get()
                         provider.unbindAll()
-                        provider.bindToLifecycle(
+                        camera = provider.bindToLifecycle(
                             lifecycleOwner,
                             CameraSelector.DEFAULT_BACK_CAMERA,
                             androidx.camera.core.Preview.Builder()
@@ -211,6 +305,43 @@ fun ScannerScreen(
                 ),
         )
 
+        Row(
+            modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            IconButton(
+                onClick = {
+                    torch = !torch
+                    camera?.cameraControl?.enableTorch(torch)
+                },
+                modifier = Modifier.semantics {
+                    contentDescription = if (torch) "Turn the light off" else "Turn the light on"
+                },
+            ) {
+                Icon(
+                    if (torch) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
+                    contentDescription = null,
+                    tint = Color.White,
+                )
+            }
+            IconButton(
+                onClick = { autoCapture = !autoCapture },
+                modifier = Modifier.semantics {
+                    contentDescription = if (autoCapture) {
+                        "Stop shooting pages automatically"
+                    } else {
+                        "Shoot a page as soon as it is in frame"
+                    }
+                },
+            ) {
+                Icon(
+                    if (autoCapture) Icons.Filled.MotionPhotosAuto else Icons.Filled.PhotoCamera,
+                    contentDescription = null,
+                    tint = if (aimed) Color(0xFF80D5D4) else Color.White,
+                )
+            }
+        }
+
         IconButton(
             onClick = onCancel,
             modifier = Modifier
@@ -260,38 +391,7 @@ fun ScannerScreen(
                         contentDescription = "${pages.size} pages captured"
                     },
                 )
-                ShutterButton(busy = busy) {
-                    if (busy) return@ShutterButton
-                    busy = true
-                    val target = captureFile()
-                    capture.takePicture(
-                        ImageCapture.OutputFileOptions.Builder(target).build(),
-                        ContextCompat.getMainExecutor(context),
-                        object : ImageCapture.OnImageSavedCallback {
-                            override fun onImageSaved(result: ImageCapture.OutputFileResults) {
-                                // Detect here, once, and hand the crop up with the file. The
-                                // overlay reads the same result, so a page is never analysed
-                                // twice for one shot.
-                                scope.launch {
-                                    val quad = withContext(Dispatchers.Default) {
-                                        io.github.pintofi.beanbook.app.documents.Photos
-                                            .decodeUpright(target)?.let { shot ->
-                                            shotSize = androidx.compose.ui.unit.IntSize(shot.width, shot.height)
-                                            Scanner.detect(shot)
-                                        }
-                                    }
-                                    lastQuad = quad
-                                    onCaptured(target, quad, style)
-                                    busy = false
-                                }
-                            }
-
-                            override fun onError(exception: ImageCaptureException) {
-                                busy = false
-                            }
-                        },
-                    )
-                }
+                ShutterButton(busy = busy) { shoot() }
                 IconButton(
                     onClick = onDone,
                     enabled = pages.isNotEmpty(),
@@ -371,6 +471,22 @@ private fun PagePreview(
                 },
             ) { Text("Remove page") }
         },
+    )
+}
+
+/** A few times a second: often enough to feel immediate, rare enough to cost nothing. */
+private const val AUTO_SAMPLE_MILLIS = 600L
+
+/** The detector works on a small image; a preview frame at full size is wasted work. */
+private fun android.graphics.Bitmap.scale(): android.graphics.Bitmap {
+    val longest = maxOf(width, height)
+    if (longest <= 720) return this
+    val factor = 720f / longest
+    return android.graphics.Bitmap.createScaledBitmap(
+        this,
+        (width * factor).toInt().coerceAtLeast(1),
+        (height * factor).toInt().coerceAtLeast(1),
+        true,
     )
 }
 
