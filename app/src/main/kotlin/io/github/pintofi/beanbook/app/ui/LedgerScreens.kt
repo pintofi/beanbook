@@ -42,7 +42,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.toMutableStateList
 import io.github.pintofi.beanbook.core.domain.AccountBalance
+import io.github.pintofi.beanbook.core.domain.AccountNode
+import io.github.pintofi.beanbook.core.domain.AccountTree
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.JournalEntry
@@ -180,6 +185,16 @@ fun BalancesScreen(
         }
 
         val needle = filter.trim()
+
+        // Which branches are open, by full account name. Saved, so rotating the phone or
+        // coming back from another surface does not fold the tree the user just opened.
+        val expanded = rememberSaveable(
+            saver = listSaver<SnapshotStateList<String>, String>(
+                save = { it.toList() },
+                restore = { it.toMutableStateList() },
+            ),
+        ) { roots.toMutableStateList() }
+
         // Room at the end for the floating action button, which draws over the list rather
         // than beside it. Without this the last row's figures sit under the FAB — the cost a
         // FAB always carries, and one the surfaces it appears on have to pay (B26).
@@ -196,11 +211,18 @@ fun BalancesScreen(
                     .filter { needle.isEmpty() || it.name.contains(needle, ignoreCase = true) }
                 if (accounts.isEmpty()) return@forEach
 
-                // Leaf names that appear more than once under this root, so those rows can
-                // fall back to the full account name.
-                val repeatedLeaves = accounts.groupingBy { it.leaf }.eachCount()
-                    .filterValues { it > 1 }
-                    .keys
+                val tree = AccountTree.of(accounts, root)
+                // A filter is a search, and a search that hides its own results behind a
+                // fold has not answered anything: while one is typed every branch is open.
+                val open = needle.isNotEmpty()
+                val rows = mutableListOf<AccountNode>()
+                fun collect(nodes: List<AccountNode>) {
+                    nodes.forEach { node ->
+                        rows += node
+                        if (open || node.name in expanded) collect(node.children)
+                    }
+                }
+                collect(tree)
 
                 item(key = "header-$root") {
                     // The header totals the accounts *shown*, not the whole root: a total
@@ -213,10 +235,25 @@ fun BalancesScreen(
                         } else {
                             LedgerSummary.sumByCurrency(accounts.flatMap { basis.of(it) })
                         },
+                        expanded = open || root in expanded,
+                        onToggle = { if (root in expanded) expanded.remove(root) else expanded.add(root) },
                     )
                 }
-                items(accounts, key = { it.name }) { account ->
-                    AccountRow(account, basis, ambiguous = account.leaf in repeatedLeaves)
+                if (open || root in expanded) {
+                    items(rows, key = { it.name }) { node ->
+                        AccountRow(
+                            node = node,
+                            basis = basis,
+                            expanded = open || node.name in expanded,
+                            onToggle = {
+                                if (node.name in expanded) {
+                                    expanded.remove(node.name)
+                                } else {
+                                    expanded.add(node.name)
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -237,16 +274,36 @@ enum class Valuation(val label: String) {
 }
 
 @Composable
-private fun RootHeader(root: String, totals: List<Amount>) {
+private fun RootHeader(
+    root: String,
+    totals: List<Amount>,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onToggle)
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .semantics {
+                contentDescription =
+                    if (expanded) "$root, expanded. Tap to collapse" else "$root, collapsed. Tap to expand"
+            },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(root, style = MaterialTheme.typography.titleMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = null,
+            )
+            Text(
+                root,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(start = 4.dp),
+            )
+        }
         Column(horizontalAlignment = Alignment.End) {
             if (totals.isEmpty()) {
                 Text("—", style = MaterialTheme.typography.bodyMedium)
@@ -259,34 +316,54 @@ private fun RootHeader(root: String, totals: List<Amount>) {
 
 @Composable
 private fun AccountRow(
-    account: AccountBalance,
-    basis: Valuation = Valuation.UNITS,
-    ambiguous: Boolean = false,
+    node: AccountNode,
+    basis: Valuation,
+    expanded: Boolean,
+    onToggle: () -> Unit,
 ) {
+    // A parent shows what its whole branch holds, so folding it hides rows rather than
+    // money. A leaf shows its own balance, which is the same figure by definition.
+    val amounts = node.subtotal(basis::of)
+    val spoken = buildString {
+        append(node.name)
+        if (node.hasChildren) {
+            append(if (expanded) ", expanded. Tap to collapse" else ", collapsed. Tap to expand")
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (node.hasChildren) Modifier.clickable(onClick = onToggle) else Modifier)
             .padding(
-                start = (16 + account.depth * 12).dp,
+                start = (16 + node.depth * 12).dp,
                 end = 16.dp,
                 top = 8.dp,
                 bottom = 8.dp,
-            ),
+            )
+            .semantics { contentDescription = spoken },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // The leaf alone, unless another account on screen ends in the same word. A ledger
-        // with both Expenses:Rent and Expenses:Home:Rent showed two rows called "Rent" with
-        // different figures and nothing to tell them apart, because intermediate accounts
-        // are only listed when they hold a balance of their own, so the indent had no
-        // parent to sit under (D9).
-        Text(
-            text = if (ambiguous) account.name else account.leaf,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            if (node.hasChildren) {
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                )
+            }
+            // The leaf alone. A ledger with both Expenses:Rent and Expenses:Home:Rent used to
+            // show two rows called "Rent" with different figures and nothing to tell them
+            // apart, because a parent with no balance of its own was not listed and the
+            // indent had no row to sit under (D9). Every ancestor is a row now, so the indent
+            // says which "Rent" this is.
+            Text(
+                text = node.leaf,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(start = if (node.hasChildren) 4.dp else 28.dp),
+            )
+        }
         Column(horizontalAlignment = Alignment.End) {
-            basis.of(account).forEach { AmountText(it) }
+            amounts.forEach { AmountText(it) }
         }
     }
     HorizontalDivider()
