@@ -44,18 +44,10 @@ fun PageThumbnail(
     size: androidx.compose.ui.unit.Dp = 56.dp,
 ) {
     val bitmap = remember(file.path, file.length()) {
+        // Upright, and sampled down to something a 56dp box can use: a camera writes its
+        // orientation into EXIF and leaves the pixels sideways (B55).
         runCatching {
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeFile(file.absolutePath, bounds)
-            val target = 256
-            var sample = 1
-            while (bounds.outHeight / sample > target || bounds.outWidth / sample > target) {
-                sample *= 2
-            }
-            BitmapFactory.decodeFile(
-                file.absolutePath,
-                BitmapFactory.Options().apply { inSampleSize = sample },
-            )
+            io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file, maxEdge = 256)
         }.getOrNull()
     }
 

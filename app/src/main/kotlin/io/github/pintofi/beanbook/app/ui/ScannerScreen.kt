@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -93,11 +94,33 @@ fun ScannerScreen(
     var shotSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
     val scope = rememberCoroutineScope()
 
+    // Back leaves the scanner, not the app (B55). The scanner is a mode drawn over
+    // everything else, and without this the system's back gesture went to the activity --
+    // which had nothing behind it, so a stray swipe closed Beanbook mid-batch.
+    androidx.activity.compose.BackHandler(enabled = true) { onCancel() }
+
     val capture = remember {
         ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            // 4:3, which is the sensor's own shape on almost every phone. Without it CameraX
+            // picks a capture resolution independently of the preview's, so the photograph
+            // was a tighter crop than the viewfinder had shown -- the "too zoomed in"
+            // complaint, and worse than cosmetic: a receipt framed to the edges of the
+            // preview came back with its edges cut off, and the page detector then had no
+            // border to find.
+            .setResolutionSelector(
+                androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
+                    .setAspectRatioStrategy(
+                        androidx.camera.core.resolutionselector.AspectRatioStrategy
+                            .RATIO_4_3_FALLBACK_AUTO_STRATEGY,
+                    )
+                    .build(),
+            )
             .build()
     }
+
+    /** A page opened for a proper look, rather than removed by the tap that opened it. */
+    var previewing by remember { mutableStateOf<Int?>(null) }
 
     Box(
         modifier = modifier
@@ -112,6 +135,11 @@ fun ScannerScreen(
                     // COMPATIBLE for the same reason CameraPane uses it: a SurfaceView is
                     // composited outside the hierarchy and would draw over the controls.
                     preview.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    // FIT_CENTER, not the default FILL_CENTER: filling the window crops the
+                    // frame to the screen's shape, so the viewfinder showed less than the
+                    // camera saw and everything looked zoomed in (B55). Letterboxing shows
+                    // the whole frame, which is the one the shutter actually captures.
+                    preview.scaleType = PreviewView.ScaleType.FIT_CENTER
                     val future = ProcessCameraProvider.getInstance(viewContext)
                     future.addListener({
                         val provider = future.get()
@@ -119,7 +147,18 @@ fun ScannerScreen(
                         provider.bindToLifecycle(
                             lifecycleOwner,
                             CameraSelector.DEFAULT_BACK_CAMERA,
-                            androidx.camera.core.Preview.Builder().build().also {
+                            androidx.camera.core.Preview.Builder()
+                                .setResolutionSelector(
+                                    androidx.camera.core.resolutionselector.ResolutionSelector
+                                        .Builder()
+                                        .setAspectRatioStrategy(
+                                            androidx.camera.core.resolutionselector
+                                                .AspectRatioStrategy
+                                                .RATIO_4_3_FALLBACK_AUTO_STRATEGY,
+                                        )
+                                        .build(),
+                                )
+                                .build().also {
                                 it.surfaceProvider = preview.surfaceProvider
                             },
                             capture,
@@ -201,7 +240,12 @@ fun ScannerScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (pages.isNotEmpty()) {
-                PageStrip(pages, fileFor, onRemovePage)
+                PageStrip(
+                    pages = pages,
+                    fileFor = fileFor,
+                    onOpen = { previewing = it },
+                    onRemovePage = onRemovePage,
+                )
             }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
@@ -230,7 +274,8 @@ fun ScannerScreen(
                                 // twice for one shot.
                                 scope.launch {
                                     val quad = withContext(Dispatchers.Default) {
-                                        BitmapFactory.decodeFile(target.absolutePath)?.let { shot ->
+                                        io.github.pintofi.beanbook.app.documents.Photos
+                                            .decodeUpright(target)?.let { shot ->
                                             shotSize = androidx.compose.ui.unit.IntSize(shot.width, shot.height)
                                             Scanner.detect(shot)
                                         }
@@ -263,6 +308,70 @@ fun ScannerScreen(
             }
         }
     }
+
+    previewing?.let { index ->
+        pages.getOrNull(index)?.let { page ->
+            PagePreview(
+                file = fileFor(page.source),
+                index = index,
+                total = pages.size,
+                onRemove = {
+                    onRemovePage(index)
+                    previewing = null
+                },
+                onDismiss = { previewing = null },
+            )
+        }
+    }
+}
+
+/**
+ * One captured page, big enough to judge (B55).
+ *
+ * Tapping a thumbnail used to delete it, with no preview anywhere: the one gesture a person
+ * makes to check a photograph was the gesture that threw it away. Now a tap opens it, and
+ * removing is a labelled button in front of the page it removes.
+ */
+@Composable
+private fun PagePreview(
+    file: File,
+    index: Int,
+    total: Int,
+    onRemove: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val bitmap = remember(file.path, file.length()) {
+        runCatching {
+            io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file, maxEdge = 1600)
+        }.getOrNull()
+    }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Page ${index + 1} of $total") },
+        text = {
+            if (bitmap == null) {
+                Text("This page could not be opened. Photograph it again.")
+            } else {
+                androidx.compose.foundation.Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Page ${index + 1}, full size",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Keep it") }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(
+                onClick = onRemove,
+                modifier = Modifier.semantics {
+                    contentDescription = "Remove page ${index + 1} from this document"
+                },
+            ) { Text("Remove page") }
+        },
+    )
 }
 
 private fun ScanStyle.label(): String = when (this) {
@@ -276,6 +385,7 @@ private fun ScanStyle.label(): String = when (this) {
 private fun PageStrip(
     pages: List<CapturedPage>,
     fileFor: (String) -> File,
+    onOpen: (Int) -> Unit,
     onRemovePage: (Int) -> Unit,
 ) {
     LazyRow(
@@ -285,14 +395,17 @@ private fun PageStrip(
         items(pages.size) { index ->
             val page = pages[index]
             val bitmap = remember(page.source) {
-                runCatching { BitmapFactory.decodeFile(fileFor(page.source).absolutePath) }.getOrNull()
+                runCatching {
+                    io.github.pintofi.beanbook.app.documents.Photos
+                        .decodeUpright(fileFor(page.source), maxEdge = 256)
+                }.getOrNull()
             }
             Box(
                 modifier = Modifier
                     .size(72.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(Color.DarkGray)
-                    .semantics { contentDescription = "Page ${index + 1}. Tap to remove." },
+                    .semantics { contentDescription = "Page ${index + 1}. Tap to see it." },
                 contentAlignment = Alignment.Center,
             ) {
                 if (bitmap != null) {
@@ -303,13 +416,29 @@ private fun PageStrip(
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
-                IconButton(onClick = { onRemovePage(index) }, modifier = Modifier.fillMaxSize()) {}
+                IconButton(onClick = { onOpen(index) }, modifier = Modifier.fillMaxSize()) {}
                 Text(
                     "${index + 1}",
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
                 )
+                // Removing stays one tap away, but it is its own target with its own label:
+                // the thumbnail is for looking at the page, not for losing it (B55).
+                IconButton(
+                    onClick = { onRemovePage(index) },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(24.dp)
+                        .semantics { contentDescription = "Remove page ${index + 1}" },
+                ) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
             }
         }
     }

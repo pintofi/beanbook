@@ -54,7 +54,10 @@ fun CropPageDialog(
     onDismiss: () -> Unit,
 ) {
     val image: ImageBitmap? = remember(file.path) {
-        runCatching { BitmapFactory.decodeFile(file.path)?.asImageBitmap() }.getOrNull()
+        // Upright: the corners a person drags have to sit on the page as they see it (B55).
+        runCatching {
+            io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file)?.asImageBitmap()
+        }.getOrNull()
     }
     if (image == null) {
         // Said rather than shown as an empty frame: a page that cannot be decoded is a

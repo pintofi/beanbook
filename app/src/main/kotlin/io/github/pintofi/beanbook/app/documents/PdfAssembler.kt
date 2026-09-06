@@ -106,6 +106,11 @@ class PdfAssembler(private val maxPageEdge: Int = DEFAULT_MAX_EDGE) {
         return output
     }
 
+    /**
+     * @param rotation what the user asked for, in degrees. The camera's own EXIF rotation is
+     *   added to it here (B55): the pixels on disk are sideways and the tag says by how much,
+     *   so a page that looked upright in the strip came out on its side in the PDF.
+     */
     private fun decode(file: File, rotation: Int, crop: CropQuad? = null): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.path, bounds)
@@ -126,7 +131,9 @@ class PdfAssembler(private val maxPageEdge: Int = DEFAULT_MAX_EDGE) {
                 if (it !== decoded) decoded.recycle()
             }
         }
-        if (rotation == 0) return cropped
+        val exif = io.github.pintofi.beanbook.app.documents.Photos.degreesFor(file)
+        val total = (rotation + exif) % 360
+        if (total == 0) return cropped
 
         val rotated = Bitmap.createBitmap(
             cropped,
@@ -134,7 +141,7 @@ class PdfAssembler(private val maxPageEdge: Int = DEFAULT_MAX_EDGE) {
             0,
             cropped.width,
             cropped.height,
-            Matrix().apply { postRotate(rotation.toFloat()) },
+            Matrix().apply { postRotate(total.toFloat()) },
             true,
         )
         // createBitmap can hand back the very same instance when there is nothing to do, so
