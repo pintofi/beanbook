@@ -33,7 +33,6 @@ import io.github.pintofi.beanbook.app.backup.ScheduledBackupWorker
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import io.github.pintofi.beanbook.app.ui.DocumentCaptureHandle
 import io.github.pintofi.beanbook.app.ui.WelcomeDialog
-import io.github.pintofi.beanbook.app.ui.EntryEditDialog
 import io.github.pintofi.beanbook.core.domain.DocumentIndex
 import io.github.pintofi.beanbook.app.web.AllowlistWebViewClient
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
@@ -102,6 +101,10 @@ class MainActivity : ComponentActivity() {
 
     /** The entry whose own source is open for editing, if any (B11). */
     internal var editingEntry: io.github.pintofi.beanbook.engine.local.EntrySlice? by mutableStateOf(null)
+
+    /** The same entry as fields, when the draft was proved to describe it fully (B45). */
+    internal var editingDraft: io.github.pintofi.beanbook.core.domain.TransactionDraft?
+        by mutableStateOf(null)
 
     /** The documents already filed in the open project; refreshed after every change. */
     internal var documents: List<String> by mutableStateOf(emptyList())
@@ -733,13 +736,7 @@ class MainActivity : ComponentActivity() {
                     // Over the app rather than inside a screen: an entry can be opened for
                     // editing from the journal or from its detail view, and the dialog
                     // should not belong to whichever one happened to open it (B11).
-                    editingEntry?.let { slice ->
-                        EntryEditDialog(
-                            original = slice.text,
-                            onSave = { text -> saveEntryEdit(app, activeId!!, slice, text) },
-                            onDismiss = { editingEntry = null },
-                        )
-                    }
+                    EntryEditor(app, activeId, ledger)
                 }
             }
         }

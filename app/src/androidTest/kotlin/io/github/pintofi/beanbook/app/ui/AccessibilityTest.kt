@@ -147,6 +147,63 @@ class AccessibilityTest {
         assertEquals("the entry's own text should be what is saved", original, saved)
     }
 
+    /**
+     * Editing an entry as fields (B45).
+     *
+     * The form is only offered for an entry the draft describes completely, so what it saves
+     * must come back byte-for-byte when nothing is typed into it. A field editor that
+     * reformats an untouched entry is a silent rewrite of the user's file.
+     */
+    @Test fun editingAnEntryAsFieldsIsLabelledAndLossless() {
+        var saved: io.github.pintofi.beanbook.core.domain.TransactionDraft? = null
+        val entry = io.github.pintofi.beanbook.core.domain.JournalEntry(
+            date = "2026-02-01",
+            flag = "*",
+            payee = "Grocer",
+            narration = "Weekly shop",
+            tags = emptyList(),
+            links = emptyList(),
+            postings = listOf(
+                io.github.pintofi.beanbook.core.domain.JournalPosting(
+                    "Expenses:Food:Groceries",
+                    io.github.pintofi.beanbook.core.domain.Amount(
+                        java.math.BigDecimal("12.00"),
+                        "USD",
+                    ),
+                ),
+                io.github.pintofi.beanbook.core.domain.JournalPosting(
+                    "Assets:Bank:Checking",
+                    io.github.pintofi.beanbook.core.domain.Amount(
+                        java.math.BigDecimal("-12.00"),
+                        "USD",
+                    ),
+                ),
+            ),
+            file = "main.beancount",
+            line = 3,
+        )
+        val original = io.github.pintofi.beanbook.core.domain.StructuredEdit.draftOf(entry)
+        render(widthDp = 320, fontScale = 2f) {
+            EntryFormDialog(
+                original = original,
+                vocabulary = vocabulary,
+                onSave = { saved = it },
+                onEditAsText = {},
+                onDismiss = {},
+            )
+        }
+
+        compose.onAllNodesWithText("Date")[0].assertExists()
+        compose.onNodeWithContentDescription("Currency for posting 1").assertExists()
+        assertNull("nothing should be saved until Save is pressed", saved)
+        compose.onNodeWithText("Save").performClick()
+        assertEquals(
+            "an untouched entry should be written back exactly as it was",
+            original.render(),
+            saved?.render(),
+        )
+    }
+
     @Test fun directiveEntryPassesAccessibilityChecks() {
         compose.setContent { Themed { DirectiveEntryScreen(vocabulary, onSave = {}, today = today) } }
         assertAccessible()

@@ -109,6 +109,11 @@ fun QuickAddScreen(
     // Transaction-level metadata, as editable rows so a half-typed key cannot be committed
     // by accident (B16).
     val metaRows = remember { mutableStateListOf<MetadataRow>() }
+    // The default a posting uses when its own currency box is left empty. There is no field
+    // for it: a transaction does not have one currency -- each posting does, and the boxes
+    // beside the amounts are where that is said. A second, transaction-wide currency field
+    // above them asked the same question twice and answered neither, since it set nothing on
+    // its own. It still moves when a template or a cloned entry names a denomination.
     var currency by remember {
         mutableStateOf(vocabulary.defaultCurrency ?: vocabulary.currencies.firstOrNull() ?: "USD")
     }
@@ -295,16 +300,6 @@ fun QuickAddScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-
-        OutlinedTextField(
-            value = currency,
-            onValueChange = { currency = it.uppercase() },
-            label = { Text("Currency") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        // Every commodity the ledger declares or holds, matched like any other field (B6).
-        Suggestions(vocabulary.currenciesMatching(currency), "currency", current = currency) { currency = it }
 
         MetadataEditor(
             rows = metaRows,
@@ -799,7 +794,7 @@ private fun AttachDocumentSection(
 }
 
 /** Wide enough for a figure with two decimal places, and for the "Amount" label above it. */
-private val AMOUNT_FIELD_WIDTH = 116.dp
+internal val AMOUNT_FIELD_WIDTH = 116.dp
 
 /** Wide enough for a three-letter code, and for the "Cur." label that used to wrap onto two. */
-private val CURRENCY_FIELD_WIDTH = 92.dp
+internal val CURRENCY_FIELD_WIDTH = 92.dp

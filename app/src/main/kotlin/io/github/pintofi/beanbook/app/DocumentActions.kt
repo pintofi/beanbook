@@ -266,13 +266,17 @@ internal fun MainActivity.deleteEntry(
 }
 
 /**
- * Loads one entry's own source text so it can be edited (B11).
+ * Opens one entry for editing: as fields where that is provably safe, as text otherwise
+ * (B11, B45).
  *
- * The entry is edited *as text*, not decomposed into fields and rebuilt. A round trip
- * through a structured draft would silently drop everything the draft does not model --
- * a comment inside the entry, metadata the app has no field for, the user's own alignment --
- * which is exactly what invariant 4 forbids. Replacing the entry's byte range with what the
- * user wrote touches nothing else in the file.
+ * A form is friendlier and much more dangerous than a text box, because a draft models a
+ * fixed set of things and would silently drop anything else the entry carries -- a comment
+ * inside it, a shape the app has no field for, the user's own alignment. Invariant 4 forbids
+ * that, so the question is settled per entry rather than assumed:
+ * [io.github.pintofi.beanbook.core.domain.StructuredEdit.isLossless] renders the draft and
+ * compares it with the bytes actually in the file. Identical means the draft is a complete
+ * description and a form can edit it losslessly; different means the text editor is the only
+ * honest option, and it stays available either way.
  */
 internal fun MainActivity.beginEntryEdit(
     app: BeancountApplication,
@@ -293,6 +297,8 @@ internal fun MainActivity.beginEntryEdit(
             return@launch
         }
         editingEntry = slice
+        editingDraft = io.github.pintofi.beanbook.core.domain.StructuredEdit
+            .losslessDraftOf(entry, slice.text)
     }
 }
 
@@ -335,6 +341,34 @@ internal fun MainActivity.saveEntryEdit(
             is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> "Not saved: ${result.reason}"
         }
         editingEntry = null
+        editingDraft = null
         app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
     }
+}
+
+/**
+ * The entry editor, when one is open (B11, B45).
+ *
+ * An extension rather than a member: it reads the activity's editing state and nothing else,
+ * and the activity is already the largest class in the app.
+ */
+@androidx.compose.runtime.Composable
+internal fun MainActivity.EntryEditor(
+    app: BeancountApplication,
+    projectId: String?,
+    ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?,
+) {
+    val slice = editingEntry ?: return
+    if (projectId == null) return
+    io.github.pintofi.beanbook.app.ui.EntryEditHost(
+        slice = slice,
+        draft = editingDraft,
+        ledger = ledger,
+        onSave = { text -> saveEntryEdit(app, projectId, slice, text) },
+        onEditAsText = { editingDraft = null },
+        onDismiss = {
+            editingEntry = null
+            editingDraft = null
+        },
+    )
 }
