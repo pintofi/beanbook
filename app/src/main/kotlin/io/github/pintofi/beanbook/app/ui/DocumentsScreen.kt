@@ -4,16 +4,10 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -23,27 +17,22 @@ import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import io.github.pintofi.beanbook.core.domain.BeancountText
 import io.github.pintofi.beanbook.core.domain.DocumentRow
@@ -142,7 +131,15 @@ fun DocumentsScreen(
                 Text("Allow the camera")
             }
         } else {
-            CameraPane(onCapture = capture.onCapture, captureFile = capture.captureFile)
+            // Opens the fullscreen scanner rather than embedding a viewfinder in the form.
+            // The camera is the whole job once you are in it, and a preview boxed between a
+            // heading and a page list is neither a good viewfinder nor a good form.
+            Button(
+                onClick = capture.onStartScanning,
+                modifier = Modifier.semantics {
+                    contentDescription = "Open the scanner and photograph pages"
+                },
+            ) { Text(if (capture.pages.isEmpty) "Scan pages" else "Scan more pages") }
         }
 
         if (!capture.pages.isEmpty) {
@@ -412,112 +409,3 @@ fun rememberCameraPermission(): Boolean {
     }
 }
 
-/** The viewfinder, bound to this composable's lifecycle and unbound when it leaves. */
-@Composable
-internal fun CameraPane(
-    onCapture: (File) -> Unit,
-    captureFile: () -> File,
-) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val capture = remember {
-        ImageCapture.Builder()
-            // A receipt is read, not glanced at, so the slower path that keeps detail is the
-            // right trade here. The default minimises latency instead.
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-            .build()
-    }
-    var busy by remember { mutableStateOf(false) }
-
-    // CameraX fixes an ImageCapture's target rotation when it is built, and this activity
-    // declares `configChanges="orientation"`, so it is never recreated to pick up a new one.
-    // Every photo in a session was therefore saved with the rotation the device happened to
-    // have when the camera first appeared: turn the phone sideways to fit a wide receipt and
-    // the page came out sideways. The Rotate button below is a workaround for this, not a
-    // feature.
-    DisposableEffect(capture) {
-        val listener = object : android.view.OrientationEventListener(context) {
-            override fun onOrientationChanged(orientation: Int) {
-                if (orientation == ORIENTATION_UNKNOWN) return
-                capture.targetRotation = when (orientation) {
-                    in 45 until 135 -> android.view.Surface.ROTATION_270
-                    in 135 until 225 -> android.view.Surface.ROTATION_180
-                    in 225 until 315 -> android.view.Surface.ROTATION_90
-                    else -> android.view.Surface.ROTATION_0
-                }
-            }
-        }
-        if (listener.canDetectOrientation()) listener.enable()
-        onDispose { listener.disable() }
-    }
-
-    AndroidView(
-        factory = { viewContext ->
-            PreviewView(viewContext).also { preview ->
-                // A PreviewView defaults to a SurfaceView, which is composited by the system
-                // outside the view hierarchy — in Compose it draws straight over whatever is
-                // below it, as it did over the capture button here. TextureView draws in the
-                // hierarchy like everything else, at the cost of a little extra copying.
-                preview.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                val providerFuture = ProcessCameraProvider.getInstance(viewContext)
-                providerFuture.addListener({
-                    val provider = providerFuture.get()
-                    provider.unbindAll()
-                    provider.bindToLifecycle(
-                        lifecycleOwner,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
-                        androidx.camera.core.Preview.Builder().build().also {
-                            it.surfaceProvider = preview.surfaceProvider
-                        },
-                        capture,
-                    )
-                }, ContextCompat.getMainExecutor(viewContext))
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(280.dp)
-            // Clipped explicitly: a camera preview will happily paint outside the bounds
-            // Compose gave it, and it did — over the capture button and the page list.
-            .clipToBounds()
-            .semantics { contentDescription = "Camera viewfinder" },
-    )
-
-    DisposableEffect(Unit) {
-        onDispose {
-            // Released through the future's own listener rather than by blocking on `get()`
-            // on the main thread, which is the thread this runs on.
-            val future = ProcessCameraProvider.getInstance(context)
-            future.addListener(
-                { runCatching { future.get().unbindAll() } },
-                ContextCompat.getMainExecutor(context),
-            )
-        }
-    }
-
-    Button(
-        onClick = {
-            if (busy) return@Button
-            busy = true
-            val target = captureFile()
-            capture.takePicture(
-                ImageCapture.OutputFileOptions.Builder(target).build(),
-                ContextCompat.getMainExecutor(context),
-                object : ImageCapture.OnImageSavedCallback {
-                    override fun onImageSaved(result: ImageCapture.OutputFileResults) {
-                        busy = false
-                        onCapture(target)
-                    }
-
-                    override fun onError(exception: ImageCaptureException) {
-                        busy = false
-                        onCapture(target)
-                    }
-                },
-            )
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = "Take a photo of this page" },
-    ) { Text("Capture page") }
-}

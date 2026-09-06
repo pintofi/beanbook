@@ -36,6 +36,7 @@ import io.github.pintofi.beanbook.app.ui.EditableFile
 import io.github.pintofi.beanbook.app.ui.ContributeScreen
 import io.github.pintofi.beanbook.core.data.MirrorAction
 import io.github.pintofi.beanbook.app.ui.DocumentCaptureHandle
+import io.github.pintofi.beanbook.app.ui.ScannerScreen
 import io.github.pintofi.beanbook.core.data.RestoreStaged
 import io.github.pintofi.beanbook.core.domain.CapturedPages
 import io.github.pintofi.beanbook.core.domain.DirectiveDraft
@@ -285,6 +286,23 @@ internal fun LedgerApp(
         windowWidth < 600 -> PaneLayout.COMPACT
         windowWidth < 840 -> PaneLayout.MEDIUM
         else -> PaneLayout.EXPANDED
+    }
+
+    // Scanning takes the whole window, above the rail, the bars and the navigation. It is a
+    // mode rather than a destination: you enter it, shoot a stack of pages, and leave, and
+    // chrome around the viewfinder would make it look like a form with a camera in it.
+    if (documentCapture.scanning) {
+        ScannerScreen(
+            pages = documentCapture.pages.pages,
+            fileFor = documentCapture.fileFor,
+            captureFile = documentCapture.captureFile,
+            onCaptured = documentCapture.onScanned,
+            onRemovePage = documentCapture.onRemovePage,
+            onDone = documentCapture.onStopScanning,
+            onCancel = documentCapture.onStopScanning,
+            modifier = modifier,
+        )
+        return
     }
 
     Row(modifier = modifier) {

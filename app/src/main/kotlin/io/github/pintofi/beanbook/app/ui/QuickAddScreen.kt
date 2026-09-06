@@ -1,6 +1,9 @@
 package io.github.pintofi.beanbook.app.ui
 
 import androidx.compose.foundation.horizontalScroll
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -708,7 +711,6 @@ private fun AttachDocumentSection(
     attached: List<String>,
     onFiled: (String) -> Unit,
 ) {
-    var open by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         attached.forEach { path ->
@@ -718,14 +720,30 @@ private fun AttachDocumentSection(
             )
         }
 
-        TextButton(
-            onClick = { open = !open },
-            modifier = Modifier.semantics {
-                contentDescription = if (open) "Hide the camera" else "Attach a photo to this transaction"
-            },
-        ) { Text(if (open) "Done photographing" else "Attach a photo") }
+        // Straight into the scanner. The permission is requested here, at the moment the
+        // camera is actually wanted, rather than being assumed from a screen the user may
+        // never have opened -- attaching a photo from entry used to fail silently on a device
+        // that had never visited Documents.
+        val cameraGranted = rememberCameraPermission()
+        var granted by remember(cameraGranted) { mutableStateOf(cameraGranted) }
+        val askForCamera = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { allowed ->
+            granted = allowed
+            if (allowed) capture.onStartScanning()
+        }
 
-        if (open) {
+        TextButton(
+            onClick = {
+                if (granted) capture.onStartScanning()
+                else askForCamera.launch(Manifest.permission.CAMERA)
+            },
+            modifier = Modifier.semantics {
+                contentDescription = "Scan a document for this transaction"
+            },
+        ) { Text("Scan a document") }
+
+        if (!capture.pages.isEmpty) {
             if (account.isBlank()) {
                 // Said rather than silently disabled: the reason is not guessable from a
                 // greyed-out button, and the fix is one field away.
@@ -735,9 +753,18 @@ private fun AttachDocumentSection(
                     style = MaterialTheme.typography.bodySmall,
                 )
             } else {
-                CameraPane(onCapture = capture.onCapture, captureFile = capture.captureFile)
                 capture.pages.pages.forEachIndexed { index, page ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // The page itself, not its number. A stack of captures identified by
+                        // "Page 1, Page 2" gives no way to tell the blurred one from the good
+                        // one without filing them and opening the PDF.
+                        PageThumbnail(
+                            file = capture.fileFor(page.source),
+                            label = "Page ${index + 1}",
+                        )
                         Text(
                             "Page ${index + 1}",
                             style = MaterialTheme.typography.bodySmall,
@@ -761,7 +788,6 @@ private fun AttachDocumentSection(
                     onClick = {
                         capture.onFile(account) { path ->
                             onFiled(path)
-                            open = false
                         }
                     },
                     enabled = !capture.pages.isEmpty,

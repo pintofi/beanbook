@@ -39,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
@@ -55,6 +57,8 @@ import io.github.pintofi.beanbook.core.domain.CropQuad
 import io.github.pintofi.beanbook.scanner.ScanStyle
 import io.github.pintofi.beanbook.scanner.Scanner
 import java.io.File
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -86,7 +90,8 @@ fun ScannerScreen(
     var style by remember { mutableStateOf(ScanStyle.DOCUMENT) }
     var busy by remember { mutableStateOf(false) }
     var lastQuad by remember { mutableStateOf<CropQuad?>(null) }
-    var previewSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    var shotSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    val scope = rememberCoroutineScope()
 
     val capture = remember {
         ImageCapture.Builder()
@@ -94,7 +99,13 @@ fun ScannerScreen(
             .build()
     }
 
-    Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            // The preview runs under the system bars; the controls must not.
+            .systemBarsPadding(),
+    ) {
         androidx.compose.ui.viewinterop.AndroidView(
             factory = { viewContext ->
                 PreviewView(viewContext).also { preview ->
@@ -125,8 +136,8 @@ fun ScannerScreen(
         // the crop is taken from anyway.
         lastQuad?.let { quad ->
             androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                val sx = size.width / (previewSize.width.takeIf { it > 0 } ?: 1)
-                val sy = size.height / (previewSize.height.takeIf { it > 0 } ?: 1)
+                val sx = size.width / (shotSize.width.takeIf { it > 0 } ?: 1)
+                val sy = size.height / (shotSize.height.takeIf { it > 0 } ?: 1)
                 val path = Path().apply {
                     val corners = listOf(quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft)
                     val pts = corners.map { Offset(it.x * sx, it.y * sy) }
@@ -137,6 +148,29 @@ fun ScannerScreen(
                 drawPath(path, Color(0xFF80D5D4), style = Stroke(width = 6f))
             }
         }
+
+        // Scrims behind the controls. White icons over a live camera are legible until the
+        // camera is pointed at something pale — the back arrow disappeared entirely against a
+        // bright scene on the first device run. A gradient rather than a bar so the preview
+        // is not boxed in, and it darkens only where controls actually sit.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(140.dp)
+                .background(
+                    Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent)),
+                ),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(220.dp)
+                .background(
+                    Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f))),
+                ),
+        )
 
         IconButton(
             onClick = onCancel,
@@ -191,8 +225,20 @@ fun ScannerScreen(
                         ContextCompat.getMainExecutor(context),
                         object : ImageCapture.OnImageSavedCallback {
                             override fun onImageSaved(result: ImageCapture.OutputFileResults) {
-                                onCaptured(target, null, style)
-                                busy = false
+                                // Detect here, once, and hand the crop up with the file. The
+                                // overlay reads the same result, so a page is never analysed
+                                // twice for one shot.
+                                scope.launch {
+                                    val quad = withContext(Dispatchers.Default) {
+                                        BitmapFactory.decodeFile(target.absolutePath)?.let { shot ->
+                                            shotSize = androidx.compose.ui.unit.IntSize(shot.width, shot.height)
+                                            Scanner.detect(shot)
+                                        }
+                                    }
+                                    lastQuad = quad
+                                    onCaptured(target, quad, style)
+                                    busy = false
+                                }
                             }
 
                             override fun onError(exception: ImageCaptureException) {
@@ -215,19 +261,6 @@ fun ScannerScreen(
                     )
                 }
             }
-        }
-    }
-
-    // Detection off the main thread, once per new page, so the outline appears without the
-    // shutter stuttering.
-    LaunchedEffect(pages.size) {
-        val newest = pages.lastOrNull() ?: return@LaunchedEffect
-        lastQuad = withContext(Dispatchers.Default) {
-            val file = fileFor(newest.source)
-            if (!file.isFile) return@withContext null
-            val bitmap = BitmapFactory.decodeFile(file.absolutePath) ?: return@withContext null
-            previewSize = androidx.compose.ui.unit.IntSize(bitmap.width, bitmap.height)
-            Scanner.detect(bitmap)
         }
     }
 }

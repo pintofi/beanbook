@@ -429,6 +429,11 @@ class MainActivity : ComponentActivity() {
                     val entitlementMessage by
                         app.entitlementState.message.collectAsStateWithLifecycle()
                     val documentPages by app.documentCapture.pages.collectAsStateWithLifecycle()
+                    // Survives rotation: the scanner is a mode, and turning the phone to fit a
+                    // wide receipt must not drop you back into the form mid-stack.
+                    var scanning by androidx.compose.runtime.saveable.rememberSaveable {
+                        androidx.compose.runtime.mutableStateOf(false)
+                    }
                     val documentMessage by
                         app.documentCapture.message.collectAsStateWithLifecycle()
                     val pendingRestore by
@@ -521,6 +526,22 @@ class MainActivity : ComponentActivity() {
                             captureFile = { app.documentCapture.nextCaptureFile() },
                             onCapture = { file ->
                                 if (file.length() > 0) app.documentCapture.add(file)
+                            },
+                            scanning = scanning,
+                            onStartScanning = { scanning = true },
+                            onStopScanning = { scanning = false },
+                            onScanned = { file, quad, _ ->
+                                // Add first, then apply the outline the scanner found. The
+                                // crop is a description of the photograph, never a rewrite of
+                                // it: the file on disk stays the one the camera produced, so
+                                // a wrong detection is a drag away from being corrected
+                                // rather than something that destroyed the original (J3).
+                                if (file.length() > 0) {
+                                    app.documentCapture.add(file)
+                                    if (quad != null) {
+                                        app.documentCapture.crop(documentPages.pages.lastIndex, quad)
+                                    }
+                                }
                             },
                             onRotate = { app.documentCapture.rotate(it) },
                             onMove = { from, to -> app.documentCapture.move(from, to) },

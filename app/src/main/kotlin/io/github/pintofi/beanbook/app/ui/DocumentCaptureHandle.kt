@@ -1,6 +1,8 @@
 package io.github.pintofi.beanbook.app.ui
 
 import io.github.pintofi.beanbook.core.domain.CapturedPages
+import io.github.pintofi.beanbook.core.domain.CropQuad
+import io.github.pintofi.beanbook.scanner.ScanStyle
 import java.io.File
 
 /**
@@ -24,6 +26,18 @@ data class DocumentCaptureHandle(
      * call sites passed a lambda that ignored the argument.
      */
     val onCapture: (File) -> Unit,
+    /** True while the fullscreen scanner owns the window. */
+    val scanning: Boolean = false,
+    val onStartScanning: () -> Unit = {},
+    val onStopScanning: () -> Unit = {},
+    /**
+     * A page the scanner captured, with the outline it found and the style chosen.
+     *
+     * Separate from [onCapture] because the scanner already knows the crop — it detected it
+     * to draw the outline — and re-detecting on the other side of the callback would analyse
+     * the same photograph twice.
+     */
+    val onScanned: (File, CropQuad?, ScanStyle) -> Unit = { _, _, _ -> },
     val onRotate: (Int) -> Unit,
     val onMove: (Int, Int) -> Unit,
     val onRemovePage: (Int) -> Unit,

@@ -115,7 +115,10 @@ class AccessibilityTest {
             )
         }
 
-        compose.onNodeWithContentDescription("Attach a photo to this transaction")
+        // The control opens the fullscreen scanner now rather than unfolding a viewfinder
+        // inside the form, so its name says scanning. What this case checks is unchanged:
+        // that the way to attach a document during entry is reachable and labelled at 200%.
+        compose.onNodeWithContentDescription("Scan a document for this transaction")
             .performScrollTo().assertExists()
         assertAccessible()
         // Message first: this is org.junit's Assert, as the rest of this file uses. Written
