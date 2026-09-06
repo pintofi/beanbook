@@ -114,12 +114,11 @@ fun DirectiveEntryScreen(
             }
         }
 
-        OutlinedTextField(
+        DateField(
             value = date,
             onValueChange = { date = it },
-            label = { Text("Date") },
-            singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            today = today,
         )
 
         // The first field means something different per directive, so it is labelled for
@@ -131,26 +130,24 @@ fun DirectiveEntryScreen(
             DirectiveKind.CUSTOM -> "Custom type"
             else -> "Account"
         }
-        OutlinedTextField(
+        SuggestingField(
             value = account,
             onValueChange = { account = it },
-            label = { Text(firstLabel) },
-            singleLine = true,
+            label = firstLabel,
+            // Commodity directives name a commodity, everything else here names an account,
+            // so the list offered is the one the field is actually about.
+            suggestions = if (firstLabel == "Account") vocabulary.accounts else vocabulary.currencies,
             modifier = Modifier.fillMaxWidth(),
         )
-        if (firstLabel == "Account") {
-            Suggestions(vocabulary.accountsMatching(account), "account", current = account) { account = it }
-        }
 
         if (kind == DirectiveKind.PAD) {
-            OutlinedTextField(
+            SuggestingField(
                 value = second,
                 onValueChange = { second = it },
-                label = { Text("Padded from") },
-                singleLine = true,
+                label = "Padded from",
+                suggestions = vocabulary.accounts,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Suggestions(vocabulary.accountsMatching(second), "account", current = second) { second = it }
         }
 
         if (kind in setOf(DirectiveKind.BALANCE, DirectiveKind.PRICE)) {
@@ -163,22 +160,22 @@ fun DirectiveEntryScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(2f),
                 )
-                OutlinedTextField(
+                SuggestingField(
                     value = currency,
                     onValueChange = { currency = it.uppercase() },
-                    label = { Text("Currency") },
-                    singleLine = true,
+                    label = "Currency",
+                    suggestions = vocabulary.currencies,
                     modifier = Modifier.weight(1f),
                 )
             }
         }
 
         if (kind == DirectiveKind.OPEN) {
-            OutlinedTextField(
+            SuggestingField(
                 value = currency,
                 onValueChange = { currency = it.uppercase() },
-                label = { Text("Currency (optional)") },
-                singleLine = true,
+                label = "Currency (optional)",
+                suggestions = vocabulary.currencies,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

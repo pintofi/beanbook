@@ -71,6 +71,24 @@ class LedgerState(
     var pluginContext: PluginContext = PluginContext { "" }
     var allowBridge: Boolean = true
 
+    private val _dateRange = MutableStateFlow("" to "")
+
+    /** The inclusive ISO date range the open snapshot describes; empty means the whole file. */
+    val dateRange: StateFlow<Pair<String, String>> = _dateRange.asStateFlow()
+
+    /**
+     * Narrows every figure to a period, the way Fava's time filter does (B53).
+     *
+     * A reload rather than a client-side filter: balances at cost and at market value are
+     * Beancount's to compute, and recomputing them here from the journal would be a second,
+     * worse implementation of the thing the engine exists to do.
+     */
+    fun setDateRange(from: String, to: String) {
+        if (_dateRange.value == from to to) return
+        _dateRange.value = from to to
+        lastPath?.let { load(it) }
+    }
+
     fun load(ledgerPath: String) {
         lastPath = ledgerPath
         job?.cancel()
@@ -78,7 +96,13 @@ class LedgerState(
         val started = ++generation
         job = scope.launch {
             try {
-                reader.read(ledgerPath, pluginDirs = pluginContext.directories(), allowBridge = allowBridge)
+                reader.read(
+                    ledgerPath,
+                    pluginDirs = pluginContext.directories(),
+                    allowBridge = allowBridge,
+                    dateFrom = _dateRange.value.first,
+                    dateTo = _dateRange.value.second,
+                )
                     .onSuccess { snapshot ->
                         _failure.value = null
                         _snapshot.value = snapshot

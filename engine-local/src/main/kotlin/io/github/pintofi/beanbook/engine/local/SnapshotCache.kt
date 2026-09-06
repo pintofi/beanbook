@@ -99,6 +99,9 @@ internal class SnapshotCache(private val dir: File) {
         val journalLimit: Int,
         val pluginDirs: String,
         val allowBridge: Boolean,
+        /** The date range the snapshot was computed over; empty means the whole file. */
+        val dateFrom: String = "",
+        val dateTo: String = "",
     )
 
     /**
@@ -111,7 +114,12 @@ internal class SnapshotCache(private val dir: File) {
     private fun fingerprint(files: List<String>, inputs: Inputs): String? {
         val digest = MessageDigest.getInstance("SHA-256")
         digest.update(FORMAT.toByteArray())
-        digest.update("${inputs.journalLimit}|${inputs.pluginDirs}|${inputs.allowBridge}".toByteArray())
+        // The range is part of the key: a cached snapshot of one period must never be
+        // served for another, which would put the wrong figures on screen with no reload.
+        digest.update(
+            ("${inputs.journalLimit}|${inputs.pluginDirs}|${inputs.allowBridge}" +
+                "|${inputs.dateFrom}|${inputs.dateTo}").toByteArray(),
+        )
         // Sorted, so the order the engine happened to report includes in cannot change the
         // fingerprint on its own.
         files.sorted().forEach { path ->

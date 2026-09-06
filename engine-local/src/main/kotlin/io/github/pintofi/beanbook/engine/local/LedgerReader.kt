@@ -54,9 +54,12 @@ class LedgerReader(
         journalLimit: Int = 0,
         pluginDirs: String = "",
         allowBridge: Boolean = true,
+        /** An inclusive ISO date range; empty bounds mean the whole file (B53). */
+        dateFrom: String = "",
+        dateTo: String = "",
     ): Result<LedgerSnapshot> =
         withContext(io) {
-            val inputs = SnapshotCache.Inputs(journalLimit, pluginDirs, allowBridge)
+            val inputs = SnapshotCache.Inputs(journalLimit, pluginDirs, allowBridge, dateFrom, dateTo)
 
             // The cached answer first, and only if it still applies to the files on disk.
             // This is the whole of the large-ledger startup fix (B21): the native screens
@@ -88,6 +91,8 @@ class LedgerReader(
                         payload.absolutePath,
                         pluginDirs,
                         allowBridge,
+                        dateFrom,
+                        dateTo,
                     )
                 }
                 .mapCatching { result ->

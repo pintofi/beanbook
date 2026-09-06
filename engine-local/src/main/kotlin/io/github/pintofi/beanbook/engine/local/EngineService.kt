@@ -70,10 +70,20 @@ class EngineService : Service() {
             outPath: String,
             pluginDirs: String,
             allowBridge: Boolean,
+            dateFrom: String?,
+            dateTo: String?,
         ): String =
             guarded {
                 val json = python().getModule("ledger")
-                    .callAttr("inspect", ledgerPath, journalLimit, pluginDirs, allowBridge)
+                    .callAttr(
+                        "inspect",
+                        ledgerPath,
+                        journalLimit,
+                        pluginDirs,
+                        allowBridge,
+                        dateFrom.orEmpty(),
+                        dateTo.orEmpty(),
+                    )
                     .toString()
                 writeOut(outPath, json)
                 "ok"

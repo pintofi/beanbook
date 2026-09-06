@@ -121,11 +121,9 @@ fun EntryFormDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                OutlinedTextField(
+                DateField(
                     value = date,
                     onValueChange = { date = it },
-                    label = { Text("Date") },
-                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -137,19 +135,18 @@ fun EntryFormDialog(
                         ) { Text(label) }
                     }
                 }
-                OutlinedTextField(
+                SuggestingField(
                     value = payee,
                     onValueChange = { payee = it },
-                    label = { Text("Payee") },
-                    singleLine = true,
+                    label = "Payee",
+                    suggestions = vocabulary.payees,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Suggestions(vocabulary.payeesMatching(payee), "payee", current = payee) { payee = it }
-                OutlinedTextField(
+                SuggestingField(
                     value = narration,
                     onValueChange = { narration = it },
-                    label = { Text("Narration") },
-                    singleLine = true,
+                    label = "Narration",
+                    suggestions = vocabulary.narrations,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -165,11 +162,12 @@ fun EntryFormDialog(
                 Text("Postings", style = MaterialTheme.typography.titleSmall)
                 rows.forEachIndexed { index, row ->
                     val accountField: @Composable (Modifier) -> Unit = { fieldModifier ->
-                        OutlinedTextField(
+                        SuggestingField(
                             value = row.account,
                             onValueChange = { row.account = it },
-                            label = { Text("Account ${index + 1}") },
-                            singleLine = true,
+                            label = "Account ${index + 1}",
+                            suggestions = vocabulary.accounts,
+                            describe = "Account for posting ${index + 1}",
                             modifier = fieldModifier,
                         )
                     }
@@ -184,15 +182,13 @@ fun EntryFormDialog(
                         )
                     }
                     val currencyField: @Composable (Modifier) -> Unit = { fieldModifier ->
-                        OutlinedTextField(
+                        SuggestingField(
                             value = row.currency,
                             onValueChange = { row.currency = it.uppercase() },
-                            label = { Text("Cur.") },
-                            placeholder = { Text(fallbackCurrency) },
-                            singleLine = true,
-                            modifier = fieldModifier.semantics {
-                                contentDescription = "Currency for posting ${index + 1}"
-                            },
+                            label = "Cur.",
+                            suggestions = vocabulary.currencies,
+                            describe = "Currency for posting ${index + 1}",
+                            modifier = fieldModifier,
                         )
                     }
                     if (stacked) {
@@ -214,11 +210,6 @@ fun EntryFormDialog(
                             currencyField(Modifier.width(CURRENCY_FIELD_WIDTH))
                         }
                     }
-                    Suggestions(
-                        vocabulary.accountsMatching(row.account),
-                        "account",
-                        current = row.account,
-                    ) { row.account = it }
                 }
                 TextButton(onClick = { rows.add(EditRow("", "", "")) }) { Text("Add a posting") }
 

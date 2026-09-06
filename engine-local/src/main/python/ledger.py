@@ -10,6 +10,7 @@ Nothing here writes. Mutation is M4's business.
 
 from __future__ import annotations
 
+import datetime
 import json
 import time
 from pathlib import Path
@@ -77,6 +78,8 @@ def inspect(
     journal_limit: int = 0,
     plugin_dirs: str = "",
     allow_bridge: bool = True,
+    date_from: str = "",
+    date_to: str = "",
 ) -> str:
     """Parse a ledger and return a JSON summary.
 
@@ -108,6 +111,29 @@ def inspect(
             entries, errors, options_map = loader.load_file(ledger_path)
     load_ms = (time.monotonic() - started) * 1000
 
+    # A date range, applied the way Fava applies its time filter: the *entries* are narrowed,
+    # and everything computed below -- balances, the journal, which accounts exist -- follows
+    # from the narrowed set (B53). Prices are the exception and are built from the whole file
+    # further down, because a rate published before the range still values a holding inside
+    # it, and dropping it would report an asset at cost and call it market value.
+    #
+    # An unparseable bound is ignored rather than treated as the start of time: a half-typed
+    # date in a filter box must not silently empty the screen.
+    all_entries = entries
+    bounds = []
+    for raw in (date_from, date_to):
+        try:
+            bounds.append(datetime.date.fromisoformat(raw) if raw else None)
+        except ValueError:
+            bounds.append(None)
+    since, until = bounds
+    if since is not None or until is not None:
+        entries = [
+            entry
+            for entry in entries
+            if (since is None or entry.date >= since) and (until is None or entry.date <= until)
+        ]
+
     counts: dict[str, int] = {}
     for entry in entries:
         name = type(entry).__name__
@@ -134,7 +160,9 @@ def inspect(
     # Prices come from the file's own `price` directives. Nothing is fetched and nothing is
     # inferred: an asset the ledger never priced is reported at cost by Beancount's own
     # get_value, which is the honest answer rather than an invented one.
-    price_map = prices_lib.build_price_map(entries)
+    price_map = prices_lib.build_price_map(all_entries)
+    # The end of the range being shown, not the end of the file: valuing a filtered ledger at
+    # today's price would put figures on the screen that the chosen period never held.
     as_of = max((entry.date for entry in entries), default=None)
 
     def _amounts(inventory, reducer):

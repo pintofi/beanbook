@@ -22,11 +22,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.Text
@@ -147,21 +150,72 @@ fun BalancesScreen(
     modifier: Modifier = Modifier,
     /** Cost and market value are Tier 3; the units everyone can see (B14). */
     valuationAllowed: Boolean = false,
+    /** The period the figures cover, as Fava's time filter expresses it (B53). */
+    dateFrom: String = "",
+    dateTo: String = "",
+    onDateRange: (String, String) -> Unit = { _, _ -> },
 ) {
     val roots = listOf("Assets", "Liabilities", "Equity", "Income", "Expenses")
-    var filter by remember { mutableStateOf("") }
-    var basis by remember { mutableStateOf(Valuation.UNITS) }
+    var filter by rememberSaveable { mutableStateOf("") }
+    // Remembered across launches, not just recompositions (B53). Somebody who keeps their
+    // books at market value sets that once; asking again on every start is the app forgetting
+    // something it was told.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val store = remember(context) { ValuationPreference(context) }
+    var basis by remember { mutableStateOf(store.read()) }
 
     Column(modifier = modifier.fillMaxSize()) {
-        OutlinedTextField(
+        // Two bounds and an account, which is the pair of filters Fava puts above its own
+        // reports. The dates go to the engine and narrow what is computed; the account
+        // filter narrows what is drawn from that.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DateField(
+                value = dateFrom,
+                onValueChange = { onDateRange(it, dateTo) },
+                label = "From",
+                modifier = Modifier.weight(1f),
+            )
+            DateField(
+                value = dateTo,
+                onValueChange = { onDateRange(dateFrom, it) },
+                label = "To",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    // Said plainly, because a balance for part of a year looks exactly like a
+                    // balance for all of it and is a different number.
+                    "Showing " + listOfNotNull(
+                        dateFrom.takeIf { it.isNotBlank() }?.let { "from $it" },
+                        dateTo.takeIf { it.isNotBlank() }?.let { "to $it" },
+                    ).joinToString(" "),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                TextButton(
+                    onClick = { onDateRange("", "") },
+                    modifier = Modifier.semantics { contentDescription = "Show every date again" },
+                ) { Text("Clear dates") }
+            }
+        }
+
+        SuggestingField(
             value = filter,
             onValueChange = { filter = it },
-            label = { Text("Filter accounts") },
-            singleLine = true,
+            label = "Filter accounts",
+            suggestions = snapshot.accounts.map { it.name },
+            describe = "Filter accounts by name",
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .semantics { contentDescription = "Filter accounts by name" },
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         )
 
         if (valuationAllowed) {
@@ -174,7 +228,7 @@ fun BalancesScreen(
                 Valuation.entries.forEachIndexed { index, option ->
                     SegmentedButton(
                         selected = basis == option,
-                        onClick = { basis = option },
+                        onClick = { basis = option; store.write(option) },
                         shape = SegmentedButtonDefaults.itemShape(index, Valuation.entries.size),
                         modifier = Modifier.semantics {
                             contentDescription = "Show balances ${option.label}"
@@ -381,14 +435,56 @@ fun JournalScreen(
     // a re-parse. That is why it grows on scroll instead of behind a button: there is nothing
     // to wait for, so asking the user to ask would be ceremony.
     var shown by rememberSaveable(snapshot.journal.size) { mutableStateOf(JOURNAL_PAGE) }
-    val visible = remember(snapshot.journal, shown) { snapshot.journal.take(shown) }
+    // Kept while the ledger reloads, because a save or a pull-to-refresh should not throw
+    // away what the reader was looking for.
+    var query by rememberSaveable { mutableStateOf("") }
+    val found = remember(snapshot.journal, query) {
+        if (query.isBlank()) snapshot.journal else snapshot.journal.filter { it.matches(query) }
+    }
+    val visible = remember(found, shown) { found.take(shown) }
+
+    Column(modifier = modifier.fillMaxSize()) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = { query = it },
+        label = { Text("Search entries") },
+        singleLine = true,
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(
+                    onClick = { query = "" },
+                    modifier = Modifier.semantics { contentDescription = "Clear the search" },
+                ) { Icon(Icons.Filled.Close, contentDescription = null) }
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .semantics { contentDescription = "Search entries by date, payee, description or account" },
+    )
 
     LazyColumn(
-        modifier = modifier.fillMaxSize().readableMeasure(),
+        modifier = Modifier.fillMaxSize().readableMeasure(),
         contentPadding = PaddingValues(bottom = 88.dp),
     ) {
         if (snapshot.hasErrors) {
             item { ErrorBanner(snapshot.errors) }
+        }
+        if (found.isEmpty() && query.isNotBlank()) {
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("Nothing matches \"$query\"", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Every word has to appear somewhere in the entry. Try fewer of them.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
         }
         if (snapshot.journal.isEmpty()) {
             item {
@@ -424,13 +520,15 @@ fun JournalScreen(
             JournalRow(entry, onClick = { onOpenEntry(entry) })
             HorizontalDivider()
         }
-        if (shown < snapshot.journal.size) {
+        if (shown < found.size) {
             item {
                 // Composing this row is what asks for the next page: reaching it means the
                 // reader is at the end of what is drawn. It states the count rather than
                 // spinning, because the wait is a frame and a spinner would imply otherwise.
-                val remaining = snapshot.journal.size - shown
-                LaunchedEffect(shown) { shown = (shown + JOURNAL_PAGE).coerceAtMost(snapshot.journal.size) }
+                val remaining = found.size - shown
+                LaunchedEffect(shown, found.size) {
+                    shown = (shown + JOURNAL_PAGE).coerceAtMost(found.size)
+                }
                 Text(
                     text = "$remaining older " + if (remaining == 1) "entry" else "entries",
                     style = MaterialTheme.typography.bodySmall,
@@ -440,6 +538,7 @@ fun JournalScreen(
                 )
             }
         }
+    }
     }
 }
 

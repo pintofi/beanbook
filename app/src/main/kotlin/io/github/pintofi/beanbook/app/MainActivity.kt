@@ -452,6 +452,7 @@ class MainActivity : ComponentActivity() {
                     val packagesMessage by app.packagesState.message.collectAsStateWithLifecycle()
                     val packages = app.packagesState
                         .ui(packagesInstalled, packagesStatus, packagesMessage)
+                    val dateRange by app.ledgerState.dateRange.collectAsStateWithLifecycle()
                     val restartNeeded by app.engineRestart.needed.collectAsStateWithLifecycle()
                     val engineRestart = io.github.pintofi.beanbook.app.engine.EngineRestartUi(
                         needed = restartNeeded,
@@ -637,6 +638,9 @@ class MainActivity : ComponentActivity() {
                         pluginSafeMode = pluginSafeMode,
                         pluginMessage = pluginMessage,
                         packages = packages,
+                        dateFrom = dateRange.first,
+                        dateTo = dateRange.second,
+                        onDateRange = { from, to -> app.ledgerState.setDateRange(from, to) },
                         engineRestart = engineRestart,
                         onInstallPlugin = { pluginPicker.launch(arrayOf("*/*")) },
                         scriptRunning = scriptRunning,

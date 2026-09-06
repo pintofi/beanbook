@@ -190,14 +190,13 @@ fun DocumentsScreen(
                 }
             }
 
-            OutlinedTextField(
+            SuggestingField(
                 value = account,
                 onValueChange = { account = it },
-                label = { Text("File under account") },
-                singleLine = true,
+                label = "File under account",
+                suggestions = vocabulary.accounts,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Suggestions(vocabulary.accountsMatching(account), "account", current = account) { account = it }
 
             Button(
                 onClick = { onSave(account.trim()) },
@@ -336,14 +335,13 @@ fun DocumentsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(path, style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(
+                    SuggestingField(
                         value = target,
                         onValueChange = { target = it },
-                        label = { Text("File under account") },
-                        singleLine = true,
+                        label = "File under account",
+                        suggestions = vocabulary.accounts,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Suggestions(vocabulary.accountsMatching(target), "account", current = target) { target = it }
                 }
             },
             confirmButton = {

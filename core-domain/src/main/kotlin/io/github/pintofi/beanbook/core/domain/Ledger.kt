@@ -113,6 +113,33 @@ data class JournalEntry(
     val linkedDocuments: List<String>
         get() = metadata.filterKeys { it == "document" || it.startsWith("document-") }
             .values.filter { it.isNotBlank() }.toList()
+
+    /**
+     * Whether every word of [query] appears somewhere in this entry (B53).
+     *
+     * Every word, not the whole string: "coff bank" finds the coffee paid from the bank
+     * account, which is how people actually remember a transaction — two fragments, neither
+     * of them adjacent in the text. Date, flag, payee, narration, tags, links, account names
+     * and the figures are all searched, because any of them can be the thing recalled.
+     */
+    fun matches(query: String): Boolean {
+        val words = query.trim().split(' ').filter { it.isNotBlank() }
+        if (words.isEmpty()) return true
+        val haystack = buildString {
+            append(date).append(' ')
+            flag?.let { append(it).append(' ') }
+            payee?.let { append(it).append(' ') }
+            narration?.let { append(it).append(' ') }
+            tags.forEach { append('#').append(it).append(' ') }
+            links.forEach { append('^').append(it).append(' ') }
+            metadata.forEach { (key, value) -> append(key).append(' ').append(value).append(' ') }
+            postings.forEach { posting ->
+                append(posting.account).append(' ')
+                posting.amount?.let { append(it.number.toPlainString()).append(' ').append(it.currency).append(' ') }
+            }
+        }
+        return words.all { haystack.contains(it, ignoreCase = true) }
+    }
 }
 
 /**

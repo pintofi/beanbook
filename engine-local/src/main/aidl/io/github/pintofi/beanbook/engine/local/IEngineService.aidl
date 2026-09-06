@@ -52,8 +52,15 @@ interface IEngineService {
      *   is only installed when there is user code to guard.
      * @param allowBridge the edition's policy, decided on the app side.
      */
+    /**
+     * @param dateFrom,dateTo an inclusive ISO date range, or empty for unbounded. Applied to
+     *   the entries before anything is computed from them, as Fava's time filter is, so the
+     *   balances and the journal describe the same period. Prices come from the whole file
+     *   regardless: a rate published earlier still values a holding inside the range.
+     */
     String inspectToFile(String ledgerPath, int journalLimit, String outPath,
-                         String pluginDirs, boolean allowBridge);
+                         String pluginDirs, boolean allowBridge,
+                         String dateFrom, String dateTo);
 
     /** Re-parses a project. Returns the validation JSON (bounded: 50 errors max). */
     /**

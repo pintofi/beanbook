@@ -250,22 +250,20 @@ fun QuickAddScreen(
             ) { Text("Pending") }
         }
 
-        OutlinedTextField(
+        DateField(
             value = date,
             onValueChange = { date = it },
-            label = { Text("Date") },
-            singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            today = today,
         )
 
-        OutlinedTextField(
+        SuggestingField(
             value = payee,
             onValueChange = { payee = it },
-            label = { Text("Payee") },
-            singleLine = true,
+            label = "Payee",
+            suggestions = vocabulary.payees,
             modifier = Modifier.fillMaxWidth(),
         )
-        Suggestions(vocabulary.payeesMatching(payee), "payee", current = payee) { payee = it }
 
         // "Use what you used last time" — offered, never applied silently, because reusing
         // an old amount without being asked is a way to record the wrong number.
@@ -293,11 +291,11 @@ fun QuickAddScreen(
             )
         }
 
-        OutlinedTextField(
+        SuggestingField(
             value = narration,
             onValueChange = { narration = it },
-            label = { Text("Description") },
-            singleLine = true,
+            label = "Description",
+            suggestions = vocabulary.narrations,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -338,11 +336,12 @@ fun QuickAddScreen(
         rows.forEachIndexed { index, row ->
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 val accountField: @Composable (Modifier) -> Unit = { fieldModifier ->
-                    OutlinedTextField(
+                    SuggestingField(
                         value = row.account,
                         onValueChange = { row.account = it },
-                        label = { Text("Account ${index + 1}") },
-                        singleLine = true,
+                        label = "Account ${index + 1}",
+                        suggestions = vocabulary.accounts,
+                        describe = "Account for posting ${index + 1}",
                         modifier = fieldModifier,
                     )
                 }
@@ -363,15 +362,13 @@ fun QuickAddScreen(
                     )
                 }
                 val currencyField: @Composable (Modifier) -> Unit = { fieldModifier ->
-                    OutlinedTextField(
+                    SuggestingField(
                         value = row.currency,
                         onValueChange = { row.currency = it.uppercase() },
-                        label = { Text("Cur.") },
-                        placeholder = { Text(currency) },
-                        singleLine = true,
-                        modifier = fieldModifier.semantics {
-                            contentDescription = "Currency for posting ${index + 1}"
-                        },
+                        label = "Cur.",
+                        suggestions = vocabulary.currencies,
+                        describe = "Currency for posting ${index + 1}",
+                        modifier = fieldModifier,
                     )
                 }
                 val removeButton: @Composable () -> Unit = {
@@ -415,9 +412,6 @@ fun QuickAddScreen(
                         currencyField(Modifier.width(CURRENCY_FIELD_WIDTH))
                         removeButton()
                     }
-                }
-                Suggestions(vocabulary.accountsMatching(row.account), "account", current = row.account) {
-                    row.account = it
                 }
                 MetadataEditor(
                     rows = row.metadata,

@@ -121,6 +121,10 @@ internal fun SurfaceContent(
     pluginSafeMode: Boolean,
     pluginMessage: String?,
     packages: io.github.pintofi.beanbook.app.packages.PackagesUi,
+    /** The period Balances is showing, and the way to change it (B53). */
+    dateFrom: String,
+    dateTo: String,
+    onDateRange: (String, String) -> Unit,
     engineRestart: io.github.pintofi.beanbook.app.engine.EngineRestartUi,
     onInstallPlugin: () -> Unit,
     scriptRunning: String?,
@@ -464,6 +468,9 @@ internal fun SurfaceContent(
                             ledger,
                             Modifier.padding(padding),
                             valuationAllowed = entitlement.allows(Feature.HOLDINGS_VALUATION),
+                            dateFrom = dateFrom,
+                            dateTo = dateTo,
+                            onDateRange = onDateRange,
                         )
                     }
                 }
