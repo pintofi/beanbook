@@ -230,19 +230,56 @@ fun FavaWebView(
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            WebView(context).apply {
-                applyBeancountHardening(debuggingAllowed)
-                webViewClient = AllowlistWebViewClient(
-                    allowlist = allowlist,
-                    onBlocked = onBlocked,
-                    onExternalLink = onExternalLink,
-                    httpAuth = httpAuth,
-                    onLoadProblem = onLoadProblem,
-                    themeScript = { currentTheme.value },
+            // A FrameLayout around the WebView, not the WebView on its own. `AndroidView`
+            // measures its view once with an unconstrained height, and a WebView measured
+            // that way tells Chromium its viewport height is zero -- so `100vh` resolves to
+            // **0** and stays there. Reports laid out in ordinary flow were unaffected and
+            // looked right; Fava's editor sizes itself entirely in viewport units, so it
+            // collapsed into nothing and the page came up blank with the whole document
+            // present in the DOM. The wrapper absorbs that measure pass and the WebView is
+            // laid out MATCH_PARENT inside it, which is what makes `vh` mean something
+            // (B47, `ViewportUnitsTest`).
+            android.widget.FrameLayout(context).apply {
+                val web = WebView(context).apply {
+                    applyBeancountHardening(debuggingAllowed)
+                    // A page that renders nothing says nothing without this: the report is
+                    // Fava's own JavaScript, and when it throws the only record is the
+                    // browser console. Debug builds only, and it reads messages rather than
+                    // exposing anything to the page -- a WebChromeClient is not a bridge.
+                    if (debuggingAllowed) {
+                        webChromeClient = object : android.webkit.WebChromeClient() {
+                            override fun onConsoleMessage(
+                                message: android.webkit.ConsoleMessage,
+                            ): Boolean {
+                                Log.i(
+                                    TAG,
+                                    "console ${message.messageLevel()}: ${message.message()} " +
+                                        "(${message.sourceId()}:${message.lineNumber()})",
+                                )
+                                return true
+                            }
+                        }
+                    }
+                    webViewClient = AllowlistWebViewClient(
+                        allowlist = allowlist,
+                        onBlocked = onBlocked,
+                        onExternalLink = onExternalLink,
+                        httpAuth = httpAuth,
+                        onLoadProblem = onLoadProblem,
+                        themeScript = { currentTheme.value },
+                    )
+                }
+                addView(
+                    web,
+                    android.widget.FrameLayout.LayoutParams(
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                    ),
                 )
             }
         },
-        update = { view ->
+        update = { host ->
+            val view = host.getChildAt(0) as WebView
             if (view.url != url) {
                 view.loadUrl(url)
             } else {
