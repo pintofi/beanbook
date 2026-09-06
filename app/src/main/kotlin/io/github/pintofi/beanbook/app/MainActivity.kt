@@ -86,14 +86,6 @@ class MainActivity : ComponentActivity() {
      * every launch, assigned, and never read by anything, so the app silently recovered from
      * an interrupted write and told nobody.
      */
-    /**
-     * How many accounts reach the widget cache.
-     *
-     * A cap, not everything: the cache lives outside the project tree so a widget can read
-     * it, and a full chart of accounts is a description of somebody's life.
-     */
-    private val widgetAccountLimit = 12
-
     private var hideWidgetAmounts: Boolean by mutableStateOf(false)
 
     private var recoveryMessage: String? by mutableStateOf(null)
@@ -322,15 +314,15 @@ class MainActivity : ComponentActivity() {
                         ledger = ledger,
                         entitled = entitled,
                         nowEpochMs = System.currentTimeMillis(),
-                        // Only what a widget can show. The cache lives outside the project
-                        // tree so the home screen can read it, and a full chart of accounts
-                        // is a description of somebody's life.
-                        accounts = ledger.accounts
-                            .map { it.name }
-                            .filter {
-                                it.startsWith("Assets:") || it.startsWith("Liabilities:")
-                            }
-                            .take(widgetAccountLimit),
+                        // Every account, not a shortlist. It used to be the first twelve
+                        // names under Assets: or Liabilities:, so a widget could not be
+                        // pointed at an expense category, at a top-level account, or at the
+                        // thirteenth bank account -- and the configuration screen offered
+                        // only what this had cached, so those accounts did not exist as far
+                        // as the home screen was concerned (B48). The cache is app-private
+                        // storage that never enters a backup or a mirror, and it already
+                        // held account names; the cap bought no privacy it did not have.
+                        accounts = ledger.accounts.map { it.name },
                     ),
                 )
                 io.github.pintofi.beanbook.app.widget.WidgetRefresh.refreshAll(this@MainActivity)

@@ -6,19 +6,28 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -79,7 +88,7 @@ class BalanceWidgetConfigureActivity : ComponentActivity() {
         setContent {
             BeancountTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ChooseAccount(
+                    ChooseAccounts(
                         accounts = accounts,
                         onChoose = ::choose,
                         modifier = Modifier.safeDrawingPadding(),
@@ -89,8 +98,8 @@ class BalanceWidgetConfigureActivity : ComponentActivity() {
         }
     }
 
-    private fun choose(account: String) {
-        WidgetAccounts(this).setAccountFor(widgetId, account)
+    private fun choose(chosen: List<String>) {
+        WidgetAccounts(this).setAccountsFor(widgetId, chosen)
         // Drawn before returning, so the widget shows the chosen account immediately rather
         // than an em dash until something else happens to refresh it.
         WidgetRefresh.refreshAll(this)
@@ -103,14 +112,17 @@ class BalanceWidgetConfigureActivity : ComponentActivity() {
 }
 
 @Composable
-internal fun ChooseAccount(
+internal fun ChooseAccounts(
     accounts: List<String>,
-    onChoose: (String) -> Unit,
+    onChoose: (List<String>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val picked = remember { mutableStateListOf<String>() }
+    var filter by remember { mutableStateOf("") }
+
     Column(modifier = modifier) {
         Text(
-            "Which balance?",
+            "Which balances?",
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
         )
@@ -126,20 +138,63 @@ internal fun ChooseAccount(
             return@Column
         }
         Text(
-            "The widget will show this account's balance.",
+            "Pick one account, or several — the widget shows a row for each.",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
         )
-        LazyColumn {
-            items(accounts) { account ->
+        // Every account in the ledger reaches this list now, which is long enough to need
+        // finding rather than scrolling (B48).
+        OutlinedTextField(
+            value = filter,
+            onValueChange = { filter = it },
+            label = { Text("Filter accounts") },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .semantics { contentDescription = "Filter accounts by name" },
+        )
+        val needle = filter.trim()
+        val offered = accounts.filter { needle.isEmpty() || it.contains(needle, ignoreCase = true) }
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(offered) { account ->
+                val isPicked = account in picked
                 ListItem(
                     headlineContent = { Text(account) },
+                    trailingContent = {
+                        Checkbox(
+                            checked = isPicked,
+                            // Null, so the row owns the click: a checkbox with its own
+                            // handler beside a clickable row gives a screen reader two
+                            // targets that do the same thing.
+                            onCheckedChange = null,
+                        )
+                    },
                     modifier = Modifier
-                        .clickable { onChoose(account) }
+                        .toggleable(
+                            value = isPicked,
+                            onValueChange = { on ->
+                                if (on) picked.add(account) else picked.remove(account)
+                            },
+                        )
                         .semantics { contentDescription = "Show the balance of $account" },
                 )
                 HorizontalDivider()
             }
+        }
+        Button(
+            onClick = { onChoose(picked.toList()) },
+            // Nothing picked is not a widget: it would be placed showing the default account
+            // rather than what the person came here to choose.
+            enabled = picked.isNotEmpty(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        ) {
+            Text(
+                if (picked.size <= 1) "Add this widget"
+                else "Add this widget with ${picked.size} balances",
+            )
         }
     }
 }

@@ -38,8 +38,15 @@ object WidgetRenderer {
         snapshot: WidgetSnapshot?,
         redacted: Boolean,
         nowEpochMs: Long = System.currentTimeMillis(),
-        chosenAccount: String? = null,
+        chosenAccounts: List<String> = emptyList(),
     ): RemoteViews {
+        // Several accounts on one widget is its own layout: a row each, rather than one
+        // figure with a label (B48). One account keeps the original single-figure shape,
+        // which reads better at the size most people place a balance widget at.
+        if (metric == WidgetMetric.BALANCE && chosenAccounts.size > 1) {
+            return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs)
+        }
+        val chosenAccount = chosenAccounts.firstOrNull()
         val views = RemoteViews(context.packageName, R.layout.widget_metric)
 
         // The balance widget says *which* account, because an unlabelled figure on a home
@@ -107,6 +114,74 @@ object WidgetRenderer {
         )
         return views
     }
+
+    /**
+     * Several balances, one row each (B48).
+     *
+     * Capped at [MAX_ROWS], and the widget **says** when it is showing fewer than were
+     * chosen rather than silently dropping the rest -- a home-screen widget quietly omitting
+     * an account is the same class of error as showing an outdated figure.
+     *
+     * An account the ledger no longer has keeps its row and shows an em dash, for the reason
+     * the single-account path never substitutes: the row names an account, so putting some
+     * other account's money beside that name would be worse than showing nothing.
+     */
+    private fun renderRows(
+        context: Context,
+        snapshot: WidgetSnapshot?,
+        accounts: List<String>,
+        redacted: Boolean,
+        nowEpochMs: Long,
+    ): RemoteViews {
+        val views = RemoteViews(context.packageName, R.layout.widget_balances)
+        views.setTextViewText(R.id.widget_label, WidgetMetric.BALANCE.label)
+        views.setOnClickPendingIntent(
+            R.id.widget_label,
+            launchIntent(context, snapshot, WidgetMetric.BALANCE),
+        )
+        views.removeAllViews(R.id.widget_rows)
+
+        if (snapshot == null || !snapshot.entitled) {
+            views.setTextViewText(
+                R.id.widget_footnote,
+                if (snapshot == null) "Open the app once to set this up."
+                else "Widgets are part of the Workflow tier. Your ledger is unaffected.",
+            )
+            return views
+        }
+
+        val shown = accounts.take(MAX_ROWS)
+        shown.forEach { account ->
+            val row = RemoteViews(context.packageName, R.layout.widget_balance_row)
+            row.setTextViewText(R.id.row_account, account.substringAfterLast(':'))
+            val value = snapshot.balances[account]
+            row.setTextViewText(
+                R.id.row_amount,
+                when {
+                    value == null -> "—"
+                    redacted -> "•••"
+                    else -> value
+                },
+            )
+            views.addView(R.id.widget_rows, row)
+        }
+
+        val missing = shown.filter { snapshot.balances[it] == null }
+        val hidden = accounts.size - shown.size
+        views.setTextViewText(
+            R.id.widget_footnote,
+            when {
+                missing.isNotEmpty() ->
+                    missing.joinToString(", ") + " is not in this ledger any more."
+                hidden > 0 -> "$hidden more not shown · " + footnote(snapshot, nowEpochMs, redacted)
+                else -> footnote(snapshot, nowEpochMs, redacted)
+            },
+        )
+        return views
+    }
+
+    /** As many rows as stay legible on a widget somebody has actually resized. */
+    private const val MAX_ROWS = 6
 
     /**
      * The line under the figure, which is doing more work than it looks.

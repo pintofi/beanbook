@@ -39,7 +39,7 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
                     metric = metric,
                     snapshot = snapshot,
                     redacted = WidgetRenderer.shouldRedact(context, id, hideAmounts),
-                    chosenAccount = accounts.accountFor(id),
+                    chosenAccounts = accounts.accountsFor(id),
                 ),
             )
         }
@@ -100,53 +100,66 @@ object WidgetRefresh {
 }
 
 /**
- * Which account each balance widget was told to show (B1).
+ * Which accounts each balance widget was told to show (B1, B48).
  *
  * A default was never enough. `WidgetSnapshot.primaryBalance` picks assets-then-alphabetical
  * so the figure at least means something, but somebody with two current accounts cannot put
  * the *other* one on their home screen, and two balance widgets could only ever show the
  * same number.
  *
+ * **A list, not one name.** A widget the size of four app icons can hold several balances,
+ * and "current account, savings, card" is one glance rather than three widgets (B48).
+ *
  * Keyed by app-widget id, because the choice belongs to the placed widget rather than to the
  * app: two of them are the point.
  *
- * A flat `id=account` file, like [WidgetPreferences] beside it. An account name cannot
- * contain `=` or a newline in Beancount, so the format needs no escaping, and the whole
- * store is a handful of lines that must be readable from a broadcast receiver without
- * touching the engine.
+ * A flat `id=a,b,c` file, like [WidgetPreferences] beside it. A Beancount account name
+ * cannot contain `=`, `,` or a newline, so the format needs no escaping, and the whole store
+ * is a handful of lines that must be readable from a broadcast receiver without touching the
+ * engine. A file written by an older version holds one name per line and parses as a
+ * one-element list, so an upgrade keeps whatever a placed widget was showing.
  */
 class WidgetAccounts(private val context: Context) {
 
     private val file get() = context.filesDir.resolve("state/widget-accounts")
 
-    private fun all(): Map<Int, String> =
+    private fun all(): Map<Int, List<String>> =
         if (!file.isFile) emptyMap()
         else file.readLines().mapNotNull { line ->
             val at = line.indexOf('=')
-            if (at <= 0) null else line.take(at).toIntOrNull()?.let { it to line.substring(at + 1) }
+            if (at <= 0) {
+                null
+            } else {
+                line.take(at).toIntOrNull()?.let { id ->
+                    id to line.substring(at + 1).split(',').filter { it.isNotBlank() }
+                }
+            }
         }.toMap()
 
-    private fun save(entries: Map<Int, String>) {
+    private fun save(entries: Map<Int, List<String>>) {
         file.parentFile?.mkdirs()
-        if (entries.isEmpty()) {
+        val kept = entries.filterValues { it.isNotEmpty() }
+        if (kept.isEmpty()) {
             file.delete()
         } else {
-            file.writeText(entries.entries.joinToString("\n") { "${it.key}=${it.value}" })
+            file.writeText(
+                kept.entries.joinToString("\n") { "${it.key}=${it.value.joinToString(",")}" },
+            )
         }
     }
 
-    /** The account chosen for [widgetId], or `null` to mean "whatever the default picks". */
-    fun accountFor(widgetId: Int): String? = all()[widgetId]
+    /** The accounts chosen for [widgetId]. Empty means "whatever the default picks". */
+    fun accountsFor(widgetId: Int): List<String> = all()[widgetId].orEmpty()
 
-    fun setAccountFor(widgetId: Int, account: String) {
-        save(all() + (widgetId to account))
+    fun setAccountsFor(widgetId: Int, accounts: List<String>) {
+        save(all() + (widgetId to accounts))
     }
 
     /**
      * Forgets [widgetIds].
      *
      * Called from `onDeleted`, because ids are reused: without this, a new widget could
-     * inherit the account a deleted one was showing, which looks like the app choosing at
+     * inherit the accounts a deleted one was showing, which looks like the app choosing at
      * random.
      */
     fun forget(widgetIds: IntArray) {

@@ -60,7 +60,7 @@ class WidgetAccountChoiceTest {
             metric = WidgetMetric.BALANCE,
             snapshot = snapshot(),
             redacted = false,
-            chosenAccount = chosen,
+            chosenAccounts = listOfNotNull(chosen),
         )
         val root = views.apply(context, null)
         fun text(id: Int) = root.findViewById<TextView>(id).text.toString()
@@ -85,13 +85,13 @@ class WidgetAccountChoiceTest {
 
     /** Two widgets, two accounts — the reason a per-widget choice exists at all. */
     @Test fun twoWidgetsCanShowDifferentAccounts() {
-        accounts.setAccountFor(ids[0], "Assets:Bank:Current")
-        accounts.setAccountFor(ids[1], "Liabilities:Card")
+        accounts.setAccountsFor(ids[0], listOf("Assets:Bank:Current"))
+        accounts.setAccountsFor(ids[1], listOf("Liabilities:Card"))
 
-        assertEquals("Assets:Bank:Current", accounts.accountFor(ids[0]))
-        assertEquals("Liabilities:Card", accounts.accountFor(ids[1]))
-        assertEquals("10.00 USD", rendered(accounts.accountFor(ids[0])).second)
-        assertEquals("-30.00 USD", rendered(accounts.accountFor(ids[1])).second)
+        assertEquals(listOf("Assets:Bank:Current"), accounts.accountsFor(ids[0]))
+        assertEquals(listOf("Liabilities:Card"), accounts.accountsFor(ids[1]))
+        assertEquals("10.00 USD", rendered(accounts.accountsFor(ids[0]).first()).second)
+        assertEquals("-30.00 USD", rendered(accounts.accountsFor(ids[1]).first()).second)
     }
 
     @Test fun anAccountThatLeftTheLedgerIsSaidRatherThanSubstituted() {
@@ -107,24 +107,74 @@ class WidgetAccountChoiceTest {
         assertTrue("a different account's balance was substituted", !value.contains("10.00"))
     }
 
+
+    /**
+     * Several accounts on one widget (B48).
+     *
+     * Read out of the rendered view tree rather than asserted against the code that built
+     * it: the rows are added with `RemoteViews.addView`, and the failure worth catching is a
+     * row that never reaches the layout.
+     */
+    private fun rows(chosen: List<String>, redacted: Boolean = false): Pair<List<String>, String> {
+        val views = WidgetRenderer.render(
+            context = context,
+            metric = WidgetMetric.BALANCE,
+            snapshot = snapshot(),
+            redacted = redacted,
+            chosenAccounts = chosen,
+        )
+        val root = views.apply(context, null) as android.view.ViewGroup
+        val container = root.findViewById<android.view.ViewGroup>(R.id.widget_rows)
+        val lines = (0 until container.childCount).map { index ->
+            val row = container.getChildAt(index) as android.view.ViewGroup
+            row.findViewById<TextView>(R.id.row_account).text.toString() + " " +
+                row.findViewById<TextView>(R.id.row_amount).text.toString()
+        }
+        return lines to root.findViewById<TextView>(R.id.widget_footnote).text.toString()
+    }
+
+    @Test fun severalChosenAccountsEachGetTheirOwnRow() {
+        val (lines, _) = rows(listOf("Assets:Bank:Current", "Liabilities:Card"))
+        assertEquals(listOf("Current 10.00 USD", "Card -30.00 USD"), lines)
+    }
+
+    @Test fun aMissingAccountKeepsItsRowAndIsNamed() {
+        val (lines, footnote) = rows(listOf("Assets:Bank:Current", "Assets:Bank:Closed"))
+        assertEquals(listOf("Current 10.00 USD", "Closed —"), lines)
+        assertTrue("the widget did not say which account is gone: $footnote",
+            footnote.contains("Assets:Bank:Closed"))
+        assertTrue("another account's money was substituted", !lines[1].contains("250.00"))
+    }
+
+    @Test fun hidingAmountsHidesEveryRow() {
+        val (lines, _) = rows(
+            listOf("Assets:Bank:Current", "Assets:Bank:Savings"),
+            redacted = true,
+        )
+        assertTrue("a figure survived redaction: $lines", lines.none { it.contains("USD") })
+    }
+
     /** Ids are reused, so a deleted widget's choice must not be inherited by the next one. */
     @Test fun aForgottenWidgetLeavesNoChoiceBehind() {
-        accounts.setAccountFor(ids[2], "Assets:Bank:Savings")
-        assertEquals("Assets:Bank:Savings", accounts.accountFor(ids[2]))
+        accounts.setAccountsFor(ids[2], listOf("Assets:Bank:Savings"))
+        assertEquals(listOf("Assets:Bank:Savings"), accounts.accountsFor(ids[2]))
 
         accounts.forget(intArrayOf(ids[2]))
 
-        assertNull("a deleted widget's account outlived it", accounts.accountFor(ids[2]))
+        assertTrue(
+            "a deleted widget's account outlived it",
+            accounts.accountsFor(ids[2]).isEmpty(),
+        )
     }
 
     /** Forgetting one widget must not disturb the others. */
     @Test fun forgettingOneWidgetKeepsTheRest() {
-        accounts.setAccountFor(ids[0], "Assets:Bank:Current")
-        accounts.setAccountFor(ids[1], "Assets:Bank:Savings")
+        accounts.setAccountsFor(ids[0], listOf("Assets:Bank:Current"))
+        accounts.setAccountsFor(ids[1], listOf("Assets:Bank:Savings"))
 
         accounts.forget(intArrayOf(ids[0]))
 
-        assertNull(accounts.accountFor(ids[0]))
-        assertEquals("Assets:Bank:Savings", accounts.accountFor(ids[1]))
+        assertTrue(accounts.accountsFor(ids[0]).isEmpty())
+        assertEquals(listOf("Assets:Bank:Savings"), accounts.accountsFor(ids[1]))
     }
 }
