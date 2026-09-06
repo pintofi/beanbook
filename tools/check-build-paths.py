@@ -31,7 +31,15 @@ UPSTREAM = (
     b"/home/smith/git/chaquo",          # Chaquopy's maintainer
     b"/home/users/.cache",              # a literal in watchfiles' default ignore list
     b"/home/tables/",                   # a sample path in Fava's bundled source map
+    b"/home/ci/build/o4a",              # OpenCV's own release builder, in libopencv_java4.so
+    b"/home/ci/opencv",                 # the same builder's source tree, in the same library
 )
+
+# The OpenCV entries are the only ones added since the scanner was written, and they are the
+# same case as Chaquopy's: `libopencv_java4.so` comes from the published `org.opencv:opencv`
+# artefact, is not built here, and carries its builder's paths in assertion strings. Checked
+# before allowing rather than assumed -- every unallowed hit in an expert APK was inside that
+# one library, and no other file in either edition produced one (B52).
 
 # What is deliberately *not* checked: `/tmp/cibw-run-<random>` in beancount's `_parser.so`.
 # meson records the build prefix as a DT_RUNPATH, and the directory is a per-run temporary
