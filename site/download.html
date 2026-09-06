@@ -32,6 +32,7 @@
         <nav class="primary-nav" aria-label="Primary navigation">
           <a class="nav-link" href="index.html">Home</a
           ><a class="nav-link" href="features.html">Features</a
+          ><a class="nav-link" href="plugins.html">Add-ons</a
           ><a class="nav-link" href="download.html" aria-current="page"
             >Download</a
           ><a class="nav-link" href="keys.html">Keys</a
@@ -119,29 +120,24 @@
                   <td class="check">Included</td>
                 </tr>
                 <tr>
-                  <th scope="row">User plugins and extensions</th>
-                  <td>Pure Python only</td>
-                  <td>Pure Python and compatible native packages</td>
+                  <th scope="row">Add-ons you install from a file</th>
+                  <td class="check">Included</td>
+                  <td class="check">Included</td>
                 </tr>
                 <tr>
-                  <th scope="row">Android bridge in user Python</th>
-                  <td>Withheld</td>
-                  <td>Available</td>
+                  <th scope="row">Where extra Python libraries can come from</th>
+                  <td>No downloads</td>
+                  <td>PyPI, or a file you provide</td>
                 </tr>
                 <tr>
-                  <th scope="row">Optional package downloads</th>
-                  <td>None</td>
-                  <td>User-confirmed</td>
+                  <th scope="row">Add-ons that can use your phone's own features</th>
+                  <td>No</td>
+                  <td>Yes</td>
                 </tr>
                 <tr>
                   <th scope="row">App updates</th>
                   <td>Google Play</td>
                   <td>Signed package, user-confirmed</td>
-                </tr>
-                <tr>
-                  <th scope="row">Billing or purchase flow in app</th>
-                  <td>None</td>
-                  <td>None</td>
                 </tr>
               </tbody>
             </table>
@@ -164,21 +160,13 @@
               <h3>Processor</h3>
               <p>arm64-v8a and x86_64. There is no 32-bit build.</p>
             </article>
-            <article class="card" data-reveal>
-              <h3>Per architecture</h3>
-              <p>About 48.5 MB to download.</p>
-            </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
-              <h3>Universal package</h3>
-              <p>About 59.3 MB to download.</p>
-            </article>
           </div>
           <div class="callout" data-reveal>
-            <strong>Optional packages use more space.</strong>
+            <strong>Optional libraries use more space.</strong>
             <p>
-              The Expert edition can fetch some packages only when requested.
-              Beangrow's closure downloads 37 MB and occupies about 143 MB after
-              unpacking.
+              The Expert edition downloads extra Python libraries only when you
+              ask for one. The app shows what it would download, and how large
+              it is, before anything is fetched.
             </p>
           </div>
         </div>
@@ -190,14 +178,15 @@
           <div class="prose" data-reveal style="--reveal-index: 1">
             <h3>Play</h3>
             <p>
-              Use it when you want store-managed updates and do not need native
-              Python packages or the Android bridge from your own code.
+              Use it when you want updates through the Play Store and your
+              add-ons do not need to download libraries or use your phone's own
+              features.
             </p>
             <h3>Expert</h3>
             <p>
-              Use it when your plugins need compatible native packages,
-              on-demand packages, or Android APIs, and you are comfortable
-              installing signed releases directly.
+              Use it when your add-ons need libraries downloaded on demand or
+              access to your phone's own features, and you are comfortable
+              installing signed releases yourself.
             </p>
             <p>
               Files are identical between editions. A project created in one

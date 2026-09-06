@@ -33,6 +33,7 @@
           <a class="nav-link" href="index.html">Home</a
           ><a class="nav-link" href="features.html" aria-current="page"
             >Features</a
+          ><a class="nav-link" href="plugins.html">Add-ons</a
           ><a class="nav-link" href="download.html">Download</a
           ><a class="nav-link" href="keys.html">Keys</a
           ><a class="nav-link" href="help.html">Help</a
@@ -66,10 +67,11 @@
       <section class="shell hero hero-compact" data-reveal>
         <div>
           <p class="eyebrow">Features</p>
-          <h1>Beancount, from entries to reports.</h1>
+          <h1>From a shop receipt to a yearly summary.</h1>
           <p class="lede">
-            The accounting engine is upstream Beancount. The reporting surface
-            is upstream Fava. The Android app makes both usable on a phone.
+            Entering what you spent takes a few taps. Behind it is Beancount,
+            the same double-entry accounting software people run on a desktop,
+            with Fava's reports on top — both running on your phone.
           </p>
         </div>
       </section>
@@ -78,10 +80,10 @@
       <section class="section section-tint" id="entries">
         <div class="shell split">
           <div data-reveal>
-            <h2>Entries and editing</h2>
+            <h2>Recording what you spend</h2>
             <p>
-              Use guided entry for common work and raw text when the file is the
-              clearest interface.
+              A form for everyday entries, and the text file itself when that is
+              quicker — both write to the same place.
             </p>
           </div>
           <div class="card-grid">
@@ -122,10 +124,11 @@
       <section class="section" id="reports">
         <div class="shell">
           <div class="section-header" data-reveal>
-            <h2>Reports computed by Fava</h2>
+            <h2>Where the money went</h2>
             <p>
-              Tier 1 opens the full Fava report surface. The free tier keeps the
-              journal, account balances, and raw editor.
+              The Insight tier opens Fava's full set of reports and charts. Free
+              keeps the list of entries, your account balances, and the text
+              editor.
             </p>
           </div>
           <div class="chip-row" data-reveal>
@@ -171,15 +174,17 @@
             <article class="feature-card" data-reveal>
               <h3>Auto-mirror</h3>
               <p>
-                Tier 2 can keep a copy in a chosen SAF folder. Conflicts
-                preserve both versions and wait for your decision.
+                The Workflow tier keeps a copy in a folder you choose, such as
+                one your cloud storage syncs. If the same file changes in both
+                places, both versions are kept and you decide.
               </p>
             </article>
             <article class="feature-card" data-reveal style="--reveal-index: 1">
               <h3>Scheduled backup</h3>
               <p>
-                Tier 2 can schedule backups with configurable retention.
-                Optional passphrase encryption uses AES-256-GCM with Argon2id.
+                The Workflow tier can back up on a schedule and keep as many
+                past copies as you choose. A backup can be protected with a
+                passphrase you set.
               </p>
             </article>
           </div>
@@ -212,46 +217,50 @@
           <div class="section-header" data-reveal>
             <h2>Plugins and scripts</h2>
             <p>
-              Tier 3 can load user-supplied Beancount plugins, Fava extensions,
-              beangulp importers, and Python scripts.
+              The Power tier can load add-ons you supply: Beancount plugins,
+              Fava extensions, importers for your bank's exports, and Python
+              scripts. There is a
+              <a href="plugins.html">list of add-ons people use</a>.
             </p>
           </div>
           <div class="card-grid">
             <article class="card card-tonal" data-reveal>
               <h3>Code you choose</h3>
               <p>
-                User Python is unsandboxed and can access anything the app can.
-                Loading is off by default, controlled per project, and disabled
-                in safe mode.
+                An add-on runs with the app's permissions and can reach
+                anything the app can: it is a program you are trusting. Add-ons
+                are off until you turn them on, per project, and safe mode holds
+                all of them back.
               </p>
             </article>
             <article class="card" data-reveal style="--reveal-index: 1">
               <h3>Play edition</h3>
               <p>
-                User extensions must be pure Python. The Android bridge is
-                withheld, and the edition never downloads code.
+                Add-ons must be plain Python, cannot use your phone's own
+                features, and this edition never downloads code.
               </p>
             </article>
             <article class="card" data-reveal>
               <h3>Expert edition</h3>
               <p>
-                User Python can use the Android bridge. Optional compatible
-                packages can be fetched on demand after the app shows the
-                closure.
+                Add-ons can use your phone's own features, and can fetch extra
+                Python libraries on demand after the app shows what it would
+                download.
               </p>
             </article>
             <article class="card" data-reveal style="--reveal-index: 1">
-              <h3>Large packages stay optional</h3>
+              <h3>Big libraries stay optional</h3>
               <p>
-                The beangrow dependency closure is a 37 MB download and occupies
-                about 143 MB unpacked, so it is not bundled in every install.
+                Some add-ons need libraries far larger than the app itself, so
+                they are never bundled. You are shown the download and its size
+                before anything is fetched.
               </p>
             </article>
           </div>
           <div class="callout callout-warning" data-reveal>
-            <strong>Not a security boundary.</strong> Plugin restrictions in the
-            Play edition are policy compliance. User Python is unsandboxed in
-            both editions.
+            <strong>Not a safety guarantee.</strong> The Play edition's limits
+            on add-ons are store rules, not protection for your ledger. In both
+            editions an add-on runs with the app's permissions.
           </div>
         </div>
       </section>
