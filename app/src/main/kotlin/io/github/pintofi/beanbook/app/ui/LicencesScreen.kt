@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -116,7 +117,7 @@ fun LicencesScreen(modifier: Modifier = Modifier) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showing = app }
+                        .clickable(role = Role.Button) { showing = app }
                         .semantics {
                             contentDescription =
                                 "${app.name} is under ${app.version}. Read the full licence."
@@ -147,7 +148,7 @@ fun LicencesScreen(modifier: Modifier = Modifier) {
                 headlineContent = { Text(entry.name) },
                 supportingContent = { Text(entry.version) },
                 modifier = Modifier
-                    .clickable { showing = entry }
+                    .clickable(role = Role.Button) { showing = entry }
                     .semantics {
                         contentDescription = "${entry.name}, ${entry.version}. Read its licence."
                     },

@@ -14,7 +14,7 @@ package io.github.pintofi.beanbook.core.data
 object WidgetLink {
 
     /** Surfaces a widget may ask for. Anything else is ignored. */
-    private val ALLOWED_SURFACES = setOf("ADD", "BALANCES", "JOURNAL")
+    private val ALLOWED_SURFACES = setOf("ADD", "BALANCES", "JOURNAL", "HOME")
 
     data class Target(val projectId: String, val surface: String)
 

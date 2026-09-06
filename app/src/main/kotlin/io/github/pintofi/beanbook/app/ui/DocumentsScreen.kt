@@ -30,6 +30,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -227,12 +232,13 @@ fun DocumentsScreen(
                         // little enough to say that pushing a route for it would cost the
                         // user a navigation to read three lines.
                         val open = path in expanded
-                        Text(
-                            path.substringAfterLast('/'),
-                            style = MaterialTheme.typography.bodyMedium,
+                        // A row that reads as a control rather than as a line of text: it
+                        // toggles a disclosure, so it carries a chevron and announces itself
+                        // as a button (B54).
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .clickable(role = Role.Button) {
                                     expanded = if (open) expanded - path else expanded + path
                                 }
                                 .semantics {
@@ -242,7 +248,22 @@ fun DocumentsScreen(
                                         "Show details of $path"
                                     }
                                 },
-                        )
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = if (open) {
+                                    Icons.Filled.ExpandLess
+                                } else {
+                                    Icons.Filled.ExpandMore
+                                },
+                                contentDescription = null,
+                            )
+                            Text(
+                                path.substringAfterLast('/'),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = 4.dp),
+                            )
+                        }
                         Text(row.summary, style = MaterialTheme.typography.bodySmall)
                         if (open) {
                             Text(path, style = MaterialTheme.typography.bodySmall)

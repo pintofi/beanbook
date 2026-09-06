@@ -62,4 +62,15 @@ class WidgetLinkTest {
     fun `nothing is opened when there is no project at all`() {
         assertNull(WidgetLink.resolve("home", "ADD", knownProjects = emptyList(), activeProject = null))
     }
+
+    /** Home is a surface a widget may ask for: net worth's own figure lives there (B54). */
+    @Test fun homeIsAnAllowedSurface() {
+        val target = WidgetLink.resolve(
+            requestedProject = "home",
+            requestedSurface = "HOME",
+            knownProjects = listOf("home"),
+            activeProject = "home",
+        )
+        assertEquals(WidgetLink.Target("home", "HOME"), target)
+    }
 }

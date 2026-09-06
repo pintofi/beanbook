@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
@@ -80,7 +81,7 @@ fun ReportsPane(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onSelect(path) }
+                        .clickable(role = Role.Button) { onSelect(path) }
                         .semantics {
                             // `selected` rather than folding "selected" into the label: a
                             // screen reader announces state itself, and putting it in the

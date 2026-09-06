@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -251,7 +252,7 @@ internal fun MoreMenu(entitlement: Entitlement, onContribute: () -> Unit, onOpen
                 // already names the row -- so it carries no contentDescription of its own.
                 leadingContent = { Icon(iconFor(entry), contentDescription = null) },
                 modifier = Modifier
-                    .clickable { onOpen(entry) }
+                    .clickable(role = Role.Button) { onOpen(entry) }
                     .semantics {
                         contentDescription = "${entry.label}. ${descriptions[entry].orEmpty()}"
                     },
@@ -334,7 +335,7 @@ internal fun TrialCard(entitlement: Entitlement, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "$headline. $detail" },
         colors = androidx.compose.material3.CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,

@@ -154,6 +154,23 @@ class WidgetAccountChoiceTest {
         assertTrue("a figure survived redaction: $lines", lines.none { it.contains("USD") })
     }
 
+
+    /** A widget is one target, and each one opens where its own figure lives (B54). */
+    @Test fun theWholeWidgetOpensTheSurfaceThatFigureBelongsTo() {
+        val views = WidgetRenderer.render(
+            context = context,
+            metric = WidgetMetric.BALANCE,
+            snapshot = snapshot(),
+            redacted = false,
+            chosenAccounts = listOf("Assets:Bank:Current"),
+        )
+        val root = views.apply(context, null)
+        assertTrue(
+            "the widget's root is not clickable, so a tap on the label does nothing",
+            root.findViewById<android.view.View>(R.id.widget_root).hasOnClickListeners(),
+        )
+    }
+
     /** Ids are reused, so a deleted widget's choice must not be inherited by the next one. */
     @Test fun aForgottenWidgetLeavesNoChoiceBehind() {
         accounts.setAccountsFor(ids[2], listOf("Assets:Bank:Savings"))

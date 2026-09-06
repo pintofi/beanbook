@@ -63,7 +63,10 @@ object WidgetRenderer {
         val label = account?.substringAfterLast(':')?.let { "${metric.label} · $it" }
             ?: metric.label
         views.setTextViewText(R.id.widget_label, label)
-        views.setOnClickPendingIntent(R.id.widget_value, launchIntent(context, snapshot, metric))
+        // The whole widget, not just the figure: a home-screen tile is one target, and a tap
+        // that lands on the label or the footnote and does nothing reads as a broken widget
+        // (B54).
+        views.setOnClickPendingIntent(R.id.widget_root, launchIntent(context, snapshot, metric))
 
         if (snapshot == null) {
             views.setTextViewText(R.id.widget_value, "—")
@@ -136,7 +139,7 @@ object WidgetRenderer {
         val views = RemoteViews(context.packageName, R.layout.widget_balances)
         views.setTextViewText(R.id.widget_label, WidgetMetric.BALANCE.label)
         views.setOnClickPendingIntent(
-            R.id.widget_label,
+            R.id.widget_root,
             launchIntent(context, snapshot, WidgetMetric.BALANCE),
         )
         views.removeAllViews(R.id.widget_rows)
@@ -236,9 +239,16 @@ object WidgetRenderer {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(EXTRA_PROJECT, snapshot?.projectId)
+            // Each widget opens where its own figure lives (B54): a balance is a line in the
+            // journal, and net worth is the headline on Home. Both used to land on Balances,
+            // which answered a question the user had not asked.
             putExtra(
                 EXTRA_SURFACE,
-                if (metric == WidgetMetric.QUICK_ADD) SURFACE_ADD else SURFACE_BALANCES,
+                when (metric) {
+                    WidgetMetric.QUICK_ADD -> SURFACE_ADD
+                    WidgetMetric.BALANCE -> SURFACE_JOURNAL
+                    WidgetMetric.NET_WORTH -> SURFACE_HOME
+                },
             )
         }
         return PendingIntent.getActivity(
@@ -253,4 +263,6 @@ object WidgetRenderer {
     const val EXTRA_SURFACE = "bca_widget_surface"
     const val SURFACE_ADD = "ADD"
     const val SURFACE_BALANCES = "BALANCES"
+    const val SURFACE_JOURNAL = "JOURNAL"
+    const val SURFACE_HOME = "HOME"
 }

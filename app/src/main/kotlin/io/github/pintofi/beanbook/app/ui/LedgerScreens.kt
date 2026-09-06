@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
@@ -337,7 +338,7 @@ private fun RootHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle)
+            .clickable(role = Role.Button, onClick = onToggle)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 16.dp, vertical = 10.dp)
             .semantics {
@@ -387,7 +388,13 @@ private fun AccountRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (node.hasChildren) Modifier.clickable(onClick = onToggle) else Modifier)
+            .then(
+                if (node.hasChildren) {
+                    Modifier.clickable(role = Role.Button, onClick = onToggle)
+                } else {
+                    Modifier
+                }
+            )
             .padding(
                 start = (16 + node.depth * 12).dp,
                 end = 16.dp,
@@ -550,7 +557,7 @@ private fun JournalRow(entry: JournalEntry, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             // The whole row, not the text inside it: a row that reads as one thing and
             // responds only where the words happen to be is one people tap twice.
             .semantics { contentDescription = "${entry.date}, ${entry.description}" }

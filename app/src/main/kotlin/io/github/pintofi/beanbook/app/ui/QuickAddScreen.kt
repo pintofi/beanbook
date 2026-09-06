@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -198,14 +197,10 @@ fun QuickAddScreen(
     }
 
     Column(
-        // imePadding before the scroll: it shrinks the viewport to what is actually visible
-        // when the keyboard is up, which is what makes a focused field scroll above it. A
-        // text field asks to be brought into view when it takes focus, but without this the
-        // viewport still includes the area behind the keyboard, so Compose decides the field
-        // is already visible and does nothing. Focusing Currency put the cursor in a box
-        // nobody could see.
+        // No `imePadding()` here: the Scaffold above insets the whole app for the keyboard,
+        // and doing it again shrank the scrolling viewport a second time -- a blank band
+        // above the keyboard, and a last field that could not be scrolled into view (B54).
         modifier = modifier
-            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),

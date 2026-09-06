@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material.icons.Icons
@@ -319,7 +321,13 @@ internal fun LedgerApp(
         }
 
     Scaffold(
-        modifier = Modifier.weight(1f),
+        // The keyboard is handled once, here, for every screen inside (B54). Each form used
+        // to apply `imePadding()` itself while the Scaffold went on reserving space for a
+        // bottom bar the keyboard had covered, so the inset was counted twice: a band of
+        // empty screen the height of the navigation bar sat above the keyboard, and the last
+        // field of a form could not be scrolled into it. Insetting the whole Scaffold lifts
+        // the bar and the content together, which is what Material describes.
+        modifier = Modifier.weight(1f).imePadding(),
         topBar = {
             LedgerTopBar(
                 projectName = projects.firstOrNull { it.id == activeProjectId }?.title
@@ -351,6 +359,11 @@ internal fun LedgerApp(
         },
         bottomBar = {
             if (layout != PaneLayout.COMPACT) return@Scaffold
+            // Gone while the keyboard is up (B54). A destination bar above an open keyboard
+            // is a row nobody can reach without dismissing the keyboard first, and it costs
+            // a form the one thing it is short of on a phone: height.
+            @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+            if (androidx.compose.foundation.layout.WindowInsets.isImeVisible) return@Scaffold
             // Six text-only destinations fit across a phone at normal text size and do not
             // at 200%: a NavigationBar there wrapped the labels mid-word and clipped
             // "Projects" off the screen edge. Below 130% the bar stays as it was; above it,
