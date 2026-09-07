@@ -26,6 +26,11 @@ data class LedgerSnapshot(
     val commodities: List<String> = emptyList(),
     /** The `document` directives the ledger declares, with absolute paths (B18). */
     val documents: List<DocumentDirective> = emptyList(),
+    /**
+     * How this file asks its figures to be shown (B59): decimal places per commodity,
+     * thousands separators, and what it considers close enough to balance.
+     */
+    val format: LedgerFormat = LedgerFormat.PLAIN,
 ) {
     val hasErrors: Boolean get() = errors.isNotEmpty()
 

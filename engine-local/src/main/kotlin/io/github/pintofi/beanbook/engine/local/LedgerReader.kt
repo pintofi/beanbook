@@ -8,6 +8,7 @@ import io.github.pintofi.beanbook.core.domain.DocumentDirective
 import io.github.pintofi.beanbook.core.domain.JournalEntry
 import io.github.pintofi.beanbook.core.domain.JournalPosting
 import io.github.pintofi.beanbook.core.domain.LedgerError
+import io.github.pintofi.beanbook.core.domain.LedgerFormat
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import java.io.File
 import java.math.BigDecimal
@@ -125,8 +126,33 @@ class LedgerReader(
         includedFiles = root.optJSONArray("included_files").toStringList(),
         commodities = root.optJSONArray("commodities").toStringList(),
         documents = root.optJSONArray("documents").map { it.toDocumentDirective() },
+        format = root.toLedgerFormat(),
         loadMillis = root.optDouble("load_ms", 0.0).toLong(),
     )
+
+    /**
+     * How the file asks to be shown (B59).
+     *
+     * Everything here is Beancount's own answer -- the display context it built from the
+     * numbers in the file, and the user's own options -- so an older snapshot without these
+     * keys simply gets plain rendering rather than a guess.
+     */
+    private fun JSONObject.toLedgerFormat(): LedgerFormat {
+        val precision = optJSONObject("display_precision")
+        val tolerances = optJSONObject("tolerances")
+        return LedgerFormat(
+            groupThousands = optBoolean("render_commas", false),
+            precision = precision?.keys()?.asSequence().orEmpty()
+                .mapNotNull { key -> precision?.optInt(key, -1)?.takeIf { it >= 0 }?.let { key to it } }
+                .toMap(),
+            tolerances = tolerances?.keys()?.asSequence().orEmpty()
+                .mapNotNull { key ->
+                    tolerances?.optString(key)?.takeIf { it.isNotBlank() }
+                        ?.let { value -> runCatching { key to java.math.BigDecimal(value) }.getOrNull() }
+                }
+                .toMap(),
+        )
+    }
 
     private fun JSONObject.toDocumentDirective(): DocumentDirective = DocumentDirective(
         path = getString("path"),

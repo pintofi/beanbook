@@ -31,6 +31,9 @@ data class LedgerSummary(
             // operating currency is declared, `atOperating` is the units and this behaves
             // exactly as it used to.
             val select = AccountBalance::atOperating
+            // Rendered the way the file asks (B59): its own decimal places and its own
+            // thousands separators, rather than whatever scale the arithmetic produced.
+            val format = ledger.format
             return LedgerSummary(
                 // Assets *plus* liabilities, not minus: Beancount already stores what you
                 // owe as a negative balance, so negating it made debt increase net worth.
@@ -38,10 +41,11 @@ data class LedgerSummary(
                     sumByCurrency(
                         ledger.totalFor("Assets", select) + ledger.totalFor("Liabilities", select),
                     ),
+                    format,
                 ),
                 // Income is stored negative as well, and "-3000.00 earned" reads as a loss.
-                income = format(sumByCurrency(negated(ledger.totalFor("Income", select)))),
-                expenses = format(sumByCurrency(ledger.totalFor("Expenses", select))),
+                income = format(sumByCurrency(negated(ledger.totalFor("Income", select))), format),
+                expenses = format(sumByCurrency(ledger.totalFor("Expenses", select)), format),
             )
         }
 
@@ -69,11 +73,14 @@ data class LedgerSummary(
          * Joined with two spaces a multi-currency figure became a run-on inside a widget's
          * single `TextView`, unreadable at the glance a widget gets (B3).
          */
-        fun format(amounts: List<Amount>): String? {
+        fun format(
+            amounts: List<Amount>,
+            ledgerFormat: LedgerFormat = LedgerFormat.PLAIN,
+        ): String? {
             val shown = amounts.filter { it.number.compareTo(BigDecimal.ZERO) != 0 }
                 .ifEmpty { amounts.take(1) }
             if (shown.isEmpty()) return null
-            return shown.joinToString("\n") { "${it.number.toPlainString()} ${it.currency}" }
+            return shown.joinToString("\n") { ledgerFormat.format(it) }
         }
     }
 }

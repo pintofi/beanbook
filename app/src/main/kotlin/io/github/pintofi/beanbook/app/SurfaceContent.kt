@@ -225,6 +225,7 @@ internal fun SurfaceContent(
                         } else {
                             QuickAddScreen(
                                 vocabulary = LedgerVocabulary.from(ledger),
+                                format = ledger.format,
                                 onSave = onSaveEntry,
                                 saveState = saveState,
                                 prefill = prefill,
@@ -463,6 +464,7 @@ internal fun SurfaceContent(
                             onDelete = { onDeleteEntry(entry); openEntry = null },
                             onOpenDocument = onShareDocument,
                             fileForDocument = fileForDocument,
+                            format = ledger.format,
                             modifier = Modifier.padding(padding),
                         )
                     }

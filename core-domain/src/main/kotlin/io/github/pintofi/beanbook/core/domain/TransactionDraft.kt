@@ -42,8 +42,14 @@ data class TransactionDraft(
     val postings: List<PostingDraft> = emptyList(),
 ) {
 
-    /** Problems that must be resolved before this can be written. */
-    fun validate(): List<DraftProblem> {
+    /**
+     * Problems that must be resolved before this can be written.
+     *
+     * @param format the open ledger's own rules (B59). `option "inferred_tolerance_default"`
+     *   is what *the file* calls close enough to balance, and an app deciding that for itself
+     *   is an app disagreeing with the ledger it is showing.
+     */
+    fun validate(format: LedgerFormat = LedgerFormat.PLAIN): List<DraftProblem> {
         val problems = mutableListOf<DraftProblem>()
 
         if (!DATE.matches(date)) problems += DraftProblem.InvalidDate(date)
@@ -72,8 +78,12 @@ data class TransactionDraft(
         // exactly how the user asks Beancount to work the remainder out.
         if (elided == 0 && postings.isNotEmpty()) {
             val residuals = Balance.of(postings.mapNotNull { it.amount }).residuals()
-            val tolerance = Balance.toleranceFor(postings.mapNotNull { it.amount })
-            if (residuals.any { it.number.abs() > tolerance }) {
+            val inferred = Balance.toleranceFor(postings.mapNotNull { it.amount })
+            if (residuals.any { residual ->
+                    val tolerance = format.toleranceFor(residual.currency) ?: inferred
+                    residual.number.abs() > tolerance
+                }
+            ) {
                 problems += DraftProblem.DoesNotBalance(residuals)
             }
         }

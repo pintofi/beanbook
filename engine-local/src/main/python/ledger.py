@@ -289,8 +289,43 @@ def inspect(
         key=lambda row: (row["date"], row["path"]),
     )
 
+    # How this ledger asks to be shown (B59). Beancount works these out itself -- the
+    # display context is built from the numbers actually in the file, and `render_commas` is
+    # the user's own option -- and the app used neither, so a ledger written to three places
+    # with thousands separators was displayed to two places without them.
+    display = {}
+    dcontext = options_map.get("dcontext")
+    if dcontext is not None:
+        for currency, ccontext in getattr(dcontext, "ccontexts", {}).items():
+            if currency == "__default__":
+                continue
+            # `get_fractional_digits_common` is what Beancount itself renders with: the
+            # number of places most amounts in this currency are written to. The maximum is
+            # the fallback, for a file where one figure is more precise than the rest.
+            fractional = None
+            for reader in ("get_fractional_digits_common", "get_fractional_digits_max"):
+                method = getattr(ccontext, reader, None)
+                if method is None:
+                    continue
+                try:
+                    fractional = method()
+                except Exception:  # noqa: BLE001 - an unusable context is simply no answer
+                    fractional = None
+                if isinstance(fractional, int) and fractional >= 0:
+                    break
+            if isinstance(fractional, int) and fractional >= 0:
+                display[currency] = fractional
+
+    tolerances = {
+        currency: _decimal_str(value)
+        for currency, value in (options_map.get("inferred_tolerance_default") or {}).items()
+    }
+
     payload = {
         "ok": True,
+        "render_commas": bool(options_map.get("render_commas")),
+        "display_precision": dict(sorted(display.items())),
+        "tolerances": dict(sorted(tolerances.items())),
         "documents": documents,
         "load_ms": round(load_ms, 1),
         "title": options_map.get("title"),

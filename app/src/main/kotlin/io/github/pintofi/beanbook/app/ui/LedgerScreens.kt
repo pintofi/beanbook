@@ -128,14 +128,21 @@ internal fun MoneyText(
 }
 
 @Composable
-internal fun AmountText(amount: Amount, modifier: Modifier = Modifier, signed: Boolean = false) {
+internal fun AmountText(
+    amount: Amount,
+    modifier: Modifier = Modifier,
+    signed: Boolean = false,
+    /** How the open ledger asks its figures to be written (B59). */
+    format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
+        io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
+) {
     // The helper below existed from M6 and was never applied, so every amount was announced
     // as its raw text: TalkBack reads "-12.34 USD" by pronouncing the hyphen or dropping it,
     // which is the one thing ux.md 6 says must not happen. detekt found it as dead code
     // (docs/milestones/m14-part16.md).
     val spoken = amount.accessibleDescription()
     MoneyText(
-        text = amount.format(),
+        text = format.format(amount),
         modifier = modifier.semantics { contentDescription = spoken },
         color = when {
             !signed -> MaterialTheme.colorScheme.onSurface
@@ -292,6 +299,7 @@ fun BalancesScreen(
                         },
                         expanded = open || root in expanded,
                         onToggle = { if (root in expanded) expanded.remove(root) else expanded.add(root) },
+                        format = snapshot.format,
                     )
                 }
                 if (open || root in expanded) {
@@ -307,6 +315,7 @@ fun BalancesScreen(
                                     expanded.add(node.name)
                                 }
                             },
+                            format = snapshot.format,
                         )
                     }
                 }
@@ -334,6 +343,7 @@ private fun RootHeader(
     totals: List<Amount>,
     expanded: Boolean,
     onToggle: () -> Unit,
+    format: io.github.pintofi.beanbook.core.domain.LedgerFormat,
 ) {
     Row(
         modifier = Modifier
@@ -363,7 +373,7 @@ private fun RootHeader(
             if (totals.isEmpty()) {
                 Text("—", style = MaterialTheme.typography.bodyMedium)
             } else {
-                totals.forEach { AmountText(it) }
+                totals.forEach { AmountText(it, format = format) }
             }
         }
     }
@@ -375,6 +385,7 @@ private fun AccountRow(
     basis: Valuation,
     expanded: Boolean,
     onToggle: () -> Unit,
+    format: io.github.pintofi.beanbook.core.domain.LedgerFormat,
 ) {
     // A parent shows what its whole branch holds, so folding it hides rows rather than
     // money. A leaf shows its own balance, which is the same figure by definition.
@@ -424,7 +435,7 @@ private fun AccountRow(
             )
         }
         Column(horizontalAlignment = Alignment.End) {
-            amounts.forEach { AmountText(it) }
+            amounts.forEach { AmountText(it, format = format) }
         }
     }
     HorizontalDivider()
@@ -524,7 +535,7 @@ fun JournalScreen(
             }
         }
         items(visible, key = { "${it.file}:${it.line}" }) { entry ->
-            JournalRow(entry, onClick = { onOpenEntry(entry) })
+            JournalRow(entry, snapshot.format, onClick = { onOpenEntry(entry) })
             HorizontalDivider()
         }
         if (shown < found.size) {
@@ -553,7 +564,11 @@ fun JournalScreen(
 private const val JOURNAL_PAGE = 30
 
 @Composable
-private fun JournalRow(entry: JournalEntry, onClick: () -> Unit) {
+private fun JournalRow(
+    entry: JournalEntry,
+    format: io.github.pintofi.beanbook.core.domain.LedgerFormat,
+    onClick: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -601,7 +616,7 @@ private fun JournalRow(entry: JournalEntry, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.weight(1f),
                 )
-                posting.amount?.let { AmountText(it, signed = true) }
+                posting.amount?.let { AmountText(it, signed = true, format = format) }
             }
         }
     }

@@ -89,6 +89,9 @@ private class MetadataRow(key: String = "", value: String = "") {
 @Composable
 fun QuickAddScreen(
     vocabulary: LedgerVocabulary,
+    /** The open ledger's own rendering and tolerance (B59). */
+    format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
+        io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
     onSave: (TransactionDraft) -> Unit,
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
@@ -150,7 +153,7 @@ fun QuickAddScreen(
             )
         },
     )
-    val problems = draft.validate()
+    val problems = draft.validate(format)
     val residuals = draft.residuals()
 
     var namingTemplate by remember { mutableStateOf(false) }
@@ -427,10 +430,10 @@ fun QuickAddScreen(
             val elided = draft.postings.count { it.isElided }
             Text(
                 text = if (elided == 1) {
-                    "Beancount will put ${residuals.joinToString(", ") { it.format() }} on the " +
+                    "Beancount will put ${residuals.joinToString(", ") { format.format(it) }} on the " +
                         "posting with no amount."
                 } else {
-                    "Does not balance: ${residuals.joinToString(", ") { it.format() }}"
+                    "Does not balance: ${residuals.joinToString(", ") { format.format(it) }}"
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (elided == 1) {

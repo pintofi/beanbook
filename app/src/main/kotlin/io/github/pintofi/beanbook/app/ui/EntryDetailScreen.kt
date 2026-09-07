@@ -48,6 +48,9 @@ fun EntryDetailScreen(
     onOpenDocument: ((String) -> Unit)? = null,
     /** The document on disk, so it can be read here rather than handed to another app (B57). */
     fileForDocument: ((String) -> java.io.File)? = null,
+    /** How the open ledger asks its figures to be written (B59). */
+    format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
+        io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
 ) {
     var viewing by remember { mutableStateOf<String?>(null) }
     var confirmingDelete by remember(entry) { mutableStateOf(false) }
@@ -89,7 +92,7 @@ fun EntryDetailScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f).padding(end = 8.dp),
                 )
-                posting.amount?.let { AmountText(it, signed = true) }
+                posting.amount?.let { AmountText(it, signed = true, format = format) }
                     ?: Text("(elided)", style = MaterialTheme.typography.bodySmall)
             }
         }
