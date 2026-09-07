@@ -525,3 +525,76 @@ internal fun MainActivity.captureHandle(
                 }
             },
         )
+
+/**
+ * Which of the installed plugins' modules the open ledger actually names (B60).
+ *
+ * Read from the file every time rather than kept beside it: the ledger is the record of what
+ * it loads, and somebody who writes `plugin "x"` in the raw editor must see the switch move.
+ */
+internal fun modulesUsedBy(
+    app: BeancountApplication,
+    projectId: String?,
+    rows: List<io.github.pintofi.beanbook.app.plugins.PluginRow>,
+): Set<String> {
+    val id = projectId ?: return emptySet()
+    val text = runCatching { app.workspace.mainFile(id).readText() }.getOrNull() ?: return emptySet()
+    return rows.flatMap { it.plugin.modules }.filter { module ->
+        io.github.pintofi.beanbook.core.domain.BeancountText
+            .hasPluginDirective(text, module, extension = false) ||
+            io.github.pintofi.beanbook.core.domain.BeancountText
+                .hasPluginDirective(text, module, extension = true)
+    }.toSet()
+}
+
+/**
+ * Adds or removes the directive that makes the open ledger load [module] (B60).
+ *
+ * Through the write protocol like every other change to a file: locked, snapshotted,
+ * re-parsed and only then reported. A plugin that breaks the load is rolled back with the
+ * reason rather than leaving a ledger that will not open.
+ */
+internal fun MainActivity.useModule(
+    app: BeancountApplication,
+    projectId: String?,
+    module: String,
+    extension: Boolean,
+    use: Boolean,
+) {
+    val id = projectId ?: return
+    lifecycleScope.launch {
+        val file = app.workspace.mainFile(id)
+        val text = runCatching { file.readText() }.getOrNull() ?: return@launch
+        val rewritten = if (use) {
+            io.github.pintofi.beanbook.core.domain.BeancountText
+                .withPluginDirective(text, module, extension)
+        } else {
+            io.github.pintofi.beanbook.core.domain.BeancountText
+                .withoutPluginDirective(text, module, extension)
+        }
+        if (rewritten == null) {
+            saveMessage = if (use) "$module is already named in this ledger." else "This ledger does not name $module."
+            return@launch
+        }
+        val result = app.writer.replace(
+            projectId = id,
+            file = file,
+            expectedSha = io.github.pintofi.beanbook.core.data.WriteJournal.sha256(file),
+            newContent = rewritten,
+            operation = if (use) "use-plugin" else "stop-using-plugin",
+        )
+        saveMessage = when (result) {
+            is io.github.pintofi.beanbook.core.data.WriteResult.Committed ->
+                if (use) {
+                    "This ledger now loads $module. Restart the engine to run it."
+                } else {
+                    "This ledger no longer loads $module."
+                }
+            is io.github.pintofi.beanbook.core.data.WriteResult.RolledBack ->
+                "Not changed: ${result.reason}. Your ledger is unchanged."
+            is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> "Not changed: ${result.reason}"
+        }
+        app.engineRestart.markNeeded()
+        app.ledgerState.load(file.absolutePath)
+    }
+}

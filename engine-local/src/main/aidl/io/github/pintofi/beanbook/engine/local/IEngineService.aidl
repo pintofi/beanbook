@@ -71,8 +71,13 @@ interface IEngineService {
                        String journalPath, String journalLabel);
 
     /** Runs one user script with a deadline. [handle] is what cancelScript cancels. */
+    /**
+     * @param pluginDirs the same directories a ledger load gets: the plugins the user turned
+     *   on, and the packages they fetched. Without them a script can only import what the app
+     *   bundles, which made fetching a module it asked for look like it had done nothing.
+     */
     String runScript(String scriptPath, String ledgerPath, double timeoutSeconds,
-                     boolean allowBridge, String handle);
+                     boolean allowBridge, String handle, String pluginDirs);
 
     /**
      * Asks a running script to stop.

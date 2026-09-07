@@ -447,6 +447,12 @@ class MainActivity : ComponentActivity() {
                     val pluginRows by app.pluginsState.rows.collectAsStateWithLifecycle()
                     val pluginSafeMode by app.pluginsState.safeMode.collectAsStateWithLifecycle()
                     val pluginMessage by app.pluginsState.message.collectAsStateWithLifecycle()
+                    // Read from the ledger itself rather than remembered beside it: the file
+                    // is the record of what it loads, and an edit in the raw editor has to
+                    // show here too (B60).
+                    val usedModules = remember(ledger, pluginRows) {
+                        modulesUsedBy(app, activeId, pluginRows)
+                    }
                     val packagesInstalled by app.packagesState.installed.collectAsStateWithLifecycle()
                     val packagesStatus by app.packagesState.status.collectAsStateWithLifecycle()
                     val packagesMessage by app.packagesState.message.collectAsStateWithLifecycle()
@@ -625,6 +631,10 @@ class MainActivity : ComponentActivity() {
                         onSetPluginEnabled = { id, on -> app.pluginsState.setEnabled(id, on) },
                         onRemovePlugin = { app.pluginsState.remove(it) },
                         onSetPluginSafeMode = { app.pluginsState.setSafeMode(it) },
+                        usedModules = usedModules,
+                        onUseModule = { module, extension, use ->
+                            useModule(app, activeId, module, extension, use)
+                        },
                         recoveryNotice = recoveryMessage,
                         onDismissRecovery = { recoveryMessage = null },
                         remoteReports = (remoteStatus as? EngineStatus.Serving)?.let {

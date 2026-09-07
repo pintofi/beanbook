@@ -62,6 +62,12 @@ class ScriptRunnerState(
     private val context: Context,
     private val policy: PluginPolicy,
     private val scope: CoroutineScope,
+    /**
+     * What a script may import (B60): the plugins the user turned on and the packages they
+     * fetched, asked for at run time rather than captured, because either can change between
+     * runs -- which is the whole point of fetching one.
+     */
+    private val importable: () -> String = { "" },
 ) {
     private val loader by lazy { PluginLoader(context) }
 
@@ -185,6 +191,7 @@ class ScriptRunnerState(
         _message.value = null
 
         scope.launch {
+            val started = System.currentTimeMillis()
             try {
                 val json = loader.runScript(
                     scriptPath = file.absolutePath,
@@ -192,6 +199,7 @@ class ScriptRunnerState(
                     timeoutSeconds = timeoutSeconds,
                     allowBridge = policy.allowsAndroidBridge,
                     handle = id,
+                    pluginDirs = importable(),
                 )
                 _outcome.value = json.fold(
                     onSuccess = { parse(name, it) },
@@ -212,6 +220,15 @@ class ScriptRunnerState(
                 )
             } finally {
                 if (deleteAfterwards) file.delete()
+                // A script that fails on its first line finishes in milliseconds, and the
+                // progress bar appeared and vanished within one frame -- which reads as the
+                // screen glitching rather than as a script that ran (B60). Held just long
+                // enough to be seen. The work is already done; this delays only the
+                // indicator.
+                val shown = System.currentTimeMillis() - started
+                if (shown < MINIMUM_VISIBLE_MILLIS) {
+                    kotlinx.coroutines.delay(MINIMUM_VISIBLE_MILLIS - shown)
+                }
                 _running.value = null
                 handle = null
             }
@@ -244,6 +261,9 @@ class ScriptRunnerState(
 
     private companion object {
         const val TAG = "ScriptRunnerState"
+
+        /** Long enough that a run is seen to have happened; short enough not to be a wait. */
+        const val MINIMUM_VISIBLE_MILLIS = 450L
         const val DEFAULT_TIMEOUT = 30.0
     }
 }

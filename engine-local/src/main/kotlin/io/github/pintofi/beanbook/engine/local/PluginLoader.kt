@@ -41,8 +41,10 @@ class PluginLoader(
         timeoutSeconds: Double,
         allowBridge: Boolean,
         handle: String,
+        /** The plugins and fetched packages a script may import (B60). */
+        pluginDirs: String = "",
     ): Result<String> = connection.withEngine {
-        it.runScript(scriptPath, ledgerPath, timeoutSeconds, allowBridge, handle)
+        it.runScript(scriptPath, ledgerPath, timeoutSeconds, allowBridge, handle, pluginDirs)
     }
 
     /**

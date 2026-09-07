@@ -58,6 +58,14 @@ fun PluginsScreen(
     onSetEnabled: (String, Boolean) -> Unit,
     onRemove: (String) -> Unit,
     onSetSafeMode: (Boolean) -> Unit,
+    /**
+     * Whether the open ledger names a module, and the way to change that (B60).
+     *
+     * Installing a plugin does not make a ledger use it: that takes a `plugin` directive, or
+     * a `custom "fava-extension"` one. The app never wrote either.
+     */
+    usedModules: Set<String> = emptySet(),
+    onUseModule: (module: String, extension: Boolean, use: Boolean) -> Unit = { _, _, _ -> },
     packages: PackagesUi,
     restart: EngineRestartUi,
     modifier: Modifier = Modifier,
@@ -153,6 +161,8 @@ fun PluginsScreen(
                     dimmed = safeMode,
                     onSetEnabled = onSetEnabled,
                     onRemove = onRemove,
+                    usedModules = usedModules,
+                    onUseModule = onUseModule,
                 )
             }
         }
@@ -201,6 +211,8 @@ private fun PluginCard(
     dimmed: Boolean,
     onSetEnabled: (String, Boolean) -> Unit,
     onRemove: (String) -> Unit,
+    usedModules: Set<String> = emptySet(),
+    onUseModule: (module: String, extension: Boolean, use: Boolean) -> Unit = { _, _, _ -> },
 ) {
     var confirming by remember(row.plugin.id) { mutableStateOf(false) }
     val plugin = row.plugin
@@ -257,10 +269,52 @@ private fun PluginCard(
             }
 
             if (plugin.modules.isNotEmpty()) {
+                // What the ledger has to name, and whether it does (B60). Turning a plugin on
+                // above makes it *findable*; a ledger uses it only when it says so, and this
+                // is where that is said. Two kinds, because Beancount and Fava load their
+                // add-ons differently and the file records that difference.
+                Text("Use in this ledger", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "Provides: " + plugin.modules.joinToString(", ").take(200),
+                    "Turning a plugin on makes it available. A ledger runs it only when it " +
+                        "names it, which is what these write into your file.",
                     style = MaterialTheme.typography.bodySmall,
                 )
+                plugin.modules.take(MODULE_LIMIT).forEach { module ->
+                    val extension = module.contains("fava_extension") || module.contains("fava_")
+                    val used = module in usedModules
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(
+                                value = used,
+                                onValueChange = { onUseModule(module, extension, it) },
+                                role = Role.Switch,
+                            )
+                            .semantics {
+                                contentDescription = if (extension) {
+                                    "Show $module in the Fava reports of this ledger"
+                                } else {
+                                    "Run $module when this ledger loads"
+                                }
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(module, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                if (extension) {
+                                    "Adds a page to Reports"
+                                } else {
+                                    "Runs when the ledger loads"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        Switch(checked = used, onCheckedChange = null)
+                    }
+                }
             }
 
             if (confirming) {
@@ -336,6 +390,9 @@ private fun Warning(text: String) {
         Text(text, Modifier.padding(10.dp), style = MaterialTheme.typography.bodySmall)
     }
 }
+
+/** Enough to name what a plugin provides; a package with dozens is a library, not a menu. */
+private const val MODULE_LIMIT = 8
 
 private fun dateOf(epochMillis: Long): String =
     SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(epochMillis))

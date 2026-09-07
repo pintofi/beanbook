@@ -368,6 +368,7 @@ def run_script(
     allow_bridge: bool = False,
     secrets=(),
     handle: str = "",
+    plugin_dirs: str = "",
 ) -> dict:
     """Runs one user script with a deadline, and a way to stop it early.
 
@@ -418,12 +419,17 @@ def run_script(
     try:
         source = Path(script_path).read_text()
         code = compile(source, script_path, "exec")
-        with redirect_stdout(captured), redirect_stderr(captured):
-            sys.settrace(tracer)
-            try:
-                exec(code, scope)
-            finally:
-                sys.settrace(None)
+        # The same directories a ledger load gets (B60): the plugins the user turned on and
+        # the packages they fetched. Without this a script could only import what the app
+        # bundles, so fetching the module it asked for changed nothing and the install looked
+        # broken.
+        with activated(plugin_dirs, allow_bridge):
+            with redirect_stdout(captured), redirect_stderr(captured):
+                sys.settrace(tracer)
+                try:
+                    exec(code, scope)
+                finally:
+                    sys.settrace(None)
         result["ok"] = True
     except ScriptTimedOut as stop:
         result["timed_out"] = True

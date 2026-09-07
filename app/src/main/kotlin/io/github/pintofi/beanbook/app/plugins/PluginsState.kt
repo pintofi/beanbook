@@ -100,9 +100,14 @@ class PluginsState(
         // that actually reaches Python, and handing the directory over is what turned a
         // half-copied file into an import error. Withheld rather than repaired here --
         // recovery belongs to the fetcher, on the next install.
+        // Not conditional on a plugin being installed (B60). It used to be, and that is why
+        // fetching a package to satisfy a *script* changed nothing: the script runs in the
+        // engine process, the package sat in a directory that was never put on `sys.path`,
+        // and the same `ModuleNotFoundError` came back -- so the install looked like it had
+        // failed. Safe mode still withholds it, along with everything else.
         val packages = io.github.pintofi.beanbook.app.packages.OnDemandPackages.root(context)
             .takeIf {
-                plugins.isNotEmpty() &&
+                !PluginSafeMode(root).isSafeMode &&
                     it.isDirectory &&
                     !io.github.pintofi.beanbook.app.packages.OnDemandPackages.isIncomplete(it)
             }

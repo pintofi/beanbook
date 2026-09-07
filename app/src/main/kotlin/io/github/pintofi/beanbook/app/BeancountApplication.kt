@@ -190,7 +190,12 @@ class BeancountApplication : Application() {
 
     /** Running a user script against the open ledger (Tier 3). Same policy, chosen once. */
     val scriptRunner: io.github.pintofi.beanbook.app.plugins.ScriptRunnerState by lazy {
-        io.github.pintofi.beanbook.app.plugins.ScriptRunnerState(this, currentPluginPolicy(), appScope)
+        io.github.pintofi.beanbook.app.plugins.ScriptRunnerState(
+            this,
+            currentPluginPolicy(),
+            appScope,
+            importable = { pluginsState.enabledDirectories() },
+        )
     }
 
     /**

@@ -140,6 +140,9 @@ internal fun SurfaceContent(
     onSetPluginEnabled: (String, Boolean) -> Unit,
     onRemovePlugin: (String) -> Unit,
     onSetPluginSafeMode: (Boolean) -> Unit,
+    /** Modules the open ledger names, and the way to add or remove one (B60). */
+    usedModules: Set<String>,
+    onUseModule: (module: String, extension: Boolean, use: Boolean) -> Unit,
     onRemoteConnect: (String, String?, CharArray?) -> Unit,
     onRemoteDisconnect: () -> Unit,
     onRemoteForget: () -> Unit,
@@ -337,6 +340,8 @@ internal fun SurfaceContent(
                                     onSetEnabled = onSetPluginEnabled,
                                     onRemove = onRemovePlugin,
                                     onSetSafeMode = onSetPluginSafeMode,
+                                    usedModules = usedModules,
+                                    onUseModule = onUseModule,
                                     packages = packages,
                                     restart = engineRestart,
                                     message = pluginMessage,

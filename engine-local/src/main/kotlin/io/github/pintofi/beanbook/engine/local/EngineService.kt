@@ -113,6 +113,7 @@ class EngineService : Service() {
             timeoutSeconds: Double,
             allowBridge: Boolean,
             handle: String,
+            pluginDirs: String?,
         ): String = guarded {
             python().getModule("plugins").callAttr(
                 "run_script",
@@ -122,6 +123,7 @@ class EngineService : Service() {
                 allowBridge,
                 emptyArray<String>(),
                 handle,
+                pluginDirs.orEmpty(),
             ).toString()
         }
 
