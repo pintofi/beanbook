@@ -17,6 +17,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.FilterChip
@@ -32,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -473,6 +475,34 @@ fun QuickAddScreen(
         // deliberate act rather than a slip.
         var submitted by remember { mutableStateOf<TransactionDraft?>(null) }
 
+        // Pages photographed but never filed (B57). Saving the entry writes the transaction
+        // and leaves the captures in a cache the next scan will reuse -- so a receipt taken
+        // *for this entry* silently belongs to nothing. Said before the save, not after, and
+        // it does not block: the entry is the user's to write, and the app's job is to make
+        // sure the loss is a choice.
+        val unfiledPages = capture?.pages?.pages?.size ?: 0
+        if (unfiledPages > 0) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription =
+                            "$unfiledPages photographed page(s) are not attached to this entry yet"
+                    },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                ),
+            ) {
+                Text(
+                    "$unfiledPages page${if (unfiledPages == 1) "" else "s"} " +
+                        "photographed but not attached. Use \"File these pages and link " +
+                        "them\" above, or they are kept only until the next scan.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(12.dp),
+                )
+            }
+        }
+
         Button(
             onClick = {
                 submitted = draft
@@ -480,7 +510,7 @@ fun QuickAddScreen(
             },
             enabled = problems.isEmpty() && draft != submitted,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Save entry") }
+        ) { Text(if (unfiledPages > 0) "Save entry without the pages" else "Save entry") }
 
         TextButton(
             onClick = { namingTemplate = true },
@@ -696,6 +726,9 @@ private fun AttachDocumentSection(
     onFiled: (String) -> Unit,
 ) {
 
+    // What to call it, if the user wants to (B57).
+    var documentName by rememberSaveable { mutableStateOf("") }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         attached.forEach { path ->
             Text(
@@ -768,9 +801,19 @@ private fun AttachDocumentSection(
                         ) { Text("Remove") }
                     }
                 }
+                OutlinedTextField(
+                    value = documentName,
+                    onValueChange = { documentName = it },
+                    label = { Text("Name (optional)") },
+                    placeholder = { Text("grocery-receipt") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "What to call this document" },
+                )
                 Button(
                     onClick = {
-                        capture.onFile(account) { path ->
+                        capture.onFile(account, documentName.trim().ifBlank { null }) { path ->
                             onFiled(path)
                         }
                     },

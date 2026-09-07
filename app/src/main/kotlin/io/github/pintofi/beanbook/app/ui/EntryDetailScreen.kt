@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -45,7 +46,10 @@ fun EntryDetailScreen(
     onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
     onOpenDocument: ((String) -> Unit)? = null,
+    /** The document on disk, so it can be read here rather than handed to another app (B57). */
+    fileForDocument: ((String) -> java.io.File)? = null,
 ) {
+    var viewing by remember { mutableStateOf<String?>(null) }
     var confirmingDelete by remember(entry) { mutableStateOf(false) }
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
@@ -90,19 +94,39 @@ fun EntryDetailScreen(
             }
         }
 
-        // Documents this entry links to, by the convention link_documents uses. Opening one
-        // is the app's existing share path, so the viewer is whatever the user already has
-        // rather than a PDF renderer built into an accounting app (B17).
-        if (entry.linkedDocuments.isNotEmpty() && onOpenDocument != null) {
+        // Documents this entry links to, by the convention link_documents uses. Read here
+        // first (B57): checking what a transaction was for used to mean leaving the app
+        // through a share sheet and coming back. Sharing is still one tap away, inside.
+        if (entry.linkedDocuments.isNotEmpty()) {
             HorizontalDivider()
             Text("Documents", style = MaterialTheme.typography.titleSmall)
             entry.linkedDocuments.forEach { path ->
-                TextButton(
-                    onClick = { onOpenDocument(path) },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Open ${path.substringAfterLast('/')}"
-                    },
-                ) { Text(path.substringAfterLast('/')) }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        path.substringAfterLast('/'),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (fileForDocument != null) {
+                        TextButton(
+                            onClick = { viewing = path },
+                            modifier = Modifier.semantics {
+                                contentDescription = "View ${path.substringAfterLast('/')}"
+                            },
+                        ) { Text("View") }
+                    }
+                    if (onOpenDocument != null) {
+                        TextButton(
+                            onClick = { onOpenDocument(path) },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Share ${path.substringAfterLast('/')}"
+                            },
+                        ) { Text("Share") }
+                    }
+                }
             }
         }
 
@@ -188,4 +212,18 @@ fun EntryDetailScreen(
         }
 
     }
+
+    viewing?.let { path ->
+        fileForDocument?.let { resolve ->
+            DocumentViewer(
+                file = resolve(path),
+                onShare = {
+                    onOpenDocument?.invoke(path)
+                    viewing = null
+                },
+                onDismiss = { viewing = null },
+            )
+        }
+    }
+
 }

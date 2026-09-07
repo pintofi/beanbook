@@ -85,6 +85,8 @@ class DocumentCapture(
         projectId: String,
         account: String,
         date: LocalDate = LocalDate.now(),
+        /** What to call it, if the user typed something (B57). */
+        label: String? = null,
         onFiled: (String) -> Unit,
     ) {
         val pages = _pages.value
@@ -97,7 +99,7 @@ class DocumentCapture(
             val result = withContext(Dispatchers.IO) {
                 runCatching {
                     val pdf = assembler.assemble(pages) { fileFor(it) }
-                    store.store(projectId, account, date, pdf)
+                    store.store(projectId, account, date, pdf, label = label)
                 }
             }
             result

@@ -37,8 +37,10 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
         date: LocalDate,
         content: ByteArray,
         extension: String = "pdf",
+        /** What the user called it, if anything (B57). Sanitised by `DocumentName`. */
+        label: String? = null,
     ): Stored {
-        var name = DocumentName.forContent(account, date, content, extension)
+        var name = DocumentName.forContent(account, date, content, extension, label)
         val root = workspace.projectDir(projectId)
 
         while (true) {

@@ -110,7 +110,7 @@ class AccessibilityTest {
                     onRotate = {},
                     onMove = { _, _ -> },
                     onRemovePage = {},
-                    onFile = { account, _ -> filedUnder = account },
+                    onFile = { account, _, _ -> filedUnder = account },
                 ),
             )
         }
@@ -334,7 +334,7 @@ class AccessibilityTest {
                     onRotate = {},
                     onMove = { _, _ -> },
                     onRemovePage = {},
-                    onFile = { _, _ -> },
+                    onFile = { _, _, _ -> },
                 ),
                 documents = listOf(
                     DocumentRow(
@@ -348,7 +348,7 @@ class AccessibilityTest {
                     DocumentRow(path = "documents/stray.pdf", status = DocumentStatus.UNFILED),
                 ),
                 vocabulary = vocabulary,
-                onSave = {},
+                onSave = { _, _ -> },
                 onDiscard = {},
                 onRefile = { _, _, _ -> },
                 onUnlink = { _, _ -> },

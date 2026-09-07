@@ -26,6 +26,15 @@ data class DocumentName(
     val extension: String,
     /** Distinguishes two different files that share a date, account and hash prefix. */
     val ordinal: Int = 0,
+    /**
+     * What the user called it, if anything (B57).
+     *
+     * A name derived from content alone is unimpeachable and unreadable: a folder of
+     * `2026-09-07.a1b2c3d4.pdf` tells nobody which one is the car insurance. The label sits
+     * between the date and the hash, so the hash is still there and the ordering by date
+     * still holds -- naming a document changes how it reads, not how it is found.
+     */
+    val label: String? = null,
 ) {
 
     /** The path relative to the project root, which is exactly what goes in the ledger. */
@@ -34,6 +43,7 @@ data class DocumentName(
             append(ROOT).append('/')
             append(account.replace(':', '/')).append('/')
             append(date).append('.')
+            label?.takeIf { it.isNotBlank() }?.let { append(it).append('.') }
             append(contentHash)
             if (ordinal > 0) append('-').append(ordinal)
             append('.').append(extension)
@@ -50,6 +60,29 @@ data class DocumentName(
 
         private val EXTENSION = Regex("[a-z0-9]{1,8}")
 
+        /** As much of a name as can go in a filename without needing to be escaped. */
+        const val LABEL_LENGTH = 40
+
+        /**
+         * [raw] as a filename segment, or null when nothing usable is left.
+         *
+         * Everything outside letters, digits and dashes becomes a dash, because this ends up
+         * in a path that a `document` directive must be able to quote and a desktop
+         * Beancount must be able to open. A name is a convenience; it may not be a way to
+         * write outside the project (invariant 5).
+         */
+        fun label(raw: String?): String? = raw
+            ?.trim()
+            ?.lowercase()
+            ?.map { if (it.isLetterOrDigit()) it else '-' }
+            ?.joinToString("")
+            ?.split('-')
+            ?.filter { it.isNotBlank() }
+            ?.joinToString("-")
+            ?.take(LABEL_LENGTH)
+            ?.trim('-')
+            ?.takeIf { it.isNotBlank() }
+
         /**
          * The name for [content] filed against [account] on [date].
          *
@@ -62,6 +95,7 @@ data class DocumentName(
             date: LocalDate,
             content: ByteArray,
             extension: String = "pdf",
+            label: String? = null,
         ): DocumentName {
             require(BeancountText.ACCOUNT.matches(account)) {
                 "\"$account\" is not a valid account name"
@@ -74,6 +108,7 @@ data class DocumentName(
                 date = date,
                 contentHash = hash(content),
                 extension = extension,
+                label = label(label),
             )
         }
 

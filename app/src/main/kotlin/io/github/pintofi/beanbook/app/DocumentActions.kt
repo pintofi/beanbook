@@ -27,8 +27,13 @@ internal fun MainActivity.refreshDocuments(app: BeancountApplication, projectId:
  * it — in that order, so the ledger never names a file that does not exist yet
  * (CLAUDE.md, invariant 5).
  */
-internal fun MainActivity.attachDocument(app: BeancountApplication, projectId: String, account: String) {
-    app.documentCapture.save(projectId, account) { relativePath ->
+internal fun MainActivity.attachDocument(
+    app: BeancountApplication,
+    projectId: String,
+    account: String,
+    label: String? = null,
+) {
+    app.documentCapture.save(projectId, account, label = label) { relativePath ->
         val directive = DirectiveDraft.Document(
             date = LocalDate.now().toString(),
             account = account,
@@ -81,9 +86,17 @@ internal fun MainActivity.unlinkDocument(
     from: String?,
 ) {
     lifecycleScope.launch {
+        // A document is linked in one of two ways, and unlinking used to know about one of
+        // them: a `document` directive files it under an account, and a `document:` metadata
+        // key attaches it to a transaction -- which is what the Add form writes. Removing the
+        // directive alone left the entry still pointing at the file, and the screen still
+        // saying so (B57).
         val holder = findDocumentDirective(app.workspace.projectDir(projectId)) {
             io.github.pintofi.beanbook.core.domain.BeancountText
                 .removeDocumentDirective(it, path, from = from)
+        } ?: findDocumentDirective(app.workspace.projectDir(projectId)) {
+            io.github.pintofi.beanbook.core.domain.BeancountText
+                .removeDocumentMetadata(it, path)
         }
         if (holder == null) {
             saveMessage = "Nothing in the ledger links to $path."
@@ -106,6 +119,9 @@ internal fun MainActivity.unlinkDocument(
             is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> "Not unlinked: ${result.reason}"
         }
         app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
+        // The list is built from the folder as well as the ledger, and nothing refreshed it:
+        // an unlinked document kept its old row until the screen was left and re-entered.
+        refreshDocuments(app, projectId)
     }
 }
 
@@ -173,6 +189,7 @@ internal fun MainActivity.refileDocument(
             is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> "Not refiled: ${result.reason}"
         }
         app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
+        refreshDocuments(app, projectId)
     }
 }
 
@@ -390,4 +407,48 @@ internal fun MainActivity.restartEngine(app: BeancountApplication, projectId: St
         app.ledgerState.load(app.workspace.mainFile(id).absolutePath)
         saveMessage = "The engine restarted with what is installed now."
     }
+}
+
+/**
+ * A `document` directive's path as a file on disk (B57).
+ *
+ * Directives name a document relative to the project root, which is what makes a project
+ * openable on a desktop; the viewer needs the file. Resolved against the open project rather
+ * than trusted as a path, so a directive cannot point the reader outside the project tree
+ * (invariant 5).
+ */
+internal fun MainActivity.documentFile(
+    app: BeancountApplication,
+    projectId: String?,
+    path: String,
+): java.io.File {
+    val root = app.workspace.projectDir(projectId.orEmpty())
+    val resolved = java.io.File(root, path)
+    return if (resolved.canonicalPath.startsWith(root.canonicalPath)) {
+        resolved
+    } else {
+        java.io.File(root, path.substringAfterLast('/'))
+    }
+}
+
+/**
+ * Which entries attach which documents, by the path each one names (B57).
+ *
+ * The reconciliation between folder and ledger knows about `document` **directives**; a
+ * receipt attached while entering a transaction is a `document:` key on that entry instead,
+ * and without this the Organize list called such a file unfiled while an entry was pointing
+ * straight at it.
+ */
+internal fun documentAttachments(
+    ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?,
+): Map<String, List<String>> {
+    val out = mutableMapOf<String, MutableList<String>>()
+    ledger?.journal.orEmpty().forEach { entry ->
+        entry.linkedDocuments.forEach { path ->
+            val label = listOfNotNull(entry.date, entry.description.takeIf { it.isNotBlank() })
+                .joinToString(" ")
+            out.getOrPut(path.substringAfterLast('/')) { mutableListOf() }.add(label)
+        }
+    }
+    return out
 }

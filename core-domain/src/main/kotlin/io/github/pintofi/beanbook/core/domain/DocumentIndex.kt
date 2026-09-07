@@ -24,6 +24,16 @@ data class DocumentRow(
     val status: DocumentStatus,
     val account: String? = null,
     val date: String? = null,
+    /**
+     * Entries that attach this document as metadata, described as a person would name them
+     * (B57).
+     *
+     * A receipt attached while entering a transaction is a `document:` key on that entry, not
+     * a `document` directive, so the folder-versus-directives reconciliation below called it
+     * unfiled and the screen said "not linked to any account yet" about a file that was very
+     * much linked.
+     */
+    val attachedTo: List<String> = emptyList(),
 ) {
     /**
      * One line saying where this document stands, for the row under its name.
@@ -33,10 +43,12 @@ data class DocumentRow(
      * resolves, which is what invariant 5 exists to surface.
      */
     val summary: String
-        get() = when (status) {
-            DocumentStatus.FILED -> "Filed under ${account.orEmpty()}"
-            DocumentStatus.UNFILED -> "Not linked to any account yet"
-            DocumentStatus.MISSING -> "Linked to ${account.orEmpty()}, but the file is missing"
+        get() = when {
+            status == DocumentStatus.FILED -> "Filed under ${account.orEmpty()}"
+            status == DocumentStatus.MISSING ->
+                "Linked to ${account.orEmpty()}, but the file is missing"
+            attachedTo.isNotEmpty() -> "Attached to " + attachedTo.joinToString("; ")
+            else -> "Not linked to any account yet"
         }
 }
 
@@ -59,6 +71,11 @@ object DocumentIndex {
         root: String,
         onDisk: List<String>,
         directives: List<DocumentDirective>,
+        /**
+         * Entries that attach a document as metadata, keyed by the path they name (B57).
+         * The Add form writes those; nothing here would otherwise know about them.
+         */
+        attachments: Map<String, List<String>> = emptyMap(),
     ): List<DocumentRow> {
         val base = root.trimEnd('/') + "/"
         // Beancount reports absolute paths. The disk side is relative to the project, so one
@@ -70,19 +87,25 @@ object DocumentIndex {
         val filed = directives.map { relativise(it.path) to it }
         val present = onDisk.toSet()
 
+        // Matched on the leaf as well as the whole path: a `document:` key is written
+        // relative to the project, but a ledger edited elsewhere may name it differently.
+        fun attachedTo(path: String): List<String> =
+            attachments[path] ?: attachments[path.substringAfterLast('/')].orEmpty()
+
         val fromDirectives = filed.map { (path, directive) ->
             DocumentRow(
                 path = path,
                 status = if (path in present) DocumentStatus.FILED else DocumentStatus.MISSING,
                 account = directive.account,
                 date = directive.date,
+                attachedTo = attachedTo(path),
             )
         }
         // A file may carry several directives -- Beancount allows one document under two
         // accounts -- so it appears once per directive. Collapsing them to a single row would
         // make the second invisible, and an invisible directive cannot be corrected.
         val unfiled = (present - filed.map { it.first }.toSet()).map {
-            DocumentRow(path = it, status = DocumentStatus.UNFILED)
+            DocumentRow(path = it, status = DocumentStatus.UNFILED, attachedTo = attachedTo(it))
         }
 
         return (fromDirectives + unfiled).sortedWith(

@@ -72,12 +72,14 @@ fun DocumentsScreen(
     capture: DocumentCaptureHandle,
     documents: List<DocumentRow>,
     vocabulary: LedgerVocabulary,
-    onSave: (String) -> Unit,
+    onSave: (account: String, label: String?) -> Unit,
     onDiscard: () -> Unit,
     onRefile: (String, String, String?) -> Unit,
     onUnlink: (String, String?) -> Unit,
     onDeleteFile: (String) -> Unit,
     onShare: (String) -> Unit,
+    /** The document on disk, so it can be read here rather than handed to another app (B57). */
+    fileForDocument: ((String) -> java.io.File)? = null,
     modifier: Modifier = Modifier,
     message: String? = null,
     /**
@@ -89,12 +91,16 @@ fun DocumentsScreen(
     var account by remember {
         mutableStateOf(vocabulary.accounts.firstOrNull { it.startsWith("Expenses") }.orEmpty())
     }
+    // What to call it (B57). Optional: the name only changes how a folder of documents
+    // reads, and a document with no name is filed exactly as it always was.
+    var label by rememberSaveable { mutableStateOf("") }
     var granted by remember(hasCamera) { mutableStateOf(hasCamera) }
     var pendingRemoval by remember { mutableStateOf<Pair<DocumentRow, DocumentRemoval>?>(null) }
     var mode by rememberSaveable { mutableStateOf(DocumentsMode.ADD) }
     var refiling by remember { mutableStateOf<DocumentRow?>(null) }
     var expanded by remember { mutableStateOf(emptySet<String>()) }
     var cropping by remember { mutableStateOf<Int?>(null) }
+    var viewing by remember { mutableStateOf<String?>(null) }
 
     val askForCamera = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -203,8 +209,25 @@ fun DocumentsScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            OutlinedTextField(
+                value = label,
+                onValueChange = { label = it },
+                label = { Text("Name (optional)") },
+                placeholder = { Text("car-insurance") },
+                singleLine = true,
+                supportingText = {
+                    Text(
+                        "Goes in the filename, between the date and the checksum. " +
+                            "Letters, numbers and dashes.",
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "What to call this document" },
+            )
+
             Button(
-                onClick = { onSave(account.trim()) },
+                onClick = { onSave(account.trim(), label.trim().ifBlank { null }) },
                 enabled = account.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Save as PDF and link") }
@@ -272,6 +295,14 @@ fun DocumentsScreen(
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            if (fileForDocument != null && row.status != DocumentStatus.MISSING) {
+                                TextButton(
+                                    onClick = { viewing = path },
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "View $path"
+                                    },
+                                ) { Text("View") }
+                            }
                             TextButton(
                                 onClick = { onShare(path) },
                                 modifier = Modifier.semantics {
@@ -317,6 +348,19 @@ fun DocumentsScreen(
                     }
                 }
             }
+        }
+    }
+
+    viewing?.let { path ->
+        fileForDocument?.let { resolve ->
+            DocumentViewer(
+                file = resolve(path),
+                onShare = {
+                    onShare(path)
+                    viewing = null
+                },
+                onDismiss = { viewing = null },
+            )
         }
     }
 

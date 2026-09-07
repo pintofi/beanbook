@@ -102,4 +102,60 @@ class DocumentNameTest {
         assertNotEquals(unlink, delete)
         listOf(unlink, delete).forEach { assertTrue(it.contains(path), it) }
     }
+
+    /**
+     * A name the user typed (B57).
+     *
+     * It sits between the date and the hash, so the folder still sorts by date and the
+     * content hash is still what makes a retried save idempotent (invariant 6).
+     */
+    @Test fun `a label goes into the filename without displacing the hash`() {
+        val name = DocumentName.forContent(
+            account = "Expenses:Home:Insurance",
+            date = LocalDate.parse("2026-09-07"),
+            content = "pdf".toByteArray(),
+            label = "car insurance",
+        )
+        val path = name.relativePath
+        assertTrue(path.contains("car-insurance"), "the label is missing: $path")
+        assertTrue(path.contains(name.contentHash), "the hash was displaced: $path")
+        assertTrue(path.startsWith("documents/Expenses/Home/Insurance/2026-09-07."))
+    }
+
+    /** A filename is not a place to accept arbitrary text (invariant 5). */
+    @Test fun `a label that tries to leave the folder cannot`() {
+        val name = DocumentName.forContent(
+            account = "Assets:Cash",
+            date = LocalDate.parse("2026-09-07"),
+            content = "x".toByteArray(),
+            label = "../../etc/passwd",
+        )
+        assertTrue(!name.label!!.contains('/'), "a separator survived: ${name.relativePath}")
+        assertTrue(name.relativePath.startsWith("documents/Assets/Cash/"))
+    }
+
+    @Test fun `the same content and label give the same name`() {
+        fun named() = DocumentName.forContent(
+            account = "Assets:Cash",
+            date = LocalDate.parse("2026-09-07"),
+            content = "x".toByteArray(),
+            label = "Till Receipt",
+        ).relativePath
+        assertEquals(named(), named())
+    }
+
+    @Test fun `a blank label leaves the name as it was`() {
+        val plain = DocumentName.forContent(
+            account = "Assets:Cash",
+            date = LocalDate.parse("2026-09-07"),
+            content = "x".toByteArray(),
+        )
+        val blank = DocumentName.forContent(
+            account = "Assets:Cash",
+            date = LocalDate.parse("2026-09-07"),
+            content = "x".toByteArray(),
+            label = "   ",
+        )
+        assertEquals(plain.relativePath, blank.relativePath)
+    }
 }

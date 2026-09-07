@@ -549,8 +549,8 @@ class MainActivity : ComponentActivity() {
                             onRemovePage = { app.documentCapture.remove(it) },
                             onCrop = { index, quad -> app.documentCapture.crop(index, quad) },
                             fileFor = { name -> app.documentCapture.fileFor(name) },
-                            onFile = { account, onFiled ->
-                                app.documentCapture.save(activeId!!, account) { path ->
+                            onFile = { account, label, onFiled ->
+                                app.documentCapture.save(activeId!!, account, label = label) { path ->
                                     onFiled(path)
                                     app.documentCapture.reset()
                                     refreshDocuments(app, activeId!!)
@@ -566,9 +566,10 @@ class MainActivity : ComponentActivity() {
                                 .orEmpty(),
                             onDisk = documents,
                             directives = ledger?.documents.orEmpty(),
+                            attachments = documentAttachments(ledger),
                         ),
                         documentMessage = documentMessage,
-                        onSaveDocument = { account -> attachDocument(app, activeId!!, account) },
+                        onSaveDocument = { account, label -> attachDocument(app, activeId!!, account, label) },
                         onDiscardPages = { app.documentCapture.reset(discardCaptures = true) },
                         onRefileDocument = { path, account, from ->
                             refileDocument(app, activeId!!, path, account, from)
@@ -580,6 +581,7 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onShareDocument = { path -> shareDocument(app, activeId!!, path) },
+                        fileForDocument = { path -> documentFile(app, activeId, path) },
                         pendingRestore = pendingRestore,
                         passphraseNeeded = passphraseNeeded,
                         onUnlockRestore = { typed ->

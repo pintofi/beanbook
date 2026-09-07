@@ -48,7 +48,7 @@ data class DocumentCaptureHandle(
      * The file is durably in place before the callback runs, so a caller writing a link to
      * it cannot name a file that does not exist yet (invariant 5).
      */
-    val onFile: (account: String, onFiled: (String) -> Unit) -> Unit,
+    val onFile: (account: String, label: String?, onFiled: (String) -> Unit) -> Unit,
     /** Sets or clears one page's crop corners (B31). */
     val onCrop: (index: Int, quad: io.github.pintofi.beanbook.core.domain.CropQuad?) -> Unit = { _, _ -> },
     /** The capture on disk for a page, so it can be shown for cropping. */

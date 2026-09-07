@@ -66,12 +66,14 @@ internal fun SurfaceContent(
     documentCapture: DocumentCaptureHandle,
     documents: List<DocumentRow>,
     documentMessage: String?,
-    onSaveDocument: (String) -> Unit,
+    onSaveDocument: (account: String, label: String?) -> Unit,
     onDiscardPages: () -> Unit,
     onRefileDocument: (String, String, String?) -> Unit,
     onUnlinkDocument: (String, String?) -> Unit,
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,
+    /** A document's file inside the open project, for reading it in the app (B57). */
+    fileForDocument: (String) -> java.io.File,
     pendingRestore: RestoreStaged.Ready?,
     passphraseNeeded: Boolean,
     onUnlockRestore: (CharArray) -> Unit,
@@ -430,6 +432,7 @@ internal fun SurfaceContent(
                                     onUnlink = onUnlinkDocument,
                                     onDeleteFile = onDeleteDocumentFile,
                                     onShare = onShareDocument,
+                                    fileForDocument = fileForDocument,
                                     message = documentMessage,
                                 )
                             }
@@ -459,6 +462,7 @@ internal fun SurfaceContent(
                             onEdit = { onEditEntry(entry); openEntry = null },
                             onDelete = { onDeleteEntry(entry); openEntry = null },
                             onOpenDocument = onShareDocument,
+                            fileForDocument = fileForDocument,
                             modifier = Modifier.padding(padding),
                         )
                     }

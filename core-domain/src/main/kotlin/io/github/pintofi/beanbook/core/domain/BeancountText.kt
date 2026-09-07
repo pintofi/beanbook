@@ -176,6 +176,35 @@ object BeancountText {
     }
 
     /**
+     * [source] with any `document:` metadata naming [path] removed (B57).
+     *
+     * A receipt attached while entering a transaction is a **metadata line on that
+     * transaction**, not a `document` directive — `fava.plugins.link_documents` reads
+     * `document` and `document-*` keys. Unlinking only ever removed directives, so a receipt
+     * attached from the Add form stayed attached however often it was unlinked, and the
+     * screen went on saying so. This removes the other half.
+     *
+     * Whole lines only, and only lines whose value is exactly the path: a comment mentioning
+     * the filename, or a key whose value merely contains it, is left alone. Returns null when
+     * nothing matched, so a caller can tell "removed" from "there was nothing there".
+     */
+    fun removeDocumentMetadata(source: String, path: String): String? {
+        val leaf = path.substringAfterLast('/')
+        val line = Regex(
+            """^\s*document(-\d+)?\s*:\s*"(?<value>[^"]*)"\s*$""",
+        )
+        var removed = false
+        val kept = source.lines().filter { text ->
+            val match = line.matchEntire(text) ?: return@filter true
+            val value = match.groups["value"]?.value.orEmpty()
+            val names = value == path || value.substringAfterLast('/') == leaf
+            if (names) removed = true
+            !names
+        }
+        return if (removed) kept.joinToString("\n") else null
+    }
+
+    /**
      * The metadata key to link one more document to a transaction, given the keys it has.
      *
      * `fava.plugins.link_documents` reads `document` and any `document-*` key, which
