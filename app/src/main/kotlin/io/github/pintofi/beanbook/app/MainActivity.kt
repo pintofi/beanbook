@@ -519,44 +519,13 @@ class MainActivity : ComponentActivity() {
                                 saveText(app, activeId!!, draft.render(), "quick-add")
                             }
                         },
-                        // Built once and passed whole: the same six callbacks are needed by
-                        // the documents screen and by transaction entry, and threading them
-                        // separately is what makes detekt's LargeClass bite on this class.
-                        documentCapture = DocumentCaptureHandle(
-                            pages = documentPages,
-                            captureFile = { app.documentCapture.nextCaptureFile() },
-                            onCapture = { file ->
-                                if (file.length() > 0) app.documentCapture.add(file)
-                            },
-                            scanning = scanning,
-                            onStartScanning = { scanning = true },
-                            onStopScanning = { scanning = false },
-                            onScanned = { file, quad, _ ->
-                                // Add first, then apply the outline the scanner found. The
-                                // crop is a description of the photograph, never a rewrite of
-                                // it: the file on disk stays the one the camera produced, so
-                                // a wrong detection is a drag away from being corrected
-                                // rather than something that destroyed the original (J3).
-                                if (file.length() > 0) {
-                                    app.documentCapture.add(file)
-                                    if (quad != null) {
-                                        app.documentCapture.crop(documentPages.pages.lastIndex, quad)
-                                    }
-                                }
-                            },
-                            onRotate = { app.documentCapture.rotate(it) },
-                            onMove = { from, to -> app.documentCapture.move(from, to) },
-                            onRemovePage = { app.documentCapture.remove(it) },
-                            onCrop = { index, quad -> app.documentCapture.crop(index, quad) },
-                            fileFor = { name -> app.documentCapture.fileFor(name) },
-                            onFile = { account, label, onFiled ->
-                                app.documentCapture.save(activeId!!, account, label = label) { path ->
-                                    onFiled(path)
-                                    app.documentCapture.reset()
-                                    refreshDocuments(app, activeId!!)
-                                }
-                            },
-                        ),
+                        // Built once and passed whole, and built *outside* this class: the
+                        // same callbacks are needed by the documents screen and by
+                        // transaction entry, and MainActivity is already the largest class
+                        // in the app.
+                        documentCapture = captureHandle(app, activeId, documentPages, scanning) {
+                            scanning = it
+                        },
                         // The folder alone cannot say what a document is filed under, nor
                         // tell one the ledger knows from a stray file; the directives alone
                         // cannot say whether the file is still there. Reconciled here,

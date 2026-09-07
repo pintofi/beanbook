@@ -1,6 +1,7 @@
 package io.github.pintofi.beanbook.app.ui
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -536,6 +537,25 @@ fun QuickAddScreen(
 }
 
 @Composable
+private fun PageEditorOverlay(
+    capture: DocumentCaptureHandle,
+    startAt: Int,
+    onDone: () -> Unit,
+) {
+    PageEditorScreen(
+        pages = capture.pages,
+        fileFor = capture.fileFor,
+        startAt = startAt,
+        onRotate = capture.onRotateBy,
+        onCrop = capture.onCrop,
+        onRestyle = capture.onRestyle,
+        onRemove = capture.onRemovePage,
+        onMove = capture.onMove,
+        onDone = onDone,
+    )
+}
+
+@Composable
 internal fun Suggestions(
     values: List<String>,
     kind: String,
@@ -728,6 +748,7 @@ private fun AttachDocumentSection(
 
     // What to call it, if the user wants to (B57).
     var documentName by rememberSaveable { mutableStateOf("") }
+    var editingPages by remember { mutableStateOf<Int?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         attached.forEach { path ->
@@ -770,37 +791,34 @@ private fun AttachDocumentSection(
                     style = MaterialTheme.typography.bodySmall,
                 )
             } else {
-                capture.pages.pages.forEachIndexed { index, page ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        // The page itself, not its number. A stack of captures identified by
-                        // "Page 1, Page 2" gives no way to tell the blurred one from the good
-                        // one without filing them and opening the PDF.
-                        PageThumbnail(
-                            file = capture.fileFor(page.source),
-                            label = "Page ${index + 1}",
-                        )
-                        Text(
-                            "Page ${index + 1}",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f),
-                        )
-                        TextButton(
-                            onClick = { capture.onRotate(index) },
+                // One row of thumbnails and one way in, rather than four text buttons under
+                // every page (B58): tapping a page opens the editor at it, where rotating,
+                // cropping and re-rendering are done on the page itself.
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                ) {
+                    capture.pages.pages.forEachIndexed { index, page ->
+                        androidx.compose.material3.Surface(
+                            onClick = { editingPages = index },
+                            shape = RoundedCornerShape(6.dp),
                             modifier = Modifier.semantics {
-                                contentDescription = "Rotate page ${index + 1}"
+                                contentDescription = "Edit page ${index + 1} of ${capture.pages.size}"
                             },
-                        ) { Text("Rotate") }
-                        TextButton(
-                            onClick = { capture.onRemovePage(index) },
-                            modifier = Modifier.semantics {
-                                contentDescription = "Remove page ${index + 1}"
-                            },
-                        ) { Text("Remove") }
+                        ) {
+                            PageThumbnail(
+                                file = capture.fileFor(page.source),
+                                label = "Page ${index + 1}",
+                            )
+                        }
                     }
                 }
+                Text(
+                    "${capture.pages.size} page${if (capture.pages.size == 1) "" else "s"}. " +
+                        "Tap one to rotate, crop or change how it is rendered.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
                 OutlinedTextField(
                     value = documentName,
                     onValueChange = { documentName = it },
@@ -822,6 +840,10 @@ private fun AttachDocumentSection(
                 ) { Text("File these pages and link them") }
             }
         }
+    }
+
+    editingPages?.let { index ->
+        PageEditorOverlay(capture, index) { editingPages = null }
     }
 }
 

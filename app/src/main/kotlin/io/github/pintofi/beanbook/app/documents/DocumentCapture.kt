@@ -47,8 +47,14 @@ class DocumentCapture(
         return File(captureDir, "page-${System.currentTimeMillis()}.jpg")
     }
 
-    fun add(file: File) {
-        _pages.value = _pages.value.add(file.name)
+    fun add(file: File, style: io.github.pintofi.beanbook.core.domain.PageStyle =
+        io.github.pintofi.beanbook.core.domain.PageStyle.COLOUR) {
+        _pages.value = _pages.value.add(file.name, style)
+    }
+
+    /** Renders one page differently (B58). Nothing on disk changes; the PDF is what changes. */
+    fun restyle(index: Int, style: io.github.pintofi.beanbook.core.domain.PageStyle) {
+        _pages.value = _pages.value.restyle(index, style)
     }
 
     fun rotate(index: Int, clockwise: Boolean = true) {

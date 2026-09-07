@@ -96,7 +96,29 @@ class BeancountApplication : Application() {
      * tree, so an export carries them (docs/storage-and-backup.md).
      */
     val documentCapture: DocumentCapture by lazy {
-        DocumentCapture(this, DocumentStore(workspace), appScope)
+        DocumentCapture(
+            this,
+            DocumentStore(workspace),
+            appScope,
+            // The scanner renders a page in its chosen style at assembly time (B58); a
+            // device where OpenCV did not load returns the photograph unchanged, which is
+            // the honest fallback rather than a failure.
+            io.github.pintofi.beanbook.app.documents.PdfAssembler(
+                styler = { bitmap, style ->
+                    io.github.pintofi.beanbook.scanner.Scanner.restyle(
+                        bitmap,
+                        when (style) {
+                            io.github.pintofi.beanbook.core.domain.PageStyle.DOCUMENT ->
+                                io.github.pintofi.beanbook.scanner.ScanStyle.DOCUMENT
+                            io.github.pintofi.beanbook.core.domain.PageStyle.GREYSCALE ->
+                                io.github.pintofi.beanbook.scanner.ScanStyle.GREYSCALE
+                            io.github.pintofi.beanbook.core.domain.PageStyle.COLOUR ->
+                                io.github.pintofi.beanbook.scanner.ScanStyle.COLOUR
+                        },
+                    )
+                },
+            ),
+        )
     }
 
     /** Where scheduled backups go, and what happened on the last run. */

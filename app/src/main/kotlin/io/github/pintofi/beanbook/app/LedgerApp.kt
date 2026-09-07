@@ -311,6 +311,10 @@ internal fun LedgerApp(
             onRemovePage = documentCapture.onRemovePage,
             onDone = documentCapture.onStopScanning,
             onCancel = documentCapture.onStopScanning,
+            onRotatePage = documentCapture.onRotateBy,
+            onCropPage = documentCapture.onCrop,
+            onRestylePage = documentCapture.onRestyle,
+            onMovePage = documentCapture.onMove,
             modifier = modifier,
         )
         return

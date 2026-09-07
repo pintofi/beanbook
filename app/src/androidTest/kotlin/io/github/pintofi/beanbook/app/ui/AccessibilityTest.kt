@@ -361,10 +361,12 @@ class AccessibilityTest {
         // The screen has two tabs and each must be checked in its own right: the page
         // controls live in Add, the per-document ones in Organize, and asserting them all
         // against whichever tab happens to open would quietly stop checking one of them.
+        // The page controls moved into the editor, which is reached from the thumbnail: the
+        // form row of four text buttons per page is gone (B58). What must stay reachable
+        // from here is the way in, named for the page it opens.
         listOf(
-            "Rotate page 1",
-            "Move page 2 up",
-            "Remove page 1",
+            "Edit page 1 of 2",
+            "Edit page 2 of 2",
         ).forEach { label ->
             compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
         }
@@ -498,7 +500,8 @@ class AccessibilityTest {
             )
         }
 
-        compose.onNodeWithContentDescription("Open receipt.pdf").performScrollTo().assertExists()
+        // Two ways to reach a document now: read it here, or hand it to another app (B57).
+        compose.onNodeWithContentDescription("Share receipt.pdf").performScrollTo().assertExists()
         assertAccessible()
     }
 

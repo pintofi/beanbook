@@ -7,6 +7,24 @@ package io.github.pintofi.beanbook.core.domain
  * edits this description, not the file the camera wrote. The original is preserved until the
  * user explicitly discards it (SPEC.md, J3).
  */
+/**
+ * How a page is rendered (B58).
+ *
+ * A domain enum rather than the scanner module's own: `:core-domain` is pure Kotlin and must
+ * not learn about OpenCV, and the page model is what the PDF assembler reads. The app maps
+ * this to the scanner's `ScanStyle` where the pixels are actually touched.
+ */
+enum class PageStyle {
+    /** The photograph as taken. */
+    COLOUR,
+
+    /** Thresholded to near-black text on near-white paper, which is what a scan looks like. */
+    DOCUMENT,
+
+    /** Grey, for a page whose colour carries nothing but takes space. */
+    GREYSCALE,
+}
+
 data class CapturedPage(
     val source: String,
     /** Clockwise, in degrees; always one of 0, 90, 180, 270. */
@@ -19,6 +37,15 @@ data class CapturedPage(
      * mistaken drag never destroys the original.
      */
     val crop: CropQuad? = null,
+    /**
+     * How this page is rendered when the document is assembled (B58).
+     *
+     * Per page, not per session: a batch is often one printed page and one handwritten
+     * receipt, and forcing both through the same treatment makes one of them unreadable.
+     * Recorded rather than baked in, for the reason [crop] is: the capture on disk stays the
+     * photograph the camera produced.
+     */
+    val style: PageStyle = PageStyle.COLOUR,
 ) {
     init {
         require(rotation in ALLOWED_ROTATIONS) { "rotation must be a quarter turn, got $rotation" }
@@ -32,6 +59,8 @@ data class CapturedPage(
     fun rotatedClockwise(): CapturedPage = copy(rotation = (rotation + 90) % 360)
 
     fun rotatedAnticlockwise(): CapturedPage = copy(rotation = (rotation + 270) % 360)
+
+    fun styledAs(style: PageStyle): CapturedPage = copy(style = style)
 
     private companion object {
         val ALLOWED_ROTATIONS = setOf(0, 90, 180, 270)
@@ -52,7 +81,8 @@ data class CapturedPages(val pages: List<CapturedPage> = emptyList()) {
 
     val isEmpty: Boolean get() = pages.isEmpty()
 
-    fun add(source: String): CapturedPages = CapturedPages(pages + CapturedPage(source))
+    fun add(source: String, style: PageStyle = PageStyle.COLOUR): CapturedPages =
+        CapturedPages(pages + CapturedPage(source, style = style))
 
     fun rotate(index: Int, clockwise: Boolean = true): CapturedPages =
         replace(index) { if (clockwise) it.rotatedClockwise() else it.rotatedAnticlockwise() }
@@ -76,6 +106,9 @@ data class CapturedPages(val pages: List<CapturedPage> = emptyList()) {
     fun remove(index: Int): CapturedPages =
         if (index in pages.indices) CapturedPages(pages.filterIndexed { i, _ -> i != index })
         else this
+
+    /** The pages with one page rendered differently (B58). */
+    fun restyle(index: Int, style: PageStyle): CapturedPages = replace(index) { it.styledAs(style) }
 
     /** The pages with one page's crop set, or cleared when [quad] is null. */
     fun crop(index: Int, quad: CropQuad?): CapturedPages = replace(index) { it.croppedTo(quad) }

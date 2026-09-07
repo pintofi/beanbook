@@ -24,7 +24,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlipCameraAndroid
+import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.HighlightOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.MotionPhotosAuto
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -39,7 +43,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.setValue
@@ -92,6 +98,12 @@ fun ScannerScreen(
     onDone: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Per-page editing, reached from the batch thumbnail (B58). */
+    onRotatePage: (index: Int, clockwise: Boolean) -> Unit = { _, _ -> },
+    onCropPage: (index: Int, quad: CropQuad?) -> Unit = { _, _ -> },
+    onRestylePage: (index: Int, style: io.github.pintofi.beanbook.core.domain.PageStyle) -> Unit =
+        { _, _ -> },
+    onMovePage: (from: Int, to: Int) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -135,10 +147,17 @@ fun ScannerScreen(
     // once the page is squarely in frame.
     var camera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
     var torch by remember { mutableStateOf(false) }
+    // Off / on / auto, cycled by one button, as OSS-DocumentScanner does it (B58). The torch
+    // is a separate control because it is a different thing: a lamp for framing, not a flash
+    // for the shot.
+    var flash by rememberSaveable { mutableIntStateOf(ImageCapture.FLASH_MODE_OFF) }
+    var frontLens by rememberSaveable { mutableStateOf(false) }
     var zoom by remember { mutableStateOf(0f) }
     var autoCapture by rememberSaveable { mutableStateOf(true) }
     var previewView by remember { mutableStateOf<PreviewView?>(null) }
     var aimed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(flash) { capture.flashMode = flash }
 
     /**
      * Takes one page: shoot, detect, hand the crop up with the file.
@@ -240,7 +259,11 @@ fun ScannerScreen(
                         provider.unbindAll()
                         camera = provider.bindToLifecycle(
                             lifecycleOwner,
-                            CameraSelector.DEFAULT_BACK_CAMERA,
+                            if (frontLens) {
+                                CameraSelector.DEFAULT_FRONT_CAMERA
+                            } else {
+                                CameraSelector.DEFAULT_BACK_CAMERA
+                            },
                             androidx.camera.core.Preview.Builder()
                                 .setResolutionSelector(
                                     androidx.camera.core.resolutionselector.ResolutionSelector
@@ -305,10 +328,52 @@ fun ScannerScreen(
                 ),
         )
 
-        Row(
-            modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+        // Two rows, as OSS-DocumentScanner arranges them: the camera's own controls on the
+        // top line, and what a page will look like on the line below (B58). One row of both
+        // put the style chips underneath the icon buttons, where they could not be read or
+        // tapped.
+        Column(modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(
+                    onClick = onCancel,
+                    modifier = Modifier.semantics { contentDescription = "Leave the scanner" },
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = null,
+                        tint = Color.White,
+                    )
+                }
+                Box(Modifier.weight(1f))
+            IconButton(
+                onClick = {
+                    flash = when (flash) {
+                        ImageCapture.FLASH_MODE_OFF -> ImageCapture.FLASH_MODE_ON
+                        ImageCapture.FLASH_MODE_ON -> ImageCapture.FLASH_MODE_AUTO
+                        else -> ImageCapture.FLASH_MODE_OFF
+                    }
+                },
+                modifier = Modifier.semantics {
+                    contentDescription = when (flash) {
+                        ImageCapture.FLASH_MODE_OFF -> "Flash is off. Tap to turn it on"
+                        ImageCapture.FLASH_MODE_ON -> "Flash is on. Tap for automatic"
+                        else -> "Flash is automatic. Tap to turn it off"
+                    }
+                },
+            ) {
+                Icon(
+                    when (flash) {
+                        ImageCapture.FLASH_MODE_OFF -> Icons.Filled.FlashOff
+                        ImageCapture.FLASH_MODE_ON -> Icons.Filled.FlashOn
+                        else -> Icons.Filled.FlashAuto
+                    },
+                    contentDescription = null,
+                    tint = Color.White,
+                )
+            }
             IconButton(
                 onClick = {
                     torch = !torch
@@ -318,11 +383,25 @@ fun ScannerScreen(
                     contentDescription = if (torch) "Turn the light off" else "Turn the light on"
                 },
             ) {
+                // A lamp, not a flash: two struck-through bolts side by side said nothing
+                // about which was which.
                 Icon(
-                    if (torch) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
+                    if (torch) Icons.Filled.Highlight else Icons.Filled.HighlightOff,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = if (torch) Color(0xFF80D5D4) else Color.White,
                 )
+            }
+            IconButton(
+                onClick = { frontLens = !frontLens },
+                modifier = Modifier.semantics {
+                    contentDescription = if (frontLens) {
+                        "Use the back camera"
+                    } else {
+                        "Use the front camera"
+                    }
+                },
+            ) {
+                Icon(Icons.Filled.FlipCameraAndroid, contentDescription = null, tint = Color.White)
             }
             IconButton(
                 onClick = { autoCapture = !autoCapture },
@@ -339,30 +418,23 @@ fun ScannerScreen(
                     contentDescription = null,
                     tint = if (aimed) Color(0xFF80D5D4) else Color.White,
                 )
+                }
             }
-        }
 
-        IconButton(
-            onClick = onCancel,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(12.dp)
-                .semantics { contentDescription = "Leave the scanner" },
-        ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White) }
-
-        Row(
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ScanStyle.entries.forEach { option ->
-                FilterChip(
-                    selected = style == option,
-                    onClick = { style = option },
-                    label = { Text(option.label()) },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Capture pages in ${option.label()}"
-                    },
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ScanStyle.entries.forEach { option ->
+                    FilterChip(
+                        selected = style == option,
+                        onClick = { style = option },
+                        label = { Text(option.label()) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Capture pages in ${option.label()}"
+                        },
+                    )
+                }
             }
         }
 
@@ -370,6 +442,17 @@ fun ScannerScreen(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // Shown only while it means something, as OSS-DocumentScanner shows its slider:
+            // a zoom readout on a camera at 1x is a number nobody asked for.
+            if (zoom > 0f) {
+                Text(
+                    text = "%.1fx".format(1f + zoom * MAX_ZOOM_LABEL),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
+
             if (pages.isNotEmpty()) {
                 PageStrip(
                     pages = pages,
@@ -383,15 +466,46 @@ fun ScannerScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(
-                    text = if (pages.isEmpty()) "" else "${pages.size}",
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.size(56.dp).semantics {
-                        contentDescription = "${pages.size} pages captured"
-                    },
-                )
-                ShutterButton(busy = busy) { shoot() }
+                // Left: the last page taken, as a thumbnail that opens the batch for editing.
+                // Their layout puts it here and it earns the place -- it is both the proof
+                // the shot came out and the way back into it.
+                Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+                    val last = pages.lastOrNull()
+                    if (last != null) {
+                        val thumb = remember(last.source, pages.size) {
+                            runCatching {
+                                io.github.pintofi.beanbook.app.documents.Photos
+                                    .decodeUpright(fileFor(last.source), maxEdge = 160)
+                            }.getOrNull()
+                        }
+                        androidx.compose.material3.Surface(
+                            onClick = { previewing = pages.lastIndex },
+                            color = Color.DarkGray,
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.size(56.dp).semantics {
+                                contentDescription = "Edit the ${pages.size} page(s) taken so far"
+                            },
+                        ) {
+                            if (thumb != null) {
+                                androidx.compose.foundation.Image(
+                                    bitmap = thumb.asImageBitmap(),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                ShutterButton(
+                    busy = busy,
+                    count = pages.size,
+                    auto = autoCapture,
+                    aimed = aimed,
+                    onLongPress = { autoCapture = !autoCapture },
+                ) { shoot() }
+
                 IconButton(
                     onClick = onDone,
                     enabled = pages.isNotEmpty(),
@@ -410,84 +524,21 @@ fun ScannerScreen(
     }
 
     previewing?.let { index ->
-        pages.getOrNull(index)?.let { page ->
-            PagePreview(
-                file = fileFor(page.source),
-                index = index,
-                total = pages.size,
-                onRemove = {
-                    onRemovePage(index)
-                    previewing = null
-                },
-                onDismiss = { previewing = null },
-            )
-        }
+        // The editor, not a dialog: a page you are straightening wants the whole screen, and
+        // the batch is a thing to swipe through rather than a list of thumbnails with four
+        // text buttons under each (B58).
+        PageEditorScreen(
+            pages = io.github.pintofi.beanbook.core.domain.CapturedPages(pages),
+            fileFor = fileFor,
+            startAt = index,
+            onRotate = onRotatePage,
+            onCrop = onCropPage,
+            onRestyle = onRestylePage,
+            onRemove = onRemovePage,
+            onMove = onMovePage,
+            onDone = { previewing = null },
+        )
     }
-}
-
-/**
- * One captured page, big enough to judge (B55).
- *
- * Tapping a thumbnail used to delete it, with no preview anywhere: the one gesture a person
- * makes to check a photograph was the gesture that threw it away. Now a tap opens it, and
- * removing is a labelled button in front of the page it removes.
- */
-@Composable
-private fun PagePreview(
-    file: File,
-    index: Int,
-    total: Int,
-    onRemove: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val bitmap = remember(file.path, file.length()) {
-        runCatching {
-            io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file, maxEdge = 1600)
-        }.getOrNull()
-    }
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Page ${index + 1} of $total") },
-        text = {
-            if (bitmap == null) {
-                Text("This page could not be opened. Photograph it again.")
-            } else {
-                androidx.compose.foundation.Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Page ${index + 1}, full size",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Keep it") }
-        },
-        dismissButton = {
-            androidx.compose.material3.TextButton(
-                onClick = onRemove,
-                modifier = Modifier.semantics {
-                    contentDescription = "Remove page ${index + 1} from this document"
-                },
-            ) { Text("Remove page") }
-        },
-    )
-}
-
-/** A few times a second: often enough to feel immediate, rare enough to cost nothing. */
-private const val AUTO_SAMPLE_MILLIS = 600L
-
-/** The detector works on a small image; a preview frame at full size is wasted work. */
-private fun android.graphics.Bitmap.scale(): android.graphics.Bitmap {
-    val longest = maxOf(width, height)
-    if (longest <= 720) return this
-    val factor = 720f / longest
-    return android.graphics.Bitmap.createScaledBitmap(
-        this,
-        (width * factor).toInt().coerceAtLeast(1),
-        (height * factor).toInt().coerceAtLeast(1),
-        true,
-    )
 }
 
 private fun ScanStyle.label(): String = when (this) {
@@ -560,20 +611,83 @@ private fun PageStrip(
     }
 }
 
+/**
+ * The shutter, with the batch count inside it and a ring that says whether it is watching.
+ *
+ * Taken from OSS-DocumentScanner's arrangement -- count in the button, auto-scan shown on the
+ * ring around it, long-press to toggle it -- drawn with this app's colours rather than
+ * theirs. The long-press is a shortcut, not the only way: the labelled toggle at the top is
+ * what a screen reader finds.
+ */
 @Composable
-private fun ShutterButton(busy: Boolean, onClick: () -> Unit) {
+private fun ShutterButton(
+    busy: Boolean,
+    count: Int,
+    auto: Boolean,
+    aimed: Boolean,
+    onLongPress: () -> Unit,
+    onClick: () -> Unit,
+) {
+    val ring = when {
+        !auto -> Color.White
+        aimed -> Color(0xFF80D5D4)
+        else -> Color(0xFF80D5D4).copy(alpha = 0.5f)
+    }
     Box(
         modifier = Modifier
             .size(76.dp)
             .clip(CircleShape)
             .background(Color.White)
-            .semantics { contentDescription = "Capture this page" },
+            .pointerInput(busy) {
+                detectTapGestures(
+                    onLongPress = { onLongPress() },
+                    onTap = { if (!busy) onClick() },
+                )
+            }
+            .semantics {
+                contentDescription = if (auto) {
+                    "Capture this page. Pages are also captured automatically"
+                } else {
+                    "Capture this page"
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            drawCircle(
+                color = ring,
+                radius = size.minDimension / 2 - 4f,
+                style = Stroke(width = 6f),
+            )
+        }
         if (busy) {
             CircularProgressIndicator(modifier = Modifier.size(32.dp), color = Color.Black)
-        } else {
-            IconButton(onClick = onClick, modifier = Modifier.fillMaxSize()) {}
+        } else if (count > 0) {
+            Text(
+                text = "$count",
+                color = Color.Black,
+                style = MaterialTheme.typography.titleMedium,
+            )
         }
     }
+}
+
+/** What a linear zoom of 1.0 is called on screen. Cameras vary; the label is a hint. */
+private const val MAX_ZOOM_LABEL = 5f
+
+
+/** A few times a second: often enough to feel immediate, rare enough to cost nothing. */
+private const val AUTO_SAMPLE_MILLIS = 600L
+
+/** The detector works on a small image; a preview frame at full size is wasted work. */
+private fun android.graphics.Bitmap.scale(): android.graphics.Bitmap {
+    val longest = maxOf(width, height)
+    if (longest <= 720) return this
+    val factor = 720f / longest
+    return android.graphics.Bitmap.createScaledBitmap(
+        this,
+        (width * factor).toInt().coerceAtLeast(1),
+        (height * factor).toInt().coerceAtLeast(1),
+        true,
+    )
 }

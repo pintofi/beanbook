@@ -452,3 +452,76 @@ internal fun documentAttachments(
     }
     return out
 }
+
+/**
+ * The capture style chosen at the shutter, as the page model records it (B58).
+ *
+ * Two enums rather than one because `:core-domain` may not learn about OpenCV and `:scanner`
+ * may not be what the page model depends on; this is the seam, and it is one function.
+ */
+internal fun pageStyleOf(
+    style: io.github.pintofi.beanbook.scanner.ScanStyle,
+): io.github.pintofi.beanbook.core.domain.PageStyle = when (style) {
+    io.github.pintofi.beanbook.scanner.ScanStyle.DOCUMENT ->
+        io.github.pintofi.beanbook.core.domain.PageStyle.DOCUMENT
+    io.github.pintofi.beanbook.scanner.ScanStyle.GREYSCALE ->
+        io.github.pintofi.beanbook.core.domain.PageStyle.GREYSCALE
+    io.github.pintofi.beanbook.scanner.ScanStyle.COLOUR ->
+        io.github.pintofi.beanbook.core.domain.PageStyle.COLOUR
+}
+
+/**
+ * Everything a screen needs to photograph, edit and file a document, as one value (B58).
+ *
+ * Built here rather than in `MainActivity`: the same callbacks are wanted by the documents
+ * screen, by transaction entry and by the scanner, and threading a dozen lambdas through the
+ * activity is what makes detekt's `LargeClass` bite on it.
+ */
+internal fun MainActivity.captureHandle(
+    app: BeancountApplication,
+    projectId: String?,
+    documentPages: io.github.pintofi.beanbook.core.domain.CapturedPages,
+    scanning: Boolean,
+    setScanning: (Boolean) -> Unit,
+): io.github.pintofi.beanbook.app.ui.DocumentCaptureHandle =
+    io.github.pintofi.beanbook.app.ui.DocumentCaptureHandle(
+            pages = documentPages,
+            captureFile = { app.documentCapture.nextCaptureFile() },
+            onCapture = { file ->
+                if (file.length() > 0) app.documentCapture.add(file)
+            },
+            scanning = scanning,
+            onStartScanning = { setScanning(true) },
+            onStopScanning = { setScanning(false) },
+            onScanned = { file, quad, style ->
+                // Add first, then apply the outline the scanner found. The
+                // crop is a description of the photograph, never a rewrite of
+                // it: the file on disk stays the one the camera produced, so
+                // a wrong detection is a drag away from being corrected
+                // rather than something that destroyed the original (J3).
+                if (file.length() > 0) {
+                    app.documentCapture.add(file, pageStyleOf(style))
+                    if (quad != null) {
+                        app.documentCapture.crop(documentPages.pages.lastIndex, quad)
+                    }
+                }
+            },
+            onRotate = { app.documentCapture.rotate(it) },
+            onRotateBy = { index, clockwise ->
+                app.documentCapture.rotate(index, clockwise)
+            },
+            onRestyle = { index, style ->
+                app.documentCapture.restyle(index, style)
+            },
+            onMove = { from, to -> app.documentCapture.move(from, to) },
+            onRemovePage = { app.documentCapture.remove(it) },
+            onCrop = { index, quad -> app.documentCapture.crop(index, quad) },
+            fileFor = { name -> app.documentCapture.fileFor(name) },
+            onFile = { account, label, onFiled ->
+                app.documentCapture.save(projectId.orEmpty(), account, label = label) { path ->
+                    onFiled(path)
+                    app.documentCapture.reset()
+                    refreshDocuments(app, projectId.orEmpty())
+                }
+            },
+        )

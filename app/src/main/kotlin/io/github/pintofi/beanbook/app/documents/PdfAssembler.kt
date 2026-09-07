@@ -24,7 +24,18 @@ import java.io.File
  * if the user wants to start again (SPEC.md, J3: the original is preserved unless explicitly
  * discarded).
  */
-class PdfAssembler(private val maxPageEdge: Int = DEFAULT_MAX_EDGE) {
+class PdfAssembler(
+    private val maxPageEdge: Int = DEFAULT_MAX_EDGE,
+    /**
+     * Renders a page in the style it was given (B58).
+     *
+     * A function rather than a call into `:scanner`, so this class stays testable without
+     * OpenCV and a device without it still assembles documents -- unstyled, which is the
+     * photograph, which is the honest fallback.
+     */
+    private val styler: (Bitmap, io.github.pintofi.beanbook.core.domain.PageStyle) -> Bitmap =
+        { bitmap, _ -> bitmap },
+) {
 
     /**
      * @param pages what to draw, in order.
@@ -37,8 +48,13 @@ class PdfAssembler(private val maxPageEdge: Int = DEFAULT_MAX_EDGE) {
         val document = PdfDocument()
         try {
             pages.pages.forEachIndexed { index, page ->
-                val bitmap = decode(resolve(page.source), page.rotation, page.crop)
+                val decoded = decode(resolve(page.source), page.rotation, page.crop)
                     ?: error("page ${index + 1} could not be read: ${page.source}")
+                val bitmap = if (page.style == io.github.pintofi.beanbook.core.domain.PageStyle.COLOUR) {
+                    decoded
+                } else {
+                    styler(decoded, page.style).also { if (it !== decoded) decoded.recycle() }
+                }
                 try {
                     val info = PdfDocument.PageInfo
                         .Builder(bitmap.width, bitmap.height, index + 1)

@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -101,6 +103,7 @@ fun DocumentsScreen(
     var expanded by remember { mutableStateOf(emptySet<String>()) }
     var cropping by remember { mutableStateOf<Int?>(null) }
     var viewing by remember { mutableStateOf<String?>(null) }
+    var editingPages by remember { mutableStateOf<Int?>(null) }
 
     val askForCamera = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -155,51 +158,31 @@ fun DocumentsScreen(
 
         if (!capture.pages.isEmpty) {
             Text("Pages", style = MaterialTheme.typography.titleSmall)
-            capture.pages.pages.forEachIndexed { index, page ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "Page ${index + 1}${if (page.rotation != 0) " · ${page.rotation}°" else ""}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(
-                        onClick = { cropping = index },
+            // Thumbnails, and one way in (B58): tapping a page opens the editor, where a
+            // page is rotated, cropped and re-rendered on the page itself rather than
+            // through four text buttons in a form row.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            ) {
+                capture.pages.pages.forEachIndexed { index, page ->
+                    androidx.compose.material3.Surface(
+                        onClick = { editingPages = index },
+                        shape = RoundedCornerShape(6.dp),
                         modifier = Modifier.semantics {
-                            contentDescription = "Crop page ${index + 1}"
+                            contentDescription = "Edit page ${index + 1} of ${capture.pages.size}"
                         },
-                    ) { Text(if (page.isCropped) "Cropped" else "Crop") }
-                    TextButton(
-                        onClick = { capture.onRotate(index) },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Rotate page ${index + 1}"
-                        },
-                    ) { Text("Rotate") }
-                    TextButton(
-                        onClick = { capture.onMove(index, index - 1) },
-                        enabled = index > 0,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Move page ${index + 1} up"
-                        },
-                    ) { Text("Up") }
-                    TextButton(
-                        onClick = { capture.onMove(index, index + 1) },
-                        enabled = index < capture.pages.pages.size - 1,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Move page ${index + 1} down"
-                        },
-                    ) { Text("Down") }
-                    TextButton(
-                        onClick = { capture.onRemovePage(index) },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Remove page ${index + 1}"
-                        },
-                    ) { Text("Remove") }
+                    ) {
+                        PageThumbnail(file = capture.fileFor(page.source), label = "Page ${index + 1}")
+                    }
                 }
             }
+            Text(
+                "${capture.pages.size} page${if (capture.pages.size == 1) "" else "s"}. " +
+                    "Tap one to rotate, crop or change how it is rendered.",
+                style = MaterialTheme.typography.bodySmall,
+            )
 
             SuggestingField(
                 value = account,
@@ -349,6 +332,20 @@ fun DocumentsScreen(
                 }
             }
         }
+    }
+
+    editingPages?.let { index ->
+        PageEditorScreen(
+            pages = capture.pages,
+            fileFor = capture.fileFor,
+            startAt = index,
+            onRotate = capture.onRotateBy,
+            onCrop = capture.onCrop,
+            onRestyle = capture.onRestyle,
+            onRemove = capture.onRemovePage,
+            onMove = capture.onMove,
+            onDone = { editingPages = null },
+        )
     }
 
     viewing?.let { path ->
