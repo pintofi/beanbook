@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import io.github.pintofi.beanbook.app.diagnostics.Diagnostics
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -127,6 +128,7 @@ class PackagesState(
                 }
             }
             _status.value = PackagesStatus.Idle
+            Diagnostics.i(TAG, "package fetch ${pending.request} -> ${result.javaClass.simpleName}")
             if (result is FetchResult.Installed) onEngineStale()
             _message.value = when (result) {
                 is FetchResult.Installed ->

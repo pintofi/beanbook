@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import io.github.pintofi.beanbook.app.diagnostics.Diagnostics
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -133,6 +134,7 @@ class PluginsState(
     fun setEnabled(id: String, enabled: Boolean) {
         scope.launch {
             withContext(Dispatchers.IO) { store()?.setEnabled(id, enabled) }
+            Diagnostics.i(TAG, "plugin $id enabled=$enabled")
             onEngineStale()
             refresh()
         }
@@ -142,6 +144,7 @@ class PluginsState(
         scope.launch {
             withContext(Dispatchers.IO) { store()?.remove(id) }
             _message.value = "Removed. Its files are gone from this project."
+            Diagnostics.i(TAG, "plugin $id removed")
             onEngineStale()
             refresh()
         }
@@ -176,6 +179,7 @@ class PluginsState(
                 }
             }
             _message.value = describe(result)
+            Diagnostics.i(TAG, "plugin install from \"$displayName\" -> ${result?.javaClass?.simpleName}")
             if (result is InstallResult.Installed) onEngineStale()
             refresh()
         }

@@ -8,6 +8,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import io.github.pintofi.beanbook.app.diagnostics.Diagnostics
 import kotlinx.coroutines.launch
 
 /**
@@ -106,7 +107,7 @@ class LedgerState(
                     .onSuccess { snapshot ->
                         _failure.value = null
                         _snapshot.value = snapshot
-                        Log.i(
+                        Diagnostics.i(
                             TAG,
                             "ledger loaded entries=${snapshot.entryCount} " +
                                 "accounts=${snapshot.accounts.size} errors=${snapshot.errors.size} " +
@@ -117,7 +118,7 @@ class LedgerState(
                         // A ledger that cannot be parsed at all is different from a ledger
                         // with errors; the latter still produces a snapshot.
                         _failure.value = error.message ?: error.javaClass.simpleName
-                        Log.w(TAG, "ledger read failed", error)
+                        Diagnostics.w(TAG, "ledger read failed", error)
                     }
             } finally {
                 if (started == generation) _loading.value = false

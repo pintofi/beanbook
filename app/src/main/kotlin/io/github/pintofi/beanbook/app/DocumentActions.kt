@@ -598,3 +598,59 @@ internal fun MainActivity.useModule(
         app.ledgerState.load(file.absolutePath)
     }
 }
+
+/**
+ * The diagnostics screen's data and actions (B62).
+ *
+ * An extension rather than a member for the reason every other one here is: `MainActivity` is
+ * the largest class in the app and detekt's `LargeClass` bites whenever anything is threaded
+ * through it.
+ *
+ * Sharing goes through the same `FileProvider` a document does — a temporary read grant on
+ * one file — rather than a giant `EXTRA_TEXT`, which some apps truncate and others refuse.
+ */
+@androidx.compose.runtime.Composable
+internal fun MainActivity.diagnosticsUi(): io.github.pintofi.beanbook.app.ui.DiagnosticsUi {
+    val diagnostics = io.github.pintofi.beanbook.app.diagnostics.Diagnostics
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    return io.github.pintofi.beanbook.app.ui.DiagnosticsUi(
+        // Read when the screen asks, not here: this is built at start-up, and the log grows
+        // for as long as the app runs.
+        read = {
+            io.github.pintofi.beanbook.app.ui.DiagnosticsRecord(
+                lines = diagnostics.tail(),
+                sizeBytes = diagnostics.sizeBytes(),
+            )
+        },
+        onCopy = {
+            clipboard.setText(androidx.compose.ui.text.AnnotatedString(diagnostics.report()))
+            saveMessage = "The report is on the clipboard."
+        },
+        onShare = { shareDiagnostics() },
+        onClear = { diagnostics.clear() },
+        message = saveMessage,
+    )
+}
+
+/** Hands the report to whatever the user picks, and to nothing otherwise. */
+internal fun MainActivity.shareDiagnostics() {
+    val report = io.github.pintofi.beanbook.app.diagnostics.Diagnostics.report()
+    val file = java.io.File(cacheDir, "diagnostics").apply { mkdirs() }
+        .resolve("beanbook-diagnostics.txt")
+    val shared = runCatching {
+        file.writeText(report)
+        androidx.core.content.FileProvider.getUriForFile(this, "$packageName.documents", file)
+    }.getOrNull()
+    if (shared == null) {
+        saveMessage = "The report could not be written, so nothing was shared."
+        return
+    }
+    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(android.content.Intent.EXTRA_STREAM, shared)
+        putExtra(android.content.Intent.EXTRA_SUBJECT, "Beanbook diagnostics")
+        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    runCatching { startActivity(android.content.Intent.createChooser(intent, "Share the report")) }
+        .onFailure { saveMessage = "Nothing on this device could take the report." }
+}

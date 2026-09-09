@@ -238,7 +238,16 @@ class BeancountApplication : Application() {
      * with Beancount, and only then report success (CLAUDE.md, write protocol).
      */
     val writer: ProjectWriter by lazy {
-        ProjectWriter(workspace, journal, BeancountValidator(this, connection = engineConnection))
+        ProjectWriter(
+            workspace,
+            journal,
+            BeancountValidator(this, connection = engineConnection),
+            // Every write's outcome in the app's own log (B62). What a person needs when a
+            // save did not take: which file, which operation, and what the protocol said.
+            observer = { line ->
+                io.github.pintofi.beanbook.app.diagnostics.Diagnostics.i("ProjectWriter", line)
+            },
+        )
     }
 
     override fun onCreate() {
@@ -247,6 +256,12 @@ class BeancountApplication : Application() {
         // rotation but must not keep serving once the app is in the background
         // (docs/architecture.md §5).
         io.github.pintofi.beanbook.app.storage.ContextHolder.install(this)
+        // First, so a crash during start-up is still recorded, and so the app's own log
+        // covers the run from its first line (B62).
+        io.github.pintofi.beanbook.app.diagnostics.Diagnostics.install(this) {
+            val status = engineManager.status.value
+            "engine: ${status::class.simpleName}, edition: ${pluginPolicy.name}"
+        }
         // Starts the 30-day trial on first launch and records that the app was seen now.
         entitlementState.start(Instant.now())
         ProcessLifecycleOwner.get().lifecycle.addObserver(engineManager)

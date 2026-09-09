@@ -13,4 +13,10 @@
 -->
 <paths>
     <files-path name="project-documents" path="projects/" />
+    <!--
+      The diagnostic report, and only it (B62). One file in one cache subdirectory, written
+      when the user asks to share it: the log is theirs to hand over, and this is how it
+      reaches another app without the app itself sending anything anywhere.
+    -->
+    <cache-path name="diagnostics" path="diagnostics/" />
 </paths>

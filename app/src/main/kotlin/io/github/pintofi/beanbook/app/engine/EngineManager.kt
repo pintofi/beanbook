@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import io.github.pintofi.beanbook.app.diagnostics.Diagnostics
 import kotlinx.coroutines.launch
 
 /**
@@ -56,7 +57,9 @@ class EngineManager(
                 pluginDirectories()
             val result = engine.start(projectPath)
             if (result is EngineStatus.Failed) {
-                Log.w(TAG, "engine failed to start: ${result.message}")
+                Diagnostics.w(TAG, "engine failed to start: ${result.message}")
+            } else {
+                Diagnostics.i(TAG, "engine started")
             }
         }
     }
@@ -80,7 +83,9 @@ class EngineManager(
                 pluginDirectories()
             val result = engine.start(project)
             if (result is EngineStatus.Failed) {
-                Log.w(TAG, "engine failed to restart: ${result.message}")
+                Diagnostics.w(TAG, "engine failed to restart: ${result.message}")
+            } else {
+                Diagnostics.i(TAG, "engine restarted in a new process")
             }
         }
     }
@@ -106,7 +111,7 @@ class EngineManager(
         shutdownJob?.cancel()
         shutdownJob = scope.launch {
             delay(gracePeriodMillis)
-            Log.i(TAG, "grace period elapsed while backgrounded; stopping engine")
+            Diagnostics.i(TAG, "grace period elapsed in the background; stopping the engine")
             engine.stop()
         }
     }

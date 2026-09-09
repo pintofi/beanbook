@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Extension
@@ -253,6 +254,7 @@ internal fun MoreMenu(entitlement: Entitlement, onContribute: () -> Unit, onOpen
         MoreSection.APPEARANCE to "Theme, dark mode and colours",
         MoreSection.SCRIPTS to "Run a Python script once against the open ledger",
         MoreSection.LICENCES to "This app's licence, and everything it is built on",
+        MoreSection.DIAGNOSTICS to "What the app recorded, for reporting a problem",
         MoreSection.ABOUT to "Version, licence and contact",
     )
 
@@ -413,5 +415,6 @@ private fun iconFor(section: MoreSection): ImageVector = when (section) {
     MoreSection.APPEARANCE -> Icons.Filled.Palette
     MoreSection.SCRIPTS -> Icons.Filled.Terminal
     MoreSection.LICENCES -> Icons.Filled.Gavel
+    MoreSection.DIAGNOSTICS -> Icons.Filled.BugReport
     MoreSection.ABOUT -> Icons.Filled.Info
 }

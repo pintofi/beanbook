@@ -70,6 +70,7 @@ internal enum class MoreSection(val label: String) {
     APPEARANCE("Appearance"),
     SCRIPTS("Scripts"),
     LICENCES("Licences"),
+    DIAGNOSTICS("Diagnostics"),
     ABOUT("About"),
 }
 
@@ -155,6 +156,7 @@ internal fun LedgerApp(
     onUnlinkDocument: (String, String?) -> Unit,
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,
+    diagnostics: io.github.pintofi.beanbook.app.ui.DiagnosticsUi,
     fileForDocument: (String) -> java.io.File,
     pendingRestore: RestoreStaged.Ready?,
     passphraseNeeded: Boolean,
@@ -470,6 +472,7 @@ internal fun LedgerApp(
                 onUnlinkDocument = onUnlinkDocument,
                 onDeleteDocumentFile = onDeleteDocumentFile,
                 onShareDocument = onShareDocument,
+                diagnostics = diagnostics,
                 fileForDocument = fileForDocument,
                 pendingRestore = pendingRestore,
                 passphraseNeeded = passphraseNeeded,

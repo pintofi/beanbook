@@ -81,6 +81,15 @@ class ProjectWriter(
     private val journal: WriteJournal,
     private val validator: LedgerValidator,
     private val undoDepth: Int = WriteJournal.DEFAULT_UNDO_DEPTH,
+    /**
+     * Told what each write did, for the app's own log (B62).
+     *
+     * A line rather than a callback with structure: whoever reads it is a person trying to
+     * work out what happened to their ledger, and "replace main.beancount op=edit-entry ->
+     * RolledBack: …" is the sentence they need. Nothing here decides anything; a writer that
+     * behaved differently when observed would be a worse writer.
+     */
+    private val observer: (String) -> Unit = {},
 ) {
     // Single writer per process. Concurrent writes to one ledger are a correctness
     // problem, not a throughput opportunity.
@@ -99,6 +108,7 @@ class ProjectWriter(
         policy: ErrorPolicy = ErrorPolicy.ROLLBACK_ON_NEW_ERRORS,
     ): WriteResult =
         write(projectId, file, newContent.toByteArray(Charsets.UTF_8), expectedSha, operation, policy)
+            .also { report(operation, file, it) }
 
     /**
      * Replaces [file] with raw [newContent], through the same protocol as [replace].
@@ -119,6 +129,7 @@ class ProjectWriter(
         operation: String = "replace-bytes",
         policy: ErrorPolicy = ErrorPolicy.ROLLBACK_ON_NEW_ERRORS,
     ): WriteResult = write(projectId, file, newContent, expectedSha, operation, policy)
+        .also { report(operation, file, it) }
 
     /** Appends [text] to [file], creating it if needed. */
     suspend fun append(
@@ -142,7 +153,25 @@ class ProjectWriter(
             expectedSha = if (file.isFile) WriteJournal.sha256(file) else "",
             operation = operation,
             policy = policy,
-        )
+        ).also { report(operation, file, it) }
+    }
+
+    /**
+     * Tells the observer what a write did, in one line and without the ledger's content
+     * (B62).
+     *
+     * The file's **name**, never its text, and the reason a write was refused or rolled back,
+     * which is the app's own words rather than the user's data. A log that carried what was
+     * being written would put somebody's finances in every report they sent.
+     */
+    private fun report(operation: String, file: File, result: WriteResult) {
+        val outcome = when (result) {
+            is WriteResult.Committed ->
+                "Committed" + result.warnings.size.takeIf { it > 0 }?.let { " with $it ledger error(s)" }.orEmpty()
+            is WriteResult.RolledBack -> "RolledBack: ${result.reason}"
+            is WriteResult.Refused -> "Refused: ${result.reason}"
+        }
+        runCatching { observer("write ${file.name} op=$operation -> $outcome") }
     }
 
     private suspend fun write(

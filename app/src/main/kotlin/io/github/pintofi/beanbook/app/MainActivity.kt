@@ -556,6 +556,7 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onShareDocument = { path -> shareDocument(app, activeId!!, path) },
+                        diagnostics = diagnosticsUi(),
                         fileForDocument = { path -> documentFile(app, activeId, path) },
                         pendingRestore = pendingRestore,
                         passphraseNeeded = passphraseNeeded,

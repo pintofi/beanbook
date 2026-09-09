@@ -74,6 +74,8 @@ internal fun SurfaceContent(
     onUnlinkDocument: (String, String?) -> Unit,
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,
+    /** The app's own record of what it did, and what a person can do with it (B62). */
+    diagnostics: io.github.pintofi.beanbook.app.ui.DiagnosticsUi,
     /** A document's file inside the open project, for reading it in the app (B57). */
     fileForDocument: (String) -> java.io.File,
     pendingRestore: RestoreStaged.Ready?,
@@ -281,6 +283,15 @@ internal fun SurfaceContent(
                         )
 
                         MoreSection.LICENCES -> io.github.pintofi.beanbook.app.ui.LicencesScreen()
+
+                        MoreSection.DIAGNOSTICS -> io.github.pintofi.beanbook.app.ui.DiagnosticsScreen(
+                            read = diagnostics.read,
+                            onCopy = diagnostics.onCopy,
+                            onShare = diagnostics.onShare,
+                            onClear = diagnostics.onClear,
+                            message = diagnostics.message,
+                            modifier = Modifier.padding(padding),
+                        )
 
                         MoreSection.FILES -> RawEditorScreen(
                             twoPane = twoPane,

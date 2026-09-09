@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import io.github.pintofi.beanbook.app.diagnostics.Diagnostics
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -202,7 +203,9 @@ class ScriptRunnerState(
                     pluginDirs = importable(),
                 )
                 _outcome.value = json.fold(
-                    onSuccess = { parse(name, it) },
+                    onSuccess = { parse(name, it).also { outcome ->
+                        Diagnostics.i(TAG, "script \"$name\" -> ${outcome.summary()}")
+                    } },
                     onFailure = { problem ->
                         Log.w(TAG, "the engine could not run the script", problem)
                         ScriptOutcome(
