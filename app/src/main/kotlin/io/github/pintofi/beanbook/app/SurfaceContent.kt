@@ -62,6 +62,8 @@ internal fun SurfaceContent(
     selected: Surface,
     /** The add form is open over [selected]; it is an action, not a destination (B26). */
     adding: Boolean,
+    /** Whether the open entry form holds anything that would be lost by leaving (B61). */
+    onAddDirtyChange: (Boolean) -> Unit = {},
     onContribute: () -> Unit,
     documentCapture: DocumentCaptureHandle,
     documents: List<DocumentRow>,
@@ -224,11 +226,13 @@ internal fun SurfaceContent(
                                 vocabulary = LedgerVocabulary.from(ledger),
                                 onSave = onSaveDirective,
                                 saveState = saveState,
+                                onDirtyChange = onAddDirtyChange,
                             )
                         } else {
                             QuickAddScreen(
                                 vocabulary = LedgerVocabulary.from(ledger),
                                 format = ledger.format,
+                                onDirtyChange = onAddDirtyChange,
                                 onSave = onSaveEntry,
                                 saveState = saveState,
                                 prefill = prefill,

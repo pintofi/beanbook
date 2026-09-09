@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
@@ -150,22 +151,45 @@ internal fun LedgerTopBar(
     sectionTitle: String?,
     onBack: () -> Unit,
     onSwitchProject: () -> Unit,
+    /**
+     * Whether the entry form is what is on screen (B61).
+     *
+     * The form is a task, not a destination: it is opened by the action button, it has no
+     * place in the bar of destinations, and the way out of it is a close, not a step back
+     * through a hierarchy. Material calls this a full-screen dialog, and the difference from
+     * a section is exactly the icon in this corner -- a cross closes something you opened,
+     * an arrow walks back through where you have been.
+     */
+    adding: Boolean = false,
 ) {
     androidx.compose.material3.TopAppBar(
         title = {
             Column {
                 Text(
-                    sectionTitle ?: projectName,
+                    when {
+                        adding -> "New entry"
+                        sectionTitle != null -> sectionTitle
+                        else -> projectName
+                    },
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                 )
-                if (sectionTitle == null && health != null) {
+                if (!adding && sectionTitle == null && health != null) {
                     Text(health, style = MaterialTheme.typography.bodySmall, maxLines = 1)
                 }
             }
         },
         navigationIcon = {
-            if (sectionTitle != null) {
+            if (adding) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Close the entry form"
+                    },
+                ) {
+                    Icon(Icons.Filled.Close, contentDescription = null)
+                }
+            } else if (sectionTitle != null) {
                 // An arrow, which is what a person expects in this corner. This was the
                 // word "Back", on the grounds that the icon artifact was a whole dependency
                 // for one glyph -- true when it was written, and no longer: the icon set
@@ -183,7 +207,7 @@ internal fun LedgerTopBar(
             }
         },
         actions = {
-            if (sectionTitle == null) {
+            if (sectionTitle == null && !adding) {
                 TextButton(
                     onClick = onSwitchProject,
                     modifier = Modifier.semantics {

@@ -60,6 +60,8 @@ fun DirectiveEntryScreen(
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
     saveState: String? = null,
+    /** Whether anything has been typed that leaving would lose (B61). */
+    onDirtyChange: (Boolean) -> Unit = {},
 ) {
     var kind by remember { mutableStateOf(DirectiveKind.OPEN) }
     var date by remember { mutableStateOf(today.toString()) }
@@ -68,6 +70,11 @@ fun DirectiveEntryScreen(
     var text by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var currency by remember { mutableStateOf(vocabulary.currencies.firstOrNull() ?: "USD") }
+
+    // The date and the pre-selected currency are the form's own doing, so neither counts.
+    val dirty = account.isNotBlank() || second.isNotBlank() || text.isNotBlank() || amount.isNotBlank()
+    androidx.compose.runtime.LaunchedEffect(dirty) { onDirtyChange(dirty) }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onDirtyChange(false) } }
 
     val parsedAmount = remember(amount, currency) {
         runCatching { Amount(BigDecimal(amount.trim()), currency.trim()) }.getOrNull()

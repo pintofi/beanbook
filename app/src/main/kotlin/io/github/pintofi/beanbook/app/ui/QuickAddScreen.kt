@@ -104,6 +104,14 @@ fun QuickAddScreen(
     onDeleteTemplate: (String) -> Unit = {},
     /** Photographing a receipt while entering the transaction it belongs to (B17). */
     capture: DocumentCaptureHandle? = null,
+    /**
+     * Whether anything has been typed that leaving would lose (B61).
+     *
+     * Reported rather than guarded here: the form does not own the way out -- the close
+     * button, the back gesture and the destination bar all do -- so it says what it holds
+     * and lets whoever is closing it decide whether to ask.
+     */
+    onDirtyChange: (Boolean) -> Unit = {},
 ) {
     var date by remember { mutableStateOf(today.toString()) }
     var payee by remember { mutableStateOf("") }
@@ -154,6 +162,17 @@ fun QuickAddScreen(
         },
     )
     val problems = draft.validate(format)
+
+    // What counts as something to lose: words typed, a figure entered, a page photographed.
+    // Not the date, which the form fills in by itself, and not an account the form
+    // pre-selected -- neither is anything the user would miss.
+    val dirty = payee.isNotBlank() ||
+        narration.isNotBlank() ||
+        rows.any { it.amount.isNotBlank() } ||
+        metaRows.any { it.key.isNotBlank() || it.value.isNotBlank() } ||
+        capture?.pages?.isEmpty == false
+    LaunchedEffect(dirty) { onDirtyChange(dirty) }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onDirtyChange(false) } }
     val residuals = draft.residuals()
 
     var namingTemplate by remember { mutableStateOf(false) }

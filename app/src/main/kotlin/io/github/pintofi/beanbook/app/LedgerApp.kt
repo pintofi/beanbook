@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalConfiguration
@@ -258,6 +259,18 @@ internal fun LedgerApp(
     var adding by remember(openOn) { mutableStateOf(openOn == "ADD") }
     var showContribute by remember { mutableStateOf(false) }
 
+    // Whether anything has been typed into the open form, and what to do once the user has
+    // decided (B61). Leaving a half-written entry by tapping a destination is one tap away
+    // now that the bar works while the form is open, so it asks first -- nothing is written
+    // to the ledger either way, but retyping an entry is the user's time.
+    var addDirty by remember { mutableStateOf(false) }
+    var confirmingLeave by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    /** Leaves the entry form, asking first when there is something to lose. */
+    fun leavingAdd(then: () -> Unit) {
+        if (adding && addDirty) confirmingLeave = then else then()
+    }
+
     // An entry being entered again (B11). Held here because applying it means switching to
     // the Add surface, which this composable owns; cleared once the form has taken it.
     var pendingClone by remember { mutableStateOf<TransactionDraft?>(null) }
@@ -284,11 +297,13 @@ internal fun LedgerApp(
         },
     )
     BackHandler(enabled = stack.back() != null) {
-        stack.back()?.let { previous ->
-            adding = previous.isAdding
-            moreSection = previous.openSection
-            showContribute = previous.isContributing
-            selected = previous.tab
+        leavingAdd {
+            stack.back()?.let { previous ->
+                adding = previous.isAdding
+                moreSection = previous.openSection
+                showContribute = previous.isContributing
+                selected = previous.tab
+            }
         }
     }
 
@@ -343,7 +358,8 @@ internal fun LedgerApp(
                     ?: "Beanbook",
                 health = ledgerHealth(engineStatus, ledger),
                 sectionTitle = if (selected == Surface.MORE) moreSection?.label else null,
-                onBack = { moreSection = null },
+                adding = adding,
+                onBack = { if (adding) leavingAdd { adding = false } else moreSection = null },
                 onSwitchProject = {
                     selected = Surface.MORE
                     moreSection = MoreSection.PROJECTS
@@ -384,13 +400,13 @@ internal fun LedgerApp(
             // checking the bar by eye at normal text size, or moving another one out.
             if (LocalDensity.current.fontScale > 1.3f) {
                 PrimaryScrollableTabRow(
-                    selectedTabIndex = Surface.entries.indexOf(selected),
+                    selectedTabIndex = if (adding) -1 else Surface.entries.indexOf(selected),
                     edgePadding = 0.dp,
                 ) {
                     Surface.entries.forEach { surface ->
                         Tab(
-                            selected = selected == surface,
-                            onClick = { selected = surface },
+                            selected = !adding && selected == surface,
+                            onClick = { leavingAdd { adding = false; selected = surface } },
                             text = { Text(surface.label, softWrap = false) },
                             modifier = Modifier.semantics { contentDescription = surface.label },
                         )
@@ -400,8 +416,11 @@ internal fun LedgerApp(
                 NavigationBar {
                     Surface.entries.forEach { surface ->
                         NavigationBarItem(
-                            selected = selected == surface,
-                            onClick = { selected = surface },
+                            // Nothing is selected while the form is open: the form is not a
+                            // destination, and a bar highlighting Home while a person stands
+                            // in the entry form is telling them where they are not (B61).
+                            selected = !adding && selected == surface,
+                            onClick = { leavingAdd { adding = false; selected = surface } },
                             label = { Text(surface.label) },
                             icon = { Icon(surface.icon, contentDescription = null) },
                             // No contentDescription: the label already supplies one, and
@@ -555,8 +574,34 @@ internal fun LedgerApp(
                 onDiscardDraft = onDiscardDraft,
                 refreshing = refreshing,
                 onRefresh = onRefresh,
+                onAddDirtyChange = { addDirty = it },
             )
         }
     }
+    }
+
+    confirmingLeave?.let { leave ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmingLeave = null },
+            title = { Text("Discard this entry?") },
+            text = {
+                Text("What you have typed has not been written to your ledger. Leaving now loses it.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmingLeave = null
+                        addDirty = false
+                        leave()
+                    },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Discard the entry and leave the form"
+                    },
+                ) { Text("Discard") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingLeave = null }) { Text("Keep editing") }
+            },
+        )
     }
 }
