@@ -473,6 +473,7 @@ internal fun LedgerApp(
                 adding = adding,
                 moreSection = moreSection,
                 onMoreSection = { moreSection = it },
+                onSelectSurface = { leavingAdd { adding = false; selected = it } },
                 twoPane = layout == PaneLayout.EXPANDED,
                 onContribute = { showContribute = true },
                 documentCapture = documentCapture,

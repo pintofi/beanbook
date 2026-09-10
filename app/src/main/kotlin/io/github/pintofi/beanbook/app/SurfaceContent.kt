@@ -111,6 +111,8 @@ internal fun SurfaceContent(
     remoteReports: RemoteReports?,
     moreSection: MoreSection?,
     onMoreSection: (MoreSection?) -> Unit,
+    /** Moving to another destination from inside one, which is what Home's rows do (B71). */
+    onSelectSurface: (Surface) -> Unit = {},
     twoPane: Boolean,
     themeChoice: io.github.pintofi.beanbook.app.ui.theme.ThemeChoice,
     dynamicColour: Boolean,
@@ -193,7 +195,30 @@ internal fun SurfaceContent(
         val showing: Surface? = if (adding) null else selected
         when (showing) {
             Surface.HOME -> Refreshable(refreshing, onRefresh) {
-                HomeScreen(ledger = ledger, hideAmounts = hideWidgetAmounts)
+                HomeScreen(
+                    ledger = ledger,
+                    hideAmounts = hideWidgetAmounts,
+                    // Counted here rather than in the composable: these come from the
+                    // documents reconciliation and the mirror, and Home only reports them.
+                    unfiledDocuments = documents.count {
+                        it.status == io.github.pintofi.beanbook.core.domain.DocumentStatus.UNFILED &&
+                            it.attachedTo.isEmpty()
+                    },
+                    brokenDocumentLinks = documents.count {
+                        it.status == io.github.pintofi.beanbook.core.domain.DocumentStatus.MISSING
+                    },
+                    mirrorConflicts = mirrorConflicts.size,
+                    onOpenJournal = { onSelectSurface(Surface.JOURNAL) },
+                    onOpenEntry = { onSelectSurface(Surface.JOURNAL) },
+                    onOpenDocuments = {
+                        onSelectSurface(Surface.MORE)
+                        onMoreSection(MoreSection.DOCUMENTS)
+                    },
+                    onOpenMirror = {
+                        onSelectSurface(Surface.MORE)
+                        onMoreSection(MoreSection.MIRROR)
+                    },
+                )
             }
 
             null -> {
