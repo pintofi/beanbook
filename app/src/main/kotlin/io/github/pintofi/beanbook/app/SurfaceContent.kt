@@ -485,6 +485,12 @@ internal fun SurfaceContent(
                             onOpenDocument = onShareDocument,
                             fileForDocument = fileForDocument,
                             format = ledger.format,
+                            // What Beancount said about this entry, so the message is where
+                            // the entry is rather than only in the list at the top (B64).
+                            errors = io.github.pintofi.beanbook.core.domain.JournalErrors
+                                .attach(ledger.journal, ledger.errors)[
+                                io.github.pintofi.beanbook.core.domain.JournalErrors.keyOf(entry)
+                            ].orEmpty(),
                             modifier = Modifier.padding(padding),
                         )
                     }

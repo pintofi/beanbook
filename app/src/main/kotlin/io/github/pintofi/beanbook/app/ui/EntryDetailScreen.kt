@@ -51,6 +51,8 @@ fun EntryDetailScreen(
     /** How the open ledger asks its figures to be written (B59). */
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
         io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
+    /** What Beancount said about this entry (B64). Empty for an entry it accepted. */
+    errors: List<io.github.pintofi.beanbook.core.domain.LedgerError> = emptyList(),
 ) {
     var viewing by remember { mutableStateOf<String?>(null) }
     var confirmingDelete by remember(entry) { mutableStateOf(false) }
@@ -58,6 +60,33 @@ fun EntryDetailScreen(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        if (errors.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        if (errors.size == 1) "Beancount reported an error here" else
+                            "Beancount reported ${errors.size} errors here",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                    errors.forEach { error ->
+                        Text(
+                            text = error.position?.let { "${error.message} ($it)" } ?: error.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
+                }
+            }
+        }
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(entry.date, fontFamily = FontFamily.Monospace)
             Text(
@@ -95,6 +124,7 @@ fun EntryDetailScreen(
                 posting.amount?.let { AmountText(it, signed = true, format = format) }
                     ?: Text("(elided)", style = MaterialTheme.typography.bodySmall)
             }
+            PostingLotText(posting)
         }
 
         // Documents this entry links to, by the convention link_documents uses. Read here

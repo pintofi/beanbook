@@ -31,16 +31,41 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.domain.Amount
+import io.github.pintofi.beanbook.core.domain.Cost
 import io.github.pintofi.beanbook.core.domain.LedgerVocabulary
 import io.github.pintofi.beanbook.core.domain.PostingDraft
 import io.github.pintofi.beanbook.core.domain.TransactionDraft
 import java.math.BigDecimal
 
 /** One posting being edited, as three boxes rather than a rendered line. */
-private class EditRow(account: String, amount: String, currency: String) {
+private class EditRow(
+    account: String,
+    amount: String,
+    currency: String,
+    /**
+     * What the units are held at and what they were exchanged at (B63).
+     *
+     * Carried rather than edited. This dialog is offered only for entries the draft
+     * describes completely, so dropping a lot here would rewrite `10 ACME {12.50 USD,
+     * 2025-01-01}` as ten bare units -- a different claim about the books, made silently,
+     * which invariant 4 forbids. Changing a lot is a text edit, and the button for that is
+     * on this dialog.
+     */
+    val cost: Cost? = null,
+    val price: Amount? = null,
+) {
     var account by mutableStateOf(account)
     var amount by mutableStateOf(amount)
     var currency by mutableStateOf(currency)
+
+    /** `{12.50 USD, 2025-01-01} @ 13.00 USD`, or empty for an ordinary posting. */
+    fun lotText(): String = buildString {
+        cost?.let { append(it.format()) }
+        price?.let {
+            if (isNotEmpty()) append(' ')
+            append("@ ").append(it.format())
+        }
+    }
 }
 
 /** One metadata pair being edited. */
@@ -80,6 +105,8 @@ fun EntryFormDialog(
                     account = posting.account,
                     amount = posting.amount?.number?.toPlainString().orEmpty(),
                     currency = posting.amount?.currency.orEmpty(),
+                    cost = posting.cost,
+                    price = posting.price,
                 )
             }.toTypedArray(),
         )
@@ -107,6 +134,8 @@ fun EntryFormDialog(
                         Amount(BigDecimal(value), row.currency.trim().ifBlank { fallbackCurrency })
                     }.getOrNull()
                 },
+                cost = row.cost,
+                price = row.price,
             )
         },
     )
@@ -209,6 +238,16 @@ fun EntryFormDialog(
                             amountField(Modifier.width(AMOUNT_FIELD_WIDTH))
                             currencyField(Modifier.width(CURRENCY_FIELD_WIDTH))
                         }
+                    }
+                    // Shown, not hidden: this posting keeps its lot through the edit, and a
+                    // figure that survives a save the user cannot see is one they cannot
+                    // check.
+                    row.lotText().takeIf { it.isNotEmpty() }?.let { lot ->
+                        Text(
+                            text = "Kept as written: $lot",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 TextButton(onClick = { rows.add(EditRow("", "", "")) }) { Text("Add a posting") }

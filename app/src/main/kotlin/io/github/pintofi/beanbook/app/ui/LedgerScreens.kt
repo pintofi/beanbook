@@ -55,6 +55,7 @@ import io.github.pintofi.beanbook.core.domain.AccountTree
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.JournalEntry
+import io.github.pintofi.beanbook.core.domain.JournalErrors
 import io.github.pintofi.beanbook.core.domain.LedgerError
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 
@@ -148,6 +149,51 @@ internal fun AmountText(
             !signed -> MaterialTheme.colorScheme.onSurface
             amount.number.signum() < 0 -> BeancountTheme.ledger.negative
             else -> BeancountTheme.ledger.positive
+        },
+    )
+}
+
+/**
+ * What a posting was held or exchanged at, under its amount (B63).
+ *
+ * Beside the figure rather than in place of it: `-151.88 ASSF` and `{400.00 PKR} @ 483.0500
+ * PKR` answer different questions, and a row that shows only the first cannot tell two lots
+ * of the same fund apart or say what a sale realised. On its own line because a cost, a date,
+ * a label and a price do not fit beside an account name on a phone.
+ *
+ * The date and label are part of the cost's identity -- they are what `{"avcoassf"}` selects
+ * -- so they are shown as the file writes them rather than summarised away.
+ */
+@Composable
+internal fun PostingLotText(
+    posting: io.github.pintofi.beanbook.core.domain.JournalPosting,
+    modifier: Modifier = Modifier,
+) {
+    val text = buildString {
+        posting.cost?.let { append(it.format()) }
+        posting.price?.let {
+            if (isNotEmpty()) append(' ')
+            append("@ ").append(it.format())
+        }
+    }
+    if (text.isEmpty()) return
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.End,
+        modifier = modifier.fillMaxWidth().semantics {
+            contentDescription = buildString {
+                posting.cost?.let {
+                    append("held at ").append(it.amount.accessibleDescription())
+                    it.date?.let { date -> append(", acquired ").append(date) }
+                    it.label?.let { label -> append(", lot ").append(label) }
+                }
+                posting.price?.let {
+                    if (isNotEmpty()) append("; ")
+                    append("at ").append(it.accessibleDescription()).append(" each")
+                }
+            }
         },
     )
 }
@@ -456,10 +502,32 @@ fun JournalScreen(
     // Kept while the ledger reloads, because a save or a pull-to-refresh should not throw
     // away what the reader was looking for.
     var query by rememberSaveable { mutableStateOf("") }
-    val found = remember(snapshot.journal, query) {
-        if (query.isBlank()) snapshot.journal else snapshot.journal.filter { it.matches(query) }
+    // Which entries the ledger's errors are about (B64), and the journal reordered so those
+    // entries are the first thing on the screen. An error is a thing to fix; leaving the
+    // entry that caused it in date order buries it under everything that is fine, and the
+    // reader has to carry a line number to a text editor to find out which one it was.
+    val faults = remember(snapshot.journal, snapshot.errors) {
+        JournalErrors.attach(snapshot.journal, snapshot.errors)
+    }
+    val ordered = remember(snapshot.journal, faults) {
+        if (faults.isEmpty()) {
+            snapshot.journal
+        } else {
+            // Stable: within each group the journal's own order is kept, so a pinned entry
+            // does not also move relative to the other pinned ones.
+            snapshot.journal.partition { JournalErrors.keyOf(it) in faults }
+                .let { (broken, rest) -> broken + rest }
+        }
+    }
+    val found = remember(ordered, query) {
+        if (query.isBlank()) ordered else ordered.filter { it.matches(query) }
     }
     val visible = remember(found, shown) { found.take(shown) }
+    // What no entry owns. The rest is shown on the entries themselves, and repeating it here
+    // would say the same thing twice at the top of the screen.
+    val loose = remember(snapshot.journal, snapshot.errors) {
+        JournalErrors.unattached(snapshot.journal, snapshot.errors)
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
     OutlinedTextField(
@@ -485,8 +553,23 @@ fun JournalScreen(
         modifier = Modifier.fillMaxSize().readableMeasure(),
         contentPadding = PaddingValues(bottom = 88.dp),
     ) {
-        if (snapshot.hasErrors) {
-            item { ErrorBanner(snapshot.errors) }
+        if (loose.isNotEmpty()) {
+            item { ErrorBanner(loose) }
+        }
+        if (faults.isNotEmpty()) {
+            item {
+                val count = faults.values.sumOf { it.size }
+                Text(
+                    text = if (count == 1) {
+                        "1 error is on an entry, shown first below."
+                    } else {
+                        "$count errors are on entries, shown first below."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
         }
         if (found.isEmpty() && query.isNotBlank()) {
             item {
@@ -535,7 +618,12 @@ fun JournalScreen(
             }
         }
         items(visible, key = { "${it.file}:${it.line}" }) { entry ->
-            JournalRow(entry, snapshot.format, onClick = { onOpenEntry(entry) })
+            JournalRow(
+                entry = entry,
+                format = snapshot.format,
+                onClick = { onOpenEntry(entry) },
+                errors = faults[JournalErrors.keyOf(entry)].orEmpty(),
+            )
             HorizontalDivider()
         }
         if (shown < found.size) {
@@ -568,6 +656,8 @@ private fun JournalRow(
     entry: JournalEntry,
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat,
     onClick: () -> Unit,
+    /** What Beancount said about this entry, when it said anything (B64). */
+    errors: List<LedgerError> = emptyList(),
 ) {
     Column(
         modifier = Modifier
@@ -575,9 +665,36 @@ private fun JournalRow(
             .clickable(role = Role.Button, onClick = onClick)
             // The whole row, not the text inside it: a row that reads as one thing and
             // responds only where the words happen to be is one people tap twice.
-            .semantics { contentDescription = "${entry.date}, ${entry.description}" }
+            .semantics {
+                contentDescription = buildString {
+                    append(entry.date).append(", ").append(entry.description)
+                    if (errors.isNotEmpty()) {
+                        append(if (errors.size == 1) ". Has an error: " else ". Has errors: ")
+                        append(errors.joinToString(". ") { it.message })
+                    }
+                }
+            }
             .padding(16.dp),
     ) {
+        // Above the entry rather than beside it: the message is a sentence, and a sentence in
+        // a corner of a row is one nobody reads. It stays until the file is fixed, which is
+        // the point -- the ledger reloads after every write, so a corrected entry loses it.
+        if (errors.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                errors.forEach { error ->
+                    Text(
+                        text = error.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -618,6 +735,7 @@ private fun JournalRow(
                 )
                 posting.amount?.let { AmountText(it, signed = true, format = format) }
             }
+            PostingLotText(posting)
         }
     }
 }

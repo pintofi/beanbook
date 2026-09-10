@@ -63,6 +63,44 @@ def _display_round(value):
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
+def _posting_dict(posting: Any) -> dict[str, Any]:
+    """One posting, including what it was held or exchanged at (B63).
+
+    Units alone cannot describe a holding. `10 ACME {12.50 USD}` and `10 ACME` are different
+    facts about the books, and two lots of the same commodity bought at different prices are
+    indistinguishable without their cost. The app showed units only, so a sale at a price and
+    a purchase into a named lot both read as a bare number of shares.
+
+    Beancount has already done the work by the time a posting is here: a total price (`@@`)
+    is normalised to a per-unit one, and a cost written as a label or a partial spec is booked
+    against the lot it matched, so the cost reported here is the full one -- number, currency,
+    acquisition date and label -- rather than what the file happens to say.
+    """
+    cost = posting.cost
+    price = posting.price
+    # A `CostSpec` rather than a `Cost` reaches here only when booking did not run or did not
+    # resolve -- an unbooked posting in a file that also produced an error. It names its
+    # number differently, so read that rather than reporting a cost with no figure in it.
+    cost_number = getattr(cost, "number", None)
+    if cost_number is None:
+        cost_number = getattr(cost, "number_per", None)
+    return {
+        "account": posting.account,
+        "number": _decimal_str(posting.units.number if posting.units else None),
+        "currency": posting.units.currency if posting.units else None,
+        "cost": None if cost is None else {
+            "number": _decimal_str(cost_number),
+            "currency": getattr(cost, "currency", None),
+            "date": None if getattr(cost, "date", None) is None else str(cost.date),
+            "label": getattr(cost, "label", None),
+        },
+        "price": None if price is None else {
+            "number": _decimal_str(price.number),
+            "currency": price.currency,
+        },
+    }
+
+
 def _meta_str(value) -> str:
     """A metadata value as text.
 
@@ -255,16 +293,7 @@ def inspect(
                     for key, value in (entry.meta or {}).items()
                     if key not in ("filename", "lineno") and not key.startswith("__")
                 },
-                "postings": [
-                    {
-                        "account": posting.account,
-                        "number": _decimal_str(
-                            posting.units.number if posting.units else None
-                        ),
-                        "currency": posting.units.currency if posting.units else None,
-                    }
-                    for posting in entry.postings
-                ],
+                "postings": [_posting_dict(posting) for posting in entry.postings],
             }
         )
 

@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import io.github.pintofi.beanbook.core.domain.AccountBalance
 import io.github.pintofi.beanbook.core.domain.Amount
+import io.github.pintofi.beanbook.core.domain.Cost
 import io.github.pintofi.beanbook.core.domain.DocumentDirective
 import io.github.pintofi.beanbook.core.domain.JournalEntry
 import io.github.pintofi.beanbook.core.domain.JournalPosting
@@ -180,6 +181,18 @@ class LedgerReader(
         return Amount(BigDecimal(number), currency)
     }
 
+    private fun JSONObject.toJournalPosting(): JournalPosting = JournalPosting(
+        account = getString("account"),
+        amount = toAmount(),
+        cost = optJSONObject("cost")?.toCost(),
+        price = optJSONObject("price")?.toAmount(),
+    )
+
+    /** A booked cost. Beancount has already resolved the lot, so the figure is the whole one. */
+    private fun JSONObject.toCost(): Cost? = toAmount()?.let { amount ->
+        Cost(amount = amount, date = optStringOrNull("date"), label = optStringOrNull("label"))
+    }
+
     private fun JSONObject.toJournalEntry(): JournalEntry = JournalEntry(
         date = getString("date"),
         flag = optStringOrNull("flag"),
@@ -187,9 +200,7 @@ class LedgerReader(
         narration = optStringOrNull("narration"),
         tags = optJSONArray("tags").toStringList(),
         links = optJSONArray("links").toStringList(),
-        postings = optJSONArray("postings").map {
-            JournalPosting(it.getString("account"), it.toAmount())
-        },
+        postings = optJSONArray("postings").map { it.toJournalPosting() },
         file = optStringOrNull("file"),
         line = if (isNull("line")) null else optInt("line"),
         metadata = optJSONObject("metadata").toStringMap(),

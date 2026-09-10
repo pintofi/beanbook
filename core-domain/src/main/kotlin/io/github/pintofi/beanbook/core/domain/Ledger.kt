@@ -141,6 +141,8 @@ data class JournalEntry(
             postings.forEach { posting ->
                 append(posting.account).append(' ')
                 posting.amount?.let { append(it.number.toPlainString()).append(' ').append(it.currency).append(' ') }
+                posting.cost?.let { append(it.format()).append(' ') }
+                posting.price?.let { append('@').append(' ').append(it.format()).append(' ') }
             }
         }
         return words.all { haystack.contains(it, ignoreCase = true) }
@@ -170,7 +172,45 @@ data class DocumentDirective(
     val name: String get() = path.substringAfterLast('/')
 }
 
-data class JournalPosting(val account: String, val amount: Amount?)
+/**
+ * What a lot was acquired at: the figure, and what identifies the lot (B63).
+ *
+ * Beancount books this before the app sees it, so a cost written in the file as a label or a
+ * partial spec -- `{"avcoassf"}` -- arrives here as the whole thing: the number, the currency,
+ * the acquisition date, and the label if the lot carries one. Units without it are not a
+ * holding: two lots of the same fund bought a year apart are the same number of the same
+ * commodity and are worth different money.
+ */
+data class Cost(
+    val amount: Amount,
+    val date: String? = null,
+    val label: String? = null,
+) {
+    /** `{400.00 PKR, 2025-01-01, "avcoassf"}` -- the way the file writes it. */
+    fun format(): String = buildString {
+        append('{')
+        append(amount.format())
+        date?.let { append(", ").append(it) }
+        label?.let { append(", \"").append(it).append('"') }
+        append('}')
+    }
+}
+
+/**
+ * One leg of a transaction: an account, how much, and what that much was worth.
+ *
+ * [cost] and [price] are separate facts and a posting can carry both. A sale out of a lot
+ * names the cost it came from *and* the price it went out at, and the difference between them
+ * is the gain -- so showing one and dropping the other loses exactly the number the entry was
+ * written to record.
+ */
+data class JournalPosting(
+    val account: String,
+    val amount: Amount?,
+    val cost: Cost? = null,
+    /** Per unit, as Beancount reports it: a total price (`@@`) has already been divided. */
+    val price: Amount? = null,
+)
 
 /**
  * A Beancount error, with the position it came from.

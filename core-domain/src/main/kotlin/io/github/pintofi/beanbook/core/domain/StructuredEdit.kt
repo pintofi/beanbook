@@ -33,7 +33,12 @@ object StructuredEdit {
         links = entry.links,
         metadata = entry.metadata,
         postings = entry.postings.map { posting ->
-            PostingDraft(account = posting.account, amount = posting.amount)
+            PostingDraft(
+                account = posting.account,
+                amount = posting.amount,
+                cost = posting.cost,
+                price = posting.price,
+            )
         },
     )
 

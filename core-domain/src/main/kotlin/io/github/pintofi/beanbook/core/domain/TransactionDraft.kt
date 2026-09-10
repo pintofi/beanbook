@@ -17,6 +17,16 @@ import java.math.BigDecimal
 data class PostingDraft(
     val account: String,
     val amount: Amount? = null,
+    /**
+     * What these units were acquired at, written `{...}` (B63).
+     *
+     * A holding is units *and* the lot they belong to. Dropping the cost turns a fund bought
+     * at 400 and one bought at 103 into the same line, and turns the gain on a sale into a
+     * number nothing in the file explains.
+     */
+    val cost: Cost? = null,
+    /** What these units were exchanged at, per unit, written `@ ...`. */
+    val price: Amount? = null,
     val comment: String? = null,
     /**
      * Keys describing this leg of the transaction rather than the whole event (B16).
@@ -28,6 +38,23 @@ data class PostingDraft(
     val metadata: Map<String, String> = emptyMap(),
 ) {
     val isElided: Boolean get() = amount == null
+
+    /**
+     * What this posting contributes to the balance.
+     *
+     * Beancount weighs a posting held at cost by its cost and one exchanged at a price by
+     * that price; units are the weight only when it has neither. A transaction that converts
+     * 151.88 units of one fund into 710.47 of another balances in rupees and in nothing else,
+     * so weighing it by units would report every such entry as broken.
+     *
+     * Cost wins over price when a posting carries both, which is Beancount's own rule: the
+     * price on a reduction records what it went out at, and the books move at cost.
+     */
+    fun weight(): Amount? {
+        val units = amount ?: return null
+        val per = cost?.amount ?: price ?: return units
+        return Amount(units.number.multiply(per.number), per.currency)
+    }
 }
 
 data class TransactionDraft(
@@ -77,8 +104,9 @@ data class TransactionDraft(
         // Only complain about imbalance when nothing is elided — an elided posting is
         // exactly how the user asks Beancount to work the remainder out.
         if (elided == 0 && postings.isNotEmpty()) {
-            val residuals = Balance.of(postings.mapNotNull { it.amount }).residuals()
-            val inferred = Balance.toleranceFor(postings.mapNotNull { it.amount })
+            val weights = postings.mapNotNull { it.weight() }
+            val residuals = Balance.of(weights).residuals()
+            val inferred = Balance.toleranceFor(weights)
             if (residuals.any { residual ->
                     val tolerance = format.toleranceFor(residual.currency) ?: inferred
                     residual.number.abs() > tolerance
@@ -98,7 +126,7 @@ data class TransactionDraft(
 
     /** The residual the user is shown while typing; empty when it balances. */
     fun residuals(): List<Amount> =
-        Balance.of(postings.mapNotNull { it.amount }).residuals()
+        Balance.of(postings.mapNotNull { it.weight() }).residuals()
 
     /**
      * The exact text that will be written. The UI shows this before saving, so what the
@@ -131,6 +159,10 @@ data class TransactionDraft(
                 val right = posting.amount.number.toPlainString() + " " + posting.amount.currency
                 val padding = (currencyColumn - left.length - right.length).coerceAtLeast(1)
                 builder.append(left).append(" ".repeat(padding)).append(right)
+                // After the aligned amount, in the order Beancount reads them: what the units
+                // were held at, then what they were exchanged at.
+                posting.cost?.let { builder.append(' ').append(it.format()) }
+                posting.price?.let { builder.append(" @ ").append(it.format()) }
             }
             posting.comment?.takeIf { it.isNotBlank() }?.let { builder.append("  ; ").append(it) }
             builder.append('\n')
@@ -173,7 +205,12 @@ data class TransactionDraft(
             narration = entry.narration,
             tags = entry.tags,
             links = entry.links,
-            postings = entry.postings.map { PostingDraft(it.account, it.amount) },
+            postings = entry.postings.map {
+                // Cost and price come too. A clone that kept the units and dropped the lot
+                // would write a different transaction from the one it was made from, and
+                // would not balance in the currency the original balanced in.
+                PostingDraft(it.account, it.amount, cost = it.cost, price = it.price)
+            },
         )
     }
 }

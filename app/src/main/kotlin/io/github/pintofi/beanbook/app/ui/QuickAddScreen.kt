@@ -62,10 +62,42 @@ import java.time.LocalDate
  * are ordinary things to want to record (B4). Blank rather than a copy of the default, so
  * changing the transaction's currency still moves every posting that never disagreed.
  */
-private class PostingRow(account: String = "", amount: String = "", currency: String = "") {
+private class PostingRow(
+    account: String = "",
+    amount: String = "",
+    currency: String = "",
+    cost: String = "",
+    costCurrency: String = "",
+    price: String = "",
+    priceCurrency: String = "",
+) {
     var account by mutableStateOf(account)
     var amount by mutableStateOf(amount)
     var currency by mutableStateOf(currency)
+
+    /**
+     * What a unit was acquired at (`{...}`) and what it was exchanged at (`@ ...`) (B63).
+     *
+     * Behind a disclosure, because almost no posting has either and a shop purchase must not
+     * grow four boxes to pay for the ones that do. Per unit, which is how Beancount stores
+     * both: a total price is divided before it is recorded, so a form offering a total would
+     * be offering a figure the file never keeps.
+     */
+    var cost by mutableStateOf(cost)
+    var costCurrency by mutableStateOf(costCurrency)
+    var price by mutableStateOf(price)
+    var priceCurrency by mutableStateOf(priceCurrency)
+
+    /** Open when the row already carries one, so a clone shows what it is about to write. */
+    var showLot by mutableStateOf(cost.isNotBlank() || price.isNotBlank())
+
+    /** One of the lot figures as an amount, or null when the box is empty or not a number. */
+    fun lotAmount(value: String, denomination: String, fallback: String): Amount? =
+        value.trim().takeIf { it.isNotBlank() }?.let { number ->
+            runCatching {
+                Amount(BigDecimal(number), denomination.trim().ifBlank { fallback.trim() })
+            }.getOrNull()
+        }
 
     /** Keys describing this leg only (B16). Empty for almost every posting. */
     val metadata = mutableStateListOf<MetadataRow>()
@@ -158,6 +190,13 @@ fun QuickAddScreen(
                     val denomination = row.currency.trim().ifBlank { currency.trim() }
                     runCatching { Amount(BigDecimal(value), denomination) }.getOrNull()
                 },
+                // The lot's own currency defaults to the transaction's, the way the amount's
+                // does. A cost with no figure is not written at all: `{}` asks Beancount to
+                // book against whatever it can find, which is a different instruction from
+                // the one an empty box means.
+                cost = row.lotAmount(row.cost, row.costCurrency, currency)
+                    ?.let { io.github.pintofi.beanbook.core.domain.Cost(it) },
+                price = row.lotAmount(row.price, row.priceCurrency, currency),
             )
         },
     )
@@ -168,7 +207,7 @@ fun QuickAddScreen(
     // pre-selected -- neither is anything the user would miss.
     val dirty = payee.isNotBlank() ||
         narration.isNotBlank() ||
-        rows.any { it.amount.isNotBlank() } ||
+        rows.any { it.amount.isNotBlank() || it.cost.isNotBlank() || it.price.isNotBlank() } ||
         metaRows.any { it.key.isNotBlank() || it.value.isNotBlank() } ||
         capture?.pages?.isEmpty == false
     LaunchedEffect(dirty) { onDirtyChange(dirty) }
@@ -211,9 +250,15 @@ fun QuickAddScreen(
                 val denomination = posting.amount?.currency.orEmpty()
                 rows.add(
                     PostingRow(
-                        posting.account,
-                        posting.amount?.number?.toPlainString().orEmpty(),
-                        if (denomination == currency) "" else denomination,
+                        account = posting.account,
+                        amount = posting.amount?.number?.toPlainString().orEmpty(),
+                        currency = if (denomination == currency) "" else denomination,
+                        // A clone of a holding keeps the lot it was held at, so the form shows
+                        // the entry it is about to write rather than a stripped one.
+                        cost = posting.cost?.amount?.number?.toPlainString().orEmpty(),
+                        costCurrency = posting.cost?.amount?.currency.orEmpty(),
+                        price = posting.price?.number?.toPlainString().orEmpty(),
+                        priceCurrency = posting.price?.currency.orEmpty(),
                     )
                 )
             }
@@ -432,6 +477,61 @@ fun QuickAddScreen(
                         currencyField(Modifier.width(CURRENCY_FIELD_WIDTH))
                         removeButton()
                     }
+                }
+                if (row.showLot) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        OutlinedTextField(
+                            value = row.cost,
+                            onValueChange = { row.cost = it },
+                            label = { Text("Cost each") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.weight(2f).semantics {
+                                contentDescription = "Cost per unit for posting ${index + 1}"
+                            },
+                        )
+                        SuggestingField(
+                            value = row.costCurrency,
+                            onValueChange = { row.costCurrency = it.uppercase() },
+                            label = "Cur.",
+                            suggestions = vocabulary.currencies,
+                            describe = "Cost currency for posting ${index + 1}",
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        OutlinedTextField(
+                            value = row.price,
+                            onValueChange = { row.price = it },
+                            label = { Text("Price each") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.weight(2f).semantics {
+                                contentDescription = "Price per unit for posting ${index + 1}"
+                            },
+                        )
+                        SuggestingField(
+                            value = row.priceCurrency,
+                            onValueChange = { row.priceCurrency = it.uppercase() },
+                            label = "Cur.",
+                            suggestions = vocabulary.currencies,
+                            describe = "Price currency for posting ${index + 1}",
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                } else {
+                    TextButton(
+                        onClick = { row.showLot = true },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Add a cost or price to posting ${index + 1}"
+                        },
+                    ) { Text("Cost or price") }
                 }
                 MetadataEditor(
                     rows = row.metadata,
