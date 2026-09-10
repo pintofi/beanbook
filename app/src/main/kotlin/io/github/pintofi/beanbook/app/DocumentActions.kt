@@ -19,7 +19,13 @@ import androidx.lifecycle.lifecycleScope
  */
 
 internal fun MainActivity.refreshDocuments(app: BeancountApplication, projectId: String) {
-    lifecycleScope.launch { documents = app.documentCapture.existing(projectId) }
+    lifecycleScope.launch {
+        // Including the folders `option "documents"` names (B70): Beancount files what it
+        // finds in those, so a screen that read only the app's own folder reported them as
+        // links to files that were not there.
+        val roots = app.ledgerState.snapshot.value?.documentRoots.orEmpty()
+        documents = app.documentCapture.existing(projectId, roots)
+    }
 }
 
 /**

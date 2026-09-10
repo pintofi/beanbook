@@ -39,13 +39,14 @@ data class LedgerSummary(
                 // owe as a negative balance, so negating it made debt increase net worth.
                 netWorth = format(
                     sumByCurrency(
-                        ledger.totalFor("Assets", select) + ledger.totalFor("Liabilities", select),
+                        ledger.totalFor(ledger.accountNames.assets, select) +
+                            ledger.totalFor(ledger.accountNames.liabilities, select),
                     ),
                     format,
                 ),
                 // Income is stored negative as well, and "-3000.00 earned" reads as a loss.
-                income = format(sumByCurrency(negated(ledger.totalFor("Income", select))), format),
-                expenses = format(sumByCurrency(ledger.totalFor("Expenses", select)), format),
+                income = format(sumByCurrency(negated(ledger.totalFor(ledger.accountNames.income, select))), format),
+                expenses = format(sumByCurrency(ledger.totalFor(ledger.accountNames.expenses, select)), format),
             )
         }
 

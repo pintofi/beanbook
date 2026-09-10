@@ -129,6 +129,9 @@ fun QuickAddScreen(
     /** The open ledger's own rendering and tolerance (B59). */
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
         io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
+    /** What this ledger calls its five trees, for the two accounts a form pre-selects (B70). */
+    names: io.github.pintofi.beanbook.core.domain.AccountNames =
+        io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
     onSave: (TransactionDraft) -> Unit,
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
@@ -170,10 +173,14 @@ fun QuickAddScreen(
 
     val rows = remember {
         mutableStateListOf(
-            PostingRow(vocabulary.accounts.firstOrNull { it.startsWith("Expenses") }.orEmpty()),
+            PostingRow(
+                vocabulary.accounts.firstOrNull { it.startsWith(names.expenses) }.orEmpty(),
+            ),
             // The second posting is elided by default: the counter-amount is Beancount's
             // to compute, not ours to guess.
-            PostingRow(vocabulary.accounts.firstOrNull { it.startsWith("Assets") }.orEmpty()),
+            PostingRow(
+                vocabulary.accounts.firstOrNull { it.startsWith(names.assets) }.orEmpty(),
+            ),
         )
     }
 

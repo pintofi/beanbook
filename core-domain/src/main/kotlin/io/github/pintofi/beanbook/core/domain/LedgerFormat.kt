@@ -50,6 +50,13 @@ data class LedgerFormat(
     val currencyColumn: Int = DEFAULT_CURRENCY_COLUMN,
     /** Fava's `indent`: how far a posting is indented in a file this app writes. */
     val indent: Int = DEFAULT_INDENT,
+    /**
+     * Which trees the inversion applies to, under this file's own names for them (B70).
+     *
+     * Beancount's `name_income` and friends rename the roots, so the three to turn around are
+     * whatever *this* ledger calls income, liabilities and equity -- not the English words.
+     */
+    val invertedRoots: List<String> = INVERTED_ROOTS,
 ) {
 
     /**
@@ -85,7 +92,7 @@ data class LedgerFormat(
 
     /** Whether [account] is one of the three trees Fava's option turns around. */
     fun isInverted(account: String): Boolean =
-        INVERTED_ROOTS.any { account == it || account.startsWith("$it:") }
+        invertedRoots.any { account == it || account.startsWith("$it:") }
 
     /** What this ledger calls close enough to balance, for [currency]. */
     fun toleranceFor(currency: String): BigDecimal? = tolerances[currency]

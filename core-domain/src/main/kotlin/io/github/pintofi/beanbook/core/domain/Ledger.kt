@@ -7,6 +7,31 @@ package io.github.pintofi.beanbook.core.domain
  * its own. Amounts arrive as [Amount] (decimal), never as numbers that have been through
  * a `Double` (invariant 1).
  */
+/**
+ * What this file calls its five trees (B70).
+ *
+ * Beancount lets a ledger rename them -- `option "name_expenses" "Ausgaben"` -- and everything
+ * downstream of that is a prefix match: the Balances headings, the home totals, which accounts
+ * an inverted-sign option turns around, and which account a form pre-selects. The app had the
+ * English five written into six places, so a renamed ledger got five empty headings and a home
+ * screen of dashes.
+ */
+data class AccountNames(
+    val assets: String = "Assets",
+    val liabilities: String = "Liabilities",
+    val equity: String = "Equity",
+    val income: String = "Income",
+    val expenses: String = "Expenses",
+) {
+    /** In the order a balance sheet is read, which is the order the screens show them in. */
+    val roots: List<String> get() = listOf(assets, liabilities, equity, income, expenses)
+
+    companion object {
+        /** Beancount's own defaults, for a file that renames nothing. */
+        val DEFAULT = AccountNames()
+    }
+}
+
 data class LedgerSnapshot(
     val title: String?,
     val operatingCurrencies: List<String>,
@@ -31,6 +56,10 @@ data class LedgerSnapshot(
      * thousands separators, and what it considers close enough to balance.
      */
     val format: LedgerFormat = LedgerFormat.PLAIN,
+    /** What this file calls Assets, Liabilities, Equity, Income and Expenses (B70). */
+    val accountNames: AccountNames = AccountNames.DEFAULT,
+    /** The folders `option "documents"` names, as the file writes them (B70). */
+    val documentRoots: List<String> = emptyList(),
 ) {
     val hasErrors: Boolean get() = errors.isNotEmpty()
 

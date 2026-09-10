@@ -89,9 +89,14 @@ fun DocumentsScreen(
      * the screen can be rendered — and its accessibility checked — without a camera.
      */
     hasCamera: Boolean = rememberCameraPermission(),
+    /** What this ledger calls its five trees, for the account this screen pre-selects (B70). */
+    names: io.github.pintofi.beanbook.core.domain.AccountNames =
+        io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
 ) {
     var account by remember {
-        mutableStateOf(vocabulary.accounts.firstOrNull { it.startsWith("Expenses") }.orEmpty())
+        mutableStateOf(
+            vocabulary.accounts.firstOrNull { it.startsWith(names.expenses) }.orEmpty(),
+        )
     }
     // What to call it (B57). Optional: the name only changes how a folder of documents
     // reads, and a document with no name is filed exactly as it always was.

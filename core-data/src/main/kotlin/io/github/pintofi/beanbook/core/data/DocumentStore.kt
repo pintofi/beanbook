@@ -70,15 +70,30 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
         resolve(projectId, relativePath)?.isFile == true
 
     /** Every document in the project, as project-relative paths, oldest name first. */
-    fun list(projectId: String): List<String> {
+    /**
+     * Every document this project holds, relative to it.
+     *
+     * [extraRoots] are the folders `option "documents"` names (B70). Beancount reads those
+     * as well as anything a `document` directive points at, so a file in one of them is filed
+     * as far as the ledger is concerned -- and a screen that listed only its own folder called
+     * it missing. They are resolved against the project and ignored when they lead outside it,
+     * which is the same containment rule every other path in this app is held to.
+     */
+    fun list(projectId: String, extraRoots: List<String> = emptyList()): List<String> {
         val root = workspace.projectDir(projectId)
-        val documents = File(root, DocumentName.ROOT)
-        if (!documents.isDirectory) return emptyList()
-        return documents.walkTopDown()
-            .filter { it.isFile && it.extension != "part" }
-            .map { it.relativeTo(root).path.replace(File.separatorChar, '/') }
+        val folders = (listOf(DocumentName.ROOT) + extraRoots)
+            .map { File(root, it) }
+            .filter { it.isDirectory && it.canonicalPath.startsWith(root.canonicalPath) }
+            .distinctBy { it.canonicalPath }
+        return folders
+            .flatMap { folder ->
+                folder.walkTopDown()
+                    .filter { it.isFile && it.extension != "part" }
+                    .map { it.relativeTo(root).path.replace(File.separatorChar, '/') }
+                    .toList()
+            }
+            .distinct()
             .sorted()
-            .toList()
     }
 
     /**

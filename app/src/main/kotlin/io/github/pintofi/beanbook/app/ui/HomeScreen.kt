@@ -54,8 +54,20 @@ fun HomeScreen(
 
         Figure("Net worth", summary.netWorth, hideAmounts, prominent = true)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Figure("Income", summary.income, hideAmounts, modifier = Modifier.weight(1f))
-            Figure("Expenses", summary.expenses, hideAmounts, modifier = Modifier.weight(1f))
+            // Labelled with this ledger's own names for the two trees (B70), because the
+            // figures beneath them are the totals of exactly those trees.
+            Figure(
+                ledger.accountNames.income,
+                summary.income,
+                hideAmounts,
+                modifier = Modifier.weight(1f),
+            )
+            Figure(
+                ledger.accountNames.expenses,
+                summary.expenses,
+                hideAmounts,
+                modifier = Modifier.weight(1f),
+            )
         }
 
         // The ledger's own errors matter more than any figure above them: the figures were

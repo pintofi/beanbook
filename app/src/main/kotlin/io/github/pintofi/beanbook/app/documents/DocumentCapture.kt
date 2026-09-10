@@ -149,8 +149,8 @@ class DocumentCapture(
     }
 
     /** Every document already in the project, newest name last. */
-    suspend fun existing(projectId: String): List<String> =
-        withContext(Dispatchers.IO) { store.list(projectId) }
+    suspend fun existing(projectId: String, extraRoots: List<String> = emptyList()): List<String> =
+        withContext(Dispatchers.IO) { store.list(projectId, extraRoots) }
 
     /** Deletes the document itself, after the caller has confirmed that is what was meant. */
     fun deleteFile(projectId: String, relativePath: String, onDone: (Boolean) -> Unit) {

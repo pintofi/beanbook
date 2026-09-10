@@ -391,6 +391,17 @@ def inspect(
         # What the file asks Fava for. Reported rather than applied here: the app decides how
         # to render, and it cannot do that without knowing what was asked (B67).
         "fava_options": _fava_options(all_entries),
+        # What this file calls its five trees, and where it keeps documents (B70). Beancount
+        # lets a ledger rename the roots -- `option "name_expenses" "Ausgaben"` -- and an app
+        # that hardcodes the English five shows such a ledger five empty headings.
+        "account_names": {
+            "assets": options_map.get("name_assets"),
+            "liabilities": options_map.get("name_liabilities"),
+            "equity": options_map.get("name_equity"),
+            "income": options_map.get("name_income"),
+            "expenses": options_map.get("name_expenses"),
+        },
+        "document_dirs": [str(d) for d in (options_map.get("documents") or [])],
         "display_precision": dict(sorted(display.items())),
         "tolerances": dict(sorted(tolerances.items())),
         "documents": documents,

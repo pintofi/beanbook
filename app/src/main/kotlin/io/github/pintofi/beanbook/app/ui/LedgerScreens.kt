@@ -209,7 +209,9 @@ fun BalancesScreen(
     dateTo: String = "",
     onDateRange: (String, String) -> Unit = { _, _ -> },
 ) {
-    val roots = listOf("Assets", "Liabilities", "Equity", "Income", "Expenses")
+    // What *this* ledger calls them (B70). A file with `option "name_expenses" "Ausgaben"`
+    // used to get five headings with nothing under any of them.
+    val roots = snapshot.accountNames.roots
     var filter by rememberSaveable { mutableStateOf("") }
     // Remembered across launches, not just recompositions (B53). Somebody who keeps their
     // books at market value sets that once; asking again on every start is the app forgetting

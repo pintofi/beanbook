@@ -3,6 +3,7 @@ package io.github.pintofi.beanbook.engine.local
 import android.content.Context
 import android.util.Log
 import io.github.pintofi.beanbook.core.domain.AccountBalance
+import io.github.pintofi.beanbook.core.domain.AccountNames
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.Cost
 import io.github.pintofi.beanbook.core.domain.DocumentDirective
@@ -128,6 +129,8 @@ class LedgerReader(
         commodities = root.optJSONArray("commodities").toStringList(),
         documents = root.optJSONArray("documents").map { it.toDocumentDirective() },
         format = root.toLedgerFormat(),
+        accountNames = root.toAccountNames(),
+        documentRoots = root.optJSONArray("document_dirs").toStringList(),
         loadMillis = root.optDouble("load_ms", 0.0).toLong(),
     )
 
@@ -138,6 +141,20 @@ class LedgerReader(
      * numbers in the file, and the user's own options -- so an older snapshot without these
      * keys simply gets plain rendering rather than a guess.
      */
+    /** What this file calls its five trees (B70). A file that renames none gets the defaults. */
+    private fun JSONObject.toAccountNames(): AccountNames {
+        val names = optJSONObject("account_names") ?: return AccountNames.DEFAULT
+        fun name(key: String, fallback: String) =
+            names.optStringOrNull(key)?.takeIf { it.isNotBlank() } ?: fallback
+        return AccountNames(
+            assets = name("assets", "Assets"),
+            liabilities = name("liabilities", "Liabilities"),
+            equity = name("equity", "Equity"),
+            income = name("income", "Income"),
+            expenses = name("expenses", "Expenses"),
+        )
+    }
+
     private fun JSONObject.toLedgerFormat(): LedgerFormat {
         val precision = optJSONObject("display_precision")
         val tolerances = optJSONObject("tolerances")
@@ -164,6 +181,10 @@ class LedgerReader(
                 ?.takeIf { it > 0 } ?: LedgerFormat.DEFAULT_CURRENCY_COLUMN,
             indent = fava?.optStringOrNull("indent")?.toIntOrNull()?.takeIf { it > 0 }
                 ?: LedgerFormat.DEFAULT_INDENT,
+            // Under this file's own names for them, not the English three.
+            invertedRoots = toAccountNames().let {
+                listOf(it.income, it.liabilities, it.equity)
+            },
             precision = precision?.keys()?.asSequence().orEmpty()
                 .mapNotNull { key -> precision?.optInt(key, -1)?.takeIf { it >= 0 }?.let { key to it } }
                 .toMap(),

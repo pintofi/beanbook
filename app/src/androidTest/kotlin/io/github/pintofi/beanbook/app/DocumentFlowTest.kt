@@ -15,6 +15,7 @@ import java.time.LocalDate
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -160,5 +161,31 @@ class DocumentFlowTest {
 
         assertTrue("expected a failure naming the page, got $error", error != null)
         assertTrue(error!!.message!!, error.message!!.contains("never-taken.jpg"))
+    }
+
+    @Test
+    fun documents_in_a_folder_the_file_names_are_listed_too() {
+        // `option "documents" "belege"` is where Beancount also looks, so a file there is
+        // filed as far as the ledger is concerned. Listing only the app's own folder reported
+        // those as links to files that were not there (B70).
+        val project = workspace.projectDir("p")
+        File(project, "belege/2026").apply { mkdirs() }
+        File(project, "belege/2026/statement.pdf").writeText("PDF")
+
+        assertTrue(
+            "the named folder was not read",
+            store.list("p", listOf("belege")).contains("belege/2026/statement.pdf"),
+        )
+        assertFalse(
+            "it should not appear when the file does not name that folder",
+            store.list("p").contains("belege/2026/statement.pdf"),
+        )
+    }
+
+    @Test
+    fun a_folder_outside_the_project_is_refused() {
+        // Containment, as everywhere else: a path that climbs out of the project is ignored
+        // rather than walked.
+        assertEquals(emptyList<String>(), store.list("p", listOf("../..")))
     }
 }

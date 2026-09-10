@@ -235,6 +235,7 @@ internal fun SurfaceContent(
                             QuickAddScreen(
                                 vocabulary = LedgerVocabulary.from(ledger),
                                 format = ledger.format,
+                                names = ledger.accountNames,
                                 onDirtyChange = onAddDirtyChange,
                                 onSave = onSaveEntry,
                                 saveState = saveState,
@@ -440,6 +441,8 @@ internal fun SurfaceContent(
                             } else {
                                 DocumentsScreen(
                                     capture = documentCapture,
+                                    names = ledger?.accountNames
+                                        ?: io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
                                     documents = documents,
                                     vocabulary = ledger?.let { LedgerVocabulary.from(it) }
                                         ?: LedgerVocabulary(

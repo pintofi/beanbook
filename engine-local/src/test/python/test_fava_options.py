@@ -56,6 +56,23 @@ UNKNOWN = """
 """
 
 
+RENAMED = """
+option "name_assets" "Aktiva"
+option "name_liabilities" "Passiva"
+option "name_equity" "Eigenkapital"
+option "name_income" "Einnahmen"
+option "name_expenses" "Ausgaben"
+option "documents" "belege"
+
+2026-01-01 open Aktiva:Kasse EUR
+2026-01-01 open Einnahmen:Lohn EUR
+
+2026-01-02 * "Lohn"
+  Aktiva:Kasse    300.00 EUR
+  Einnahmen:Lohn
+"""
+
+
 class FavaOptionsTest(unittest.TestCase):
 
     def inspect(self, text):
@@ -87,3 +104,42 @@ class FavaOptionsTest(unittest.TestCase):
 
     def test_the_ledger_still_loads_without_an_error(self):
         self.assertEqual([], self.inspect(GERMAN)["errors"])
+
+
+class AccountNamesTest(unittest.TestCase):
+    """What this file calls its five trees, and where it keeps documents (B70)."""
+
+    def inspect(self, text):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "main.beancount"
+            path.write_text(text, encoding="utf-8")
+            # Beancount reports a missing document root as an error, so the fixture makes the
+            # folder it names -- the point here is the option, not the error.
+            (Path(directory) / "belege").mkdir(exist_ok=True)
+            return json.loads(ledger.inspect(str(path)))
+
+    def test_renamed_roots_are_reported(self):
+        names = self.inspect(RENAMED)["account_names"]
+
+        self.assertEqual("Aktiva", names["assets"])
+        self.assertEqual("Passiva", names["liabilities"])
+        self.assertEqual("Eigenkapital", names["equity"])
+        self.assertEqual("Einnahmen", names["income"])
+        self.assertEqual("Ausgaben", names["expenses"])
+
+    def test_a_file_that_renames_nothing_reports_beancounts_own(self):
+        names = self.inspect(PLAIN)["account_names"]
+
+        self.assertEqual(
+            ["Assets", "Equity", "Expenses", "Income", "Liabilities"],
+            sorted(names.values()),
+        )
+
+    def test_the_document_directories_are_reported(self):
+        self.assertEqual(["belege"], self.inspect(RENAMED)["document_dirs"])
+
+    def test_a_file_with_no_document_option_reports_none(self):
+        self.assertEqual([], self.inspect(PLAIN)["document_dirs"])
+
+    def test_the_renamed_ledger_still_loads_without_an_error(self):
+        self.assertEqual([], self.inspect(RENAMED)["errors"])
