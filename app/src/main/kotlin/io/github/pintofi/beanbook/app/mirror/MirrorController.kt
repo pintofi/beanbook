@@ -61,13 +61,41 @@ class MirrorController(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    private val _status = MutableStateFlow<MirrorStatus>(MirrorStatus.Off)
+    /** What mirroring is doing right now, for a screen that says so at all times (B65). */
+    val status: StateFlow<MirrorStatus> = _status.asStateFlow()
+
+    init {
+        _status.value = restingStatus()
+    }
+
     val folderUri: String? get() = settings.folderUri()
 
     val enabled: Boolean get() = settings.enabled() && folderUri != null
 
-    fun setFolder(uri: String?) = settings.setFolder(uri)
+    fun setFolder(uri: String?) {
+        settings.setFolder(uri)
+        _status.value = restingStatus()
+    }
 
-    fun setEnabled(value: Boolean) = settings.setEnabled(value)
+    fun setEnabled(value: Boolean) {
+        settings.setEnabled(value)
+        _status.value = restingStatus()
+    }
+
+    /**
+     * What to show when no pass is running: off, waiting for a decision, or in step.
+     *
+     * A conflict outranks everything else. A folder chosen with the switch off is still
+     * mirrored by hand, so that is "manual" rather than "off" -- the difference decides
+     * whether the user should expect their folder to be current.
+     */
+    private fun restingStatus(): MirrorStatus = when {
+        _conflicts.value.isNotEmpty() -> MirrorStatus.NeedsDecision(_conflicts.value.size)
+        folderUri == null -> MirrorStatus.Off
+        !settings.enabled() -> MirrorStatus.Manual(settings.lastPassAt())
+        else -> MirrorStatus.Watching(settings.lastPassAt())
+    }
 
     /** Runs a pass if mirroring is on. Called after every successful commit, and by hand. */
     fun syncAfterCommit(projectId: String) {
@@ -89,6 +117,7 @@ class MirrorController(
                     return@withLock
                 }
 
+                _status.value = MirrorStatus.Comparing
                 val outcome = withContext(Dispatchers.IO) {
                     runCatching { runPass(projectId, Uri.parse(folder)) }
                 }
@@ -96,11 +125,16 @@ class MirrorController(
                     .onSuccess { result ->
                         _conflicts.value = result.plan.conflicts
                         _message.value = describe(result)
+                        settings.recordPass(System.currentTimeMillis())
+                        _status.value = restingStatus()
                     }
                     .onFailure { failure ->
                         Log.w(TAG, "mirror pass failed", failure)
                         _message.value =
                             "Mirroring failed: ${failure.message}. Your project is unchanged."
+                        _status.value = MirrorStatus.Failed(
+                            failure.message ?: "the folder could not be reached",
+                        )
                     }
             }
         }
@@ -148,6 +182,9 @@ class MirrorController(
         // itself on the next pass instead of re-copying everything for ever.
         local.forEach { (path, hash) -> if (external[path] == hash) synced[path] = hash }
 
+        var done = 0
+        val total = plan.actions.size
+        _status.value = if (total == 0) MirrorStatus.Comparing else MirrorStatus.Copying(0, total)
         plan.actions.forEach { action ->
             when (action) {
                 is MirrorAction.PushOut -> {
@@ -195,6 +232,8 @@ class MirrorController(
                     externalFiles[action.path],
                 )
             }
+            done += 1
+            _status.value = MirrorStatus.Copying(done, total)
         }
 
         state.write(projectId, synced)
@@ -282,6 +321,7 @@ class MirrorController(
                     .onSuccess {
                         _conflicts.value = _conflicts.value.filterNot { it.path == path }
                         _message.value = "\"$path\" resolved."
+                        _status.value = restingStatus()
                     }
                     .onFailure { _message.value = "Could not resolve \"$path\": ${it.message}" }
             }
@@ -375,4 +415,49 @@ class MirrorSettings(private val stateDir: File) {
         stateDir.mkdirs()
         enabledFile.writeText(value.toString())
     }
+
+    /** When the last pass finished, so a resting screen can say how current the folder is. */
+    fun lastPassAt(): Long? =
+        lastPassFile.takeIf { it.isFile }?.readText()?.trim()?.toLongOrNull()
+
+    fun recordPass(atEpochMs: Long) {
+        stateDir.mkdirs()
+        lastPassFile.writeText(atEpochMs.toString())
+    }
+
+    private val lastPassFile get() = File(stateDir, "mirror-last-pass")
+}
+
+/**
+ * What mirroring is doing, at every moment (B65).
+ *
+ * The screen used to say nothing at all between passes: a message appeared after one and
+ * stayed until something replaced it, so "3 file(s) synced" was on screen for a folder that
+ * had since gone unreachable, and a pass in flight looked identical to one that had never
+ * run.
+ */
+sealed interface MirrorStatus {
+
+    /** No folder chosen. Nothing is being copied anywhere. */
+    data object Off : MirrorStatus
+
+    /** A folder is chosen but passes are not automatic: the user mirrors by hand. */
+    data class Manual(val lastPassAtEpochMs: Long?) : MirrorStatus
+
+    /** On, and passing after every change. */
+    data class Watching(val lastPassAtEpochMs: Long?) : MirrorStatus
+
+    /** Reading both sides. There is no count to show yet. */
+    data object Comparing : MirrorStatus
+
+    /** Applying the plan: [done] of [total] files. */
+    data class Copying(val done: Int, val total: Int) : MirrorStatus
+
+    /** Files changed in both places. Nothing is overwritten until the user chooses. */
+    data class NeedsDecision(val count: Int) : MirrorStatus
+
+    /** The last pass could not finish. The project is unchanged. */
+    data class Failed(val reason: String) : MirrorStatus
+
+    val isRunning: Boolean get() = this is Comparing || this is Copying
 }

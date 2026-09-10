@@ -86,37 +86,49 @@ internal fun MainActivity.unlinkDocument(
     from: String?,
 ) {
     lifecycleScope.launch {
-        // A document is linked in one of two ways, and unlinking used to know about one of
-        // them: a `document` directive files it under an account, and a `document:` metadata
+        // A document is linked in one of two ways, and unlinking used to stop after the
+        // first: a `document` directive files it under an account, and a `document:` metadata
         // key attaches it to a transaction -- which is what the Add form writes. Removing the
-        // directive alone left the entry still pointing at the file, and the screen still
-        // saying so (B57).
-        val holder = findDocumentDirective(app.workspace.projectDir(projectId)) {
-            io.github.pintofi.beanbook.core.domain.BeancountText
-                .removeDocumentDirective(it, path, from = from)
-        } ?: findDocumentDirective(app.workspace.projectDir(projectId)) {
-            io.github.pintofi.beanbook.core.domain.BeancountText
-                .removeDocumentMetadata(it, path)
-        }
-        if (holder == null) {
-            saveMessage = "Nothing in the ledger links to $path."
-            return@launch
-        }
-        val (file, rewritten) = holder
+        // directive and stopping left the entry still pointing at the file, so Organize went
+        // on listing it as "Attached to ..." and offered no way to finish the job (B69).
+        //
+        // Both are removed, in as many passes as it takes: a file may be named by several
+        // entries, and a half-unlinked document is exactly the broken state this action
+        // exists to clear.
+        var removed = 0
+        var failure: String? = null
+        while (removed < MAX_LINKS_PER_DOCUMENT) {
+            val projectDir = app.workspace.projectDir(projectId)
+            val holder = findDocumentDirective(projectDir) {
+                io.github.pintofi.beanbook.core.domain.BeancountText
+                    .removeDocumentDirective(it, path, from = from)
+            } ?: findDocumentDirective(projectDir) {
+                io.github.pintofi.beanbook.core.domain.BeancountText
+                    .removeDocumentMetadata(it, path)
+            } ?: break
 
-        val result = app.writer.replace(
-            projectId = projectId,
-            file = file,
-            expectedSha = io.github.pintofi.beanbook.core.data.WriteJournal.sha256(file),
-            newContent = rewritten,
-            operation = "unlink-document",
-        )
-        saveMessage = when (result) {
-            is io.github.pintofi.beanbook.core.data.WriteResult.Committed ->
-                "Unlinked $path. The file is still in the project."
-            is io.github.pintofi.beanbook.core.data.WriteResult.RolledBack ->
-                "Not unlinked: ${result.reason}. Your ledger is unchanged."
-            is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> "Not unlinked: ${result.reason}"
+            val (file, rewritten) = holder
+            val result = app.writer.replace(
+                projectId = projectId,
+                file = file,
+                expectedSha = io.github.pintofi.beanbook.core.data.WriteJournal.sha256(file),
+                newContent = rewritten,
+                operation = "unlink-document",
+            )
+            when (result) {
+                is io.github.pintofi.beanbook.core.data.WriteResult.Committed -> removed += 1
+                is io.github.pintofi.beanbook.core.data.WriteResult.RolledBack -> {
+                    failure = "${result.reason}. Your ledger is unchanged."
+                }
+                is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> failure = result.reason
+            }
+            if (failure != null) break
+        }
+
+        saveMessage = when {
+            failure != null -> "Not unlinked: $failure"
+            removed == 0 -> "Nothing in the ledger links to $path."
+            else -> "Unlinked $path. The file is still in the project."
         }
         app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
         // The list is built from the folder as well as the ledger, and nothing refreshed it:
@@ -124,6 +136,15 @@ internal fun MainActivity.unlinkDocument(
         refreshDocuments(app, projectId)
     }
 }
+
+/**
+ * How many links to one document a single unlink will clear.
+ *
+ * A bound rather than a plain `while (true)`: the loop is driven by a rewrite that must
+ * change the file each time, and a rewriter that ever returned the text unchanged would spin
+ * for ever writing it. Ten is far past any real ledger and cheap to be wrong about.
+ */
+private const val MAX_LINKS_PER_DOCUMENT = 10
 
 /**
  * Files an already-attached document under a different account (B18).
@@ -518,10 +539,38 @@ internal fun MainActivity.captureHandle(
             onCrop = { index, quad -> app.documentCapture.crop(index, quad) },
             fileFor = { name -> app.documentCapture.fileFor(name) },
             onFile = { account, label, onFiled ->
+                // The PDF, then the `document` directive, then whoever asked -- in that
+                // order (B66). Filing from the entry form used to write the file and the
+                // transaction's `document:` metadata and no directive at all, which is the
+                // one arrangement `fava.plugins.link_documents` rejects: it looks for a
+                // Document entry to link the metadata to, finds none, and reports "Document
+                // not found". That is a new error, so the write protocol rolled the entry
+                // back and the user was told their ledger was unchanged -- for a receipt
+                // that had been photographed, filed and named.
                 app.documentCapture.save(projectId.orEmpty(), account, label = label) { path ->
-                    onFiled(path)
-                    app.documentCapture.reset()
-                    refreshDocuments(app, projectId.orEmpty())
+                    val directive = io.github.pintofi.beanbook.core.domain.DirectiveDraft.Document(
+                        date = java.time.LocalDate.now().toString(),
+                        account = account,
+                        path = path,
+                    )
+                    saveText(
+                        app,
+                        projectId.orEmpty(),
+                        directive.render(),
+                        operation = "attach-document",
+                        target = app.workspace.mainFile(projectId.orEmpty()),
+                    ) { outcome ->
+                        saveMessage = outcome
+                        // Only when the directive is actually in the ledger. Reporting the
+                        // path back on a rolled-back write would let the caller write an
+                        // entry pointing at a document the file does not declare, which is
+                        // the very pair that fails to load.
+                        if (outcome.startsWith("Saved")) {
+                            onFiled(path)
+                            app.documentCapture.reset()
+                            refreshDocuments(app, projectId.orEmpty())
+                        }
+                    }
                 }
             },
         )

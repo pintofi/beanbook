@@ -76,6 +76,14 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         purchases.refresh()
+        // Mirroring is two ways, and only one of them had a trigger: a pass ran after a
+        // local commit, so an edit made in the folder on a computer sat there until somebody
+        // wrote something on the phone or tapped Mirror now. Coming back to the app is the
+        // moment those edits are most likely to be waiting (B65).
+        val app = application as BeancountApplication
+        if (app.mirror.enabled) {
+            app.projectsState.activeId.value?.let { app.mirror.syncAfterCommit(it) }
+        }
     }
 
     /**
@@ -438,6 +446,7 @@ class MainActivity : ComponentActivity() {
                     val passphraseNeeded by
                         app.backupController.passphraseNeeded.collectAsStateWithLifecycle()
                     val mirrorConflicts by app.mirror.conflicts.collectAsStateWithLifecycle()
+                    val mirrorStatus by app.mirror.status.collectAsStateWithLifecycle()
                     val mirrorMessage by app.mirror.message.collectAsStateWithLifecycle()
                     val remoteStatus by app.remoteState.status.collectAsStateWithLifecycle()
                     val remoteCapabilities by
@@ -522,7 +531,22 @@ class MainActivity : ComponentActivity() {
                             if (remoteStatus is EngineStatus.Serving) {
                                 app.remoteState.submit(draft)
                             } else {
-                                saveText(app, activeId!!, draft.render(), "quick-add")
+                                // Written the way this ledger writes: Fava's `currency-column`
+                                // and `indent` are the file's own layout, and a file the user
+                                // keeps at column 80 should not come back at 61 (B67).
+                                saveText(
+                                    app,
+                                    activeId!!,
+                                    draft.render(
+                                        currencyColumn = (ledger?.format
+                                            ?: io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN)
+                                            .currencyColumn,
+                                        indent = (ledger?.format
+                                            ?: io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN)
+                                            .indent,
+                                    ),
+                                    "quick-add",
+                                )
                             }
                         },
                         // Built once and passed whole, and built *outside* this class: the
@@ -585,6 +609,7 @@ class MainActivity : ComponentActivity() {
                         mirrorEnabled = mirrorEnabled,
                         mirrorFolder = mirrorFolder,
                         mirrorConflicts = mirrorConflicts,
+                        mirrorStatus = mirrorStatus,
                         mirrorMessage = mirrorMessage,
                         onChooseMirrorFolder = { mirrorFolderPicker.launch(null) },
                         onMirrorEnabledChanged = { on ->

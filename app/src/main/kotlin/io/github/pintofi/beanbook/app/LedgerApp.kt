@@ -4,6 +4,9 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
@@ -20,6 +23,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -175,6 +179,7 @@ internal fun LedgerApp(
     mirrorEnabled: Boolean,
     mirrorFolder: String?,
     mirrorConflicts: List<MirrorAction.Conflict>,
+    mirrorStatus: io.github.pintofi.beanbook.app.mirror.MirrorStatus,
     mirrorMessage: String?,
     onChooseMirrorFolder: () -> Unit,
     onMirrorEnabledChanged: (Boolean) -> Unit,
@@ -353,6 +358,13 @@ internal fun LedgerApp(
         // field of a form could not be scrolled into it. Insetting the whole Scaffold lifts
         // the bar and the content together, which is what Material describes.
         modifier = Modifier.weight(1f).imePadding(),
+        // The keyboard's height is applied once, by `imePadding` above (B68). `Scaffold`'s
+        // default content insets are `safeDrawing`, which *includes* the IME, so the content
+        // was being pushed up by the keyboard twice: once by the modifier and again by the
+        // padding the Scaffold handed its content. The second copy is the blank band that
+        // appeared under the form -- roughly the height of the keyboard, left behind when the
+        // keyboard went away and the animation settled.
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.exclude(WindowInsets.ime),
         topBar = {
             LedgerTopBar(
                 projectName = projects.firstOrNull { it.id == activeProjectId }?.title
@@ -491,6 +503,7 @@ internal fun LedgerApp(
                 mirrorEnabled = mirrorEnabled,
                 mirrorFolder = mirrorFolder,
                 mirrorConflicts = mirrorConflicts,
+                mirrorStatus = mirrorStatus,
                 mirrorMessage = mirrorMessage,
                 onChooseMirrorFolder = onChooseMirrorFolder,
                 onMirrorEnabledChanged = onMirrorEnabledChanged,

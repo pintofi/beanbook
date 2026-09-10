@@ -146,6 +146,7 @@ fun ScannerScreen(
     // dark table, zoom for a page you cannot get closer to, and a shutter that fires itself
     // once the page is squarely in frame.
     var camera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
+    var provider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
     var torch by remember { mutableStateOf(false) }
     // Off / on / auto, cycled by one button, as OSS-DocumentScanner does it (B58). The torch
     // is a separate control because it is a different thing: a lamp for framing, not a flash
@@ -158,6 +159,18 @@ fun ScannerScreen(
     var aimed by remember { mutableStateOf(false) }
 
     LaunchedEffect(flash) { capture.flashMode = flash }
+
+    // The lamp goes out with the screen (B65). The camera is bound to the *activity's*
+    // lifecycle, not to this composable, so leaving the scanner left the use cases bound and
+    // the torch burning -- with no control anywhere in the app to turn it off again, because
+    // the only switch had gone with the screen. Turning it off and unbinding on the way out
+    // is what makes leaving the scanner mean leaving the camera.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            runCatching { camera?.cameraControl?.enableTorch(false) }
+            runCatching { provider?.unbindAll() }
+        }
+    }
 
     /**
      * Takes one page: shoot, detect, hand the crop up with the file.
@@ -255,9 +268,10 @@ fun ScannerScreen(
                     previewView = preview
                     val future = ProcessCameraProvider.getInstance(viewContext)
                     future.addListener({
-                        val provider = future.get()
-                        provider.unbindAll()
-                        camera = provider.bindToLifecycle(
+                        val cameraProvider = future.get()
+                        provider = cameraProvider
+                        cameraProvider.unbindAll()
+                        camera = cameraProvider.bindToLifecycle(
                             lifecycleOwner,
                             if (frontLens) {
                                 CameraSelector.DEFAULT_FRONT_CAMERA

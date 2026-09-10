@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -22,6 +23,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -215,6 +220,9 @@ fun QuickAddScreen(
     val residuals = draft.residuals()
 
     var namingTemplate by remember { mutableStateOf(false) }
+    // What the user typed under the pages, if anything. Held here because the Save button is
+    // what files them now (B66).
+    var documentName by remember { mutableStateOf("") }
 
     /**
      * Applies a template through the same domain call the tests exercise, so there is one
@@ -378,13 +386,7 @@ fun QuickAddScreen(
                 // and guessing it would put receipts somewhere nobody looks.
                 account = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty(),
                 attached = metaRows.filter { it.key.startsWith("document") }.map { it.value },
-                onFiled = { path ->
-                    // The link is metadata on the transaction, not a `document` directive:
-                    // the directive files a document under an account, this says which
-                    // transaction it is evidence for. Both are legitimate and different.
-                    val key = BeancountText.nextDocumentKey(metaRows.map { it.key }.toSet())
-                    metaRows += MetadataRow(key, path)
-                },
+                onNameChange = { documentName = it },
             )
         }
 
@@ -526,7 +528,7 @@ fun QuickAddScreen(
                         )
                     }
                 } else {
-                    TextButton(
+                    OutlinedButton(
                         onClick = { row.showLot = true },
                         modifier = Modifier.semantics {
                             contentDescription = "Add a cost or price to posting ${index + 1}"
@@ -541,7 +543,10 @@ fun QuickAddScreen(
             }
         }
 
-        TextButton(onClick = { rows.add(PostingRow()) }) { Text("Add posting") }
+        OutlinedButton(
+            onClick = { rows.add(PostingRow()) },
+            modifier = Modifier.semantics { contentDescription = "Add another posting" },
+        ) { Text("Add posting") }
 
         // The imbalance is information, not an error: an elided posting is the normal way
         // to let Beancount finish the arithmetic.
@@ -604,22 +609,26 @@ fun QuickAddScreen(
         // it does not block: the entry is the user's to write, and the app's job is to make
         // sure the loss is a choice.
         val unfiledPages = capture?.pages?.pages?.size ?: 0
-        if (unfiledPages > 0) {
+        val documentAccount = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty()
+
+        // A page photographed for this entry is filed by saving the entry (B66). What used to
+        // stand here was a warning that pages were "not attached", pointing at a second button
+        // the user had to find; missing it filed the receipt under nothing.
+        if (unfiledPages > 0 && documentAccount.isBlank()) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .semantics {
                         contentDescription =
-                            "$unfiledPages photographed page(s) are not attached to this entry yet"
+                            "$unfiledPages photographed page(s) cannot be filed without an account"
                     },
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                 ),
             ) {
                 Text(
-                    "$unfiledPages page${if (unfiledPages == 1) "" else "s"} " +
-                        "photographed but not attached. Use \"File these pages and link " +
-                        "them\" above, or they are kept only until the next scan.",
+                    "$unfiledPages page${if (unfiledPages == 1) "" else "s"} photographed. " +
+                        "Give the first posting an account so they can be filed under it.",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(12.dp),
                 )
@@ -629,15 +638,49 @@ fun QuickAddScreen(
         Button(
             onClick = {
                 submitted = draft
-                onSave(draft)
+                // Pages first, then the entry that names them. The order is what makes the
+                // pair legal: `fava.plugins.link_documents` reports "Document not found" for
+                // an entry whose `document:` metadata has no `document` directive to link to,
+                // and a new error is what the write protocol rolls a save back for.
+                if (capture != null && unfiledPages > 0 && documentAccount.isNotBlank()) {
+                    capture.onFile(documentAccount, documentName.trim().ifBlank { null }) { path ->
+                        val key = BeancountText.nextDocumentKey(
+                            draft.metadata.keys + metaRows.map { it.key }.toSet(),
+                        )
+                        // The file's own name, not the path to it. `fava.plugins.link_documents`
+                        // matches a `document:` value against the *basename* of each
+                        // `document` directive (and against a path resolved relative to the
+                        // file the entry is written in, which for an entry in
+                        // files/transactions.beancount is not where the documents live). A
+                        // project-relative path matches neither, and the plugin then reports
+                        // "Document not found" -- a new error, which rolls the save back.
+                        onSave(
+                            draft.copy(
+                                metadata = draft.metadata + (key to path.substringAfterLast('/')),
+                            ),
+                        )
+                    }
+                } else {
+                    onSave(draft)
+                }
             },
-            enabled = problems.isEmpty() && draft != submitted,
+            enabled = problems.isEmpty() && draft != submitted &&
+                (unfiledPages == 0 || documentAccount.isNotBlank()),
             modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (unfiledPages > 0) "Save entry without the pages" else "Save entry") }
+        ) {
+            Text(
+                if (unfiledPages > 0) {
+                    "Save entry with $unfiledPages page${if (unfiledPages == 1) "" else "s"}"
+                } else {
+                    "Save entry"
+                },
+            )
+        }
 
-        TextButton(
+        OutlinedButton(
             onClick = { namingTemplate = true },
             enabled = rows.any { it.account.isNotBlank() },
+            modifier = Modifier.semantics { contentDescription = "Save this entry as a template" },
         ) { Text("Save as template") }
 
         if (namingTemplate) {
@@ -658,23 +701,42 @@ fun QuickAddScreen(
     }
 }
 
+/**
+ * The page editor, over the whole screen, from inside the entry form (B65).
+ *
+ * It used to be composed straight into the form's scrolling column, so a page you were trying
+ * to straighten appeared as a panel a few hundred pixels tall between two text fields --
+ * while the same editor opened from Documents took the whole screen. A dialog with the
+ * platform's width limit turned off is the ordinary way to give a screen-sized task a screen
+ * from a place that is not one.
+ */
 @Composable
 private fun PageEditorOverlay(
     capture: DocumentCaptureHandle,
     startAt: Int,
     onDone: () -> Unit,
 ) {
-    PageEditorScreen(
-        pages = capture.pages,
-        fileFor = capture.fileFor,
-        startAt = startAt,
-        onRotate = capture.onRotateBy,
-        onCrop = capture.onCrop,
-        onRestyle = capture.onRestyle,
-        onRemove = capture.onRemovePage,
-        onMove = capture.onMove,
-        onDone = onDone,
-    )
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDone,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = false,
+        ),
+    ) {
+        androidx.compose.material3.Surface(modifier = Modifier.fillMaxSize()) {
+            PageEditorScreen(
+                pages = capture.pages,
+                fileFor = capture.fileFor,
+                startAt = startAt,
+                onRotate = capture.onRotateBy,
+                onCrop = capture.onCrop,
+                onRestyle = capture.onRestyle,
+                onRemove = capture.onRemovePage,
+                onMove = capture.onMove,
+                onDone = onDone,
+            )
+        }
+    }
 }
 
 @Composable
@@ -807,7 +869,7 @@ private fun MetadataEditor(
     describe: () -> String,
 ) {
     if (rows.isEmpty()) {
-        TextButton(
+        OutlinedButton(
             onClick = { rows.add(MetadataRow()) },
             modifier = Modifier.semantics { contentDescription = "Add a detail to ${describe()}" },
         ) { Text("Add a detail") }
@@ -846,7 +908,7 @@ private fun MetadataEditor(
             ) { Text("\u00d7") }
         }
     }
-    TextButton(
+    OutlinedButton(
         onClick = { rows.add(MetadataRow()) },
         modifier = Modifier.semantics { contentDescription = "Add another detail to ${describe()}" },
     ) { Text("Add another detail") }
@@ -865,11 +927,12 @@ private fun AttachDocumentSection(
     capture: DocumentCaptureHandle,
     account: String,
     attached: List<String>,
-    onFiled: (String) -> Unit,
+    onNameChange: (String) -> Unit,
 ) {
 
     // What to call it, if the user wants to (B57).
     var documentName by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(documentName) { onNameChange(documentName) }
     var editingPages by remember { mutableStateOf<Int?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -893,7 +956,10 @@ private fun AttachDocumentSection(
             if (allowed) capture.onStartScanning()
         }
 
-        TextButton(
+        // An action, drawn as one (B66). Text that happens to respond to a tap reads as a
+        // label until somebody guesses; an outlined button says what it is before it is
+        // touched, which is what Material means by an affordance.
+        OutlinedButton(
             onClick = {
                 if (granted) capture.onStartScanning()
                 else askForCamera.launch(Manifest.permission.CAMERA)
@@ -901,7 +967,14 @@ private fun AttachDocumentSection(
             modifier = Modifier.semantics {
                 contentDescription = "Scan a document for this transaction"
             },
-        ) { Text("Scan a document") }
+        ) {
+            Icon(
+                Icons.Filled.PhotoCamera,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 8.dp),
+            )
+            Text("Scan a document")
+        }
 
         if (!capture.pages.isEmpty) {
             if (account.isBlank()) {
@@ -951,15 +1024,16 @@ private fun AttachDocumentSection(
                         .fillMaxWidth()
                         .semantics { contentDescription = "What to call this document" },
                 )
-                Button(
-                    onClick = {
-                        capture.onFile(account, documentName.trim().ifBlank { null }) { path ->
-                            onFiled(path)
-                        }
-                    },
-                    enabled = !capture.pages.isEmpty,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("File these pages and link them") }
+                // No button. Filing is part of saving the entry (B66): a receipt photographed
+                // *for this transaction* belongs to it, and asking the user to press a second
+                // button to make that true was a step whose only possible outcome, if they
+                // missed it, was a page filed under nothing.
+                Text(
+                    "These pages are filed under $account and linked to this entry when you " +
+                        "save it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

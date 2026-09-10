@@ -101,6 +101,41 @@ def _posting_dict(posting: Any) -> dict[str, Any]:
     }
 
 
+def _fava_options(entries: Any) -> dict[str, str]:
+    """The Fava options a ledger sets for itself (B67).
+
+    Fava reads its own settings out of the Beancount file, as
+    `custom "fava-option" "<name>" "<value>"` directives -- they are ordinary Custom
+    directives to Beancount, which is why they survive a plain load and why the app can read
+    exactly what Fava would read. Only the ones the app can honour are reported; the rest are
+    Fava's business and are left alone rather than half-implemented.
+
+    Names are normalised to the underscore form Fava's own option object uses, so
+    `invert-income-liabilities-equity` and `invert_income_liabilities_equity` are one option.
+    """
+    from beancount.core import data as _data
+
+    wanted = {
+        "locale",
+        "invert_income_liabilities_equity",
+        "currency_column",
+        "indent",
+    }
+    found: dict[str, str] = {}
+    for entry in entries:
+        if not isinstance(entry, _data.Custom) or entry.type != "fava-option":
+            continue
+        values = list(entry.values or [])
+        if not values:
+            continue
+        name = str(values[0].value).strip().replace("-", "_")
+        if name not in wanted:
+            continue
+        # A boolean option may be written with no value at all, which Fava reads as true.
+        found[name] = str(values[1].value).strip() if len(values) > 1 else "true"
+    return found
+
+
 def _meta_str(value) -> str:
     """A metadata value as text.
 
@@ -353,6 +388,9 @@ def inspect(
     payload = {
         "ok": True,
         "render_commas": bool(options_map.get("render_commas")),
+        # What the file asks Fava for. Reported rather than applied here: the app decides how
+        # to render, and it cannot do that without knowing what was asked (B67).
+        "fava_options": _fava_options(all_entries),
         "display_precision": dict(sorted(display.items())),
         "tolerances": dict(sorted(tolerances.items())),
         "documents": documents,

@@ -419,7 +419,11 @@ private fun RootHeader(
             if (totals.isEmpty()) {
                 Text("—", style = MaterialTheme.typography.bodyMedium)
             } else {
-                totals.forEach { AmountText(it, format = format) }
+                // Shown with the sign this ledger asks for (B67). Fava's
+                // `invert-income-liabilities-equity` turns income, liabilities and equity the
+                // way a person reads them, and a file that asks for it and gets the raw
+                // credit sign has every income figure on screen with a minus in front of it.
+                totals.forEach { AmountText(format.signed(it, root), format = format) }
             }
         }
     }
@@ -435,7 +439,7 @@ private fun AccountRow(
 ) {
     // A parent shows what its whole branch holds, so folding it hides rows rather than
     // money. A leaf shows its own balance, which is the same figure by definition.
-    val amounts = node.subtotal(basis::of)
+    val amounts = node.subtotal(basis::of).map { format.signed(it, node.name) }
     val spoken = buildString {
         append(node.name)
         if (node.hasChildren) {

@@ -72,3 +72,82 @@ class LedgerFormatTest {
         assertTrue(draft.validate(pkr).any { it is DraftProblem.DoesNotBalance })
     }
 }
+
+/**
+ * The rest of what a ledger says about how its figures read (B67).
+ *
+ * Beancount's own options were already honoured; Fava's were not, and Fava's are where the
+ * separators and the signs are decided. A German ledger displayed with the English scheme
+ * turns one thousand two hundred into one point two, and a ledger that asks for income to
+ * read positively and gets the raw credit sign shows every wage with a minus in front of it.
+ */
+class FavaFormatTest {
+
+    private fun amount(value: String, currency: String = "EUR") =
+        Amount(java.math.BigDecimal(value), currency)
+
+    private val german = LedgerFormat(
+        groupThousands = true,
+        precision = mapOf("EUR" to 2),
+        groupSeparator = '.',
+        decimalSeparator = ',',
+    )
+
+    @Test fun `a german ledger groups with dots and points with a comma`() {
+        kotlin.test.assertEquals("1.234,56 EUR", german.format(amount("1234.56")))
+    }
+
+    @Test fun `a german ledger keeps the comma without grouping`() {
+        val ungrouped = german.copy(groupThousands = false)
+        kotlin.test.assertEquals("1234,56 EUR", ungrouped.format(amount("1234.56")))
+    }
+
+    @Test fun `the english scheme is unchanged`() {
+        val english = LedgerFormat(groupThousands = true, precision = mapOf("USD" to 2))
+        kotlin.test.assertEquals("1,234.56 USD", english.format(amount("1234.56", "USD")))
+    }
+
+    @Test fun `a negative figure keeps its sign in front of the separators`() {
+        kotlin.test.assertEquals("-1.234,56 EUR", german.format(amount("-1234.56")))
+    }
+
+    @Test fun `income reads positively when the ledger asks for it`() {
+        val inverted = LedgerFormat(invertIncomeLiabilitiesEquity = true)
+        kotlin.test.assertEquals(
+            amount("1200.00"),
+            inverted.signed(amount("-1200.00"), "Income:Salary"),
+        )
+    }
+
+    @Test fun `assets and expenses are never turned around`() {
+        val inverted = LedgerFormat(invertIncomeLiabilitiesEquity = true)
+        kotlin.test.assertEquals(
+            amount("-12.50"),
+            inverted.signed(amount("-12.50"), "Assets:Cash"),
+        )
+        kotlin.test.assertEquals(
+            amount("12.50"),
+            inverted.signed(amount("12.50"), "Expenses:Food"),
+        )
+    }
+
+    @Test fun `a ledger that does not ask is left alone`() {
+        kotlin.test.assertEquals(
+            amount("-1200.00"),
+            LedgerFormat.PLAIN.signed(amount("-1200.00"), "Income:Salary"),
+        )
+    }
+
+    @Test fun `the three inverted roots are named exactly`() {
+        val inverted = LedgerFormat(invertIncomeLiabilitiesEquity = true)
+        kotlin.test.assertTrue(inverted.isInverted("Liabilities:Card"))
+        kotlin.test.assertTrue(inverted.isInverted("Equity:Opening-Balances"))
+        // Not a prefix match on the bare string: "Incomes" is somebody else's account tree.
+        kotlin.test.assertFalse(inverted.isInverted("Incomes:Salary"))
+    }
+
+    @Test fun `the write layout defaults to what fava writes`() {
+        kotlin.test.assertEquals(61, LedgerFormat.PLAIN.currencyColumn)
+        kotlin.test.assertEquals(2, LedgerFormat.PLAIN.indent)
+    }
+}

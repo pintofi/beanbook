@@ -9,7 +9,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -540,10 +544,34 @@ private fun PackagesSection(
         }
 
         if (installed.isNotEmpty()) {
+            // One row per package, not one sentence naming them all (B66). Joined with
+            // commas, eleven fetched packages were a paragraph four lines long that had to be
+            // read to find out whether a name was in it -- and the longer it got, the less it
+            // looked like a list of things the user could act on.
             Text(
-                "Fetched and available to plugins: " + installed.joinToString(", "),
-                style = MaterialTheme.typography.bodySmall,
+                "Fetched and available to plugins",
+                style = MaterialTheme.typography.titleSmall,
             )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "${installed.size} fetched package(s)" },
+            ) {
+                installed.forEach { name ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Filled.Inventory2,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 12.dp),
+                        )
+                        Text(name, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    HorizontalDivider()
+                }
+            }
             if (noPluginsLeft) {
                 // Item 21's other half, as far as it can honestly go. A package is fetched by
                 // name because the user asked for it, not declared by a plugin, so the app
@@ -555,7 +583,7 @@ private fun PackagesSection(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            TextButton(
+            OutlinedButton(
                 onClick = onRemoveAll,
                 modifier = Modifier.semantics {
                     contentDescription = "Remove every fetched package"

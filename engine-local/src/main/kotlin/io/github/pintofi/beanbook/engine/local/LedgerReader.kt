@@ -141,8 +141,29 @@ class LedgerReader(
     private fun JSONObject.toLedgerFormat(): LedgerFormat {
         val precision = optJSONObject("display_precision")
         val tolerances = optJSONObject("tolerances")
+        val fava = optJSONObject("fava_options")
+        val grouped = optBoolean("render_commas", false)
+        // Fava's own rule, followed rather than approximated (B67): the `locale` option
+        // decides both separators, and `render_commas` with no locale means the locale "en".
+        // The platform's own symbols for that locale are used, which is what a German reader
+        // means by "the comma scheme" -- not a guess at which character to swap in.
+        val locale = fava?.optStringOrNull("locale")
+            ?: if (grouped) "en" else null
+        val symbols = locale?.let {
+            runCatching {
+                java.text.DecimalFormatSymbols(java.util.Locale.forLanguageTag(it.replace('_', '-')))
+            }.getOrNull()
+        }
         return LedgerFormat(
-            groupThousands = optBoolean("render_commas", false),
+            groupThousands = grouped,
+            groupSeparator = symbols?.groupingSeparator ?: ',',
+            decimalSeparator = symbols?.decimalSeparator ?: '.',
+            invertIncomeLiabilitiesEquity =
+                fava?.optStringOrNull("invert_income_liabilities_equity").isTrue(),
+            currencyColumn = fava?.optStringOrNull("currency_column")?.toIntOrNull()
+                ?.takeIf { it > 0 } ?: LedgerFormat.DEFAULT_CURRENCY_COLUMN,
+            indent = fava?.optStringOrNull("indent")?.toIntOrNull()?.takeIf { it > 0 }
+                ?: LedgerFormat.DEFAULT_INDENT,
             precision = precision?.keys()?.asSequence().orEmpty()
                 .mapNotNull { key -> precision?.optInt(key, -1)?.takeIf { it >= 0 }?.let { key to it } }
                 .toMap(),
@@ -154,6 +175,10 @@ class LedgerReader(
                 .toMap(),
         )
     }
+
+    /** Fava reads "true", "True" and a bare option with no value as on; so does this. */
+    private fun String?.isTrue(): Boolean =
+        this != null && this.trim().lowercase() in setOf("true", "yes", "1", "on")
 
     private fun JSONObject.toDocumentDirective(): DocumentDirective = DocumentDirective(
         path = getString("path"),

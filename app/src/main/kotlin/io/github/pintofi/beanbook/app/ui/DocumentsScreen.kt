@@ -311,7 +311,11 @@ fun DocumentsScreen(
                             // remove: nothing refers to an unfiled document, and a missing
                             // one has no file left. Showing them anyway would offer an
                             // action whose only possible outcome is an error.
-                            if (row.status != DocumentStatus.UNFILED) {
+                            // Anything the ledger says about this file counts as a link, not
+                            // just a `document` directive (B69): an entry that attaches it as
+                            // `document:` metadata is a link too, and hiding Unlink for those
+                            // left a document listed as attached with no way to detach it.
+                            if (row.status != DocumentStatus.UNFILED || row.attachedTo.isNotEmpty()) {
                                 TextButton(
                                     onClick = { pendingRemoval = row to DocumentRemoval.UNLINK },
                                     modifier = Modifier.semantics {

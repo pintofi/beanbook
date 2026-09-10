@@ -40,6 +40,36 @@ nothing of mine, and a library that shadowed something would make that promise f
 The Play edition shows the section as a sentence explaining that it installs nothing beyond
 what is built in. Hiding the control is not the enforcement — its `WheelFetcher` refusing is.
 
+## Why not Termux's repositories
+
+Asked directly, and worth recording because the answer is not obvious: Termux publishes a
+full APT archive of Android-native builds -- `python` 3.14, `python-numpy` 2.4, and hundreds
+more -- and it would appear to solve the native-code problem this document is about.
+
+It cannot be used here, and the reason is in the packages themselves. Unpacking
+`python-numpy_2.4.4-1_aarch64.deb` from `packages.termux.dev`:
+
+- every file lands under `/data/data/com.termux/files/usr/...`, which is **another app's
+  private directory**; this app cannot read it, and the packages are built with that prefix
+  baked in rather than relocated at install time;
+- the extension modules are tagged `cpython-314` and `NEEDED: libpython3.14.so`, while this
+  app embeds **CPython 3.13** through Chaquopy -- a different ABI, so they would not import
+  even if they were readable;
+- `RUNPATH: /data/data/com.termux/files/usr/lib`, with `NEEDED: libopenblas.so` and
+  `libc++_shared.so`, neither of which is in this app.
+
+Using them would mean rebuilding every package against this app's interpreter and prefix,
+which is being a distribution maintainer rather than consuming one. Chaquopy's index already
+does exactly that job for the interpreter this app ships, which is why the fetcher uses it for
+native packages and PyPI for pure-Python ones.
+
+Their *pure-Python* packages are simply PyPI's, repackaged; fetching those from PyPI directly
+is what already happens, with hashes, and adds no dependency on a third-party archive.
+
+**Beancount plugins and scripts are not affected either way.** Termux has no Beancount plugin
+repository -- a plugin here is a Python file a user installs, and the packages it may import
+are the subject above.
+
 ## Why not pip
 
 A wheel is a zip. Resolving one, checking a digest and unpacking it is a few hundred lines;

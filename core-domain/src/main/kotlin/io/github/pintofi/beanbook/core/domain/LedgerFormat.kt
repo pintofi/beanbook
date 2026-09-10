@@ -26,6 +26,30 @@ data class LedgerFormat(
     val precision: Map<String, Int> = emptyMap(),
     /** `option "inferred_tolerance_default"`, per commodity. */
     val tolerances: Map<String, BigDecimal> = emptyMap(),
+    /**
+     * What separates thousands and what separates the decimal, as this ledger asks (B67).
+     *
+     * Fava's `locale` option decides both, and its rule is worth stating because it is not
+     * the obvious one: `render_commas` alone means the locale `en` -- 1,234.56 -- while
+     * `custom "fava-option" "locale" "de_DE"` means 1.234,56 whatever `render_commas` says.
+     * A German ledger displayed with the English scheme is not a cosmetic difference: it
+     * turns one thousand two hundred into one point two.
+     */
+    val groupSeparator: Char = ',',
+    val decimalSeparator: Char = '.',
+    /**
+     * Fava's `invert-income-liabilities-equity` (B67).
+     *
+     * Income, liabilities and equity carry credit balances, which in double entry are
+     * negative. Fava can show them the way a person reads them -- income as a positive
+     * number -- and a ledger that asks for that and gets the raw sign has every income figure
+     * on screen with the wrong sign in front of it.
+     */
+    val invertIncomeLiabilitiesEquity: Boolean = false,
+    /** Fava's `currency-column`: where an amount is aligned in a file this app writes. */
+    val currencyColumn: Int = DEFAULT_CURRENCY_COLUMN,
+    /** Fava's `indent`: how far a posting is indented in a file this app writes. */
+    val indent: Int = DEFAULT_INDENT,
 ) {
 
     /**
@@ -47,26 +71,49 @@ data class LedgerFormat(
             amount.number.setScale(places, RoundingMode.HALF_UP)
         }
         val plain = scaled.toPlainString()
-        return if (groupThousands) grouped(plain) else plain
+        return if (groupThousands) grouped(plain) else pointed(plain)
     }
+
+    /**
+     * [amount] with the sign this ledger asks to see it in, for an account under [account].
+     *
+     * Display only, and never on the way into a file: inverting a figure that is then written
+     * back would change the books rather than the way they read.
+     */
+    fun signed(amount: Amount, account: String): Amount =
+        if (invertIncomeLiabilitiesEquity && isInverted(account)) -amount else amount
+
+    /** Whether [account] is one of the three trees Fava's option turns around. */
+    fun isInverted(account: String): Boolean =
+        INVERTED_ROOTS.any { account == it || account.startsWith("$it:") }
 
     /** What this ledger calls close enough to balance, for [currency]. */
     fun toleranceFor(currency: String): BigDecimal? = tolerances[currency]
+
+    /** The decimal point moved to where this ledger puts it, when thousands are not grouped. */
+    private fun pointed(plain: String): String =
+        if (decimalSeparator == '.') plain else plain.replace('.', decimalSeparator)
 
     private fun grouped(plain: String): String {
         val negative = plain.startsWith('-')
         val body = if (negative) plain.substring(1) else plain
         val whole = body.substringBefore('.')
         val rest = body.substringAfter('.', "")
-        val withCommas = whole.reversed().chunked(3).joinToString(",").reversed()
+        val withSeparators = whole.reversed().chunked(3).joinToString(groupSeparator.toString()).reversed()
         return buildString {
             if (negative) append('-')
-            append(withCommas)
-            if (rest.isNotEmpty()) append('.').append(rest)
+            append(withSeparators)
+            if (rest.isNotEmpty()) append(decimalSeparator).append(rest)
         }
     }
 
     companion object {
+        /** Fava's own defaults, so a file that says nothing is written the way Fava writes it. */
+        const val DEFAULT_CURRENCY_COLUMN = 61
+        const val DEFAULT_INDENT = 2
+
+        private val INVERTED_ROOTS = listOf("Income", "Liabilities", "Equity")
+
         /** What a ledger that says nothing gets: Beancount's own plain rendering. */
         val PLAIN = LedgerFormat()
     }
