@@ -56,6 +56,7 @@ import io.github.pintofi.beanbook.core.engine.OriginAllowlist
 import io.github.pintofi.beanbook.core.engine.ReportPath
 import io.github.pintofi.beanbook.core.entitlement.Entitlement
 import io.github.pintofi.beanbook.core.entitlement.Feature
+import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 // What each destination renders. Split out of MainActivity.kt; see LedgerApp.kt.
 @Composable
 internal fun SurfaceContent(
@@ -241,12 +242,12 @@ internal fun SurfaceContent(
                             SegmentedButton(
                                 selected = !otherDirectives,
                                 onClick = { otherDirectives = false },
-                                shape = SegmentedButtonDefaults.itemShape(0, 2),
+                                shape = SegmentedButtonDefaults.itemShape(0, 2, baseShape = BeanbookShape.control),
                             ) { Text("Transaction") }
                             SegmentedButton(
                                 selected = otherDirectives,
                                 onClick = { otherDirectives = true },
-                                shape = SegmentedButtonDefaults.itemShape(1, 2),
+                                shape = SegmentedButtonDefaults.itemShape(1, 2, baseShape = BeanbookShape.control),
                             ) { Text("Other directives") }
                         }
                         if (otherDirectives) {

@@ -28,9 +28,10 @@ internal val BeancountShapes = Shapes(
     small = RoundedCornerShape(10.dp),
     // Notices and cards: the page interrupting itself.
     medium = RoundedCornerShape(14.dp),
-    // Dialogs.
+    // Menus and the larger containers inside a dialog.
     large = RoundedCornerShape(20.dp),
-    // Sheets.
+    // Dialogs and sheets. Material takes both from this slot, so the two share a radius
+    // rather than the app fighting the component for it on twelve call sites.
     extraLarge = RoundedCornerShape(28.dp),
 )
 
@@ -43,14 +44,20 @@ object BeanbookShape {
      */
     val data: Shape = RectangleShape
 
-    /** A field, a segmented control, a button. */
-    val control: Shape = RoundedCornerShape(10.dp)
+    /**
+     * A field, a segmented control, a button.
+     *
+     * Typed as the rounded shape rather than as [Shape] because Material's segmented button
+     * needs a corner-based shape to derive the ends of a row from, and a control that is a
+     * pill at the ends and square in the middle is the default this design is replacing.
+     */
+    val control: RoundedCornerShape = RoundedCornerShape(10.dp)
 
     /** A notice: the app saying something about the ledger. */
     val notice: Shape = RoundedCornerShape(14.dp)
 
-    /** A dialog. */
-    val dialog: Shape = RoundedCornerShape(20.dp)
+    /** A dialog. The same radius Material gives an `AlertDialog` from the theme. */
+    val dialog: Shape = RoundedCornerShape(28.dp)
 
     /** A bottom sheet, rounded at the top only. */
     val sheet: Shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)

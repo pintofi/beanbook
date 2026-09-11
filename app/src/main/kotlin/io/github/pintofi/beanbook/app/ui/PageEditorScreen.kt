@@ -45,6 +45,7 @@ import io.github.pintofi.beanbook.core.domain.CapturedPages
 import io.github.pintofi.beanbook.core.domain.CropQuad
 import io.github.pintofi.beanbook.core.domain.PageStyle
 import java.io.File
+import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 
 /**
  * The captured pages, one screen each, with the things you do to a page (B58).
@@ -172,7 +173,11 @@ fun PageEditorScreen(
                 SegmentedButton(
                     selected = pages.pages[current].style == option,
                     onClick = { onRestyle(current, option) },
-                    shape = SegmentedButtonDefaults.itemShape(index, PageStyle.entries.size),
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index,
+                        PageStyle.entries.size,
+                        baseShape = BeanbookShape.control,
+                    ),
                     modifier = Modifier.semantics {
                         contentDescription = "Render page ${current + 1} in ${option.label()}"
                     },

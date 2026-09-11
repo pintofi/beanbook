@@ -57,6 +57,7 @@ import io.github.pintofi.beanbook.core.domain.LedgerSummary
 import io.github.pintofi.beanbook.core.domain.SpendingPeriod
 import io.github.pintofi.beanbook.core.domain.recentEntries
 import java.time.LocalDate
+import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 
 /**
  * What the app opens on: what the ledger says, before what it contains.
@@ -587,7 +588,11 @@ private fun CustomiseHomeDialog(
                             SegmentedButton(
                                 selected = period == option,
                                 onClick = { period = option },
-                                shape = SegmentedButtonDefaults.itemShape(index, SpendingPeriod.entries.size),
+                                shape = SegmentedButtonDefaults.itemShape(
+                                index,
+                                SpendingPeriod.entries.size,
+                                baseShape = BeanbookShape.control,
+                            ),
                                 modifier = Modifier.semantics { contentDescription = option.label },
                             ) {
                                 // The short name, on one line. The full ones -- "This month",

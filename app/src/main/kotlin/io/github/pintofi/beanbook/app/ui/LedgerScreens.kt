@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.TextButton
@@ -39,8 +38,14 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
+import io.github.pintofi.beanbook.app.ui.theme.LedgerType
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.readableMeasure
 import io.github.pintofi.beanbook.app.ui.theme.AmountTextStyle
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -136,6 +141,8 @@ internal fun AmountText(
     /** How the open ledger asks its figures to be written (B59). */
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
         io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
+    /** Which size of the figure face: a row in a list, or a figure heading a group. */
+    style: TextStyle = LedgerType.row,
 ) {
     // The helper below existed from M6 and was never applied, so every amount was announced
     // as its raw text: TalkBack reads "-12.34 USD" by pronouncing the hyphen or dropping it,
@@ -145,6 +152,7 @@ internal fun AmountText(
     MoneyText(
         text = format.format(amount),
         modifier = modifier.semantics { contentDescription = spoken },
+        style = style,
         color = when {
             !signed -> MaterialTheme.colorScheme.onSurface
             amount.number.signum() < 0 -> BeancountTheme.ledger.negative
@@ -225,8 +233,10 @@ fun BalancesScreen(
         // reports. The dates go to the engine and narrow what is computed; the account
         // filter narrows what is drawn from that.
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Measure.gutter, vertical = Measure.snug),
+            horizontalArrangement = Arrangement.spacedBy(Measure.snug),
         ) {
             DateField(
                 value = dateFrom,
@@ -243,7 +253,7 @@ fun BalancesScreen(
         }
         if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Measure.gutter),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -271,7 +281,7 @@ fun BalancesScreen(
             describe = "Filter accounts by name",
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = Measure.gutter, vertical = Measure.snug),
         )
 
         if (valuationAllowed) {
@@ -279,13 +289,17 @@ fun BalancesScreen(
             // valued three ways -- and a segmented row is what Material uses to say "pick one
             // of these". Chips read as filters that combine, which is the opposite.
             SingleChoiceSegmentedButtonRow(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Measure.gutter),
             ) {
                 Valuation.entries.forEachIndexed { index, option ->
                     SegmentedButton(
                         selected = basis == option,
                         onClick = { basis = option; store.write(option) },
-                        shape = SegmentedButtonDefaults.itemShape(index, Valuation.entries.size),
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index,
+                            Valuation.entries.size,
+                            baseShape = BeanbookShape.control,
+                        ),
                         modifier = Modifier.semantics {
                             contentDescription = "Show balances ${option.label}"
                         },
@@ -310,7 +324,7 @@ fun BalancesScreen(
         // FAB always carries, and one the surfaces it appears on have to pay (B26).
         LazyColumn(
             modifier = Modifier.fillMaxSize().readableMeasure(),
-            contentPadding = PaddingValues(bottom = 88.dp),
+            contentPadding = PaddingValues(bottom = Measure.actionClearance),
         ) {
             if (snapshot.hasErrors) {
                 item { ErrorBanner(snapshot.errors) }
@@ -385,6 +399,15 @@ enum class Valuation(val label: String) {
     }
 }
 
+/**
+ * The head of one account tree: its name, what the whole tree holds, and the rule it hangs
+ * from.
+ *
+ * A band rather than a card, and square, because it is data: a heading in a ledger, printed
+ * a shade darker than the page. The leading rule is the same 2dp the rest of the app hangs
+ * its sections from, so the five trees read as five sections of one page rather than as five
+ * grey bars.
+ */
 @Composable
 private fun RootHeader(
     root: String,
@@ -393,12 +416,25 @@ private fun RootHeader(
     onToggle: () -> Unit,
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat,
 ) {
+    val rule = BeancountTheme.ledger.rule
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(role = Role.Button, onClick = onToggle)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .drawBehind {
+                drawRect(
+                    color = rule,
+                    topLeft = Offset(Measure.gutter.toPx(), 0f),
+                    size = Size(width = Measure.rule.toPx(), height = size.height),
+                )
+            }
+            .padding(
+                start = Measure.gutter + Measure.rule + Measure.gap,
+                end = Measure.gutter,
+                top = Measure.gap,
+                bottom = Measure.gap,
+            )
             .semantics {
                 contentDescription =
                     if (expanded) "$root, expanded. Tap to collapse" else "$root, collapsed. Tap to expand"
@@ -406,26 +442,29 @@ private fun RootHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             Icon(
                 imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                 contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 root,
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(start = 4.dp),
+                modifier = Modifier.padding(start = Measure.snug),
             )
         }
         Column(horizontalAlignment = Alignment.End) {
             if (totals.isEmpty()) {
-                Text("—", style = MaterialTheme.typography.bodyMedium)
+                Text("—", style = LedgerType.row, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 // Shown with the sign this ledger asks for (B67). Fava's
                 // `invert-income-liabilities-equity` turns income, liabilities and equity the
                 // way a person reads them, and a file that asks for it and gets the raw
                 // credit sign has every income figure on screen with a minus in front of it.
-                totals.forEach { AmountText(format.signed(it, root), format = format) }
+                totals.forEach {
+                    AmountText(format.signed(it, root), format = format, style = LedgerType.figure)
+                }
             }
         }
     }
@@ -458,11 +497,13 @@ private fun AccountRow(
                     Modifier
                 }
             )
+            // Indented from the rule its tree hangs from, one step per level, so depth is
+            // read off the page rather than off the account name.
             .padding(
-                start = (16 + node.depth * 12).dp,
-                end = 16.dp,
-                top = 8.dp,
-                bottom = 8.dp,
+                start = Measure.gutter + Measure.rule + Measure.gap + (node.depth * 12).dp,
+                end = Measure.gutter,
+                top = Measure.snug,
+                bottom = Measure.snug,
             )
             .semantics { contentDescription = spoken },
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -483,14 +524,14 @@ private fun AccountRow(
             Text(
                 text = node.leaf,
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(start = if (node.hasChildren) 4.dp else 28.dp),
+                modifier = Modifier.padding(start = if (node.hasChildren) Measure.tight else 28.dp),
             )
         }
         Column(horizontalAlignment = Alignment.End) {
             amounts.forEach { AmountText(it, format = format) }
         }
     }
-    HorizontalDivider()
+    LedgerHairline(Modifier.padding(start = Measure.gutter + Measure.rule + Measure.gap))
 }
 
 @Composable
@@ -549,15 +590,16 @@ fun JournalScreen(
                 ) { Icon(Icons.Filled.Close, contentDescription = null) }
             }
         },
+        shape = BeanbookShape.control,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = Measure.gutter, vertical = Measure.snug)
             .semantics { contentDescription = "Search entries by date, payee, description or account" },
     )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().readableMeasure(),
-        contentPadding = PaddingValues(bottom = 88.dp),
+        contentPadding = PaddingValues(bottom = Measure.actionClearance),
     ) {
         if (loose.isNotEmpty()) {
             item { ErrorBanner(loose) }
@@ -573,52 +615,37 @@ fun JournalScreen(
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Measure.gutter, vertical = Measure.snug),
                 )
             }
         }
         if (found.isEmpty() && query.isNotBlank()) {
             item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text("Nothing matches \"$query\"", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Every word has to appear somewhere in the entry. Try fewer of them.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+                EmptyState(
+                    title = "Nothing matches \"$query\"",
+                    detail = "Every word has to appear somewhere in the entry. Try fewer of them.",
+                    modifier = Modifier.padding(horizontal = Measure.gutter),
+                )
             }
         }
         if (snapshot.journal.isEmpty()) {
             item {
-                // Says what to do next, not just that there is nothing. A bare "No
-                // transactions yet." in an otherwise empty screen tells the user a fact they
-                // can already see and leaves them to find the way forward themselves (D9).
-                //
-                // `fillParentMaxHeight` so it settles in the middle of the screen rather than
-                // against the top with two thirds of the viewport empty beneath it. An empty
-                // state anchored to the top reads as content that failed to load; centred, it
-                // reads as the screen's whole message, which is what it is.
+                // Centred in the viewport rather than pinned to the top: an empty state
+                // anchored to the top reads as content that failed to load, and this one is
+                // the screen's whole message. It says what to do next, not only that there
+                // is nothing (D9).
                 Column(
                     modifier = Modifier
                         .fillParentMaxHeight()
                         .fillMaxWidth()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                        .padding(horizontal = Measure.gutter),
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    Text(
-                        text = "No transactions yet",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        "Tap + to write your first one.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
+                    EmptyState(
+                        title = "No transactions yet",
+                        detail = "Tap + to write your first one.",
                     )
                 }
             }
@@ -630,7 +657,11 @@ fun JournalScreen(
                 onClick = { onOpenEntry(entry) },
                 errors = faults[JournalErrors.keyOf(entry)].orEmpty(),
             )
-            HorizontalDivider()
+            // Indented to where the entry's own text starts, so the hairlines run down the
+            // page as one column rather than cutting across the marks in the gutter.
+            LedgerHairline(
+                Modifier.padding(start = Measure.gutter + Measure.stamp + Measure.gap),
+            )
         }
         if (shown < found.size) {
             item {
@@ -646,7 +677,7 @@ fun JournalScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(Measure.indent),
                 )
             }
         }
@@ -657,6 +688,15 @@ fun JournalScreen(
 /** Rows added each time the reader reaches the end of what is drawn. */
 private const val JOURNAL_PAGE = 30
 
+/**
+ * One entry in the journal, as a line of a ruled book (B74).
+ *
+ * The row is a gutter and a column. In the gutter is the mark -- what the file's flag says,
+ * or that Beancount could not read this entry -- and in the column are the words, the date,
+ * and the postings underneath, with every amount right-aligned on the same edge so a page of
+ * entries can be read down rather than across. The postings hang off a hairline of their own,
+ * which is what makes an entry read as one thing with parts rather than as five loose lines.
+ */
 @Composable
 private fun JournalRow(
     entry: JournalEntry,
@@ -665,13 +705,18 @@ private fun JournalRow(
     /** What Beancount said about this entry, when it said anything (B64). */
     errors: List<LedgerError> = emptyList(),
 ) {
-    Column(
+    val mark = when {
+        errors.isNotEmpty() -> LedgerMark.ATTENTION
+        entry.flag == "!" -> LedgerMark.PENDING
+        else -> LedgerMark.CLEARED
+    }
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(role = Role.Button, onClick = onClick)
             // The whole row, not the text inside it: a row that reads as one thing and
             // responds only where the words happen to be is one people tap twice.
-            .semantics {
+            .semantics(mergeDescendants = true) {
                 contentDescription = buildString {
                     append(entry.date).append(", ").append(entry.description)
                     if (errors.isNotEmpty()) {
@@ -680,68 +725,88 @@ private fun JournalRow(
                     }
                 }
             }
-            .padding(16.dp),
+            .padding(horizontal = Measure.gutter, vertical = Measure.rowPadding),
     ) {
-        // Above the entry rather than beside it: the message is a sentence, and a sentence in
-        // a corner of a row is one nobody reads. It stays until the file is fixed, which is
-        // the point -- the ledger reloads after every write, so a corrected entry loses it.
-        if (errors.isNotEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+        StampMark(mark, modifier = Modifier.padding(top = Measure.tight, end = Measure.gap))
+        Column(Modifier.weight(1f)) {
+            // Above the entry rather than beside it: the message is a sentence, and a
+            // sentence in a corner of a row is one nobody reads. It stays until the file is
+            // fixed, which is the point -- the ledger reloads after every write, so a
+            // corrected entry loses it.
+            errors.forEach { error ->
+                Text(
+                    text = error.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = Measure.tight),
+                )
+            }
+            Text(entry.description, style = MaterialTheme.typography.bodyLarge)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = Measure.tight),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                errors.forEach { error ->
+                Text(
+                    entry.date,
+                    style = LedgerType.small,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // Says a receipt is attached without opening anything: the row is a list
+                // item, and the document itself belongs on the detail screen (B17).
+                if (entry.linkedDocuments.isNotEmpty()) {
                     Text(
-                        text = error.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        if (entry.linkedDocuments.size == 1) {
+                            "Has a document"
+                        } else {
+                            "Has ${entry.linkedDocuments.size} documents"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = BeancountTheme.ledger.rule,
+                        modifier = Modifier.padding(start = Measure.gap),
                     )
                 }
             }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(entry.date, fontFamily = FontFamily.Monospace)
-            // The flag is shown as a character, not a colour: "!" means needs review.
-            entry.flag?.let { Text(it, fontFamily = FontFamily.Monospace) }
-        }
-        Text(entry.description, style = MaterialTheme.typography.bodyLarge)
-        // Says a receipt is attached without opening anything: the row is a list item, and
-        // the document itself belongs on the detail screen (B17).
-        if (entry.linkedDocuments.isNotEmpty()) {
-            Text(
-                if (entry.linkedDocuments.size == 1) {
-                    "Has a document"
-                } else {
-                    "Has ${entry.linkedDocuments.size} documents"
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-        if (entry.tags.isNotEmpty() || entry.links.isNotEmpty()) {
-            Text(
-                text = (entry.tags.map { "#$it" } + entry.links.map { "^$it" }).joinToString(" "),
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-        entry.postings.forEach { posting ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
+            if (entry.tags.isNotEmpty() || entry.links.isNotEmpty()) {
                 Text(
-                    text = posting.account,
+                    text = (entry.tags.map { "#$it" } + entry.links.map { "^$it" }).joinToString(" "),
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Measure.tight),
                 )
-                posting.amount?.let { AmountText(it, signed = true, format = format) }
             }
-            PostingLotText(posting)
+            if (entry.postings.isNotEmpty()) {
+                val hairline = MaterialTheme.colorScheme.outlineVariant
+                Column(
+                    modifier = Modifier
+                        .padding(top = Measure.snug)
+                        // The postings hang off a hairline of their own, so an entry reads as
+                        // one thing with parts rather than as five loose lines.
+                        .drawBehind {
+                            drawRect(
+                                color = hairline,
+                                size = Size(width = 1.dp.toPx(), height = size.height),
+                            )
+                        }
+                        .padding(start = Measure.gap),
+                ) {
+                    entry.postings.forEach { posting ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = Measure.tight),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = posting.account,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f).padding(end = Measure.snug),
+                            )
+                            posting.amount?.let {
+                                AmountText(it, signed = true, format = format, style = LedgerType.row)
+                            }
+                        }
+                        PostingLotText(posting)
+                    }
+                }
+            }
         }
     }
 }

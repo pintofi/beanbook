@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.app.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import android.Manifest
@@ -53,11 +54,14 @@ import io.github.pintofi.beanbook.core.domain.BeancountText
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.DraftProblem
 import io.github.pintofi.beanbook.core.domain.EntryTemplate
+import io.github.pintofi.beanbook.app.ui.theme.LedgerType
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.core.domain.LedgerVocabulary
 import io.github.pintofi.beanbook.core.domain.PostingDraft
 import io.github.pintofi.beanbook.core.domain.TransactionDraft
 import java.math.BigDecimal
 import java.time.LocalDate
+import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 
 /**
  * One editable posting row. Empty amount means elided — Beancount works it out.
@@ -287,15 +291,16 @@ fun QuickAddScreen(
         // above the keyboard, and a last field that could not be scrolled into view (B54).
         modifier = modifier
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = Measure.gutter)
+            .padding(top = Measure.gap, bottom = Measure.section),
+        verticalArrangement = Arrangement.spacedBy(Measure.gap),
     ) {
         // Templates come first because that is when they are useful: before anything has
         // been typed. Applying one fills the form and stops there — the entry is still
         // previewed and validated like any other, so a template cannot write anything the
         // user has not seen (docs/ux.md 4).
         if (templates.isNotEmpty()) {
-            Text("Templates", style = MaterialTheme.typography.titleSmall)
+            LedgerHeading("Templates")
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -319,13 +324,13 @@ fun QuickAddScreen(
             SegmentedButton(
                 selected = flag == "*",
                 onClick = { flag = "*" },
-                shape = SegmentedButtonDefaults.itemShape(0, 2),
+                shape = SegmentedButtonDefaults.itemShape(0, 2, baseShape = BeanbookShape.control),
                 modifier = Modifier.semantics { contentDescription = "Cleared transaction" },
             ) { Text("Cleared") }
             SegmentedButton(
                 selected = flag == "!",
                 onClick = { flag = "!" },
-                shape = SegmentedButtonDefaults.itemShape(1, 2),
+                shape = SegmentedButtonDefaults.itemShape(1, 2, baseShape = BeanbookShape.control),
                 modifier = Modifier.semantics { contentDescription = "Pending transaction" },
             ) { Text("Pending") }
         }
@@ -397,7 +402,7 @@ fun QuickAddScreen(
             )
         }
 
-        Text("Postings", style = MaterialTheme.typography.titleSmall)
+        LedgerHeading("Postings")
 
         // Side by side, an account and an amount stop fitting once the text is large: at
         // 200% font the amount field is narrow enough that its own label wraps mid-word.
@@ -559,42 +564,41 @@ fun QuickAddScreen(
         // to let Beancount finish the arithmetic.
         if (residuals.isNotEmpty()) {
             val elided = draft.postings.count { it.isElided }
-            Text(
-                text = if (elided == 1) {
-                    "Beancount will put ${residuals.joinToString(", ") { format.format(it) }} on the " +
-                        "posting with no amount."
-                } else {
-                    "Does not balance: ${residuals.joinToString(", ") { format.format(it) }}"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = if (elided == 1) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.error
-                },
-            )
-        }
-
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Text("Will be written as", style = MaterialTheme.typography.labelMedium)
+            Notice(if (elided == 1) NoticeTone.QUIET else NoticeTone.ATTENTION) {
                 Text(
-                    text = draft.render(),
-                    fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .padding(top = 4.dp)
-                        .semantics { contentDescription = "Preview of the entry to be saved" },
+                    text = if (elided == 1) {
+                        "Beancount will put ${residuals.joinToString(", ") { format.format(it) }} " +
+                            "on the posting with no amount."
+                    } else {
+                        "Does not balance: ${residuals.joinToString(", ") { format.format(it) }}"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
 
-        problems.forEach { problem ->
+        // The promise the form makes, and the one moment in it that looks like the file:
+        // the lines about to be written, in the source face, on a surface a shade off the
+        // page and hung from the same rule as everything else the app states as fact.
+        RuledColumn(modifier = Modifier.padding(top = Measure.snug)) {
+            LedgerHeading("Will be written as")
             Text(
-                text = problem.describe(),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
+                text = draft.render(),
+                style = LedgerType.source,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .padding(Measure.indent)
+                    .semantics { contentDescription = "Preview of the entry to be saved" },
             )
+        }
+
+        if (problems.isNotEmpty()) {
+            Notice(NoticeTone.PROBLEM) {
+                problems.forEach { problem ->
+                    Text(problem.describe(), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
 
         // Invariant 6: a retried write never creates a duplicate entry. `ProjectWriter.append`
@@ -622,22 +626,17 @@ fun QuickAddScreen(
         // stand here was a warning that pages were "not attached", pointing at a second button
         // the user had to find; missing it filed the receipt under nothing.
         if (unfiledPages > 0 && documentAccount.isBlank()) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics {
-                        contentDescription =
-                            "$unfiledPages photographed page(s) cannot be filed without an account"
-                    },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                ),
+            Notice(
+                NoticeTone.ATTENTION,
+                modifier = Modifier.semantics {
+                    contentDescription =
+                        "$unfiledPages photographed page(s) cannot be filed without an account"
+                },
             ) {
                 Text(
                     "$unfiledPages page${if (unfiledPages == 1) "" else "s"} photographed. " +
                         "Give the first posting an account so they can be filed under it.",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }

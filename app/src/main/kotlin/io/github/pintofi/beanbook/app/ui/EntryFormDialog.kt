@@ -36,6 +36,7 @@ import io.github.pintofi.beanbook.core.domain.LedgerVocabulary
 import io.github.pintofi.beanbook.core.domain.PostingDraft
 import io.github.pintofi.beanbook.core.domain.TransactionDraft
 import java.math.BigDecimal
+import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 
 /** One posting being edited, as three boxes rather than a rendered line. */
 private class EditRow(
@@ -160,7 +161,7 @@ fun EntryFormDialog(
                         SegmentedButton(
                             selected = flag == value,
                             onClick = { flag = value },
-                            shape = SegmentedButtonDefaults.itemShape(index, 2),
+                            shape = SegmentedButtonDefaults.itemShape(index, 2, baseShape = BeanbookShape.control),
                         ) { Text(label) }
                     }
                 }

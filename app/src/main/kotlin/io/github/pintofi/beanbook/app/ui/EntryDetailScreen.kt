@@ -8,9 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,8 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import io.github.pintofi.beanbook.app.ui.theme.LedgerType
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.core.domain.JournalEntry
 
 /**
@@ -57,107 +55,127 @@ fun EntryDetailScreen(
     var viewing by remember { mutableStateOf<String?>(null) }
     var confirmingDelete by remember(entry) { mutableStateOf(false) }
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Measure.gutter)
+            .padding(top = Measure.gap, bottom = Measure.section),
+        verticalArrangement = Arrangement.spacedBy(Measure.section),
     ) {
         if (errors.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
+            Notice(NoticeTone.PROBLEM) {
+                Text(
+                    if (errors.size == 1) "Beancount reported an error here" else
+                        "Beancount reported ${errors.size} errors here",
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                errors.forEach { error ->
                     Text(
-                        if (errors.size == 1) "Beancount reported an error here" else
-                            "Beancount reported ${errors.size} errors here",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        text = error.position?.let { "${error.message} ($it)" } ?: error.message,
+                        style = MaterialTheme.typography.bodySmall,
                     )
-                    errors.forEach { error ->
-                        Text(
-                            text = error.position?.let { "${error.message} ($it)" } ?: error.message,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
-                    }
                 }
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(entry.date, fontFamily = FontFamily.Monospace)
-            Text(
-                entry.description.ifBlank { "(no description)" },
-                style = MaterialTheme.typography.titleMedium,
-            )
-            entry.flag?.let { flag ->
+        // The subject of the screen, hung off the rule like every other heading in the app:
+        // the mark says what the file's flag means, the words say what the entry is, and the
+        // date is underneath in the figure face where the eye expects a column of them.
+        RuledColumn {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StampMark(
+                    when {
+                        errors.isNotEmpty() -> LedgerMark.ATTENTION
+                        entry.flag == "!" -> LedgerMark.PENDING
+                        else -> LedgerMark.CLEARED
+                    },
+                    modifier = Modifier.padding(end = Measure.gap),
+                )
                 Text(
-                    if (flag == "!") "Pending (!) — flagged for another look" else "Cleared ($flag)",
-                    style = MaterialTheme.typography.bodySmall,
+                    entry.flag?.let { flag ->
+                        if (flag == "!") "Pending, flagged for another look" else "Cleared"
+                    } ?: "No flag",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            Text(
+                entry.description.ifBlank { "(no description)" },
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(top = Measure.snug),
+            )
+            Text(
+                entry.date,
+                style = LedgerType.small,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Measure.tight),
+            )
         }
 
         if (entry.tags.isNotEmpty() || entry.links.isNotEmpty()) {
             Text(
                 (entry.tags.map { "#$it" } + entry.links.map { "^$it" }).joinToString(" "),
                 style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        HorizontalDivider()
-
-        Text("Postings", style = MaterialTheme.typography.titleSmall)
-        entry.postings.forEach { posting ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    posting.account,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp),
-                )
-                posting.amount?.let { AmountText(it, signed = true, format = format) }
-                    ?: Text("(elided)", style = MaterialTheme.typography.bodySmall)
+        RuledColumn {
+            LedgerHeading("Postings")
+            entry.postings.forEachIndexed { index, posting ->
+                if (index > 0) LedgerHairline()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = Measure.snug),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        posting.account,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f).padding(end = Measure.snug),
+                    )
+                    posting.amount?.let { AmountText(it, signed = true, format = format) }
+                        ?: Text(
+                            "(elided)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                }
+                PostingLotText(posting)
             }
-            PostingLotText(posting)
         }
 
         // Documents this entry links to, by the convention link_documents uses. Read here
         // first (B57): checking what a transaction was for used to mean leaving the app
         // through a share sheet and coming back. Sharing is still one tap away, inside.
         if (entry.linkedDocuments.isNotEmpty()) {
-            HorizontalDivider()
-            Text("Documents", style = MaterialTheme.typography.titleSmall)
-            entry.linkedDocuments.forEach { path ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        path.substringAfterLast('/'),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (fileForDocument != null) {
-                        TextButton(
-                            onClick = { viewing = path },
-                            modifier = Modifier.semantics {
-                                contentDescription = "View ${path.substringAfterLast('/')}"
-                            },
-                        ) { Text("View") }
-                    }
-                    if (onOpenDocument != null) {
-                        TextButton(
-                            onClick = { onOpenDocument(path) },
-                            modifier = Modifier.semantics {
-                                contentDescription = "Share ${path.substringAfterLast('/')}"
-                            },
-                        ) { Text("Share") }
+            RuledColumn {
+                LedgerHeading("Documents")
+                entry.linkedDocuments.forEach { path ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            path.substringAfterLast('/'),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (fileForDocument != null) {
+                            TextButton(
+                                onClick = { viewing = path },
+                                modifier = Modifier.semantics {
+                                    contentDescription = "View ${path.substringAfterLast('/')}"
+                                },
+                            ) { Text("View") }
+                        }
+                        if (onOpenDocument != null) {
+                            TextButton(
+                                onClick = { onOpenDocument(path) },
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Share ${path.substringAfterLast('/')}"
+                                },
+                            ) { Text("Share") }
+                        }
                     }
                 }
             }
@@ -166,23 +184,18 @@ fun EntryDetailScreen(
         // Where it lives. On a ledger split across included files this is the only way to
         // find the entry again in an editor, and the journal row cannot show it.
         entry.file?.let { file ->
-            HorizontalDivider()
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Where it is", style = MaterialTheme.typography.labelMedium)
-                    Text(
-                        listOfNotNull(file.substringAfterLast('/'), entry.line?.toString())
-                            .joinToString(":"),
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+            RuledColumn {
+                LedgerHeading("Where it is")
+                Text(
+                    listOfNotNull(file.substringAfterLast('/'), entry.line?.toString())
+                        .joinToString(":"),
+                    style = LedgerType.source,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 
-        HorizontalDivider()
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Measure.snug)) {
             Button(
                 onClick = onClone,
                 modifier = Modifier.semantics {
@@ -212,38 +225,30 @@ fun EntryDetailScreen(
         // which entry, says the file it will be taken out of, and says that undo exists --
         // because the honest reassurance is that this is recoverable, not that it is small.
         if (onDelete != null && confirmingDelete) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "Confirm deleting this transaction" },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                ),
+            Notice(
+                NoticeTone.PROBLEM,
+                modifier = Modifier.semantics {
+                    contentDescription = "Confirm deleting this transaction"
+                },
             ) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        "Delete this transaction?",
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    Text(
-                        "\"${entry.description.ifBlank { entry.date }}\" will be removed from " +
-                            "${entry.file?.substringAfterLast('/') ?: "the ledger"}. Any document " +
-                            "it links to stays where it is, and this can be undone.",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = { confirmingDelete = false; onDelete() },
-                            modifier = Modifier.semantics {
-                                contentDescription = "Delete this transaction"
-                            },
-                        ) { Text("Delete it") }
-                        TextButton(onClick = { confirmingDelete = false }) { Text("Keep it") }
-                    }
+                Text("Delete this transaction?", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "\"${entry.description.ifBlank { entry.date }}\" will be removed from " +
+                        "${entry.file?.substringAfterLast('/') ?: "the ledger"}. Any document " +
+                        "it links to stays where it is, and this can be undone.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(Measure.snug)) {
+                    Button(
+                        onClick = { confirmingDelete = false; onDelete() },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Delete this transaction"
+                        },
+                    ) { Text("Delete it") }
+                    TextButton(onClick = { confirmingDelete = false }) { Text("Keep it") }
                 }
             }
         }
-
     }
 
     viewing?.let { path ->
