@@ -406,7 +406,16 @@ private fun AttentionCard(
     // is a notice: rounded and tinted where the data around it is square and on paper. When
     // there is nothing to say it stays on the page as a ruled line, because a tinted panel
     // announcing that nothing is wrong is the app congratulating itself.
-    if (items.isEmpty()) {
+    // What needs a person changes while the app is open -- a document is filed, a mirror
+    // conflict is resolved -- so the two states dissolve into each other rather than
+    // replacing each other between frames (B76).
+    io.github.pintofi.beanbook.app.ui.LedgerContent(
+        targetState = items,
+        label = "attention",
+        contentKey = { it.isEmpty() },
+        move = { _, _ -> io.github.pintofi.beanbook.app.ui.Move.none },
+    ) { shown ->
+    if (shown.isEmpty()) {
         RuledColumn {
             LedgerHeading("Needs attention")
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -419,12 +428,12 @@ private fun AttentionCard(
                 )
             }
         }
-        return
+        return@LedgerContent
     }
 
     Notice(NoticeTone.PROBLEM) {
         Text("Needs attention", style = MaterialTheme.typography.titleSmall)
-        items.forEach { item ->
+        shown.forEach { item ->
             val go = when (item.destination) {
                 AttentionItem.Destination.JOURNAL -> onOpenJournal
                 AttentionItem.Destination.DOCUMENTS -> onOpenDocuments
@@ -447,6 +456,7 @@ private fun AttentionCard(
                 }
             }
         }
+    }
     }
 }
 

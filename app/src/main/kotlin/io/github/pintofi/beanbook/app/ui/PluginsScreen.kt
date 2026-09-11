@@ -363,7 +363,13 @@ private fun PluginCard(
  */
 @Composable
 private fun RestartCard(restart: EngineRestartUi) {
-    if (!restart.needed) return
+    // Arrives by making room, and leaves the same way when the engine comes back: installing
+    // a plugin should look like the screen answering, not like a panel blinking into the
+    // middle of the page (B76).
+    io.github.pintofi.beanbook.app.ui.LedgerReveal(
+        visible = restart.needed,
+        label = "restart",
+    ) {
     Notice(
         NoticeTone.ATTENTION,
         modifier = Modifier.semantics {
@@ -382,6 +388,7 @@ private fun RestartCard(restart: EngineRestartUi) {
             onClick = restart.onRestart,
             modifier = Modifier.semantics { contentDescription = "Restart the engine now" },
         ) { Text("Restart the engine") }
+    }
     }
 }
 

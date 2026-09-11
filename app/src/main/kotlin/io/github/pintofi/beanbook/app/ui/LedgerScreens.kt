@@ -63,6 +63,7 @@ import io.github.pintofi.beanbook.core.domain.JournalEntry
 import io.github.pintofi.beanbook.core.domain.JournalErrors
 import io.github.pintofi.beanbook.core.domain.LedgerError
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
+import androidx.compose.ui.graphics.graphicsLayer
 
 /**
  * The free-tier native surfaces: the account balances list and the journal
@@ -458,11 +459,7 @@ private fun RootHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            Icon(
-                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            DisclosureChevron(expanded, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 root,
                 style = MaterialTheme.typography.titleMedium,
@@ -527,10 +524,7 @@ private fun AccountRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             if (node.hasChildren) {
-                Icon(
-                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = null,
-                )
+                DisclosureChevron(expanded)
             }
             // The leaf alone. A ledger with both Expenses:Rent and Expenses:Home:Rent used to
             // show two rows called "Rent" with different figures and nothing to tell them
@@ -894,7 +888,10 @@ fun ErrorBanner(errors: List<LedgerError>, modifier: Modifier = Modifier) {
                 tint = MaterialTheme.colorScheme.onErrorContainer,
             )
         }
-        if (expanded) {
+        // The messages push the banner open rather than appearing inside a box that was
+        // already the right size: what a tap did is then visible as the page making room.
+        LedgerReveal(visible = expanded, label = "errorDetail") {
+            Column {
             errors.take(5).forEach { error ->
                 Text(
                     text = listOfNotNull(error.position, error.message).joinToString("  "),
@@ -911,6 +908,38 @@ fun ErrorBanner(errors: List<LedgerError>, modifier: Modifier = Modifier) {
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
+            }
         }
     }
+}
+
+/**
+ * The mark on a row that opens: one chevron, turned.
+ *
+ * Two icons swapped between frames say "something changed"; one icon rotating says *this row
+ * opened*, which is the thing that actually happened (B76). Rotation is a graphics-layer
+ * property, so the row is redrawn rather than measured again.
+ */
+@Composable
+private fun DisclosureChevron(
+    expanded: Boolean,
+    modifier: Modifier = Modifier,
+    tint: Color = androidx.compose.ui.graphics.Color.Unspecified,
+) {
+    val animate = io.github.pintofi.beanbook.app.ui.theme.LocalMotionEnabled.current
+    val turn by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = if (animate) {
+            io.github.pintofi.beanbook.app.ui.theme.MotionRole.local()
+        } else {
+            androidx.compose.animation.core.snap()
+        },
+        label = "chevron",
+    )
+    Icon(
+        imageVector = Icons.Filled.ExpandMore,
+        contentDescription = null,
+        tint = tint,
+        modifier = modifier.graphicsLayer { rotationZ = turn },
+    )
 }

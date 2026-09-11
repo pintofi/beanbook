@@ -201,8 +201,19 @@ private fun MirrorStatusCard(status: MirrorStatus) {
             contentDescription = "Mirroring status: $headline. $detail"
         },
     ) {
-        Text(headline, style = MaterialTheme.typography.titleSmall)
-        Text(detail, style = MaterialTheme.typography.bodyMedium)
+        // A pass changes what this says several times in a few seconds -- comparing, copying
+        // 3 of 40, done -- and text that is replaced between frames reads as flicker. The
+        // words dissolve into each other instead (B76).
+        io.github.pintofi.beanbook.app.ui.LedgerContent(
+            targetState = headline to detail,
+            label = "mirrorStatus",
+            move = { _, _ -> io.github.pintofi.beanbook.app.ui.Move.none },
+        ) { (shownHeadline, shownDetail) ->
+            Column(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
+                Text(shownHeadline, style = MaterialTheme.typography.titleSmall)
+                Text(shownDetail, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
         // A rule filling, in the app's own measure: a pass that is counting files fills it
         // by count, and one that is still comparing draws it without a figure to fill to.
         when (status) {

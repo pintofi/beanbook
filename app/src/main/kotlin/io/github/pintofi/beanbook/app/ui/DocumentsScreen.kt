@@ -49,6 +49,7 @@ import io.github.pintofi.beanbook.core.domain.LedgerVocabulary
 import java.io.File
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
+import androidx.compose.ui.graphics.graphicsLayer
 
 /** The two jobs the documents screen does, kept apart so neither is in the other's way. */
 enum class DocumentsMode(val label: String) {
@@ -286,14 +287,22 @@ fun DocumentsScreen(
                                 style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.weight(1f),
                             )
-                            Icon(
-                                imageVector = if (open) {
-                                    Icons.Filled.ExpandLess
+                            val turn by androidx.compose.animation.core.animateFloatAsState(
+                                targetValue = if (open) 180f else 0f,
+                                animationSpec = if (
+                                    io.github.pintofi.beanbook.app.ui.theme.LocalMotionEnabled.current
+                                ) {
+                                    io.github.pintofi.beanbook.app.ui.theme.MotionRole.local()
                                 } else {
-                                    Icons.Filled.ExpandMore
+                                    androidx.compose.animation.core.snap()
                                 },
+                                label = "documentChevron",
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.ExpandMore,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.graphicsLayer { rotationZ = turn },
                             )
                         }
                         Text(
@@ -301,10 +310,14 @@ fun DocumentsScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        if (open) {
-                            Text(path, style = LedgerType.small)
-                            row.date?.let {
-                                Text("Dated $it", style = MaterialTheme.typography.bodySmall)
+                        // The detail pushes the rows below it down rather than appearing in a
+                        // gap that was already there (B76).
+                        LedgerReveal(visible = open, label = "documentDetail") {
+                            Column {
+                                Text(path, style = LedgerType.small)
+                                row.date?.let {
+                                    Text("Dated $it", style = MaterialTheme.typography.bodySmall)
+                                }
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
