@@ -52,6 +52,9 @@ import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.RuledColumn
 import io.github.pintofi.beanbook.app.ui.NoticeTone
 import io.github.pintofi.beanbook.app.ui.Notice
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.heightIn
 // The smaller pieces the shell is built from: the rail and top bar, the banners, and the
 // states a surface falls back to. Split out of MainActivity.kt; see LedgerApp.kt.
 /**
@@ -177,11 +180,31 @@ internal fun LedgerTopBar(
             titleContentColor = MaterialTheme.colorScheme.onSurface,
         ),
         title = {
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            // The name of the open ledger *is* the control that switches it. A separate
+            // "Switch" button said the same thing twice -- the name, and a word meaning
+            // "change the name" -- and spent the right-hand corner of every screen on it.
+            // The caret is what says the title is a control; the description says what
+            // tapping it does, so nothing depends on noticing the caret.
+            val switchable = !adding && sectionTitle == null
+            Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                modifier = if (switchable) {
+                    Modifier
+                        .clip(io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.control)
+                        .clickable(role = Role.Button, onClick = onSwitchProject)
+                        .heightIn(min = 48.dp)
+                        .padding(horizontal = 8.dp)
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = "Switch project. Currently open: $projectName"
+                        }
+                } else {
+                    Modifier
+                },
+            ) {
                 // The rule, in the chrome. Two rules where the ledger is healthy and one
                 // where it is not: the same vocabulary as the mark beside an entry, so the
                 // shape says "in balance" before the words under it are read.
-                if (!adding && sectionTitle == null) {
+                if (switchable) {
                     HealthRule(healthy = health?.contains("no errors") == true)
                     androidx.compose.foundation.layout.Spacer(Modifier.width(12.dp))
                 }
@@ -195,7 +218,7 @@ internal fun LedgerTopBar(
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                     )
-                    if (!adding && sectionTitle == null && health != null) {
+                    if (switchable && health != null) {
                         Text(
                             health,
                             style = MaterialTheme.typography.labelMedium,
@@ -203,6 +226,14 @@ internal fun LedgerTopBar(
                             maxLines = 1,
                         )
                     }
+                }
+                if (switchable) {
+                    Icon(
+                        Icons.Filled.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
                 }
             }
         },
@@ -225,25 +256,6 @@ internal fun LedgerTopBar(
                 ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                 }
-            }
-        },
-        actions = {
-            if (sectionTitle == null && !adding) {
-                // An outlined control rather than bare text: this switches which ledger the
-                // whole app is looking at, which is not a thing to do by accident.
-                androidx.compose.material3.OutlinedButton(
-                    onClick = onSwitchProject,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        horizontal = 14.dp,
-                        vertical = 6.dp,
-                    ),
-                    shape = io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.control,
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .semantics {
-                            contentDescription = "Switch project. Currently open: $projectName"
-                        },
-                ) { Text("Switch", style = MaterialTheme.typography.labelMedium) }
             }
         },
     )

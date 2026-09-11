@@ -4,6 +4,8 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -56,8 +58,11 @@ class AddFormChromeTest {
         }
 
         compose.onNodeWithText("New entry").assertIsDisplayed()
-        // The project's own switcher belongs to the destinations, not to a task.
-        compose.onNodeWithText("Switch").assertDoesNotExist()
+        // The project's own switcher belongs to the destinations, not to a task: the title
+        // of a form is a name, not a control.
+        compose.onAllNodesWithContentDescription(
+            "Switch project. Currently open: My Ledger",
+        ).assertCountEquals(0)
         compose.onNodeWithContentDescription("Close the entry form").performClick()
         assertTrue("closing the form did nothing", closed)
     }
@@ -77,6 +82,56 @@ class AddFormChromeTest {
         }
         compose.onNodeWithText("My Ledger").assertIsDisplayed()
         compose.onNodeWithContentDescription("Close the entry form").assertDoesNotExist()
+    }
+
+    /**
+     * The name of the open ledger is the control that changes it (B75).
+     *
+     * There used to be a "Switch" button in the right-hand corner of every screen saying
+     * the same thing the title already said. Tapping the title does it now, so the corner
+     * is free and the thing you press is the thing you are changing.
+     */
+    @Test fun tappingTheProjectsNameSwitchesProject() {
+        var switched = false
+        compose.setContent {
+            MaterialTheme {
+                LedgerTopBar(
+                    projectName = "My Ledger",
+                    health = "8 entries · no errors",
+                    sectionTitle = null,
+                    adding = false,
+                    onBack = {},
+                    onSwitchProject = { switched = true },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Switch").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Switch project. Currently open: My Ledger")
+            .performClick()
+
+        assertTrue("tapping the ledger's name did not offer the other projects", switched)
+    }
+
+    /** Inside a section the title is a heading, not a way out of the project. */
+    @Test fun aSectionsTitleIsNotASwitcher() {
+        compose.setContent {
+            MaterialTheme {
+                LedgerTopBar(
+                    projectName = "My Ledger",
+                    health = "8 entries · no errors",
+                    sectionTitle = "Backup",
+                    adding = false,
+                    onBack = {},
+                    onSwitchProject = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("Backup").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription(
+            "Switch project. Currently open: My Ledger",
+        ).assertCountEquals(0)
     }
 
     /**
