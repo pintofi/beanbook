@@ -488,7 +488,14 @@ private fun CustomiseHomeDialog(
                                 onClick = { period = option },
                                 shape = SegmentedButtonDefaults.itemShape(index, SpendingPeriod.entries.size),
                                 modifier = Modifier.semantics { contentDescription = option.label },
-                            ) { Text(option.label) }
+                            ) {
+                                // The short name, on one line. The full ones -- "This month",
+                                // "Last 30 days", "This year" -- wrapped to two lines in two
+                                // of the three segments and to one in the other, so the row
+                                // came out with three different heights. The card's own
+                                // header still says the long name, where there is room.
+                                Text(option.shortLabel, maxLines = 1)
+                            }
                         }
                     }
                     Row(

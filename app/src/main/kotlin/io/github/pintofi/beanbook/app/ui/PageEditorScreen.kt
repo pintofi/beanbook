@@ -86,6 +86,27 @@ fun PageEditorScreen(
     var cropping by rememberSaveable { mutableStateOf<Int?>(null) }
     val current = state.currentPage.coerceIn(0, pages.size - 1)
 
+    // Cropping takes the screen in place of the editor rather than opening a card over it
+    // (B73): it is the same page, at the same size, and only the controls change.
+    val croppingIndex = cropping
+    if (croppingIndex != null) {
+        val page = pages.pages.getOrNull(croppingIndex)
+        if (page != null) {
+            CropPageScreen(
+                file = fileFor(page.source),
+                initial = page.crop,
+                onCropped = { quad ->
+                    onCrop(croppingIndex, quad)
+                    cropping = null
+                },
+                onDismiss = { cropping = null },
+                modifier = modifier,
+            )
+            return
+        }
+        cropping = null
+    }
+
     androidx.activity.compose.BackHandler(enabled = true) { onDone() }
 
     Column(
@@ -211,19 +232,6 @@ fun PageEditorScreen(
         }
     }
 
-    cropping?.let { index ->
-        pages.pages.getOrNull(index)?.let { page ->
-            CropPageDialog(
-                file = fileFor(page.source),
-                initial = page.crop,
-                onCropped = { quad ->
-                    onCrop(index, quad)
-                    cropping = null
-                },
-                onDismiss = { cropping = null },
-            )
-        }
-    }
 }
 
 internal fun PageStyle.label(): String = when (this) {

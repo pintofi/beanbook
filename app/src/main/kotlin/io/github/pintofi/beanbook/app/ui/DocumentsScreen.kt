@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.clickable
@@ -372,15 +373,31 @@ fun DocumentsScreen(
 
     cropping?.let { index ->
         capture.pages.pages.getOrNull(index)?.let { page ->
-            CropPageDialog(
-                file = capture.fileFor(page.source),
-                initial = page.crop,
-                onCropped = { quad ->
-                    capture.onCrop(index, quad)
-                    cropping = null
-                },
-                onDismiss = { cropping = null },
-            )
+            // Over the whole screen, not in a card (B73). This screen scrolls and is not
+            // full-bleed itself, so the crop comes as a dialog with the platform's width
+            // limit turned off -- the ordinary way to give a screen-sized task a screen.
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { cropping = null },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnClickOutside = false,
+                ),
+            ) {
+                androidx.compose.material3.Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = androidx.compose.ui.graphics.Color.Black,
+                ) {
+                    CropPageScreen(
+                        file = capture.fileFor(page.source),
+                        initial = page.crop,
+                        onCropped = { quad ->
+                            capture.onCrop(index, quad)
+                            cropping = null
+                        },
+                        onDismiss = { cropping = null },
+                    )
+                }
+            }
         }
     }
 

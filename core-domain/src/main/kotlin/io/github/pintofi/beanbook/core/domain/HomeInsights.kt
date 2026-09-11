@@ -11,10 +11,10 @@ import java.time.LocalDate
  * comparison period is always the same length as the period, immediately before it, so the
  * two figures mean the same thing.
  */
-enum class SpendingPeriod(val label: String) {
-    THIS_MONTH("This month"),
-    LAST_30_DAYS("Last 30 days"),
-    THIS_YEAR("This year"),
+enum class SpendingPeriod(val label: String, val shortLabel: String) {
+    THIS_MONTH("This month", "Month"),
+    LAST_30_DAYS("Last 30 days", "30 days"),
+    THIS_YEAR("This year", "Year"),
     ;
 
     /** The window, inclusive of both ends. */
