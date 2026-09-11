@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -28,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.engine.remote.RemoteAddress
 import io.github.pintofi.beanbook.engine.remote.ServerCapabilities
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
  * What an `http://` address actually means, said plainly and before the fact.
@@ -39,15 +38,13 @@ import io.github.pintofi.beanbook.engine.remote.ServerCapabilities
  */
 @Composable
 private fun CleartextWarning(hasPassword: Boolean) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = "Warning about an unencrypted address" },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-        ),
+    Notice(
+        NoticeTone.PROBLEM,
+        modifier = Modifier.semantics {
+            contentDescription = "Warning about an unencrypted address"
+        },
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        run {
             Text("This address is not encrypted", style = MaterialTheme.typography.titleSmall)
             Text(
                 "With http://, everything between this device and your server can be read " +
@@ -102,7 +99,9 @@ fun RemoteScreen(
     }
 
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+        modifier = modifier.verticalScroll(rememberScrollState())
+            .padding(horizontal = Measure.gutter)
+            .padding(top = Measure.gap, bottom = Measure.section),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Your own Fava server", style = MaterialTheme.typography.titleMedium)
@@ -179,31 +178,21 @@ fun RemoteScreen(
                 Text("Connecting…", style = MaterialTheme.typography.bodySmall)
 
             is EngineStatus.Serving ->
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            capabilities?.describe() ?: "Connected.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            "Reports come from this server; the Reports tab shows it.",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
+                Notice(NoticeTone.QUIET) {
+                    Text(
+                        capabilities?.describe() ?: "Connected.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        "Reports come from this server; the Reports tab shows it.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
 
             is EngineStatus.Failed ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                    ),
-                ) {
-                    Text(
-                        status.message,
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                Notice(NoticeTone.PROBLEM) {
+                    Text(status.message, style = MaterialTheme.typography.bodyMedium)
                 }
 
             EngineStatus.Stopped -> Unit
@@ -214,14 +203,9 @@ fun RemoteScreen(
         }
 
         if (pendingRetry) {
-            HorizontalDivider()
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                ),
-            ) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            LedgerHairline()
+            Notice(NoticeTone.PROBLEM) {
+                run {
                     Text("An entry did not get through", style = MaterialTheme.typography.titleSmall)
                     Text(
                         "It is kept here. Retrying asks the server whether it arrived before " +

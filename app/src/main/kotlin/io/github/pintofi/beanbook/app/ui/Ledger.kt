@@ -66,6 +66,7 @@ import io.github.pintofi.beanbook.app.ui.theme.rememberAnimationsEnabled
 fun RuledColumn(
     modifier: Modifier = Modifier,
     colour: Color = BeancountTheme.ledger.rule,
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     content: @Composable ColumnScopeAlias.() -> Unit,
 ) {
     val animate = rememberAnimationsEnabled()
@@ -91,6 +92,7 @@ fun RuledColumn(
                 )
             }
             .padding(start = ruleWidth + gap),
+        verticalArrangement = verticalArrangement,
         content = content,
     )
 }

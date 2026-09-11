@@ -11,11 +11,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -43,6 +40,8 @@ import io.github.pintofi.beanbook.app.plugins.PluginRow
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 
 /**
  * Installed plugins: what is here, where it came from, and whether it runs.
@@ -76,7 +75,9 @@ fun PluginsScreen(
     message: String? = null,
 ) {
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+        modifier = modifier.verticalScroll(rememberScrollState())
+            .padding(horizontal = Measure.gutter)
+            .padding(top = Measure.gap, bottom = Measure.section),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
 
@@ -98,12 +99,12 @@ fun PluginsScreen(
         }
 
         message?.let {
-            Card(Modifier.fillMaxWidth()) {
-                Text(it, Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall)
+            Notice(NoticeTone.QUIET) {
+                Text(it, style = MaterialTheme.typography.bodyMedium)
             }
         }
 
-        HorizontalDivider()
+        LedgerHairline()
 
         // The whole row toggles, not just the switch at the far edge. A row that reads as
         // one control but only responds within 48dp of its right-hand side is a row people
@@ -138,11 +139,11 @@ fun PluginsScreen(
 
         RestartCard(restart)
 
-        HorizontalDivider()
+        LedgerHairline()
 
         PackagesSection(policy, packages, noPluginsLeft = rows.isEmpty())
 
-        HorizontalDivider()
+        LedgerHairline()
 
         Text("Plugins", style = MaterialTheme.typography.titleSmall)
 
@@ -183,28 +184,22 @@ fun PluginsScreen(
  */
 @Composable
 private fun UnsandboxedWarning(policy: PluginPolicy) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = "What running a plugin means" },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-        ),
+    Notice(
+        NoticeTone.PROBLEM,
+        modifier = Modifier.semantics { contentDescription = "What running a plugin means" },
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("A plugin is a program you are trusting", style = MaterialTheme.typography.titleSmall)
+        Text("A plugin is a program you are trusting", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "It runs with this app's permissions: it can read and change your whole " +
+                "ledger, and use the network. Install plugins only from a source you trust.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        if (!policy.allowsAndroidBridge) {
             Text(
-                "It runs with this app's permissions: it can read and change your whole " +
-                    "ledger, and use the network. Install plugins only from a source you trust.",
-                style = MaterialTheme.typography.bodySmall,
+                "This edition also keeps plugins away from Android APIs. That is a store " +
+                    "rule, not protection for your ledger.",
+                style = MaterialTheme.typography.bodyMedium,
             )
-            if (!policy.allowsAndroidBridge) {
-                Text(
-                    "This edition also keeps plugins away from Android APIs. That is a store " +
-                        "rule, not protection for your ledger.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
         }
     }
 }
@@ -221,14 +216,22 @@ private fun PluginCard(
     var confirming by remember(row.plugin.id) { mutableStateOf(false) }
     val plugin = row.plugin
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    RuledColumn(
+        modifier = Modifier.padding(vertical = Measure.snug),
+        colour = if (plugin.enabled) {
+            BeancountTheme.ledger.rule
+        } else {
+            MaterialTheme.colorScheme.outlineVariant
+        },
+        verticalArrangement = Arrangement.spacedBy(Measure.snug),
+    ) {
+        run {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(plugin.name, style = MaterialTheme.typography.titleSmall)
+                Text(plugin.name, style = MaterialTheme.typography.titleMedium)
                 Switch(
                     checked = plugin.enabled,
                     onCheckedChange = { onSetEnabled(plugin.id, it) },
@@ -361,37 +364,31 @@ private fun PluginCard(
 @Composable
 private fun RestartCard(restart: EngineRestartUi) {
     if (!restart.needed) return
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = "The engine is running older code than is installed" },
+    Notice(
+        NoticeTone.ATTENTION,
+        modifier = Modifier.semantics {
+            contentDescription = "The engine is running older code than is installed"
+        },
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Restart needed", style = MaterialTheme.typography.titleSmall)
-            Text(
-                "What you just changed is on disk, but the running engine has already loaded " +
-                    "Python and will not see it. Restarting takes a few seconds and touches " +
-                    "nothing in your ledger.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-            )
-            Button(
-                onClick = restart.onRestart,
-                modifier = Modifier.semantics { contentDescription = "Restart the engine now" },
-            ) { Text("Restart the engine") }
-        }
+        Text("Restart needed", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "What you just changed is on disk, but the running engine has already loaded " +
+                "Python and will not see it. Restarting takes a few seconds and touches " +
+                "nothing in your ledger.",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
+        Button(
+            onClick = restart.onRestart,
+            modifier = Modifier.semantics { contentDescription = "Restart the engine now" },
+        ) { Text("Restart the engine") }
     }
 }
 
 @Composable
 private fun Warning(text: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-        ),
-    ) {
-        Text(text, Modifier.padding(10.dp), style = MaterialTheme.typography.bodySmall)
+    Notice(NoticeTone.PROBLEM) {
+        Text(text, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -461,16 +458,14 @@ private fun PackagesSection(
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
 
-            is PackagesStatus.Confirming -> Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "What fetching would download" },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                ),
+            is PackagesStatus.Confirming -> Notice(
+                NoticeTone.ATTENTION,
+                modifier = Modifier.semantics {
+                    contentDescription = "What fetching would download"
+                },
             ) {
                 val resolution = status.resolution
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                run {
                     Text(
                         "${resolution.wheels.size} packages to download",
                         style = MaterialTheme.typography.titleSmall,
@@ -534,11 +529,11 @@ private fun PackagesSection(
         }
 
         message?.let {
-            Card(Modifier.fillMaxWidth()) {
+            Notice(NoticeTone.QUIET) {
                 Text(
                     it,
-                    Modifier.padding(12.dp).semantics { liveRegion = LiveRegionMode.Polite },
-                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
@@ -569,7 +564,7 @@ private fun PackagesSection(
                         )
                         Text(name, style = MaterialTheme.typography.bodyMedium)
                     }
-                    HorizontalDivider()
+                    LedgerHairline()
                 }
             }
             if (noPluginsLeft) {

@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -37,16 +36,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Insights
-import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Icon
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import io.github.pintofi.beanbook.app.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Spacer
@@ -59,6 +52,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.data.ProjectSummary
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
  * First run, in two pages: what this is, and then the ways in.
@@ -178,9 +172,13 @@ private fun WaysInPage(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Open an existing project", style = MaterialTheme.typography.titleMedium)
+            RuledColumn(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
+                run {
+                    Text(
+                        "Open an existing project",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = Measure.snug),
+                    )
                     Text(
                         "Import a folder or a .zip you already keep, on this device or in " +
                             "cloud storage.",
@@ -199,9 +197,13 @@ private fun WaysInPage(
                 }
             }
 
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Start a new project", style = MaterialTheme.typography.titleMedium)
+            RuledColumn {
+                run {
+                    Text(
+                        "Start a new project",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = Measure.snug),
+                    )
                     OutlinedTextField(
                         value = title,
                         onValueChange = { title = it },
@@ -352,10 +354,11 @@ fun ProjectPickerScreen(
  */
 @Composable
 private fun WelcomeHeader() {
+    // Left-aligned, like every other page in the app. Centred type is what a marketing
+    // splash does; this is the first page of a ledger, and a ledger has a margin.
     Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(Measure.gap),
     ) {
         Box(
             modifier = Modifier
@@ -370,12 +373,11 @@ private fun WelcomeHeader() {
                 modifier = Modifier.size(108.dp),
             )
         }
-        Text("Beanbook", style = MaterialTheme.typography.headlineMedium)
+        Text("Beanbook", style = MaterialTheme.typography.displaySmall)
         Text(
             "Plain-text double-entry accounting, on your device.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
         )
     }
 }
@@ -395,27 +397,28 @@ private fun WelcomeHeader() {
  */
 @Composable
 private fun WhatThisIs() {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    // Four facts hung off one rule, separated by hairlines: the same page the app uses for
+    // everything it states, so the first screen already teaches the second.
+    RuledColumn {
         Highlight(
-            Icons.Filled.Description,
             "Your ledger is plain text",
             "Ordinary Beancount files in a folder you can open on a computer whenever you like. " +
                 "Nothing is locked in a database only this app can read.",
         )
+        LedgerHairline()
         Highlight(
-            Icons.Filled.Insights,
             "Beancount and Fava, running here",
             "The same engine and the same reports you would run on a desktop, on the phone. " +
                 "No account to make and no server to trust.",
         )
+        LedgerHairline()
         Highlight(
-            Icons.Filled.CloudOff,
             "Works with the network off",
             "Nothing is uploaded and nothing is tracked. Turn the radio off and the whole app " +
                 "still works.",
         )
+        LedgerHairline()
         Highlight(
-            Icons.Filled.PhotoCamera,
             "Receipts kept with the entry",
             "Photograph a receipt and file it against the transaction it belongs to, so the " +
                 "paper and the books stay together.",
@@ -423,33 +426,23 @@ private fun WhatThisIs() {
     }
 }
 
-/** One capability: an icon to anchor the eye, a claim, and the detail under it. */
+/** One capability: a claim, and the detail under it. */
 @Composable
-private fun Highlight(icon: ImageVector, title: String, detail: String) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        // Top, so the icon sits beside the heading rather than floating against the middle
-        // of a paragraph whose height depends on the font scale.
-        verticalAlignment = Alignment.Top,
-        // One description for the pair. Read separately a screen reader announces an
-        // unlabelled image and then an orphaned sentence.
-        modifier = Modifier.semantics(mergeDescendants = true) {
-            contentDescription = "$title. $detail"
-        },
+private fun Highlight(title: String, detail: String) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(Measure.tight),
+        // One description for the pair. Read separately a screen reader announces a heading
+        // and then an orphaned sentence.
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Measure.gap)
+            .semantics(mergeDescendants = true) { contentDescription = "$title. $detail" },
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 2.dp),
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(
+            detail,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }

@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,6 +24,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.plugins.SavedScript
 import io.github.pintofi.beanbook.app.plugins.ScriptOutcome
+import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 
 /**
  * Run a script against the open ledger (Tier 3, N10).
@@ -49,7 +49,9 @@ fun ScriptRunnerScreen(
     onForgetSaved: (String) -> Unit = {},
 ) {
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+        modifier = modifier.verticalScroll(rememberScrollState())
+            .padding(horizontal = Measure.gutter)
+            .padding(top = Measure.gap, bottom = Measure.section),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
@@ -63,13 +65,8 @@ fun ScriptRunnerScreen(
             style = MaterialTheme.typography.bodySmall,
         )
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-            ),
-        ) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Notice(NoticeTone.PROBLEM) {
+            run {
                 Text("What running a script means", style = MaterialTheme.typography.titleSmall)
                 Text(
                     "It runs with this app's permissions and is not sandboxed. It can read " +
@@ -143,12 +140,13 @@ private fun SavedScriptCard(
     onRun: (String) -> Unit,
     onForget: (String) -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(script.name, style = MaterialTheme.typography.titleSmall)
+    RuledColumn(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
+        run {
+            Text(script.name, style = MaterialTheme.typography.titleMedium)
             Text(
                 "Kept ${dateOf(script.savedAtEpochMs)} · checksum ${script.sha256.take(12)}…",
-                style = MaterialTheme.typography.bodySmall,
+                style = LedgerType.small,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
@@ -175,24 +173,16 @@ private fun dateOf(epochMillis: Long): String =
 
 @Composable
 private fun Outcome(outcome: ScriptOutcome) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics {
-                liveRegion = LiveRegionMode.Polite
-                contentDescription = "${outcome.name}: ${outcome.summary()}"
-            },
-        colors = CardDefaults.cardColors(
-            containerColor = if (outcome.ok) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.errorContainer
-            },
-        ),
+    Notice(
+        if (outcome.ok) NoticeTone.QUIET else NoticeTone.PROBLEM,
+        modifier = Modifier.semantics {
+            liveRegion = LiveRegionMode.Polite
+            contentDescription = "${outcome.name}: ${outcome.summary()}"
+        },
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        run {
             Text(outcome.name, style = MaterialTheme.typography.titleSmall)
-            Text(outcome.summary(), style = MaterialTheme.typography.bodySmall)
+            Text(outcome.summary(), style = MaterialTheme.typography.bodyMedium)
 
             if (outcome.output.isNotBlank()) {
                 Text("Output", style = MaterialTheme.typography.labelLarge)

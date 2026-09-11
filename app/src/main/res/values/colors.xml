@@ -2,11 +2,14 @@
 <!-- Matches ui/theme/Colour.kt LightColours.background, so the startup window and the first
      composed frame are the same colour and there is no flash between them. -->
 <resources>
-    <color name="window_background">#FAFDFC</color>
+    <color name="window_background">#F3F5F2</color>
     <!-- Widgets run in the home screen's process and cannot read the Compose theme, so
-         their colours are ordinary resources. Light values here, dark in values-night. -->
-    <color name="widget_surface">#FAFDFC</color>
-    <color name="widget_label">#3F4949</color>
-    <color name="widget_value">#191C1C</color>
-    <color name="widget_footnote">#6F7979</color>
+         their colours are ordinary resources. Light values here, dark in values-night.
+         They are the app's paper, ink and rule: a widget that does not look like the app it
+         belongs to is a widget people forget they installed. -->
+    <color name="widget_surface">#F3F5F2</color>
+    <color name="widget_rule">#0B5F5B</color>
+    <color name="widget_label">#4A5754</color>
+    <color name="widget_value">#16201E</color>
+    <color name="widget_footnote">#6B7873</color>
 </resources>

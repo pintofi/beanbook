@@ -11,8 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +30,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import org.json.JSONObject
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
  * One thing the app distributes, and the licence that came with it.
@@ -114,26 +113,22 @@ fun LicencesScreen(modifier: Modifier = Modifier) {
                 Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Card(
+                RuledColumn(
                     modifier = Modifier
-                        .fillMaxWidth()
                         .clickable(role = Role.Button) { showing = app }
                         .semantics {
                             contentDescription =
                                 "${app.name} is under ${app.version}. Read the full licence."
                         },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    ),
+                    verticalArrangement = Arrangement.spacedBy(Measure.tight),
                 ) {
-                    Column(
-                        Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text("${app.name}, ${app.version}", style = MaterialTheme.typography.titleSmall)
-                        Text(app.source, style = MaterialTheme.typography.bodySmall)
-                        Text("Read the full licence", style = MaterialTheme.typography.labelLarge)
-                    }
+                    Text("${app.name}, ${app.version}", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        app.source,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text("Read the full licence", style = MaterialTheme.typography.labelLarge)
                 }
                 Text(
                     "This app is built on other people's work. Each of these came with a " +

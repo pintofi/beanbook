@@ -4,12 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
@@ -25,6 +24,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.mirror.MirrorStatus
 import io.github.pintofi.beanbook.core.data.MirrorAction
+import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.LedgerType
+import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 
 /**
  * Auto-mirror (docs/storage-and-backup.md §6).
@@ -48,8 +50,11 @@ fun MirrorScreen(
     message: String? = null,
 ) {
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Measure.gutter)
+            .padding(top = Measure.gap, bottom = Measure.section),
+        verticalArrangement = Arrangement.spacedBy(Measure.gap),
     ) {
         // The state first, before any control. A screen whose top half is settings cannot
         // answer the question people open it to ask -- is my folder current right now -- and
@@ -128,19 +133,10 @@ fun MirrorScreen(
             )
 
             conflicts.forEach { conflict ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                    ),
-                ) {
-                    Column(
-                        Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(conflict.path, style = MaterialTheme.typography.bodyMedium)
-                        Text(conflict.describe(), style = MaterialTheme.typography.bodySmall)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Notice(NoticeTone.PROBLEM) {
+                    Text(conflict.path, style = LedgerType.small)
+                    Text(conflict.describe(), style = MaterialTheme.typography.bodyMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(Measure.snug)) {
                             // Outlined, not text: these two decide which copy of a file
                             // survives, and a decision that destructive must look like a
                             // control rather than a caption (B66).
@@ -158,7 +154,6 @@ fun MirrorScreen(
                                         "Keep the folder's version of ${conflict.path}"
                                 },
                             ) { Text("Keep the folder's") }
-                        }
                     }
                 }
             }
@@ -195,36 +190,43 @@ private fun MirrorStatusCard(status: MirrorStatus) {
         is MirrorStatus.NeedsDecision -> "Both versions are kept until you choose, below."
         is MirrorStatus.Failed -> "${status.reason}. Your project is unchanged."
     }
-    val container = when (status) {
-        is MirrorStatus.NeedsDecision, is MirrorStatus.Failed ->
-            MaterialTheme.colorScheme.errorContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant
+    val tone = when (status) {
+        is MirrorStatus.NeedsDecision, is MirrorStatus.Failed -> NoticeTone.PROBLEM
+        else -> NoticeTone.QUIET
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = "Mirroring status: $headline. $detail" },
-        colors = CardDefaults.cardColors(containerColor = container),
+    Notice(
+        tone,
+        modifier = Modifier.semantics {
+            contentDescription = "Mirroring status: $headline. $detail"
+        },
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(headline, style = MaterialTheme.typography.titleSmall)
-            Text(detail, style = MaterialTheme.typography.bodySmall)
-            when (status) {
-                is MirrorStatus.Copying -> LinearProgressIndicator(
-                    progress = {
-                        if (status.total <= 0) 0f else status.done.toFloat() / status.total
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+        Text(headline, style = MaterialTheme.typography.titleSmall)
+        Text(detail, style = MaterialTheme.typography.bodyMedium)
+        // A rule filling, in the app's own measure: a pass that is counting files fills it
+        // by count, and one that is still comparing draws it without a figure to fill to.
+        when (status) {
+            is MirrorStatus.Copying -> LinearProgressIndicator(
+                progress = {
+                    if (status.total <= 0) 0f else status.done.toFloat() / status.total
+                },
+                modifier = Modifier.fillMaxWidth().height(Measure.rule),
+                color = BeancountTheme.ledger.rule,
+                trackColor = MaterialTheme.colorScheme.outlineVariant,
+                strokeCap = androidx.compose.ui.graphics.StrokeCap.Butt,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
+            )
 
-                MirrorStatus.Comparing -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            MirrorStatus.Comparing -> LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth().height(Measure.rule),
+                color = BeancountTheme.ledger.rule,
+                trackColor = MaterialTheme.colorScheme.outlineVariant,
+                strokeCap = androidx.compose.ui.graphics.StrokeCap.Butt,
+                gapSize = 0.dp,
+            )
 
-                else -> Unit
-            }
+            else -> Unit
         }
     }
 }

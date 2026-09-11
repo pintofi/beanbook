@@ -19,7 +19,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -48,6 +47,8 @@ import io.github.pintofi.beanbook.core.domain.DocumentStatus
 import io.github.pintofi.beanbook.core.domain.DocumentRemoval
 import io.github.pintofi.beanbook.core.domain.LedgerVocabulary
 import java.io.File
+import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 
 /** The two jobs the documents screen does, kept apart so neither is in the other's way. */
 enum class DocumentsMode(val label: String) {
@@ -116,8 +117,11 @@ fun DocumentsScreen(
     ) { granted = it }
 
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Measure.gutter)
+            .padding(top = Measure.gap, bottom = Measure.section),
+        verticalArrangement = Arrangement.spacedBy(Measure.gap),
     ) {
         // Two jobs, kept apart. Beyond being what the user asked for, it is what keeps the
         // camera unbound while somebody is only tidying up: CameraPane below is reached only
@@ -163,7 +167,7 @@ fun DocumentsScreen(
         }
 
         if (!capture.pages.isEmpty) {
-            Text("Pages", style = MaterialTheme.typography.titleSmall)
+            LedgerHeading("Pages")
             // Thumbnails, and one way in (B58): tapping a page opens the editor, where a
             // page is rotated, cropped and re-rendered on the page itself rather than
             // through four text buttons in a form row.
@@ -228,18 +232,22 @@ fun DocumentsScreen(
         message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
 
         if (mode == DocumentsMode.ORGANIZE && documents.isEmpty()) {
-            Text(
-                "No documents yet. Add one from the Add tab.",
-                style = MaterialTheme.typography.bodyMedium,
+            EmptyState(
+                title = "No documents yet",
+                detail = "Photograph a receipt on the Add tab and it is filed against an entry.",
             )
         }
 
         if (mode == DocumentsMode.ORGANIZE && documents.isNotEmpty()) {
-            Text("Documents in this project", style = MaterialTheme.typography.titleSmall)
-            documents.forEach { row ->
+            LedgerHeading("Documents in this project")
+            documents.forEachIndexed { index, row ->
                 val path = row.path
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (index > 0) LedgerHairline()
+                run {
+                    Column(
+                        Modifier.padding(vertical = Measure.snug),
+                        verticalArrangement = Arrangement.spacedBy(Measure.tight),
+                    ) {
                         // Tapping opens the details rather than a separate screen: there is
                         // little enough to say that pushing a route for it would cost the
                         // user a navigation to read three lines.
@@ -262,6 +270,22 @@ fun DocumentsScreen(
                                 },
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            // Where a document stands, in the same mark the journal uses for
+                            // an entry: filed and found, filed under nothing yet, or named by
+                            // the ledger with no file behind it.
+                            StampMark(
+                                when (row.status) {
+                                    DocumentStatus.MISSING -> LedgerMark.ATTENTION
+                                    DocumentStatus.UNFILED -> LedgerMark.PENDING
+                                    else -> LedgerMark.CLEARED
+                                },
+                                modifier = Modifier.padding(end = Measure.gap),
+                            )
+                            Text(
+                                path.substringAfterLast('/'),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f),
+                            )
                             Icon(
                                 imageVector = if (open) {
                                     Icons.Filled.ExpandLess
@@ -269,16 +293,16 @@ fun DocumentsScreen(
                                     Icons.Filled.ExpandMore
                                 },
                                 contentDescription = null,
-                            )
-                            Text(
-                                path.substringAfterLast('/'),
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(start = 4.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        Text(row.summary, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            row.summary,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         if (open) {
-                            Text(path, style = MaterialTheme.typography.bodySmall)
+                            Text(path, style = LedgerType.small)
                             row.date?.let {
                                 Text("Dated $it", style = MaterialTheme.typography.bodySmall)
                             }

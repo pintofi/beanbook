@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -28,6 +26,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.data.RestoreStaged
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
  * Back up, restore, and schedule (docs/storage-and-backup.md §7).
@@ -63,7 +62,9 @@ fun BackupScreen(
     val passphrasesMatch = passphrase.isNotEmpty() && passphrase == confirmation
 
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+        modifier = modifier.verticalScroll(rememberScrollState())
+            .padding(horizontal = Measure.gutter)
+            .padding(top = Measure.gap, bottom = Measure.section),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
@@ -94,17 +95,11 @@ fun BackupScreen(
         if (encrypt) {
             // The warning is deliberately blunt and sits *above* the fields, where it is read
             // before a passphrase is chosen rather than after (docs/storage-and-backup.md 7).
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                ),
-            ) {
+            Notice(NoticeTone.PROBLEM) {
                 Text(
                     "If you forget this passphrase, the backup cannot be opened. There is " +
                         "no reset and no recovery code. Write it down before you continue.",
-                    modifier = Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
             OutlinedTextField(
@@ -235,11 +230,12 @@ private fun RestorePreview(
     onAccept: () -> Unit,
     onDiscard: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    RuledColumn(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
+        run {
             Text(
                 "Backup of \"${staged.manifest.projectTitle}\"",
                 style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(bottom = Measure.snug),
             )
             Text(
                 "Taken ${staged.manifest.createdAt}, ${staged.manifest.files.size} file(s).",

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +16,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -64,23 +67,36 @@ fun ReportsPane(
             Text(
                 "Reports",
                 style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(horizontal = Measure.gutter, vertical = Measure.indent)
                     .semantics { heading() },
             )
             LISTED.forEach { (path, label) ->
                 val isSelected = path == selected
+                val rule = BeancountTheme.ledger.rule
                 ListItem(
                     headlineContent = { Text(label) },
                     colors = if (isSelected) {
                         ListItemDefaults.colors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         )
                     } else {
                         ListItemDefaults.colors()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
+                        // Which report is open is said by a rule down the edge of the row,
+                        // the same mark the navigation bar uses, rather than by a tinted
+                        // pill: one vocabulary for "you are here" across the app.
+                        .drawBehind {
+                            if (isSelected) {
+                                drawRect(
+                                    color = rule,
+                                    size = Size(width = Measure.rule.toPx(), height = size.height),
+                                )
+                            }
+                        }
                         .clickable(role = Role.Button) { onSelect(path) }
                         .semantics {
                             // `selected` rather than folding "selected" into the label: a
@@ -90,7 +106,7 @@ fun ReportsPane(
                             contentDescription = "$label report"
                         },
                 )
-                HorizontalDivider()
+                LedgerHairline()
             }
         }
         VerticalDivider()

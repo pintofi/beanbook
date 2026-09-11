@@ -4,6 +4,10 @@
   and a widget that is a label, a figure and a footnote does not need four descriptions of
   that.
 
+  The 2dp rule down the left is the app's own mark (B74): the same rule a ledger page in the
+  app hangs its figures from, so the widget is recognisable as this app's before a word of it
+  is read.
+
   RemoteViews rather than Glance: a widget is text and a number, and Glance would be another
   dependency and another rendering model to reason about for no gain here.
 -->
@@ -11,37 +15,50 @@
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:padding="12dp"
     android:background="@drawable/widget_background">
 
-    <TextView
-        android:id="@+id/widget_label"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:textSize="12sp"
-        android:textColor="@color/widget_label" />
+    <View
+        android:layout_width="2dp"
+        android:layout_height="match_parent"
+        android:background="@color/widget_rule" />
 
-    <TextView
-        android:id="@+id/widget_value"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:textSize="20sp"
-        android:fontFamily="monospace"
-        android:textColor="@color/widget_value" />
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingStart="10dp"
+        android:paddingLeft="10dp">
 
-    <TextView
-        android:id="@+id/widget_footnote"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:textSize="11sp"
-        android:textColor="@color/widget_footnote" />
+        <TextView
+            android:id="@+id/widget_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textSize="12sp"
+            android:textColor="@color/widget_label" />
+
+        <TextView
+            android:id="@+id/widget_value"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textSize="22sp"
+            android:fontFamily="monospace"
+            android:textColor="@color/widget_value" />
+
+        <TextView
+            android:id="@+id/widget_footnote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textSize="11sp"
+            android:textColor="@color/widget_footnote" />
+    </LinearLayout>
 </LinearLayout>

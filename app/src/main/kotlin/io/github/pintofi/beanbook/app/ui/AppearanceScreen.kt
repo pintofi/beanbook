@@ -9,7 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -25,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import io.github.pintofi.beanbook.app.ui.theme.ThemeChoice
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
  * How the app looks.
@@ -45,7 +45,9 @@ fun AppearanceScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+        modifier = modifier.verticalScroll(rememberScrollState())
+            .padding(horizontal = Measure.gutter)
+            .padding(top = Measure.gap, bottom = Measure.section),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
 
@@ -139,8 +141,8 @@ fun AppearanceScreen(
         // A preview, because a colour choice you cannot see the effect of is a colour choice
         // people make once and never revisit.
         Text("Preview", style = MaterialTheme.typography.titleSmall)
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        RuledColumn(verticalArrangement = Arrangement.spacedBy(Measure.tight)) {
+            run {
                 // The two sides of one transaction, because that is where the app actually
                 // colours a figure: a posting is a movement and its direction is the point.
                 // Balances are left in the ordinary colour, as Fava leaves them — an Income

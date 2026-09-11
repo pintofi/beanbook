@@ -10,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +30,9 @@ import io.github.pintofi.beanbook.core.domain.DirectiveDraft
 import io.github.pintofi.beanbook.core.domain.LedgerVocabulary
 import java.math.BigDecimal
 import java.time.LocalDate
+import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.LedgerType
+import androidx.compose.foundation.background
 
 /** The directive types the app can compose, in the order people reach for them. */
 enum class DirectiveKind(val label: String) {
@@ -102,7 +104,9 @@ fun DirectiveEntryScreen(
     val problems = draft.validate()
 
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+        modifier = modifier.verticalScroll(rememberScrollState())
+            .padding(horizontal = Measure.gutter)
+            .padding(top = Measure.gap, bottom = Measure.section),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(
@@ -204,26 +208,25 @@ fun DirectiveEntryScreen(
             )
         }
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(12.dp)) {
-                Text("Will be written as", style = MaterialTheme.typography.labelMedium)
-                Text(
-                    text = draft.render(),
-                    fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .padding(top = 4.dp)
-                        .semantics { contentDescription = "Preview of the directive to be saved" },
-                )
-            }
+        // The same promise the transaction form makes: the lines about to be written, in
+        // the source face, on a surface a shade off the page.
+        RuledColumn {
+            LedgerHeading("Will be written as")
+            Text(
+                text = draft.render(),
+                style = LedgerType.source,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .padding(Measure.indent)
+                    .semantics { contentDescription = "Preview of the directive to be saved" },
+            )
         }
 
-        problems.forEach {
-            Text(
-                it.describe(),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-            )
+        if (problems.isNotEmpty()) {
+            Notice(NoticeTone.PROBLEM) {
+                problems.forEach { Text(it.describe(), style = MaterialTheme.typography.bodyMedium) }
+            }
         }
 
         Button(

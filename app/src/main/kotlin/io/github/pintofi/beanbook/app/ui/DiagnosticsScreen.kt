@@ -10,8 +10,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,6 +25,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
  * What the app has been doing, for somebody trying to say what went wrong (B62).
@@ -103,12 +102,9 @@ fun DiagnosticsScreen(
         )
 
         message?.let {
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                ),
-            ) { Text(it, Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall) }
+            Notice(NoticeTone.QUIET, modifier = Modifier.padding(top = Measure.snug)) {
+                Text(it, style = MaterialTheme.typography.bodyMedium)
+            }
         }
 
         HorizontalDivider(Modifier.padding(vertical = 8.dp))

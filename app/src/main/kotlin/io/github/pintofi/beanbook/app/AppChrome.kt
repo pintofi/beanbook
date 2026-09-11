@@ -11,12 +11,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -50,6 +47,11 @@ import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.core.entitlement.Entitlement
 import io.github.pintofi.beanbook.core.entitlement.Grant
+import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
+import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.RuledColumn
+import io.github.pintofi.beanbook.app.ui.NoticeTone
+import io.github.pintofi.beanbook.app.ui.Notice
 // The smaller pieces the shell is built from: the rail and top bar, the banners, and the
 // states a surface falls back to. Split out of MainActivity.kt; see LedgerApp.kt.
 /**
@@ -346,14 +348,28 @@ internal fun MoreMenu(entitlement: Entitlement, onContribute: () -> Unit, onOpen
                 // the row you want is found by reading each label rather than by recognising
                 // a shape. Decorative in the semantics sense -- the description beside it
                 // already names the row -- so it carries no contentDescription of its own.
-                leadingContent = { Icon(iconFor(entry), contentDescription = null) },
+                leadingContent = {
+                    Icon(
+                        iconFor(entry),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                colors = androidx.compose.material3.ListItemDefaults.colors(
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                ),
                 modifier = Modifier
                     .clickable(role = Role.Button) { onOpen(entry) }
+                    .padding(horizontal = Measure.tight)
                     .semantics {
                         contentDescription = "${entry.label}. ${descriptions[entry].orEmpty()}"
                     },
             )
-            HorizontalDivider()
+            // Indented to where the labels start rather than cut edge to edge, so the list
+            // reads as ruled paper and the icons sit in a margin of their own.
+            io.github.pintofi.beanbook.app.ui.LedgerHairline(
+                Modifier.padding(start = Measure.gutter + Measure.chapter),
+            )
         }
     }
 }
@@ -367,30 +383,21 @@ internal fun MoreMenu(entitlement: Entitlement, onContribute: () -> Unit, onOpen
  */
 @Composable
 internal fun RecoveryBanner(message: String, onDismiss: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-        ),
+    Notice(
+        NoticeTone.ATTENTION,
+        modifier = Modifier.padding(horizontal = Measure.gutter, vertical = Measure.snug),
     ) {
-        Column(
-            Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                message,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics {
-                    contentDescription = "Something was put right at startup: $message"
-                },
-            )
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.semantics { contentDescription = "Dismiss this notice" },
-            ) { Text("Got it") }
-        }
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.semantics {
+                contentDescription = "Something was put right at startup: $message"
+            },
+        )
+        TextButton(
+            onClick = onDismiss,
+            modifier = Modifier.semantics { contentDescription = "Dismiss this notice" },
+        ) { Text("Got it") }
     }
 }
 
@@ -399,7 +406,7 @@ internal fun RecoveryBanner(message: String, onDismiss: () -> Unit) {
  *
  * Deliberately heavier than a journal row: this is a status about the app, not a line of the
  * user's data, and it sits among a list of plain rows where it would otherwise disappear. It
- * uses the theme's secondary container rather than a colour of its own, so it reads as
+ * It is a notice in the app's own vocabulary rather than a colour of its own, so it reads as
  * "notice" and not as "error" -- nothing here is wrong, and a trial running out is not a
  * failure.
  *
@@ -427,24 +434,18 @@ internal fun TrialCard(entitlement: Entitlement, onClick: () -> Unit) {
         is Grant.Purchase -> "${grant.tier.label}" to "Tap to see what you have."
         Grant.Free -> return
     }
-    Card(
+    // Quiet while the trial is running, and in the attention tone once it has ended, so the
+    // one state that changes what the app offers is the one that speaks up.
+    val tone = if (entitlement.grant is Grant.TrialEnded) NoticeTone.ATTENTION else NoticeTone.QUIET
+    Notice(
+        tone,
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = Measure.gutter, vertical = Measure.gap)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "$headline. $detail" },
-        colors = androidx.compose.material3.CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(headline, style = MaterialTheme.typography.titleMedium)
-            Text(detail, style = MaterialTheme.typography.bodyMedium)
-        }
+        Text(headline, style = MaterialTheme.typography.titleMedium)
+        Text(detail, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -455,19 +456,42 @@ internal fun LoadingOrError(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier.padding(horizontal = Measure.gutter, vertical = Measure.chapter),
+        verticalArrangement = Arrangement.spacedBy(Measure.section),
     ) {
-        Text("Beanbook", style = MaterialTheme.typography.headlineSmall)
-        Text(
-            text = "Edition: $editionName",
-            modifier = Modifier.semantics { contentDescription = "Edition $editionName" },
-        )
+        RuledColumn {
+            Text("Beanbook", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                text = "Edition: $editionName",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .padding(top = Measure.tight)
+                    .semantics { contentDescription = "Edition $editionName" },
+            )
+        }
         when (status) {
-            is EngineStatus.Failed -> Text("The engine could not start: ${status.message}")
+            is EngineStatus.Failed -> Notice(NoticeTone.PROBLEM) {
+                Text(
+                    "The engine could not start: ${status.message}",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
             else -> {
-                CircularProgressIndicator()
-                Text("Reading your ledger…")
+                // A rule filling, rather than a spinner: the mark the rest of the app uses to
+                // say "this is the ledger", drawn while there is not a ledger yet.
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(Measure.rule),
+                    color = BeancountTheme.ledger.rule,
+                    trackColor = MaterialTheme.colorScheme.outlineVariant,
+                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Butt,
+                    gapSize = 0.dp,
+                )
+                Text(
+                    "Reading your ledger…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

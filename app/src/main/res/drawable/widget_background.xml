@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The widget's paper. Rounded because the launcher treats a widget as an object on the
+     home screen rather than as part of a page; the rule inside it is what says which app. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <corners android:radius="16dp" />
     <solid android:color="@color/widget_surface" />

@@ -8,7 +8,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -28,6 +27,7 @@ import io.github.pintofi.beanbook.core.entitlement.Grant
 import io.github.pintofi.beanbook.app.billing.PurchaseController
 import io.github.pintofi.beanbook.core.entitlement.PurchaseRoute
 import io.github.pintofi.beanbook.core.entitlement.Tier
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
  * Contribute: what is unlocked, why, and how to enter a key (docs/distribution.md §4.7).
@@ -63,11 +63,9 @@ fun ContributeScreen(
     ) {
         Text("Contribute", style = MaterialTheme.typography.headlineSmall)
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("What you have now", style = MaterialTheme.typography.titleSmall)
-                Text(entitlement.describeGrant())
-            }
+        RuledColumn(verticalArrangement = Arrangement.spacedBy(Measure.tight)) {
+            Text("What you have now", style = MaterialTheme.typography.titleSmall)
+            Text(entitlement.describeGrant(), style = MaterialTheme.typography.bodyLarge)
         }
 
         Text(
@@ -77,7 +75,7 @@ fun ContributeScreen(
             style = MaterialTheme.typography.bodySmall,
         )
 
-        HorizontalDivider()
+        LedgerHairline()
 
         Text(route.label, style = MaterialTheme.typography.titleSmall)
 

@@ -123,8 +123,8 @@ class FavaThemeTest {
     @Test fun favaAdoptsTheAppsColourForItsOwnHeaderVariable() {
         val header = computed(dark = false, property = "--header-background")
 
-        // Fava's own blue is #0065a3. The app's light primary is #006a6a.
-        assertEquals("#006a6a", header)
+        // Fava's own blue is #0065a3. The app's light primary is the ledger teal.
+        assertEquals("#0b5f5b", header)
     }
 
     /**
@@ -135,9 +135,9 @@ class FavaThemeTest {
     @Test fun theDarkPaletteIsUsedWhenTheAppIsDark() {
         val header = computed(dark = true, property = "--header-background")
 
-        // The app's dark primary, not Fava's #004f80 and not the light #006a6a — which
+        // The app's dark primary, not Fava's #004f80 and not the light #0b5f5b — which
         // together prove both that the override applied and that it picked the right scheme.
-        assertEquals("#80d5d4", header)
+        assertEquals("#6fd3ca", header)
     }
 
     @Test fun theColourSchemeAttributeIsSetSoFavaUsesItsOwnDarkPalette() {
@@ -199,7 +199,7 @@ class FavaThemeTest {
             2,
             cssLiteral.count { it == '\'' },
         )
-        assertTrue(script.contains("#006a6a"))
+        assertTrue(script.contains("#0b5f5b"))
     }
 }
 
