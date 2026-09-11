@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
@@ -20,7 +23,9 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -90,6 +95,56 @@ class RemoteReports(
     val auth: () -> AllowlistWebViewClient.HttpAuth?,
 )
 
+
+/**
+ * A destination's icon, with the rule that marks the one you are on (B74).
+ *
+ * The rule grows from the centre rather than fading in: it is the same gesture as the column
+ * rule drawing down a surface, at the size of a tab, so moving between destinations reads as
+ * the same app doing the same thing. Material's filled pill is replaced rather than recoloured
+ * -- a lozenge under a column of figures is the loudest thing on the screen, and this design
+ * marks things with rules.
+ */
+@Composable
+private fun DestinationMark(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selected: Boolean,
+) {
+    val colour = io.github.pintofi.beanbook.app.ui.theme.BeancountTheme.ledger.rule
+    val animate = io.github.pintofi.beanbook.app.ui.theme.rememberAnimationsEnabled()
+    val extent by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = if (animate) {
+            io.github.pintofi.beanbook.app.ui.theme.Motion.standard(
+                io.github.pintofi.beanbook.app.ui.theme.Motion.QUICK_MS,
+            )
+        } else {
+            androidx.compose.animation.core.snap()
+        },
+        label = "destination",
+    )
+    Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+        androidx.compose.foundation.Canvas(
+            modifier = Modifier
+                .width(20.dp)
+                .height(2.dp)
+                .clearAndSetSemantics { },
+        ) {
+            if (extent > 0f) {
+                drawRect(
+                    color = colour,
+                    topLeft = androidx.compose.ui.geometry.Offset(
+                        x = size.width * (1f - extent) / 2f,
+                        y = 0f,
+                    ),
+                    size = androidx.compose.ui.geometry.Size(size.width * extent, size.height),
+                )
+            }
+        }
+        androidx.compose.foundation.layout.Spacer(Modifier.height(4.dp))
+        Icon(icon, contentDescription = null)
+    }
+}
 
 /**
  * Whether the add button belongs on screen.
@@ -427,20 +482,39 @@ internal fun LedgerApp(
                     }
                 }
             } else {
-                NavigationBar {
-                    Surface.entries.forEach { surface ->
-                        NavigationBarItem(
+                // The footer rule (B74). The bar sits on the same paper as the page, with a
+                // hairline above it and no shadow, and the selected destination is marked by
+                // a short rule over its icon rather than by Material's filled pill -- the
+                // same vocabulary as every other rule in the app, and quieter under a column
+                // of figures than a lozenge of colour.
+                Column {
+                    io.github.pintofi.beanbook.app.ui.LedgerHairline()
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        tonalElevation = 0.dp,
+                    ) {
+                        Surface.entries.forEach { surface ->
                             // Nothing is selected while the form is open: the form is not a
                             // destination, and a bar highlighting Home while a person stands
                             // in the entry form is telling them where they are not (B61).
-                            selected = !adding && selected == surface,
-                            onClick = { leavingAdd { adding = false; selected = surface } },
-                            label = { Text(surface.label) },
-                            icon = { Icon(surface.icon, contentDescription = null) },
-                            // No contentDescription: the label already supplies one, and
-                            // setting both made TalkBack say "Reports, Reports" on every
-                            // destination.
-                        )
+                            val chosen = !adding && selected == surface
+                            NavigationBarItem(
+                                selected = chosen,
+                                onClick = { leavingAdd { adding = false; selected = surface } },
+                                label = { Text(surface.label) },
+                                icon = { DestinationMark(surface.icon, chosen) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                                    selectedIconColor = MaterialTheme.colorScheme.onSurface,
+                                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                                // No contentDescription: the label already supplies one, and
+                                // setting both made TalkBack say "Reports, Reports" on every
+                                // destination.
+                            )
+                        }
                     }
                 }
             }

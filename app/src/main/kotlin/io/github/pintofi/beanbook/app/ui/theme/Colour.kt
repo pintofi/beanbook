@@ -6,156 +6,186 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
 /**
- * The fallback palette, for devices without dynamic colour (below Android 12) and for
- * anyone who turns dynamic colour off.
+ * The palette: paper, ink, and one teal rule (B74).
  *
- * A deep teal rather than Material's default purple: this is an app people look at columns
- * of numbers in, and the palette's job is to stay out of the way of them. Every role is
- * stated explicitly instead of letting `lightColorScheme()` fill the gaps, because the
- * defaults it fills with are the purple baseline — a half-specified scheme is how an app
- * ends up mostly branded and occasionally lilac.
+ * The app is a ledger, and a ledger is ink on ruled paper. So the ground is *paper* -- a
+ * neutral with a faint green cast taken from the teal, not the warm cream that every
+ * editorial template reaches for -- and the type is *ink*, a green-black rather than a grey.
+ * The teal is the rule: it appears as lines, marks and the band across the top of a surface,
+ * and almost never as a filled area. That is what keeps a screen full of figures calm while
+ * still being unmistakably this app's.
  *
- * Contrast: the on/container pairs are the standard Material 3 tonal steps (40/100/90/10
- * light, 80/20/30/90 dark), which meet WCAG AA for body text at every pairing used here.
+ * Terracotta is the third voice and is deliberately rationed: it marks things a person has
+ * not finished -- a pending flag, an unreconciled row -- and never money. Nothing in the app
+ * uses colour as the only signal for anything (see [LedgerColours]).
+ *
+ * Every role is stated explicitly rather than letting `lightColorScheme()` fill the gaps: the
+ * gaps it fills are Material's purple baseline, and a half-specified scheme is how an app ends
+ * up mostly branded and occasionally lilac.
+ *
+ * Contrast was checked against the pairs actually used: ink on paper is 14.9:1, teal on paper
+ * 6.3:1, onSurfaceVariant on paper 7.2:1, and every container/on-container pair clears 4.5:1.
  */
 internal val LightColours = lightColorScheme(
-    primary = Color(0xFF006A6A),
+    // The teal is an ink colour, dark enough to read as text on paper without a container.
+    primary = Color(0xFF0B5F5B),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFF9CF1F0),
-    onPrimaryContainer = Color(0xFF002020),
+    primaryContainer = Color(0xFFB9E7E2),
+    onPrimaryContainer = Color(0xFF002B28),
 
-    secondary = Color(0xFF4A6363),
+    secondary = Color(0xFF3F5C56),
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFCCE8E7),
-    onSecondaryContainer = Color(0xFF051F1F),
+    secondaryContainer = Color(0xFFCFE4DE),
+    onSecondaryContainer = Color(0xFF05201C),
 
-    tertiary = Color(0xFF4B607C),
+    // Terracotta. The one warm note, and it means "unfinished", not "wrong".
+    tertiary = Color(0xFF9A4C2E),
     onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFD3E4FF),
-    onTertiaryContainer = Color(0xFF041C35),
+    tertiaryContainer = Color(0xFFFFDBCD),
+    onTertiaryContainer = Color(0xFF3A1004),
 
-    error = Color(0xFFBA1A1A),
+    error = Color(0xFFA02A20),
     onError = Color(0xFFFFFFFF),
-    errorContainer = Color(0xFFFFDAD6),
-    onErrorContainer = Color(0xFF410002),
+    errorContainer = Color(0xFFFFDAD5),
+    onErrorContainer = Color(0xFF410003),
 
-    background = Color(0xFFFAFDFC),
-    onBackground = Color(0xFF191C1C),
-    surface = Color(0xFFFAFDFC),
-    onSurface = Color(0xFF191C1C),
-    surfaceVariant = Color(0xFFDAE5E4),
-    onSurfaceVariant = Color(0xFF3F4949),
+    // Paper, and a hair cooler than cream on purpose.
+    background = Color(0xFFF3F5F2),
+    onBackground = Color(0xFF16201E),
+    surface = Color(0xFFF3F5F2),
+    onSurface = Color(0xFF16201E),
+    surfaceVariant = Color(0xFFE2E8E3),
+    onSurfaceVariant = Color(0xFF44534E),
 
-    outline = Color(0xFF6F7979),
-    outlineVariant = Color(0xFFBEC9C8),
-    inverseSurface = Color(0xFF2D3131),
-    inverseOnSurface = Color(0xFFEFF1F1),
-    inversePrimary = Color(0xFF80D5D4),
+    // Hairlines. `outlineVariant` is the rule the whole layout is built on, so it is a real
+    // colour rather than a near-invisible grey: a rule that cannot be seen is not structure.
+    outline = Color(0xFF8A958F),
+    outlineVariant = Color(0xFFC3CDC7),
+    inverseSurface = Color(0xFF1E2927),
+    inverseOnSurface = Color(0xFFEDF1EE),
+    inversePrimary = Color(0xFF6FD3CA),
     scrim = Color(0xFF000000),
 
-    // The neutrals every raised surface is actually drawn from. Material 3 fills these from
-    // its purple baseline when they are not given, and `Card`, `NavigationBar`, menus and
-    // sheets all read them -- so leaving them out produced teal accents sitting on lilac
-    // containers, which is the exact failure the note at the top of this file warns about.
-    // Tinted towards the same green-grey as `surfaceVariant` so a card recedes behind the
-    // figures on it instead of introducing a second hue.
-    surfaceBright = Color(0xFFFAFDFC),
-    surfaceDim = Color(0xFFD9E0DF),
+    // The raised neutrals. Kept close together: this design separates things with rules and
+    // space rather than by stacking five shades of grey card on top of each other.
+    surfaceBright = Color(0xFFF8FAF7),
+    surfaceDim = Color(0xFFD8DED9),
     surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFF4FAF9),
-    surfaceContainer = Color(0xFFEEF4F3),
-    surfaceContainerHigh = Color(0xFFE8EEED),
-    surfaceContainerHighest = Color(0xFFE2E9E8),
-    surfaceTint = Color(0xFF006A6A),
+    surfaceContainerLow = Color(0xFFEDF1EC),
+    surfaceContainer = Color(0xFFE7ECE7),
+    surfaceContainerHigh = Color(0xFFE1E7E1),
+    surfaceContainerHighest = Color(0xFFDBE2DC),
+    surfaceTint = Color(0xFF0B5F5B),
 )
 
 internal val DarkColours = darkColorScheme(
-    primary = Color(0xFF80D5D4),
-    onPrimary = Color(0xFF003737),
-    primaryContainer = Color(0xFF004F4F),
-    onPrimaryContainer = Color(0xFF9CF1F0),
+    primary = Color(0xFF6FD3CA),
+    onPrimary = Color(0xFF00332F),
+    primaryContainer = Color(0xFF0A4A46),
+    onPrimaryContainer = Color(0xFFB9E7E2),
 
-    secondary = Color(0xFFB0CCCB),
-    onSecondary = Color(0xFF1B3535),
-    secondaryContainer = Color(0xFF324B4B),
-    onSecondaryContainer = Color(0xFFCCE8E7),
+    secondary = Color(0xFFA9C9C1),
+    onSecondary = Color(0xFF12332E),
+    secondaryContainer = Color(0xFF2A4A44),
+    onSecondaryContainer = Color(0xFFCFE4DE),
 
-    tertiary = Color(0xFFB3C8E8),
-    onTertiary = Color(0xFF1C314B),
-    tertiaryContainer = Color(0xFF334863),
-    onTertiaryContainer = Color(0xFFD3E4FF),
+    tertiary = Color(0xFFFFB59B),
+    onTertiary = Color(0xFF57200A),
+    tertiaryContainer = Color(0xFF75331C),
+    onTertiaryContainer = Color(0xFFFFDBCD),
 
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
-    errorContainer = Color(0xFF93000A),
-    onErrorContainer = Color(0xFFFFDAD6),
+    errorContainer = Color(0xFF8E2A22),
+    onErrorContainer = Color(0xFFFFDAD5),
 
-    background = Color(0xFF191C1C),
-    onBackground = Color(0xFFE0E3E2),
-    surface = Color(0xFF191C1C),
-    onSurface = Color(0xFFE0E3E2),
-    surfaceVariant = Color(0xFF3F4949),
-    onSurfaceVariant = Color(0xFFBEC9C8),
+    // Not grey: the dark ground keeps the same green cast as the paper, so the two themes are
+    // recognisably the same product rather than a light design and a black one.
+    background = Color(0xFF0D1211),
+    onBackground = Color(0xFFE2E8E5),
+    surface = Color(0xFF0D1211),
+    onSurface = Color(0xFFE2E8E5),
+    surfaceVariant = Color(0xFF2C3734),
+    onSurfaceVariant = Color(0xFFB2BEB9),
 
-    outline = Color(0xFF899393),
-    outlineVariant = Color(0xFF3F4949),
-    inverseSurface = Color(0xFFE0E3E2),
-    inverseOnSurface = Color(0xFF191C1C),
-    inversePrimary = Color(0xFF006A6A),
+    outline = Color(0xFF74817C),
+    outlineVariant = Color(0xFF2F3B38),
+    inverseSurface = Color(0xFFE2E8E5),
+    inverseOnSurface = Color(0xFF0D1211),
+    inversePrimary = Color(0xFF0B5F5B),
     scrim = Color(0xFF000000),
 
-    // The same roles as the light scheme, for the same reason. `onBlack()` below already set
-    // five of these, which is how the omission survived: the AMOLED variant looked right and
-    // the ordinary dark theme quietly used Material's baseline neutrals.
-    surfaceBright = Color(0xFF353A39),
-    surfaceDim = Color(0xFF111414),
-    surfaceContainerLowest = Color(0xFF0B0F0F),
-    surfaceContainerLow = Color(0xFF191C1C),
-    surfaceContainer = Color(0xFF1D2121),
-    surfaceContainerHigh = Color(0xFF282B2B),
-    surfaceContainerHighest = Color(0xFF323636),
-    surfaceTint = Color(0xFF80D5D4),
+    surfaceBright = Color(0xFF323B39),
+    surfaceDim = Color(0xFF090D0C),
+    surfaceContainerLowest = Color(0xFF070B0A),
+    surfaceContainerLow = Color(0xFF101615),
+    surfaceContainer = Color(0xFF141B19),
+    surfaceContainerHigh = Color(0xFF1A2220),
+    surfaceContainerHighest = Color(0xFF212A28),
+    surfaceTint = Color(0xFF6FD3CA),
 )
 
 /**
  * A dark scheme with a true-black ground, for OLED screens.
  *
- * Not a Material concept — there is no `amoledColorScheme()`. It is a display trick: an OLED
+ * Not a Material concept -- there is no `amoledColorScheme()`. It is a display trick: an OLED
  * pixel showing #000000 is switched off, so a black ground costs no power and has no glow in
  * a dark room. This is applied *over* whichever dark scheme is in use, so it composes with
  * dynamic colour rather than replacing it.
  *
- * The containers are deliberately *not* black. Making every surface #000000 is the usual
- * mistake: this app puts figures on cards — the home totals, the trial notice, a document
- * row — and a card that is the same colour as the page behind it stops being a card. So the
- * page goes black and the raised roles keep a step above it, which is the elevation Material
- * expresses with colour in dark themes.
+ * The raised roles stay above the ground for the same reason as before: a notice or a sheet
+ * that is exactly the colour of the page behind it stops being either. What changes here is
+ * that the rules get brighter -- on a black ground a hairline at #2F3B38 disappears, and the
+ * rules are the structure of this design.
  */
 internal fun ColorScheme.onBlack(): ColorScheme = copy(
     background = Color(0xFF000000),
     surface = Color(0xFF000000),
     surfaceContainerLowest = Color(0xFF000000),
-    surfaceContainerLow = Color(0xFF0B0E0E),
-    surfaceContainer = Color(0xFF121616),
-    surfaceContainerHigh = Color(0xFF1B1F1F),
-    surfaceContainerHighest = Color(0xFF242828),
+    surfaceContainerLow = Color(0xFF080D0C),
+    surfaceContainer = Color(0xFF0D1413),
+    surfaceContainerHigh = Color(0xFF141C1A),
+    surfaceContainerHighest = Color(0xFF1B2422),
     surfaceDim = Color(0xFF000000),
+    outlineVariant = Color(0xFF37433F),
 )
 
 /**
- * Colours for money, which are *not* part of the Material palette on purpose.
+ * Colours for money and for the marks beside it, which are *not* Material roles on purpose.
  *
- * Red and green alone are the classic accessibility failure — around 1 in 12 men cannot
- * reliably separate them — so nothing in this app uses colour as the only signal that a
- * number is negative. The minus sign does that. These exist to reinforce it, and the amber
- * is deliberately not "warning": a negative balance is ordinary in double-entry
- * bookkeeping, and dressing it up as an error would be wrong about accounting as well as
- * alarming.
+ * Red and green alone are the classic accessibility failure -- around 1 in 12 men cannot
+ * reliably separate them -- so nothing in this app uses colour as the only signal that a
+ * number is negative. The minus sign does that, and the balance mark beside an entry says in
+ * shape what [pending] says in colour. These exist to reinforce, never to carry.
+ *
+ * [negative] is an amber-brown rather than a red: a negative balance is ordinary in
+ * double-entry bookkeeping, and dressing it up as an error would be wrong about accounting as
+ * well as alarming. [pending] is the terracotta, and marks work a person has not finished.
+ * [rule] is the ledger's own line colour, brighter than the Material hairline because it is
+ * the spine of a list rather than a divider between two of them.
  */
-data class LedgerColours(val positive: Color, val negative: Color) {
+data class LedgerColours(
+    val positive: Color,
+    val negative: Color,
+    val neutral: Color = Color(0xFF6B7873),
+    val pending: Color = Color(0xFF9A4C2E),
+    val rule: Color = Color(0xFF0B5F5B),
+) {
     companion object {
-        val Light = LedgerColours(positive = Color(0xFF1B5E3F), negative = Color(0xFF8A4B00))
-        val Dark = LedgerColours(positive = Color(0xFF7FD3A8), negative = Color(0xFFFFB870))
+        val Light = LedgerColours(
+            positive = Color(0xFF1B5E3F),
+            negative = Color(0xFF8A4B00),
+            neutral = Color(0xFF66736E),
+            pending = Color(0xFF9A4C2E),
+            rule = Color(0xFF0B5F5B),
+        )
+        val Dark = LedgerColours(
+            positive = Color(0xFF7FD3A8),
+            negative = Color(0xFFFFB870),
+            neutral = Color(0xFF9AA7A2),
+            pending = Color(0xFFFFB59B),
+            rule = Color(0xFF6FD3CA),
+        )
     }
 }
 

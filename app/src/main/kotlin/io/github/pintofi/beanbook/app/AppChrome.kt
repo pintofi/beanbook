@@ -7,7 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -164,19 +167,40 @@ internal fun LedgerTopBar(
     adding: Boolean = false,
 ) {
     androidx.compose.material3.TopAppBar(
+        // The band: a tint one step off the paper, so the chrome reads as a strip laid over
+        // the page rather than as more page (B74). The rule below starts here and continues
+        // down the surface, which is what ties the chrome to the ledger under it.
+        colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+        ),
         title = {
-            Column {
-                Text(
-                    when {
-                        adding -> "New entry"
-                        sectionTitle != null -> sectionTitle
-                        else -> projectName
-                    },
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                )
-                if (!adding && sectionTitle == null && health != null) {
-                    Text(health, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                // The rule, in the chrome. Two rules where the ledger is healthy and one
+                // where it is not: the same vocabulary as the mark beside an entry, so the
+                // shape says "in balance" before the words under it are read.
+                if (!adding && sectionTitle == null) {
+                    HealthRule(healthy = health?.contains("no errors") == true)
+                    androidx.compose.foundation.layout.Spacer(Modifier.width(12.dp))
+                }
+                Column {
+                    Text(
+                        when {
+                            adding -> "New entry"
+                            sectionTitle != null -> sectionTitle
+                            else -> projectName
+                        },
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                    )
+                    if (!adding && sectionTitle == null && health != null) {
+                        Text(
+                            health,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
         },
@@ -191,14 +215,8 @@ internal fun LedgerTopBar(
                     Icon(Icons.Filled.Close, contentDescription = null)
                 }
             } else if (sectionTitle != null) {
-                // An arrow, which is what a person expects in this corner. This was the
-                // word "Back", on the grounds that the icon artifact was a whole dependency
-                // for one glyph -- true when it was written, and no longer: the icon set
-                // arrived with the navigation bar and measured +424 bytes in the shipped APK
-                // (B23).
-                //
-                // AutoMirrored, so the arrow points the other way in a right-to-left layout.
-                // A back arrow that keeps pointing left in Arabic or Hebrew points forward.
+                // An arrow, which is what a person expects in this corner. AutoMirrored, so
+                // it points the other way in a right-to-left layout.
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier.semantics { contentDescription = "Back to More" },
@@ -209,16 +227,68 @@ internal fun LedgerTopBar(
         },
         actions = {
             if (sectionTitle == null && !adding) {
-                TextButton(
+                // An outlined control rather than bare text: this switches which ledger the
+                // whole app is looking at, which is not a thing to do by accident.
+                androidx.compose.material3.OutlinedButton(
                     onClick = onSwitchProject,
-                    modifier = Modifier.semantics {
-                        contentDescription = "Switch project. Currently open: $projectName"
-                    },
-                ) { Text("Switch") }
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = 14.dp,
+                        vertical = 6.dp,
+                    ),
+                    shape = io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.control,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .semantics {
+                            contentDescription = "Switch project. Currently open: $projectName"
+                        },
+                ) { Text("Switch", style = MaterialTheme.typography.labelMedium) }
             }
         },
     )
 }
+
+/**
+ * The two rules from the launcher icon, at the size of a glyph, saying whether the open
+ * ledger parses (B74).
+ *
+ * Equal rules means every entry balanced and the file loaded. A short second rule means
+ * Beancount had something to say about it. The line of text beside this says the same thing
+ * in words and in numbers -- this is the glance version, and it is why the app's own mark is
+ * a pair of rules in the first place.
+ */
+@Composable
+private fun HealthRule(healthy: Boolean) {
+    val ledger = io.github.pintofi.beanbook.app.ui.theme.BeancountTheme.ledger
+    val colour = if (healthy) ledger.rule else ledger.pending
+    androidx.compose.foundation.Canvas(
+        modifier = Modifier
+            .width(14.dp)
+            .androidHeight()
+            .semantics {
+                contentDescription = if (healthy) "In balance" else "Needs attention"
+            },
+    ) {
+        val thickness = 2.5.dp.toPx()
+        val gap = 6.dp.toPx()
+        val top = (size.height - (thickness * 2 + gap)) / 2f
+        drawRect(
+            color = colour,
+            topLeft = androidx.compose.ui.geometry.Offset(0f, top),
+            size = androidx.compose.ui.geometry.Size(size.width, thickness),
+        )
+        drawRect(
+            color = colour,
+            topLeft = androidx.compose.ui.geometry.Offset(0f, top + thickness + gap),
+            size = androidx.compose.ui.geometry.Size(
+                if (healthy) size.width else size.width * 0.45f,
+                thickness,
+            ),
+        )
+    }
+}
+
+/** The glyph's own height: tall enough to carry two rules and their gap, no taller. */
+private fun Modifier.androidHeight(): Modifier = this.then(Modifier.height(20.dp))
 
 /**
  * One line saying whether the ledger is in good order.

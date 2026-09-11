@@ -7,18 +7,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,7 +41,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
+import io.github.pintofi.beanbook.app.ui.theme.LedgerType
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.readableMeasure
 import io.github.pintofi.beanbook.core.domain.AttentionItem
 import io.github.pintofi.beanbook.core.domain.CategorySpend
@@ -102,11 +105,18 @@ fun HomeScreen(
     }
 
     Column(
-        modifier = modifier.readableMeasure().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier
+            .readableMeasure()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Measure.gutter)
+            .padding(top = Measure.gap, bottom = Measure.actionClearance),
+        verticalArrangement = Arrangement.spacedBy(Measure.section),
     ) {
         if (ledger == null) {
-            Text("Open a project to see where it stands.", style = MaterialTheme.typography.bodyMedium)
+            EmptyState(
+                title = "No ledger open",
+                detail = "Open a project to see where it stands.",
+            )
             return@Column
         }
 
@@ -156,31 +166,74 @@ fun HomeScreen(
 @Composable
 private fun FiguresCard(ledger: LedgerSnapshot, hideAmounts: Boolean) {
     val summary = LedgerSummary.of(ledger)
-    Figure("Net worth", summary.netWorth, hideAmounts, prominent = true)
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        // Labelled with this ledger's own names for the two trees (B70), because the
-        // figures beneath them are the totals of exactly those trees.
-        Figure(ledger.accountNames.income, summary.income, hideAmounts, modifier = Modifier.weight(1f))
-        Figure(ledger.accountNames.expenses, summary.expenses, hideAmounts, modifier = Modifier.weight(1f))
+    // The one signature composition in the app (B74): the headline figure set large in the
+    // figure face, hung off the column rule, with the two supporting figures under it in a
+    // ruled pair. No card, no container -- this is the page itself, which is why it reads as
+    // a ledger rather than as a dashboard tile.
+    RuledColumn {
+        KeyFigure(
+            label = "Net worth",
+            value = shown(summary.netWorth, hideAmounts),
+            emphasis = true,
+        )
+        Spacer(Modifier.height(Measure.gap))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Measure.hairline),
+        ) {
+            // Labelled with this ledger's own names for the two trees (B70), because the
+            // figures beneath them are the totals of exactly those trees. One description per
+            // tile, so a screen reader says "Income, 3000.00 USD" rather than reading a number
+            // and a word as two unrelated things.
+            SupportingFigure(
+                label = ledger.accountNames.income,
+                value = shown(summary.income, hideAmounts),
+                modifier = Modifier.weight(1f),
+            )
+            SupportingFigure(
+                label = ledger.accountNames.expenses,
+                value = shown(summary.expenses, hideAmounts),
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 
     // The ledger's own errors matter more than any figure above them: the figures were
     // computed from a file Beancount could not fully read, and saying so second would be
     // saying it too late.
     if (ledger.errors.isNotEmpty()) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "This ledger has errors" },
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-        ) {
+        Notice(NoticeTone.PROBLEM) {
             Text(
                 "The figures above are what could be read, not the whole file.",
-                Modifier.padding(12.dp),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.semantics { contentDescription = "This ledger has errors" },
             )
         }
     }
+}
+
+/** One of the two figures under the headline: the total of an account tree. */
+@Composable
+private fun SupportingFigure(label: String, value: String, modifier: Modifier = Modifier) {
+    FigureTile(modifier.semantics(mergeDescendants = true) { contentDescription = "$label: $value" }) {
+        Text(
+            value,
+            style = LedgerType.figure.copy(textAlign = TextAlign.Start),
+            maxLines = 1,
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** A figure, or the dots that stand in for one when amounts are hidden. */
+private fun shown(value: String?, hideAmounts: Boolean): String = when {
+    value == null -> "—"
+    hideAmounts -> "•••"
+    else -> value
 }
 
 /**
@@ -202,63 +255,76 @@ private fun SpendingCard(
     val report = remember(ledger, layout.period, layout.categories, today) {
         HomeInsights.spending(ledger, layout.period, today, layout.categories)
     }
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Where the money went", style = MaterialTheme.typography.titleSmall)
-                Text(layout.period.label, style = MaterialTheme.typography.labelMedium)
-            }
-
-            if (report.isEmpty) {
-                Text(
-                    "Nothing spent in this period.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                return@Column
-            }
-
-            MoneyText(
-                money(report.total, ledger.format, hideAmounts),
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Start,
-                modifier = Modifier.fillMaxWidth(),
+    RuledColumn {
+        LedgerHeading("Where the money went") {
+            Text(
+                layout.period.label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (layout.compare) {
-                report.previousTotal?.let { previous ->
-                    Text(
-                        changeLine(report.total, previous, ledger.format, hideAmounts, layout.period),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+        }
 
-            report.categories.forEach { spend ->
-                CategoryRow(spend, report.total, ledger.format, hideAmounts, layout.compare)
-            }
+        if (report.isEmpty) {
+            Text(
+                "Nothing spent in this period.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            return@RuledColumn
+        }
 
-            if (report.ignoredCurrencies.isNotEmpty()) {
-                // Named rather than folded in: converting them would be the app inventing a
-                // rate, and dropping them silently would make the total quietly wrong.
+        MoneyText(
+            money(report.total, ledger.format, hideAmounts),
+            style = LedgerType.figure.copy(textAlign = TextAlign.Start),
+            textAlign = TextAlign.Start,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (layout.compare) {
+            report.previousTotal?.let { previous ->
                 Text(
-                    "Not counted: spending in ${report.ignoredCurrencies.joinToString(", ")}.",
+                    changeLine(report.total, previous, ledger.format, hideAmounts, layout.period),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Measure.tight),
                 )
             }
-
-            TextButton(
-                onClick = onOpenJournal,
-                modifier = Modifier.semantics { contentDescription = "Open the Journal" },
-            ) { Text("See the entries") }
         }
+
+        Spacer(Modifier.height(Measure.gap))
+        report.categories.forEachIndexed { index, spend ->
+            if (index > 0) LedgerHairline()
+            CategoryRow(spend, report.total, ledger.format, hideAmounts, layout.compare)
+        }
+        LedgerHairline()
+
+        if (report.ignoredCurrencies.isNotEmpty()) {
+            // Named rather than folded in: converting them would be the app inventing a
+            // rate, and dropping them silently would make the total quietly wrong.
+            Text(
+                "Not counted: spending in ${report.ignoredCurrencies.joinToString(", ")}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Measure.snug),
+            )
+        }
+
+        TextButton(
+            onClick = onOpenJournal,
+            modifier = Modifier
+                .padding(top = Measure.tight)
+                .semantics { contentDescription = "Open the Journal" },
+        ) { Text("See the entries") }
     }
 }
 
+/**
+ * One category of spending: the name, the figure, and the share as a measured length.
+ *
+ * The bar is drawn as a **rule segment**, not as a rounded progress track -- same thickness
+ * and same colour as the column rule the section hangs from, so a row reads as a short rule
+ * measured against the page width rather than as a widget borrowed from a dashboard. The
+ * track behind it is a hairline, which is what the eye needs to see that a short bar is short.
+ */
 @Composable
 private fun CategoryRow(
     spend: CategorySpend,
@@ -274,29 +340,32 @@ private fun CategoryRow(
             .fillMaxWidth()
             .semantics {
                 contentDescription = "$leaf, ${money(spend.amount, format, hideAmounts)}"
-            },
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+            }
+            .padding(vertical = Measure.snug),
+        verticalArrangement = Arrangement.spacedBy(Measure.tight),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
         ) {
-            Text(leaf, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            MoneyText(money(spend.amount, format, hideAmounts), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                leaf,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f).padding(end = Measure.snug),
+            )
+            MoneyText(money(spend.amount, format, hideAmounts), style = LedgerType.row)
         }
-        // The bar is the point of the row: five lengths say where a month went faster than
-        // five numbers do.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(6.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(3.dp)),
+                .height(Measure.rule)
+                .background(MaterialTheme.colorScheme.outlineVariant),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(share)
-                    .height(6.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(3.dp)),
+                    .height(Measure.rule)
+                    .background(BeancountTheme.ledger.rule),
             )
         }
         if (compare) {
@@ -305,8 +374,10 @@ private fun CategoryRow(
                 Text(
                     (if (up) "+" else "") + money(change, format, hideAmounts) + " against last period",
                     style = MaterialTheme.typography.labelSmall,
+                    // Spending more than last period is not an error, so it is not error red:
+                    // it is the ledger's own negative colour, and the sign says which way.
                     color = if (up) {
-                        MaterialTheme.colorScheme.error
+                        BeancountTheme.ledger.negative
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
@@ -330,39 +401,47 @@ private fun AttentionCard(
     val items = remember(ledger, unfiledDocuments, brokenDocumentLinks, mirrorConflicts) {
         HomeInsights.attention(ledger, unfiledDocuments, brokenDocumentLinks, mirrorConflicts)
     }
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (items.isEmpty()) {
-                MaterialTheme.colorScheme.surfaceVariant
-            } else {
-                MaterialTheme.colorScheme.errorContainer
-            },
-        ),
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Needs attention", style = MaterialTheme.typography.titleSmall)
-            if (items.isEmpty()) {
+    // This is the app talking about the ledger rather than the ledger showing itself, so it
+    // is a notice: rounded and tinted where the data around it is square and on paper. When
+    // there is nothing to say it stays on the page as a ruled line, because a tinted panel
+    // announcing that nothing is wrong is the app congratulating itself.
+    if (items.isEmpty()) {
+        RuledColumn {
+            LedgerHeading("Needs attention")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StampMark(LedgerMark.CLEARED)
                 Text(
                     "Nothing. The ledger loads, and every document is accounted for.",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = Measure.gap),
                 )
-                return@Column
             }
-            items.forEach { item ->
-                val go = when (item.destination) {
-                    AttentionItem.Destination.JOURNAL -> onOpenJournal
-                    AttentionItem.Destination.DOCUMENTS -> onOpenDocuments
-                    AttentionItem.Destination.MIRROR -> onOpenMirror
-                }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(role = Role.Button, onClick = go)
-                        .semantics { contentDescription = "${item.headline}. ${item.detail}" }
-                        .padding(vertical = 4.dp),
-                ) {
-                    Text(item.headline, style = MaterialTheme.typography.bodyMedium)
+        }
+        return
+    }
+
+    Notice(NoticeTone.PROBLEM) {
+        Text("Needs attention", style = MaterialTheme.typography.titleSmall)
+        items.forEach { item ->
+            val go = when (item.destination) {
+                AttentionItem.Destination.JOURNAL -> onOpenJournal
+                AttentionItem.Destination.DOCUMENTS -> onOpenDocuments
+                AttentionItem.Destination.MIRROR -> onOpenMirror
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button, onClick = go)
+                    .semantics { contentDescription = "${item.headline}. ${item.detail}" }
+                    .padding(vertical = Measure.snug),
+            ) {
+                StampMark(
+                    LedgerMark.ATTENTION,
+                    modifier = Modifier.padding(top = Measure.tight, end = Measure.gap),
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(Measure.tight)) {
+                    Text(item.headline, style = MaterialTheme.typography.bodyLarge)
                     Text(item.detail, style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -379,21 +458,36 @@ private fun PendingCard(
 ) {
     val pending = remember(ledger) { HomeInsights.pending(ledger) }
     val total = remember(ledger) { HomeInsights.pendingCount(ledger) }
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Uncleared and pending", style = MaterialTheme.typography.titleSmall)
-            if (pending.isEmpty()) {
-                Text("Nothing is waiting. Every entry is cleared.", style = MaterialTheme.typography.bodySmall)
-                return@Column
-            }
-            pending.forEach { entry -> EntryRow(entry, hideAmounts, onOpenEntry) }
-            if (total > pending.size) {
+    RuledColumn {
+        LedgerHeading("Uncleared and pending") {
+            if (pending.isNotEmpty()) {
                 Text(
-                    "${total - pending.size} more are pending.",
-                    style = MaterialTheme.typography.bodySmall,
+                    "$total",
+                    style = LedgerType.small,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+        if (pending.isEmpty()) {
+            Text(
+                "Nothing is waiting. Every entry is cleared.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            return@RuledColumn
+        }
+        pending.forEachIndexed { index, entry ->
+            if (index > 0) LedgerHairline()
+            EntryRow(entry, hideAmounts, onOpenEntry, LedgerMark.PENDING)
+        }
+        LedgerHairline()
+        if (total > pending.size) {
+            Text(
+                "${total - pending.size} more are pending.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Measure.snug),
+            )
         }
     }
 }
@@ -406,20 +500,27 @@ private fun RecentCard(
     onOpenEntry: (JournalEntry) -> Unit,
 ) {
     val recent = ledger.recentEntries(RECENT_ENTRIES)
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Recent entries", style = MaterialTheme.typography.titleSmall)
-            if (recent.isEmpty()) {
-                Text("Nothing yet. Anything you add shows up here.", style = MaterialTheme.typography.bodySmall)
-                return@Column
-            }
-            recent.forEach { entry -> EntryRow(entry, hideAmounts, onOpenEntry) }
+    RuledColumn {
+        LedgerHeading("Recent entries")
+        if (recent.isEmpty()) {
             Text(
-                "Showing ${recent.size} of ${ledger.journal.size}. The Journal has all of them.",
-                style = MaterialTheme.typography.bodySmall,
+                "Nothing yet. Anything you add shows up here.",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            return@RuledColumn
         }
+        recent.forEachIndexed { index, entry ->
+            if (index > 0) LedgerHairline()
+            EntryRow(entry, hideAmounts, onOpenEntry, markOf(entry))
+        }
+        LedgerHairline()
+        Text(
+            "Showing ${recent.size} of ${ledger.journal.size}. The Journal has all of them.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = Measure.snug),
+        )
     }
 }
 
@@ -586,48 +687,25 @@ private fun changeLine(
     return "$shown $word $against, which was ${money(previous, format, hideAmounts)}."
 }
 
-/** One headline figure. `null` reads as "nothing to say", never as zero. */
-@Composable
-private fun Figure(
-    label: String,
-    value: String?,
-    hideAmounts: Boolean,
-    modifier: Modifier = Modifier,
-    prominent: Boolean = false,
-) {
-    val shown = when {
-        value == null -> "—"
-        hideAmounts -> "•••"
-        else -> value
-    }
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            // One description for the pair, so a screen reader says "Net worth, 940.00 USD"
-            // rather than reading a label and a number as two unrelated things.
-            .semantics { contentDescription = "$label: $shown" },
-    ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium)
-            // Through MoneyText like every other figure. These are read against each other --
-            // Income beside Expenses, both against Net worth -- which is the comparison the
-            // fixed-width face exists for.
-            MoneyText(
-                shown,
-                modifier = Modifier.fillMaxWidth(),
-                style = if (prominent) {
-                    MaterialTheme.typography.headlineSmall
-                } else {
-                    MaterialTheme.typography.titleMedium
-                },
-                textAlign = TextAlign.Start,
-            )
-        }
-    }
-}
+/** What the file's own flag says about an entry, in the app's mark vocabulary. */
+private fun markOf(entry: JournalEntry): LedgerMark =
+    if (entry.flag == "!") LedgerMark.PENDING else LedgerMark.CLEARED
 
+/**
+ * One entry on a ruled page: mark, description, date, amount.
+ *
+ * The amount is set in the figure face and right-aligned against the page edge, so a column
+ * of entries lines up on the decimal point; the date sits under the description in the small
+ * figure face rather than beside it, because a phone row has one line of horizontal room and
+ * the description is what a person is scanning for.
+ */
 @Composable
-private fun EntryRow(entry: JournalEntry, hideAmounts: Boolean, onOpen: (JournalEntry) -> Unit) {
+private fun EntryRow(
+    entry: JournalEntry,
+    hideAmounts: Boolean,
+    onOpen: (JournalEntry) -> Unit,
+    mark: LedgerMark = markOf(entry),
+) {
     val amount = entry.postings.firstOrNull()?.amount
     val shown = when {
         amount == null -> ""
@@ -639,25 +717,27 @@ private fun EntryRow(entry: JournalEntry, hideAmounts: Boolean, onOpen: (Journal
             .fillMaxWidth()
             .clickable(role = Role.Button) { onOpen(entry) }
             .semantics { contentDescription = "${entry.date}, ${entry.description}" }
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .heightIn(min = Measure.rowMinHeight)
+            .padding(vertical = Measure.snug),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f).padding(end = 8.dp)) {
+        StampMark(mark, modifier = Modifier.padding(end = Measure.gap))
+        Column(Modifier.weight(1f).padding(end = Measure.snug)) {
             Text(
                 entry.description.ifBlank { "(no description)" },
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             MoneyText(
                 entry.date,
-                style = MaterialTheme.typography.bodySmall,
+                style = LedgerType.small,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Start,
             )
         }
         if (shown.isNotEmpty()) {
-            MoneyText(shown)
+            MoneyText(shown, style = LedgerType.row)
         }
     }
 }

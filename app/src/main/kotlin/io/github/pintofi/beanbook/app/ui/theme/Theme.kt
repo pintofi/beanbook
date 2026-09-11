@@ -42,24 +42,26 @@ enum class ThemeChoice(val label: String) {
 
 private val LocalLedgerColours = staticCompositionLocalOf { LedgerColours.Light }
 
-/** Colours for figures. See [LedgerColours] for why they are not Material roles. */
+/** Colours for figures, and the band the header sits in. See [LedgerColours]. */
 object BeancountTheme {
     val ledger: LedgerColours
         @Composable @ReadOnlyComposable get() = LocalLedgerColours.current
-
 }
 
 /**
  * The app's theme.
  *
- * Dark mode is first-class, not an afterthought: it follows the system by default and can
- * be overridden, because "follow the system" is wrong for the person who reads their ledger
- * in bed with the phone on light mode (docs/ux.md §3).
+ * Dark mode is first-class, not an afterthought: it follows the system by default and can be
+ * overridden, because "follow the system" is wrong for the person who reads their ledger in
+ * bed with the phone on light mode (docs/ux.md 3).
  *
- * Dynamic colour is used where the platform has it (Android 12+), so the app takes on the
- * user's wallpaper palette like the rest of their phone, and falls back to the teal in
- * [LightColours] below that. Dynamic colour can be turned off — some people dislike it, and
- * on an unlucky wallpaper it can produce a palette that fights a dense table of numbers.
+ * **Dynamic colour is taken as an accent, not as the whole design (B74.)** Before, the
+ * wallpaper palette replaced every role, so on an unlucky wallpaper the app was a lilac
+ * dashboard and nothing of its own composition survived. Now the wallpaper supplies the
+ * accents -- primary, secondary, tertiary and their containers, which is where a person
+ * actually sees "this matches my phone" -- and the app keeps its own paper, ink, rules and
+ * raised surfaces. The result still changes visibly with the wallpaper and still looks like
+ * this app.
  */
 @Composable
 fun BeancountTheme(
@@ -69,24 +71,58 @@ fun BeancountTheme(
 ) {
     val dark = choice.isDark()
     val context = LocalContext.current
+    val own = if (dark) DarkColours else LightColours
 
     val base: ColorScheme = when {
-        dynamicColour && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        dark -> DarkColours
-        else -> LightColours
+        dynamicColour && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val wallpaper =
+                if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            own.withAccentsFrom(wallpaper)
+        }
+        else -> own
     }
-    // Applied over whichever dark scheme won above, so pure black composes with the
-    // wallpaper palette instead of cancelling it.
+    // Applied over whichever dark scheme won above, so pure black composes with the wallpaper
+    // accents instead of cancelling them.
     val colours = if (choice == ThemeChoice.BLACK) base.onBlack() else base
 
-    CompositionLocalProvider(
-        LocalLedgerColours provides if (dark) LedgerColours.Dark else LedgerColours.Light,
-    ) {
+    // The rules follow the accent, so a wallpaper palette moves the whole page together
+    // instead of leaving teal rules under a lilac button. Without dynamic colour this is the
+    // app's own teal and nothing changes.
+    val ledger = (if (dark) LedgerColours.Dark else LedgerColours.Light)
+        .copy(rule = colours.primary)
+
+    CompositionLocalProvider(LocalLedgerColours provides ledger) {
         MaterialTheme(
             colorScheme = colours,
             typography = BeancountTypography,
+            shapes = BeancountShapes,
             content = content,
         )
     }
 }
+
+/**
+ * This app's paper and rules, wearing the wallpaper's accents.
+ *
+ * Only the roles a person reads as "my phone's colour" are taken: the three accent families
+ * and the tint. Backgrounds, surfaces, outlines and the inverse roles stay as designed,
+ * because those are the composition -- the paper the figures sit on and the rules that
+ * organise them -- and handing them to a wallpaper is how an app loses its identity on
+ * somebody else's home screen.
+ */
+private fun ColorScheme.withAccentsFrom(dynamic: ColorScheme): ColorScheme = copy(
+    primary = dynamic.primary,
+    onPrimary = dynamic.onPrimary,
+    primaryContainer = dynamic.primaryContainer,
+    onPrimaryContainer = dynamic.onPrimaryContainer,
+    secondary = dynamic.secondary,
+    onSecondary = dynamic.onSecondary,
+    secondaryContainer = dynamic.secondaryContainer,
+    onSecondaryContainer = dynamic.onSecondaryContainer,
+    tertiary = dynamic.tertiary,
+    onTertiary = dynamic.onTertiary,
+    tertiaryContainer = dynamic.tertiaryContainer,
+    onTertiaryContainer = dynamic.onTertiaryContainer,
+    inversePrimary = dynamic.inversePrimary,
+    surfaceTint = dynamic.surfaceTint,
+)
