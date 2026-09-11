@@ -46,14 +46,40 @@ class MotionTest {
         section: MoreSection? = null,
     ) = Triple(surface, adding, section)
 
-    @Test fun destinationsAreePeersAndTravelInTheDirectionOfTheBar() {
-        val forward = surfaceMove(route(Surface.HOME), route(Surface.REPORTS))
-        val back = surfaceMove(route(Surface.REPORTS), route(Surface.HOME))
+    @Test fun destinationsArePeersAndTravelInTheDirectionOfTheBar() {
+        val forward = surfaceMove(route(Surface.JOURNAL), route(Surface.BALANCES))
+        val back = surfaceMove(route(Surface.BALANCES), route(Surface.JOURNAL))
 
         assertSame(MotionAxis.PEER, forward.axis)
         assertSame(MotionAxis.PEER, back.axis)
         // Back is the mirror of forward, so the two undo each other on screen.
         assertEquals(forward.direction.toLong(), -back.direction.toLong())
+    }
+
+    /**
+     * Reports is Fava's own page in a WebView, and it is a cut in both directions.
+     *
+     * Measured rather than assumed: sliding the browser window put the 95th-percentile frame
+     * time up from 300ms to 500ms on the same scripted route, and the destination bar has
+     * already said where the person went.
+     */
+    @Test fun theReportsTabIsACutBecauseAnimatingAWebViewCosts() {
+        assertSame(
+            MotionAxis.INSTANT,
+            surfaceMove(route(Surface.HOME), route(Surface.REPORTS)).axis,
+        )
+        assertSame(
+            MotionAxis.INSTANT,
+            surfaceMove(route(Surface.REPORTS), route(Surface.MORE)).axis,
+        )
+    }
+
+    /** Opening the form over Reports is still the form opening, not a cut. */
+    @Test fun theFormStillComesOutOfTheActionEvenOverTheReportsTab() {
+        assertSame(
+            MotionAxis.CONTAINER,
+            surfaceMove(route(Surface.REPORTS), route(Surface.REPORTS, adding = true)).axis,
+        )
     }
 
     @Test fun aSectionIsDeeperThanTheHubItCameFrom() {
