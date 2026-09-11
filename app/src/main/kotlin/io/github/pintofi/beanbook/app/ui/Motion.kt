@@ -77,6 +77,16 @@ enum class MotionAxis {
     NONE,
 
     /**
+     * No motion at all, on purpose.
+     *
+     * Reserved for a surface that is expensive to animate and gains nothing by it -- the
+     * WebView that holds Fava's reports is the only one. Scaling and fading a browser costs
+     * a full-window layer every frame of the transition, and the page underneath is not the
+     * app's to animate anyway.
+     */
+    INSTANT,
+
+    /**
      * A word replacing a word in the same small space.
      *
      * The arriving text waits for the leaving text to go: two labels crossfading on top of
@@ -145,6 +155,9 @@ data class Move(
 
         /** A label replacing a label: down for deeper, up for back. */
         fun label(deeper: Boolean) = Move(MotionAxis.LABEL, if (deeper) 1 else -1)
+
+        /** Straight there, because animating this surface would cost more than it says. */
+        val instant = Move(MotionAxis.INSTANT, 0)
     }
 }
 
@@ -211,6 +224,8 @@ private fun <T> AnimatedContentTransitionScope<T>.transformFor(
                 ) { (it * 0.4f).toInt() * direction } togetherWith
                 fadeOut(tween(out, easing = Motion.exit))
         }
+
+        MotionAxis.INSTANT -> fadeIn(tween(0)) togetherWith fadeOut(tween(0))
 
         MotionAxis.NONE -> fadeIn(enter) togetherWith fadeOut(exit)
     }
@@ -393,5 +408,5 @@ fun LedgerAction(
 fun travelFor(axis: MotionAxis): Dp = when (axis) {
     MotionAxis.PEER -> MotionDistance.peer
     MotionAxis.HIERARCHY, MotionAxis.CONTAINER -> MotionDistance.hierarchy
-    MotionAxis.NONE, MotionAxis.LABEL -> MotionDistance.local
+    MotionAxis.NONE, MotionAxis.LABEL, MotionAxis.INSTANT -> MotionDistance.local
 }

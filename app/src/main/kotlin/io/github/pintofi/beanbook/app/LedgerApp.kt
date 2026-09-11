@@ -217,6 +217,12 @@ internal fun surfaceMove(
                 io.github.pintofi.beanbook.app.ui.Move.back()
             }
 
+        // Reports is Fava's own page in a WebView. Sliding a browser window costs a
+        // full-screen layer for every frame of the transition and says nothing the
+        // destination bar has not already said, so that one move is a cut.
+        fromSurface == Surface.REPORTS || toSurface == Surface.REPORTS ->
+            io.github.pintofi.beanbook.app.ui.Move.instant
+
         fromSurface != toSurface ->
             io.github.pintofi.beanbook.app.ui.Move.peer(forward = toSurface.ordinal > fromSurface.ordinal)
 
