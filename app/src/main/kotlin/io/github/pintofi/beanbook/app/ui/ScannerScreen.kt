@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -480,37 +481,13 @@ fun ScannerScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                // Left: the last page taken, as a thumbnail that opens the batch for editing.
-                // Their layout puts it here and it earns the place -- it is both the proof
-                // the shot came out and the way back into it.
-                Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
-                    val last = pages.lastOrNull()
-                    if (last != null) {
-                        val thumb = remember(last.source, pages.size) {
-                            runCatching {
-                                io.github.pintofi.beanbook.app.documents.Photos
-                                    .decodeUpright(fileFor(last.source), maxEdge = 160)
-                            }.getOrNull()
-                        }
-                        androidx.compose.material3.Surface(
-                            onClick = { previewing = pages.lastIndex },
-                            color = Color.DarkGray,
-                            shape = RoundedCornerShape(6.dp),
-                            modifier = Modifier.size(56.dp).semantics {
-                                contentDescription = "Edit the ${pages.size} page(s) taken so far"
-                            },
-                        ) {
-                            if (thumb != null) {
-                                androidx.compose.foundation.Image(
-                                    bitmap = thumb.asImageBitmap(),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            }
-                        }
-                    }
-                }
+                // A spacer, not a thumbnail (B72). The last page taken used to sit here as a
+                // 56dp box beside the shutter, above a strip that already showed every page
+                // including that one -- the same picture twice, one of them unable to say
+                // which page it was or let the others be reached. The strip does both jobs,
+                // so the box is gone and its width stays, because it is what keeps the
+                // shutter in the middle of the screen rather than left of it.
+                Spacer(Modifier.size(56.dp))
 
                 ShutterButton(
                     busy = busy,
