@@ -55,6 +55,7 @@ import io.github.pintofi.beanbook.app.ui.Notice
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.remember
 // The smaller pieces the shell is built from: the rail and top bar, the banners, and the
 // states a surface falls back to. Split out of MainActivity.kt; see LedgerApp.kt.
 /**
@@ -209,18 +210,33 @@ internal fun LedgerTopBar(
                     androidx.compose.foundation.layout.Spacer(Modifier.width(12.dp))
                 }
                 Column {
-                    Text(
-                        when {
+                    // The title changes when the app moves, and it changes *as* the app
+                    // moves: a section's name rises into place and the project's name settles
+                    // back, so the bar and the page are telling the same story (B76).
+                    io.github.pintofi.beanbook.app.ui.LedgerContent(
+                        targetState = when {
                             adding -> "New entry"
                             sectionTitle != null -> sectionTitle
                             else -> projectName
                         },
-                        style = MaterialTheme.typography.titleLarge,
-                        maxLines = 1,
-                    )
-                    if (switchable && health != null) {
+                        label = "title",
+                        move = { _, _ ->
+                            io.github.pintofi.beanbook.app.ui.Move.label(deeper = !switchable)
+                        },
+                    ) { title ->
                         Text(
-                            health,
+                            title,
+                            style = MaterialTheme.typography.titleLarge,
+                            maxLines = 1,
+                        )
+                    }
+                    io.github.pintofi.beanbook.app.ui.LedgerReveal(
+                        visible = switchable && health != null,
+                        label = "health",
+                    ) {
+                        val shown = remember(health) { health }
+                        Text(
+                            shown.orEmpty(),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -238,23 +254,39 @@ internal fun LedgerTopBar(
             }
         },
         navigationIcon = {
-            if (adding) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.semantics {
-                        contentDescription = "Close the entry form"
-                    },
-                ) {
-                    Icon(Icons.Filled.Close, contentDescription = null)
-                }
-            } else if (sectionTitle != null) {
-                // An arrow, which is what a person expects in this corner. AutoMirrored, so
-                // it points the other way in a right-to-left layout.
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.semantics { contentDescription = "Back to More" },
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+            // The corner changes with the page rather than a frame before it: a cross for a
+            // form you opened, an arrow for a section you walked into, and nothing at the top
+            // level. Cross-fades in place, because the two icons mean different things and
+            // sliding one into the other would imply they were the same control (B76).
+            io.github.pintofi.beanbook.app.ui.LedgerContent(
+                targetState = when {
+                    adding -> NavigationAffordance.CLOSE
+                    sectionTitle != null -> NavigationAffordance.BACK
+                    else -> NavigationAffordance.NONE
+                },
+                label = "navigationIcon",
+                move = { _, _ -> io.github.pintofi.beanbook.app.ui.Move.none },
+            ) { affordance ->
+                when (affordance) {
+                    NavigationAffordance.CLOSE -> IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Close the entry form"
+                        },
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = null)
+                    }
+
+                    // An arrow, which is what a person expects in this corner. AutoMirrored,
+                    // so it points the other way in a right-to-left layout.
+                    NavigationAffordance.BACK -> IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.semantics { contentDescription = "Back to More" },
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    }
+
+                    NavigationAffordance.NONE -> Unit
                 }
             }
         },
@@ -385,6 +417,9 @@ internal fun MoreMenu(entitlement: Entitlement, onContribute: () -> Unit, onOpen
         }
     }
 }
+
+/** What the top-left corner offers: nothing, a way back, or a way out of a form. */
+private enum class NavigationAffordance { NONE, BACK, CLOSE }
 
 /**
  * Something had to be put right before the app could start, and the user is told what.

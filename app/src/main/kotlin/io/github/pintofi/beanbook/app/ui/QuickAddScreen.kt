@@ -62,6 +62,7 @@ import io.github.pintofi.beanbook.core.domain.TransactionDraft
 import java.math.BigDecimal
 import java.time.LocalDate
 import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
+import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 
 /**
  * One editable posting row. Empty amount means elided — Beancount works it out.
@@ -588,14 +589,24 @@ fun QuickAddScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    // The signature (B76). When a save lands, the lines that were written
+                    // are swept once by the app's own rule, left to right, and it is over in
+                    // a third of a second. It is the only moment in the app that marks an
+                    // action rather than explaining a change, and it marks the right one: the
+                    // entry going into the book is what the whole form is for. Drawn rather
+                    // than laid out, so the preview does not move while it happens.
+                    .filedSweep(key = saveState, colour = BeancountTheme.ledger.rule)
                     .padding(Measure.indent)
                     .semantics { contentDescription = "Preview of the entry to be saved" },
             )
         }
 
-        if (problems.isNotEmpty()) {
+        // A validation message pushes the form down rather than appearing between two fields
+        // that were already there: what changed is that the form has something to say.
+        LedgerReveal(visible = problems.isNotEmpty(), label = "problems") {
+            val shown = androidx.compose.runtime.remember(problems) { problems }
             Notice(NoticeTone.PROBLEM) {
-                problems.forEach { problem ->
+                shown.forEach { problem ->
                     Text(problem.describe(), style = MaterialTheme.typography.bodyMedium)
                 }
             }
@@ -703,7 +714,11 @@ fun QuickAddScreen(
             )
         }
 
-        saveState?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        // What the write did, arriving under the button that did it.
+        LedgerReveal(visible = saveState != null, label = "saveState") {
+            val shown = androidx.compose.runtime.remember(saveState) { saveState }
+            Text(shown.orEmpty(), style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 

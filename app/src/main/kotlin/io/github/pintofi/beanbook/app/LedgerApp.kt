@@ -62,6 +62,7 @@ import io.github.pintofi.beanbook.app.web.AllowlistWebViewClient
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.core.entitlement.Entitlement
+import androidx.compose.foundation.background
 // The app shell: the destinations, and the scaffold that holds them.
 //
 // Split out of MainActivity.kt, which had grown to 2088 lines holding an activity and every
@@ -183,6 +184,46 @@ internal enum class Surface(val label: String, val icon: androidx.compose.ui.gra
     // The hub docs/ux.md 2 asks for: documents now, backup and settings as they arrive.
     // Projects lives here rather than in the bar so six destinations still fit a phone.
     MORE("More", Icons.Outlined.MoreHoriz),
+}
+
+/**
+ * How one place in the app becomes another (B76).
+ *
+ * Three cases, in the order they take precedence. Opening or closing the entry form is
+ * hierarchical whatever else changes, because the form is a thing on top of a destination.
+ * Entering or leaving a More section is hierarchical too. Everything else is a move between
+ * peers, and its direction is which way along the bar the destination sits -- so Home to
+ * Reports travels the same way as Home to Journal, only further.
+ */
+internal fun surfaceMove(
+    from: Triple<Surface, Boolean, MoreSection?>,
+    to: Triple<Surface, Boolean, MoreSection?>,
+): io.github.pintofi.beanbook.app.ui.Move {
+    val (fromSurface, fromAdding, fromSection) = from
+    val (toSurface, toAdding, toSection) = to
+    return when {
+        // The form comes out of the button that opened it and goes back into it.
+        fromAdding != toAdding ->
+            if (toAdding) {
+                io.github.pintofi.beanbook.app.ui.Move.outOf(io.github.pintofi.beanbook.app.ui.Move.action)
+            } else {
+                io.github.pintofi.beanbook.app.ui.Move.backInto(io.github.pintofi.beanbook.app.ui.Move.action)
+            }
+
+        fromSection != toSection && (fromSection == null || toSection == null) ->
+            if (toSection != null) {
+                io.github.pintofi.beanbook.app.ui.Move.deeper()
+            } else {
+                io.github.pintofi.beanbook.app.ui.Move.back()
+            }
+
+        fromSurface != toSurface ->
+            io.github.pintofi.beanbook.app.ui.Move.peer(forward = toSurface.ordinal > fromSurface.ordinal)
+
+        // One More section replacing another, or nothing anyone can see: no axis, because
+        // nothing about the two says which is to the left of the other.
+        else -> io.github.pintofi.beanbook.app.ui.Move.none
+    }
 }
 
 @Composable
@@ -436,11 +477,12 @@ internal fun LedgerApp(
             )
         },
         floatingActionButton = {
-            // Adding an entry is the app's primary action, so it gets the one control
-            // Material reserves for that, rather than a sixth slot in a bar meant for
-            // destinations (B26). Hidden while the form is open -- a button that opens what
-            // is already open is noise -- and while there is no ledger to add to.
-            if (showsAddAction(selected, adding, hasLedger = ledger != null)) {
+            // The button grows in and shrinks back out rather than blinking: it disappears
+            // whenever the form opens, and a control that vanishes between frames reads as a
+            // glitch rather than as the thing that became the page in front of you (B76).
+            io.github.pintofi.beanbook.app.ui.LedgerAction(
+                visible = showsAddAction(selected, adding, hasLedger = ledger != null),
+            ) {
                 androidx.compose.material3.FloatingActionButton(
                     onClick = { adding = true },
                 ) {
@@ -539,13 +581,38 @@ internal fun LedgerApp(
         }
 
         Column(modifier = Modifier.padding(padding)) {
-            recoveryNotice?.let { notice ->
-                RecoveryBanner(notice, onDismiss = onDismissRecovery)
+            // The banner makes room for itself rather than appearing in place, so the page
+            // under it is pushed down by something arriving instead of being covered by
+            // something that was always there (B76).
+            io.github.pintofi.beanbook.app.ui.LedgerReveal(
+                visible = recoveryNotice != null,
+                label = "recovery",
+            ) {
+                // Held while it collapses, so the text does not vanish a frame before the
+                // space it occupied does.
+                val shown = androidx.compose.runtime.remember(recoveryNotice) { recoveryNotice }
+                shown?.let { notice -> RecoveryBanner(notice, onDismiss = onDismissRecovery) }
             }
+            // Where the app is: the destination, whether the form is over it, and which More
+            // section is open. Peer destinations slide along the horizontal axis in the
+            // direction of travel; the form and a More section rise from the page and sink
+            // back into it. The pair being animated between is what decides that, so an
+            // interrupted transition is still going the right way.
+            io.github.pintofi.beanbook.app.ui.LedgerContent(
+                targetState = Triple(selected, adding, moreSection),
+                label = "destination",
+                move = { from, to -> surfaceMove(from, to) },
+            ) { (shownSurface, shownAdding, shownSection) ->
+            // Painted on the app's own paper. Without a background the page being left shows
+            // through the page arriving for the length of the transition, which on a screen
+            // of figures reads as two ledgers at once.
+            androidx.compose.foundation.layout.Box(
+                Modifier.background(MaterialTheme.colorScheme.background),
+            ) {
             SurfaceContent(
-                selected = selected,
-                adding = adding,
-                moreSection = moreSection,
+                selected = shownSurface,
+                adding = shownAdding,
+                moreSection = shownSection,
                 onMoreSection = { moreSection = it },
                 onSelectSurface = { leavingAdd { adding = false; selected = it } },
                 twoPane = layout == PaneLayout.EXPANDED,
@@ -667,6 +734,8 @@ internal fun LedgerApp(
                 onRefresh = onRefresh,
                 onAddDirtyChange = { addDirty = it },
             )
+            }
+            }
         }
     }
     }

@@ -19,6 +19,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.viewinterop.AndroidView
 import io.github.pintofi.beanbook.core.engine.OriginAllowlist
+import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 
 private const val TAG = "FavaWebView"
 
@@ -215,6 +223,14 @@ fun FavaWebView(
     httpAuth: (() -> AllowlistWebViewClient.HttpAuth?)? = null,
     onLoadProblem: (String) -> Unit = {},
 ) {
+    // Whether the page has ever finished loading, so the native shell can hold something in
+    // front of a blank WebView (B76). A report takes a moment to render and Fava paints white
+    // until it does, which read as the app having lost the screen. Nothing is injected into
+    // the page and nothing about the WebView's security changes: this is a native cover over
+    // a native slot, removed when Fava says it is ready.
+    var loaded by androidx.compose.runtime.saveable.rememberSaveable(url) {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
     // Recomputed when the palette changes, so switching theme re-skins the reports on their
     // next load without restarting anything.
     val scheme = androidx.compose.material3.MaterialTheme.colorScheme
@@ -227,8 +243,11 @@ fun FavaWebView(
     }
     val currentTheme = androidx.compose.runtime.rememberUpdatedState(themeScript)
 
+    val onLoaded = androidx.compose.runtime.rememberUpdatedState { loaded = true }.value
+
+    androidx.compose.foundation.layout.Box(modifier) {
     AndroidView(
-        modifier = modifier,
+        modifier = androidx.compose.ui.Modifier.fillMaxSize(),
         factory = { context ->
             // A FrameLayout around the WebView, not the WebView on its own. `AndroidView`
             // measures its view once with an unconstrained height, and a WebView measured
@@ -266,6 +285,7 @@ fun FavaWebView(
                         onExternalLink = onExternalLink,
                         httpAuth = httpAuth,
                         onLoadProblem = onLoadProblem,
+                        onPageLoaded = { onLoaded() },
                         themeScript = { currentTheme.value },
                     )
                 }
@@ -290,7 +310,55 @@ fun FavaWebView(
         },
     )
 
+    // The report fading up over the shell's own loading rule, rather than a white page
+    // becoming a report between two frames.
+    androidx.compose.animation.AnimatedVisibility(
+        visible = !loaded,
+        modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+        enter = androidx.compose.animation.fadeIn(
+            io.github.pintofi.beanbook.app.ui.theme.MotionRole.local(),
+        ),
+        exit = androidx.compose.animation.fadeOut(
+            io.github.pintofi.beanbook.app.ui.theme.MotionRole.replace(),
+        ),
+        label = "report",
+    ) {
+        ReportLoading()
+    }
+    }
+
     DisposableEffect(url) {
         onDispose { /* the WebView is released with the composition */ }
+    }
+}
+
+/**
+ * What stands in front of a report that has not arrived.
+ *
+ * The app's own paper and its own rule, filling: the same mark the startup screen draws,
+ * because this is the same kind of wait. It covers the WebView rather than replacing it, so
+ * Fava is loading underneath the whole time and nothing is torn down when it finishes.
+ */
+@Composable
+private fun ReportLoading() {
+    androidx.compose.foundation.layout.Column(
+        modifier = androidx.compose.ui.Modifier
+            .fillMaxSize()
+            .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
+            .padding(horizontal = 20.dp, vertical = 32.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+    ) {
+        androidx.compose.material3.LinearProgressIndicator(
+            modifier = androidx.compose.ui.Modifier.fillMaxWidth().height(2.dp),
+            color = io.github.pintofi.beanbook.app.ui.theme.BeancountTheme.ledger.rule,
+            trackColor = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant,
+            strokeCap = androidx.compose.ui.graphics.StrokeCap.Butt,
+            gapSize = 0.dp,
+        )
+        androidx.compose.material3.Text(
+            "Drawing the report…",
+            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

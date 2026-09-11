@@ -91,7 +91,15 @@ fun BeancountTheme(
     val ledger = (if (dark) LedgerColours.Dark else LedgerColours.Light)
         .copy(rule = colours.primary)
 
-    CompositionLocalProvider(LocalLedgerColours provides ledger) {
+    // Read once, here, rather than per composable: the animator duration scale is a
+    // content-provider lookup, and a screen of animated rows asking individually is a screen
+    // making one lookup per row (B76).
+    val motion = animationsEnabled()
+
+    CompositionLocalProvider(
+        LocalLedgerColours provides ledger,
+        LocalMotionEnabled provides motion,
+    ) {
         MaterialTheme(
             colorScheme = colours,
             typography = BeancountTypography,

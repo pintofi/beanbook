@@ -376,6 +376,12 @@ fun BalancesScreen(
                 if (open || root in expanded) {
                     items(rows, key = { it.name }) { node ->
                         AccountRow(
+                            // Folding a branch moves the rows below it instead of cutting
+                            // to the new list, so the tree reads as one thing opening.
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = null,
+                                fadeOutSpec = null,
+                            ),
                             node = node,
                             basis = basis,
                             expanded = open || node.name in expanded,
@@ -483,6 +489,7 @@ private fun RootHeader(
 private fun AccountRow(
     node: AccountNode,
     basis: Valuation,
+    modifier: Modifier = Modifier,
     expanded: Boolean,
     onToggle: () -> Unit,
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat,
@@ -497,7 +504,7 @@ private fun AccountRow(
         }
     }
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .then(
                 if (node.hasChildren) {
@@ -660,7 +667,16 @@ fun JournalScreen(
             }
         }
         items(visible, key = { "${it.file}:${it.line}" }) { entry ->
+            // Rows are keyed by where they live in the file, so filtering the journal moves
+            // the rows that survive rather than redrawing the list: what a search does is
+            // then visible as the rows that are left closing up, which is the one thing a
+            // fade could not say (B76). Placement only -- a ledger opening does not stagger
+            // two thousand rows into view.
             JournalRow(
+                modifier = Modifier.animateItem(
+                    fadeInSpec = null,
+                    fadeOutSpec = null,
+                ),
                 entry = entry,
                 format = snapshot.format,
                 onClick = { onOpenEntry(entry) },
@@ -711,6 +727,7 @@ private fun JournalRow(
     entry: JournalEntry,
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     /** What Beancount said about this entry, when it said anything (B64). */
     errors: List<LedgerError> = emptyList(),
 ) {
@@ -719,10 +736,17 @@ private fun JournalRow(
         entry.flag == "!" -> LedgerMark.PENDING
         else -> LedgerMark.CLEARED
     }
+    val interactions = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onClick)
+            .pressResponse(interactions)
+            .clickable(
+                role = Role.Button,
+                onClick = onClick,
+                interactionSource = interactions,
+                indication = androidx.compose.material3.ripple(),
+            )
             // The whole row, not the text inside it: a row that reads as one thing and
             // responds only where the words happen to be is one people tap twice.
             .semantics(mergeDescendants = true) {
