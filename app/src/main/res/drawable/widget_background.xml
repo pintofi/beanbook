@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The widget's paper. Rounded because the launcher treats a widget as an object on the
-     home screen rather than as part of a page; the rule inside it is what says which app. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <corners android:radius="16dp" />
-    <solid android:color="@color/widget_surface" />
-</shape>
+<!--
+  The widget's paper, with the app's rule down its left edge (B74).
+
+  Drawn as the background rather than as a view inside the layout, because RemoteViews
+  refuses a plain View and a widget is the one surface where the app cannot compose its own
+  primitives. Rounded, because the launcher treats a widget as an object on the home screen
+  rather than as part of a page; the rule inside it is what says which app.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="16dp" />
+            <solid android:color="@color/widget_surface" />
+        </shape>
+    </item>
+    <item android:width="2dp" android:gravity="start|fill_vertical">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/widget_rule" />
+        </shape>
+    </item>
+</layer-list>
