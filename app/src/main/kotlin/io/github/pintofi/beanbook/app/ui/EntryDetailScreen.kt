@@ -140,7 +140,7 @@ fun EntryDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                 }
-                PostingLotText(posting)
+                PostingLotText(posting, format = format)
             }
         }
 

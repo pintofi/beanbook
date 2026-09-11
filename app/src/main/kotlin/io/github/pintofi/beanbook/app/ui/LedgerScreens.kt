@@ -74,12 +74,18 @@ import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
  * Amounts are announced with sign and currency in words, and carry an explicit sign in
  * text — never colour alone (docs/ux.md §6).
  */
-private fun Amount.accessibleDescription(): String {
+private fun Amount.accessibleDescription(
+    format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
+        io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
+): String {
     val sign = when (number.signum()) {
         -1 -> "minus "
         else -> ""
     }
-    return "$sign${number.abs().toPlainString()} $currency"
+    // The same digits that are on the screen. Spoken from the raw value, a figure the file
+    // asks to be shown to two places was read out to five, so what TalkBack said and what
+    // the screen showed were different numbers.
+    return "$sign${format.format(Amount(number.abs(), currency))}"
 }
 
 /**
@@ -148,7 +154,7 @@ internal fun AmountText(
     // as its raw text: TalkBack reads "-12.34 USD" by pronouncing the hyphen or dropping it,
     // which is the one thing ux.md 6 says must not happen. detekt found it as dead code
     // (docs/milestones/m14-part16.md).
-    val spoken = amount.accessibleDescription()
+    val spoken = amount.accessibleDescription(format)
     MoneyText(
         text = format.format(amount),
         modifier = modifier.semantics { contentDescription = spoken },
@@ -176,12 +182,15 @@ internal fun AmountText(
 internal fun PostingLotText(
     posting: io.github.pintofi.beanbook.core.domain.JournalPosting,
     modifier: Modifier = Modifier,
+    /** How the open ledger asks its figures to be written (B59). */
+    format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
+        io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
 ) {
     val text = buildString {
-        posting.cost?.let { append(it.format()) }
+        posting.cost?.let { append(format.format(it)) }
         posting.price?.let {
             if (isNotEmpty()) append(' ')
-            append("@ ").append(it.format())
+            append("@ ").append(format.format(it))
         }
     }
     if (text.isEmpty()) return
@@ -193,13 +202,13 @@ internal fun PostingLotText(
         modifier = modifier.fillMaxWidth().semantics {
             contentDescription = buildString {
                 posting.cost?.let {
-                    append("held at ").append(it.amount.accessibleDescription())
+                    append("held at ").append(it.amount.accessibleDescription(format))
                     it.date?.let { date -> append(", acquired ").append(date) }
                     it.label?.let { label -> append(", lot ").append(label) }
                 }
                 posting.price?.let {
                     if (isNotEmpty()) append("; ")
-                    append("at ").append(it.accessibleDescription()).append(" each")
+                    append("at ").append(it.accessibleDescription(format)).append(" each")
                 }
             }
         },
@@ -803,7 +812,7 @@ private fun JournalRow(
                                 AmountText(it, signed = true, format = format, style = LedgerType.row)
                             }
                         }
-                        PostingLotText(posting)
+                        PostingLotText(posting, format = format)
                     }
                 }
             }

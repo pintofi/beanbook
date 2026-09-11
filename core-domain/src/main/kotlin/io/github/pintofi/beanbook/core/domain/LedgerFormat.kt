@@ -69,13 +69,28 @@ data class LedgerFormat(
      */
     fun format(amount: Amount): String = "${number(amount)} ${amount.currency}"
 
+    /** A cost, as the file writes it, with this ledger's own places and separators. */
+    fun format(cost: Cost): String = buildString {
+        append('{')
+        append(format(cost.amount))
+        cost.date?.let { append(", ").append(it) }
+        cost.label?.let { append(", \"").append(it).append('"') }
+        append('}')
+    }
+
     /** Just the figure, for a column that puts the commodity somewhere else. */
     fun number(amount: Amount): String {
         val places = precision[amount.currency]
         val scaled = if (places == null) {
             amount.number
         } else {
-            amount.number.setScale(places, RoundingMode.HALF_UP)
+            // **Half-even, because that is what Beancount does.** Its display context
+            // quantizes with Python's default decimal context, which rounds half to even, so
+            // 2.345 at two places is 2.34 there and was 2.35 here: the app showing a figure
+            // one hundredth away from the figure the same file shows in Fava, on the same
+            // screen of the same app. Half-up is the schoolbook rule and the wrong one to
+            // pick unilaterally -- the file's own engine decides how its numbers read.
+            amount.number.setScale(places, RoundingMode.HALF_EVEN)
         }
         val plain = scaled.toPlainString()
         return if (groupThousands) grouped(plain) else pointed(plain)

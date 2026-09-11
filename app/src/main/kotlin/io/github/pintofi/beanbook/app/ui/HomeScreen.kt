@@ -479,7 +479,7 @@ private fun PendingCard(
         }
         pending.forEachIndexed { index, entry ->
             if (index > 0) LedgerHairline()
-            EntryRow(entry, hideAmounts, onOpenEntry, LedgerMark.PENDING)
+            EntryRow(entry, hideAmounts, onOpenEntry, LedgerMark.PENDING, ledger.format)
         }
         LedgerHairline()
         if (total > pending.size) {
@@ -513,7 +513,7 @@ private fun RecentCard(
         }
         recent.forEachIndexed { index, entry ->
             if (index > 0) LedgerHairline()
-            EntryRow(entry, hideAmounts, onOpenEntry, markOf(entry))
+            EntryRow(entry, hideAmounts, onOpenEntry, markOf(entry), ledger.format)
         }
         LedgerHairline()
         Text(
@@ -710,12 +710,17 @@ private fun EntryRow(
     hideAmounts: Boolean,
     onOpen: (JournalEntry) -> Unit,
     mark: LedgerMark = markOf(entry),
+    /** How the open ledger asks its figures to be written (B59). */
+    format: LedgerFormat = LedgerFormat.PLAIN,
 ) {
     val amount = entry.postings.firstOrNull()?.amount
     val shown = when {
         amount == null -> ""
         hideAmounts -> "•••"
-        else -> "${amount.number.toPlainString()} ${amount.currency}"
+        // Through the ledger's own format like every other figure: this row was building its
+        // own string, so a file asking for thousands separators got them everywhere except
+        // on its own home screen.
+        else -> format.format(amount)
     }
     Row(
         modifier = Modifier

@@ -42,6 +42,31 @@ class LedgerFormatTest {
         assertEquals("2.5 HOOL", pkr.format(amount("2.5", "HOOL")))
     }
 
+    /**
+     * Beancount rounds half to even, and so must this.
+     *
+     * Its display context quantizes through Python's default decimal context, so a file
+     * written to two places shows 2.345 as 2.34 and 2.355 as 2.36. Half-up -- the schoolbook
+     * rule -- gives 2.35 and 2.36, which puts the app one hundredth away from the figure
+     * Fava shows for the same posting, inside the same app.
+     */
+    @Test fun `rounding for display is the file's engine's, not the schoolbook one`() {
+        val twoPlaces = LedgerFormat(precision = mapOf("USD" to 2))
+
+        assertEquals("2.34 USD", twoPlaces.format(amount("2.345", "USD")))
+        assertEquals("2.36 USD", twoPlaces.format(amount("2.355", "USD")))
+        assertEquals("2.36 USD", twoPlaces.format(amount("2.365", "USD")))
+        assertEquals("-2.34 USD", twoPlaces.format(amount("-2.345", "USD")))
+        assertEquals("1234.57 USD", twoPlaces.format(amount("1234.567", "USD")))
+    }
+
+    /** A lot is a figure too: `{400.00 PKR}` follows the same places and separators. */
+    @Test fun `a cost is written the way the file writes figures`() {
+        val cost = Cost(amount("4000.5"), date = "2025-01-01", label = "avcoassf")
+
+        assertEquals("{4,000.500 PKR, 2025-01-01, \"avcoassf\"}", pkr.format(cost))
+    }
+
     @Test fun `a ledger that says nothing gets plain rendering`() {
         assertEquals("1234567.891 PKR", LedgerFormat.PLAIN.format(amount("1234567.891")))
     }
