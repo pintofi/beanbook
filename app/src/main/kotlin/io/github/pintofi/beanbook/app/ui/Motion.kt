@@ -227,7 +227,12 @@ private fun <T> AnimatedContentTransitionScope<T>.transformFor(
 
         MotionAxis.INSTANT -> fadeIn(tween(0)) togetherWith fadeOut(tween(0))
 
-        MotionAxis.NONE -> fadeIn(enter) togetherWith fadeOut(exit)
+        // In place, one after the other: the old content fades out, then the new fades in.
+        // Crossfading two states that occupy the same space drew both at once for the middle
+        // of the transition -- two notices, two statuses, legible as neither (B77).
+        MotionAxis.NONE -> fadeIn(
+            tween(Motion.STANDARD_MS - Motion.QUICK_MS, delayMillis = Motion.QUICK_MS, easing = Motion.enter),
+        ) togetherWith fadeOut(tween(Motion.QUICK_MS, easing = Motion.exit))
     }
     return transform.using(androidx.compose.animation.SizeTransform(clip = false))
 }

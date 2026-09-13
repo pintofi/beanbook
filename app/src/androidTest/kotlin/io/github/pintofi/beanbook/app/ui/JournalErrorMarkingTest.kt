@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.Cost
@@ -21,11 +22,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * An error is shown on the entry it is about, and that entry is shown first (B64).
+ * An error is marked on the entry it is about (B64), in date order, with a filter (B77).
  *
  * The ledger's errors were a list at the top of the screen naming a file and a line. The
  * entry they were about sat in date order among thousands of entries that were fine, looking
- * exactly like them.
+ * exactly like them. For a while the fix was to move those entries to the top; that moved the
+ * journal's own order whenever the file had a problem, so now they stay where they belong,
+ * marked, and a filter shows only them.
  *
  * The lot on the last posting is here for B63: a journal row that shows units alone cannot
  * tell two lots of the same fund apart.
@@ -92,30 +95,51 @@ class JournalErrorMarkingTest {
         "BalanceError",
     )
 
-    @Test fun anErrorIsShownOnTheEntryItIsAbout() {
+    @Test fun anErrorIsMarkedOnTheEntryItIsAbout() {
         compose.setContent { MaterialTheme { JournalScreen(snapshot(listOf(onEntry))) } }
 
-        compose.onNodeWithText("Transaction does not balance: (-1.00 USD)").assertIsDisplayed()
-        compose.onNodeWithText("1 error is on an entry, shown first below.").assertIsDisplayed()
+        compose.onNodeWithText("Has an error").assertIsDisplayed()
+        compose.onNodeWithText("1 error is on an entry.").assertIsDisplayed()
+        // The sentence itself belongs on the entry's own page, not in the list.
+        compose.onAllNodesWithText("Transaction does not balance: (-1.00 USD)").assertCountEquals(0)
     }
 
-    @Test fun theEntryWithAnErrorComesFirst() {
+    @Test fun theEntryWithAnErrorStaysInDateOrder() {
         compose.setContent { MaterialTheme { JournalScreen(snapshot(listOf(onEntry))) } }
 
-        // Newest first is the ordinary order, so "The broken one" is second by date. Its
-        // error message being above the newest entry's description is what proves it moved.
+        // Newest first is the ordinary order, and "The broken one" is older.
         val broken = compose.onNodeWithText("The broken one").fetchSemanticsNode()
         val newest = compose.onNodeWithText("Newest and fine").fetchSemanticsNode()
-        assert(broken.positionInRoot.y < newest.positionInRoot.y) {
-            "the entry with an error was not shown first"
+        assert(newest.positionInRoot.y < broken.positionInRoot.y) {
+            "the entry with an error was moved out of date order"
         }
+    }
+
+    @Test fun theFilterShowsOnlyEntriesWithErrors() {
+        compose.setContent { MaterialTheme { JournalScreen(snapshot(listOf(onEntry))) } }
+
+        compose.onNodeWithContentDescription("Show only entries with errors").performClick()
+
+        compose.onNodeWithText("The broken one").assertIsDisplayed()
+        compose.onAllNodesWithText("Newest and fine").assertCountEquals(0)
+
+        compose.onNodeWithContentDescription(
+            "Showing only entries with errors. Tap to show every entry",
+        ).performClick()
+        compose.onNodeWithText("Newest and fine").assertIsDisplayed()
+    }
+
+    @Test fun aCleanLedgerOffersNoErrorFilter() {
+        compose.setContent { MaterialTheme { JournalScreen(snapshot(emptyList())) } }
+
+        compose.onAllNodesWithText("Only errors").assertCountEquals(0)
     }
 
     @Test fun anErrorNoEntryOwnsStaysInTheLedgersOwnList() {
         compose.setContent { MaterialTheme { JournalScreen(snapshot(listOf(onNothing))) } }
 
         compose.onNodeWithText("1 error in this ledger").assertIsDisplayed()
-        compose.onAllNodesWithText("1 error is on an entry, shown first below.")
+        compose.onAllNodesWithText("1 error is on an entry.")
             .assertCountEquals(0)
     }
 

@@ -6,10 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -28,6 +25,15 @@ import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 
 /**
  * A date, typed or picked (B53).
@@ -100,13 +106,27 @@ fun DateField(
  *
  * The app knew every account, payee, narration and commodity in the open ledger and offered
  * them as a row of chips under some fields and nowhere else, so most typing was still
- * typing. This shows the whole list on focus and filters it letter by letter — which is what
+ * typing. This shows the list on focus and filters it letter by letter -- which is what
  * makes a long account name a two-tap job rather than forty characters.
+ *
+ * **Inline, not a popup (B77).** The suggestions used to open in an `ExposedDropdownMenu`,
+ * which is a separate window laid over the keyboard. A second window over the IME is what
+ * left the app with a blank band where the keyboard had been: the popup and the activity
+ * disagreed about the keyboard's insets as it moved, the activity's inset animation never
+ * reached its end, and `imePadding` stayed at a fraction of the keyboard's height until the
+ * process died -- which is why closing the app was the only thing that fixed it. The list is
+ * now part of the page, directly under the field it belongs to, so there is one window and
+ * one set of insets, and nothing can be left behind.
+ *
+ * **The cursor goes to the end of what was chosen (B77).** The field used to take a plain
+ * `String`, so a picked suggestion replaced the text and Compose kept the cursor at the index
+ * it had been at -- mid-word, where the person stopped typing. The field now owns its
+ * selection, and choosing a suggestion puts the cursor after the last character, which is
+ * where the next keystroke belongs.
  *
  * **Never for an amount.** A suggestion list of numbers you have entered before invites
  * tapping one that is nearly right, and a nearly-right amount is a wrong ledger.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SuggestingField(
     value: String,
@@ -116,8 +136,27 @@ fun SuggestingField(
     modifier: Modifier = Modifier,
     describe: String = label,
     trailingIcon: @Composable (() -> Unit)? = null,
+    /** Applied to what is typed, before it reaches the caller: tags refuse spaces, say. */
+    transform: (String) -> String = { it },
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    // The field's own copy, so the selection survives the caller's round trip. It follows the
+    // caller whenever the caller's value is something the field did not produce -- a template
+    // applied, a draft cloned -- and keeps the cursor at the end in that case too.
+    var field by remember {
+        mutableStateOf(TextFieldValue(value, selection = TextRange(value.length)))
+    }
+    // Read, not written back: a state write during composition would recompose again for
+    // nothing. The next edit starts from this, so the stale copy is simply never used.
+    val current = if (field.text == value) {
+        field
+    } else {
+        TextFieldValue(value, selection = TextRange(value.length))
+    }
+    var focused by remember { mutableStateOf(false) }
+    // Set when a suggestion is chosen, cleared by the next keystroke: a list that reopens
+    // under a value the person just picked from it is the list getting in the way.
+    var chosen by remember { mutableStateOf(false) }
+
     val needle = value.trim()
     val offered = remember(suggestions, needle) {
         val matching = if (needle.isEmpty()) {
@@ -126,48 +165,74 @@ fun SuggestingField(
             suggestions.filter { it.contains(needle, ignoreCase = true) }
         }
         // A single suggestion identical to what is typed says nothing; showing it makes the
-        // menu look stuck open at the end of every entry.
+        // list look stuck open at the end of every entry.
         matching.filterNot { it.equals(needle, ignoreCase = true) }.take(MAX_SUGGESTIONS)
     }
+    val open = focused && !chosen && offered.isNotEmpty()
 
-    ExposedDropdownMenuBox(
-        expanded = expanded && offered.isNotEmpty(),
-        onExpandedChange = { expanded = it },
-        modifier = modifier,
-    ) {
+    androidx.compose.foundation.layout.Column(modifier = modifier) {
         OutlinedTextField(
-            value = value,
-            onValueChange = {
-                onValueChange(it)
-                expanded = true
+            value = current,
+            onValueChange = { next ->
+                val text = transform(next.text)
+                field = next.copy(
+                    text = text,
+                    selection = if (text == next.text) {
+                        next.selection
+                    } else {
+                        TextRange(text.length)
+                    },
+                )
+                if (text != value) {
+                    chosen = false
+                    onValueChange(text)
+                }
             },
             label = { Text(label) },
             singleLine = true,
             trailingIcon = trailingIcon,
             modifier = Modifier
-                .menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryEditable)
                 .fillMaxWidth()
+                .onFocusChanged { focused = it.isFocused }
                 .semantics { contentDescription = describe },
         )
-        ExposedDropdownMenu(
-            expanded = expanded && offered.isNotEmpty(),
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.heightIn(max = 280.dp),
-        ) {
-            offered.forEach { suggestion ->
-                DropdownMenuItem(
-                    text = { Text(suggestion) },
-                    onClick = {
-                        onValueChange(suggestion)
-                        expanded = false
-                    },
-                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                    modifier = Modifier.semantics { contentDescription = "Use $suggestion" },
-                )
+        LedgerReveal(visible = open, label = "suggestions") {
+            val shown = remember(offered) { offered }
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = SUGGESTION_LIST_HEIGHT)
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                shown.forEach { suggestion ->
+                    Text(
+                        suggestion,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                chosen = true
+                                field = TextFieldValue(
+                                    suggestion,
+                                    selection = TextRange(suggestion.length),
+                                )
+                                onValueChange(suggestion)
+                            }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .semantics { contentDescription = "Use $suggestion" },
+                    )
+                }
             }
         }
     }
 }
+
+/** About five rows: enough to choose from, not so much that the form scrolls away under it. */
+private val SUGGESTION_LIST_HEIGHT = 240.dp
 
 /** Enough to be useful, few enough that the menu does not become its own screen. */
 private const val MAX_SUGGESTIONS = 40

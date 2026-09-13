@@ -16,6 +16,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -358,7 +359,14 @@ internal fun ledgerHealth(status: EngineStatus, ledger: LedgerSnapshot?): String
  * list of bare nouns makes people open things to find out what they are.
  */
 @Composable
-internal fun MoreMenu(entitlement: Entitlement, onContribute: () -> Unit, onOpen: (MoreSection) -> Unit) {
+internal fun MoreMenu(
+    entitlement: Entitlement,
+    onContribute: () -> Unit,
+    onOpen: (MoreSection) -> Unit,
+    /** Ends the engine and the app and opens it again (B77). */
+    onRestartApp: () -> Unit = {},
+) {
+    var confirmingRestart by remember { androidx.compose.runtime.mutableStateOf(false) }
     val descriptions = mapOf(
         MoreSection.PROJECTS to "Open, create, import or delete a ledger",
         MoreSection.FILES to "Read and edit the ledger files themselves",
@@ -415,6 +423,55 @@ internal fun MoreMenu(entitlement: Entitlement, onContribute: () -> Unit, onOpen
                 Modifier.padding(start = Measure.gutter + Measure.chapter),
             )
         }
+        // Last, and an action rather than a section: it does not open a screen, it starts the
+        // app again (B77).
+        androidx.compose.material3.ListItem(
+            headlineContent = { Text("Restart the app") },
+            supportingContent = { Text("Stop the engine and open the app again, reading everything fresh") },
+            leadingContent = {
+                Icon(
+                    Icons.Filled.RestartAlt,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            colors = androidx.compose.material3.ListItemDefaults.colors(
+                containerColor = androidx.compose.ui.graphics.Color.Transparent,
+            ),
+            modifier = Modifier
+                .clickable(role = Role.Button) { confirmingRestart = true }
+                .padding(horizontal = Measure.tight)
+                .semantics {
+                    contentDescription = "Restart the app. Stops the engine and opens the app again"
+                },
+        )
+    }
+
+    if (confirmingRestart) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmingRestart = false },
+            title = { Text("Restart the app?") },
+            text = {
+                Text(
+                    "The engine and the app close and open again. Your ledger is unchanged; " +
+                        "anything typed into a form and not saved is lost.",
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        confirmingRestart = false
+                        onRestartApp()
+                    },
+                    modifier = Modifier.semantics { contentDescription = "Restart the app now" },
+                ) { Text("Restart") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmingRestart = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 

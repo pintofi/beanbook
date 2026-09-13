@@ -99,6 +99,17 @@ class MainActivity : ComponentActivity() {
     private var recoveryMessage: String? by mutableStateOf(null)
     internal var saveMessage: String? by mutableStateOf(null)
 
+    /**
+     * How many entries this session has written and committed from the entry form (B77).
+     *
+     * A count rather than a flag, so two saves in a row are two changes the form can react
+     * to. It moves only on `WriteResult.Committed` -- after the durable write and the
+     * re-parse -- which is what makes it safe for the form to close on: invariant 2 says no
+     * success before both, and a form that closed on "Saving…" would be a success message
+     * sent early.
+     */
+    internal var entryCommits: Int by mutableStateOf(0)
+
     /** The entry whose own source is open for editing, if any (B11). */
     internal var editingEntry: io.github.pintofi.beanbook.engine.local.EntrySlice? by mutableStateOf(null)
 
@@ -545,7 +556,8 @@ class MainActivity : ComponentActivity() {
                                             ?: io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN)
                                             .indent,
                                     ),
-                                    "quick-add",
+                                    ENTRY_OPERATION,
+                                    target = entryTarget(app, activeId!!, ledger),
                                 )
                             }
                         },
@@ -701,11 +713,19 @@ class MainActivity : ComponentActivity() {
                         onSaveTemplate = { app.templatesState.save(it) },
                         onDeleteTemplate = { app.templatesState.delete(it) },
                         onSaveDirective = { draft ->
-                            saveText(app, activeId!!, draft.render(), "add-directive")
+                            saveText(
+                                app,
+                                activeId!!,
+                                draft.render(),
+                                DIRECTIVE_OPERATION,
+                                target = entryTarget(app, activeId!!, ledger),
+                            )
                         },
                         // In remote mode the outcome of a save comes from the server, so
                         // that is what the Add screen has to report — otherwise a remote
                         // save looks like nothing happened at all.
+                        entryCommits = entryCommits,
+                        onRestartApp = { restartApp() },
                         saveState = if (remoteStatus is EngineStatus.Serving) {
                             remoteMessage
                         } else {
@@ -850,40 +870,6 @@ class MainActivity : ComponentActivity() {
      * Beancount, and only then report success. A generated entry that introduces errors is
      * rolled back rather than kept, because broken output from guided entry is our bug.
      */
-    internal fun saveText(
-        app: BeancountApplication,
-        projectId: String,
-        text: String,
-        operation: String,
-        // Which file the text is appended to. Entries go to the transactions file; a
-        // `document` directive goes to the main file, because its path is relative to the
-        // file that holds it and the documents directory sits beside the main file.
-        target: java.io.File = app.workspace.projectDir(projectId).resolve("files/transactions.beancount"),
-        onResult: (String) -> Unit = { saveMessage = it },
-    ) {
-        val ledgerPath = app.workspace.mainFile(projectId).absolutePath
-        lifecycleScope.launch {
-            saveMessage = "Saving…"
-            val file = target
-            val result = app.writer.append(projectId, file, text, operation = operation)
-            onResult(
-                when (result) {
-                    is io.github.pintofi.beanbook.core.data.WriteResult.Committed ->
-                        if (result.warnings.isEmpty()) "Saved."
-                        else "Saved, with ${result.warnings.size} ledger error(s) to review."
-                    is io.github.pintofi.beanbook.core.data.WriteResult.RolledBack ->
-                        "Not saved: ${result.reason}. Your ledger is unchanged."
-                    is io.github.pintofi.beanbook.core.data.WriteResult.Refused ->
-                        "Not saved: ${result.reason}"
-                },
-            )
-            // Re-read so the journal and balances show the new entry, then mirror: a pass
-            // only ever runs after a commit has landed (docs/storage-and-backup.md 6).
-            app.ledgerState.load(ledgerPath)
-            app.mirror.syncAfterCommit(projectId)
-        }
-    }
-
     private fun openInBrowser(uri: Uri) {
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
     }

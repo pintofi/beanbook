@@ -36,8 +36,20 @@ data class PostingDraft(
      * other side.
      */
     val metadata: Map<String, String> = emptyMap(),
+    /**
+     * The rest of the line after the units, as typed: a lot, a price, or both (B77).
+     *
+     * Written into the file exactly as entered, to the right of the amount and commodity. When
+     * set it takes the place of [cost] and [price] in the text; they stay for the drafts that
+     * arrive already knowing them, such as an entry being edited as fields.
+     */
+    val details: String? = null,
 ) {
     val isElided: Boolean get() = amount == null
+
+    /** [details] read back, or null when there are none. */
+    val readDetails: CommodityDetails?
+        get() = details?.takeIf { it.isNotBlank() }?.let { CommodityDetails.parse(it) }
 
     /**
      * What this posting contributes to the balance.
@@ -52,6 +64,7 @@ data class PostingDraft(
      */
     fun weight(): Amount? {
         val units = amount ?: return null
+        readDetails?.let { return it.weight(units) }
         val per = cost?.amount ?: price ?: return units
         return Amount(units.number.multiply(per.number), per.currency)
     }
@@ -101,9 +114,19 @@ data class TransactionDraft(
         val elided = postings.count { it.isElided }
         if (elided > 1) problems += DraftProblem.TooManyElidedPostings(elided)
 
+        postings.forEach { posting ->
+            (posting.readDetails as? CommodityDetails.Unreadable)?.let {
+                problems += DraftProblem.UnreadableDetails(posting.account, it.reason)
+            }
+        }
+        // A posting whose weight only Beancount's booking can decide -- an empty `{}`, say --
+        // is left to Beancount, like an elided amount: the write re-parses the file, and a
+        // lot that cannot be booked comes back as the error it is.
+        val unweighable = postings.any { it.amount != null && it.readDetails != null && it.weight() == null }
+
         // Only complain about imbalance when nothing is elided — an elided posting is
         // exactly how the user asks Beancount to work the remainder out.
-        if (elided == 0 && postings.isNotEmpty()) {
+        if (elided == 0 && postings.isNotEmpty() && !unweighable) {
             val weights = postings.mapNotNull { it.weight() }
             val residuals = Balance.of(weights).residuals()
             val inferred = Balance.toleranceFor(weights)
@@ -160,9 +183,15 @@ data class TransactionDraft(
                 val padding = (currencyColumn - left.length - right.length).coerceAtLeast(1)
                 builder.append(left).append(" ".repeat(padding)).append(right)
                 // After the aligned amount, in the order Beancount reads them: what the units
-                // were held at, then what they were exchanged at.
-                posting.cost?.let { builder.append(' ').append(it.format()) }
-                posting.price?.let { builder.append(" @ ").append(it.format()) }
+                // were held at, then what they were exchanged at. Typed details go in as they
+                // were typed (B77).
+                val typed = posting.details?.trim()?.takeIf { it.isNotEmpty() }
+                if (typed != null) {
+                    builder.append(' ').append(typed)
+                } else {
+                    posting.cost?.let { builder.append(' ').append(it.format()) }
+                    posting.price?.let { builder.append(" @ ").append(it.format()) }
+                }
             }
             posting.comment?.takeIf { it.isNotBlank() }?.let { builder.append("  ; ").append(it) }
             builder.append('\n')
@@ -232,6 +261,9 @@ sealed interface DraftProblem {
     data class PathOutsideProject(val path: String) : DraftProblem
     data object MissingAmount : DraftProblem
 
+    /** A posting's commodity details that Beancount could not read (B77). */
+    data class UnreadableDetails(val account: String, val reason: String) : DraftProblem
+
     /** Wording the user sees. Says what is wrong, never "invalid input". */
     fun describe(): String = when (this) {
         is InvalidDate -> "\"$value\" is not a date in YYYY-MM-DD form"
@@ -240,9 +272,9 @@ sealed interface DraftProblem {
         is InvalidAccount -> "\"$account\" is not a valid account name"
         is TooManyElidedPostings -> "$count postings have no amount; Beancount can work out only one"
         is DoesNotBalance -> "does not balance: " + residuals.joinToString(", ") { it.format() }
-        is InvalidTag -> "\"$tag\" is not a valid tag"
-        is InvalidLink -> "\"$link\" is not a valid link"
-        is InvalidCurrency -> "\"$currency\" is not a valid currency or commodity"
+        is InvalidTag -> "\"$tag\" is not a valid tag; tags are letters, digits, - _ / . and no spaces"
+        is InvalidLink -> "\"$link\" is not a valid link; links are letters, digits, - _ / . and no spaces"
+        is InvalidCurrency -> "\"$currency\" is not a valid commodity"
         is InvalidMetadataKey ->
             "\"$key\" is not a valid metadata key; they are lower-case and may not start with " +
                 "a digit"
@@ -250,6 +282,7 @@ sealed interface DraftProblem {
         is PathOutsideProject ->
             "\"$path\" points outside the project; document links must stay inside it"
         MissingAmount -> "an amount is required"
+        is UnreadableDetails -> "the commodity details on $account: $reason"
     }
 }
 
@@ -267,6 +300,8 @@ data class LedgerVocabulary(
      */
     val defaultCurrency: String? = null,
     val tags: List<String>,
+    /** Links already used in the ledger, for the link field to offer back (B77). */
+    val links: List<String> = emptyList(),
     /** Newest first, for offering back what was used last time. */
     val recentEntries: List<JournalEntry> = emptyList(),
 ) {
@@ -318,6 +353,7 @@ data class LedgerVocabulary(
                     .groupingBy { it.currency }.eachCount()
                     .maxByOrNull { it.value }?.key,
             tags = snapshot.journal.flatMap { it.tags }.distinct().sorted(),
+            links = snapshot.journal.flatMap { it.links }.distinct().sorted(),
             recentEntries = snapshot.journal,
         )
     }

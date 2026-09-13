@@ -377,12 +377,9 @@ fun BalancesScreen(
                 if (open || root in expanded) {
                     items(rows, key = { it.name }) { node ->
                         AccountRow(
-                            // Folding a branch moves the rows below it instead of cutting
-                            // to the new list, so the tree reads as one thing opening.
-                            modifier = Modifier.animateItem(
-                                fadeInSpec = null,
-                                fadeOutSpec = null,
-                            ),
+                            // No placement animation (B77): opening a branch slid the rows
+                            // below it down while the new rows appeared at once in the space
+                            // they were still leaving, so the two overlapped mid-move.
                             node = node,
                             basis = basis,
                             expanded = open || node.name in expanded,
@@ -559,25 +556,21 @@ fun JournalScreen(
     // Kept while the ledger reloads, because a save or a pull-to-refresh should not throw
     // away what the reader was looking for.
     var query by rememberSaveable { mutableStateOf("") }
-    // Which entries the ledger's errors are about (B64), and the journal reordered so those
-    // entries are the first thing on the screen. An error is a thing to fix; leaving the
-    // entry that caused it in date order buries it under everything that is fine, and the
-    // reader has to carry a line number to a text editor to find out which one it was.
+    // Which entries the ledger's errors are about (B64). They stay in date order with every
+    // other entry (B77): pinning them to the top moved the journal's own ordering every time a
+    // file had a problem, so the list no longer read as the book. They are marked where they
+    // sit, the message is on the entry's own page, and a filter shows only them.
     val faults = remember(snapshot.journal, snapshot.errors) {
         JournalErrors.attach(snapshot.journal, snapshot.errors)
     }
-    val ordered = remember(snapshot.journal, faults) {
-        if (faults.isEmpty()) {
-            snapshot.journal
-        } else {
-            // Stable: within each group the journal's own order is kept, so a pinned entry
-            // does not also move relative to the other pinned ones.
-            snapshot.journal.partition { JournalErrors.keyOf(it) in faults }
-                .let { (broken, rest) -> broken + rest }
-        }
-    }
-    val found = remember(ordered, query) {
-        if (query.isBlank()) ordered else ordered.filter { it.matches(query) }
+    var onlyErrors by rememberSaveable { mutableStateOf(false) }
+    // A filter that is on while there is nothing left to filter would hide the whole journal
+    // behind a switch the person can no longer see the reason for.
+    val filteringErrors = onlyErrors && faults.isNotEmpty()
+    val found = remember(snapshot.journal, faults, query, filteringErrors) {
+        snapshot.journal
+            .let { all -> if (filteringErrors) all.filter { JournalErrors.keyOf(it) in faults } else all }
+            .let { rows -> if (query.isBlank()) rows else rows.filter { it.matches(query) } }
     }
     val visible = remember(found, shown) { found.take(shown) }
     // What no entry owns. The rest is shown on the entries themselves, and repeating it here
@@ -615,20 +608,33 @@ fun JournalScreen(
             item { ErrorBanner(loose) }
         }
         if (faults.isNotEmpty()) {
-            item {
+            item(key = "errorFilter") {
                 val count = faults.values.sumOf { it.size }
-                Text(
-                    text = if (count == 1) {
-                        "1 error is on an entry, shown first below."
-                    } else {
-                        "$count errors are on entries, shown first below."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = Measure.gutter, vertical = Measure.snug),
-                )
+                        .padding(horizontal = Measure.gutter, vertical = Measure.tight),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = if (count == 1) "1 error is on an entry." else "$count errors are on entries.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f).padding(end = Measure.snug),
+                    )
+                    FilterChip(
+                        selected = onlyErrors,
+                        onClick = { onlyErrors = !onlyErrors },
+                        label = { Text("Only errors") },
+                        modifier = Modifier.semantics {
+                            contentDescription = if (onlyErrors) {
+                                "Showing only entries with errors. Tap to show every entry"
+                            } else {
+                                "Show only entries with errors"
+                            }
+                        },
+                    )
+                }
             }
         }
         if (found.isEmpty() && query.isNotBlank()) {
@@ -661,16 +667,12 @@ fun JournalScreen(
             }
         }
         items(visible, key = { "${it.file}:${it.line}" }) { entry ->
-            // Rows are keyed by where they live in the file, so filtering the journal moves
-            // the rows that survive rather than redrawing the list: what a search does is
-            // then visible as the rows that are left closing up, which is the one thing a
-            // fade could not say (B76). Placement only -- a ledger opening does not stagger
-            // two thousand rows into view.
+            // No placement animation (B77). Filtering moved the surviving rows up while the rows
+            // that left vanished and the rows that stayed slid past each other, so for a
+            // fraction of a second while typing in the search box two entries were drawn on
+            // top of one another. A journal is read row by row; a filter that simply shows its
+            // result is clearer than one that shows its working.
             JournalRow(
-                modifier = Modifier.animateItem(
-                    fadeInSpec = null,
-                    fadeOutSpec = null,
-                ),
                 entry = entry,
                 format = snapshot.format,
                 onClick = { onOpenEntry(entry) },
@@ -756,14 +758,12 @@ private fun JournalRow(
     ) {
         StampMark(mark, modifier = Modifier.padding(top = Measure.tight, end = Measure.gap))
         Column(Modifier.weight(1f)) {
-            // Above the entry rather than beside it: the message is a sentence, and a
-            // sentence in a corner of a row is one nobody reads. It stays until the file is
-            // fixed, which is the point -- the ledger reloads after every write, so a
-            // corrected entry loses it.
-            errors.forEach { error ->
+            // The message is on the entry's own page (B77). A list row says only that there is
+            // one, next to the mark, so a page of entries stays a page of entries.
+            if (errors.isNotEmpty()) {
                 Text(
-                    text = error.message,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = if (errors.size == 1) "Has an error" else "Has ${errors.size} errors",
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(bottom = Measure.tight),
                 )

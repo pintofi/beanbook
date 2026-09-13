@@ -63,51 +63,42 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
+import io.github.pintofi.beanbook.core.domain.CommodityDetails
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
 
 /**
  * One editable posting row. Empty amount means elided — Beancount works it out.
  *
- * [currency] is per posting, blank meaning "the transaction's". A single currency for the
- * whole transaction could not express a currency exchange or a foreign-card purchase, which
- * are ordinary things to want to record (B4). Blank rather than a copy of the default, so
- * changing the transaction's currency still moves every posting that never disagreed.
+ * [commodity] is per posting, blank meaning "the transaction's". A single commodity for the
+ * whole transaction could not express an exchange or a foreign-card purchase, which are
+ * ordinary things to want to record (B4). Blank rather than a copy of the default, so changing
+ * the transaction's commodity still moves every posting that never disagreed.
  */
 private class PostingRow(
     account: String = "",
     amount: String = "",
-    currency: String = "",
-    cost: String = "",
-    costCurrency: String = "",
-    price: String = "",
-    priceCurrency: String = "",
+    commodity: String = "",
+    details: String = "",
 ) {
     var account by mutableStateOf(account)
     var amount by mutableStateOf(amount)
-    var currency by mutableStateOf(currency)
+    var commodity by mutableStateOf(commodity)
 
     /**
-     * What a unit was acquired at (`{...}`) and what it was exchanged at (`@ ...`) (B63).
+     * The rest of the posting line after the units: a lot, a price, or both, as the file
+     * writes them (B77).
      *
-     * Behind a disclosure, because almost no posting has either and a shop purchase must not
-     * grow four boxes to pay for the ones that do. Per unit, which is how Beancount stores
-     * both: a total price is divided before it is recorded, so a form offering a total would
-     * be offering a figure the file never keeps.
+     * One field rather than four boxes for a cost and a price. The boxes could not say a total
+     * cost, a total price, an acquisition date, a lot label or an empty `{}`, and the file has
+     * all of them; a person who needs this part of the line knows how it is written.
      */
-    var cost by mutableStateOf(cost)
-    var costCurrency by mutableStateOf(costCurrency)
-    var price by mutableStateOf(price)
-    var priceCurrency by mutableStateOf(priceCurrency)
+    var details by mutableStateOf(details)
 
-    /** Open when the row already carries one, so a clone shows what it is about to write. */
-    var showLot by mutableStateOf(cost.isNotBlank() || price.isNotBlank())
-
-    /** One of the lot figures as an amount, or null when the box is empty or not a number. */
-    fun lotAmount(value: String, denomination: String, fallback: String): Amount? =
-        value.trim().takeIf { it.isNotBlank() }?.let { number ->
-            runCatching {
-                Amount(BigDecimal(number), denomination.trim().ifBlank { fallback.trim() })
-            }.getOrNull()
-        }
+    /** Open when the row already carries details, so a clone shows what it is about to write. */
+    var showDetails by mutableStateOf(details.isNotBlank())
 
     /** Keys describing this leg only (B16). Empty for almost every posting. */
     val metadata = mutableStateListOf<MetadataRow>()
@@ -119,14 +110,36 @@ private class MetadataRow(key: String = "", value: String = "") {
     var value by mutableStateOf(value)
 }
 
+/** One tag or link being typed. A class so each box keeps its own state as others are removed. */
+private class WordRow(value: String = "") {
+    var value by mutableStateOf(value)
+}
+
 /**
  * Transaction entry: fast for the common case, complete for the rest.
  *
- * The first two rows are prefilled so a shop purchase is amount-plus-two-taps, but any
- * number of postings can be added — a split bill, a paycheque with deductions, a transfer
- * with a fee. The running imbalance is shown as you type, and **the app never balances the
- * transaction for you**: it shows the residual and offers an elided posting, which is how
- * you ask Beancount to compute it (docs/ux.md §4).
+ * **Laid out to be read in three groups, and to show only what is being used (B77).** The form
+ * had grown a control for everything a transaction can carry, and all of them were on screen
+ * at once: two segmented rows, a cost-or-price button and a detail button under every posting,
+ * and the commodity crammed into a box too narrow for its own label. What it does now, and the
+ * rules it follows:
+ *
+ * - **Progressive disclosure, and Hick's law.** Tags, links, details, commodity details and a
+ *   scanned document are one line of small actions; a field appears only when asked for. The
+ *   common entry -- a payee, a description, two accounts and an amount -- has nothing else on
+ *   the screen to choose between.
+ * - **Proximity and common region (Gestalt).** Three groups -- when and who, the postings, and
+ *   the extras -- with more space between groups than within them, so structure is seen before
+ *   it is read.
+ * - **One idea per line, and cognitive load.** The account takes the whole row, because an
+ *   account name is the longest thing typed; the amount and commodity share the line beneath.
+ *   A posting reads top to bottom as the file does: where, then how much.
+ * - **Fitts's law.** The one primary action, Save, is the full width of the form. Removing a
+ *   posting or a detail is a real 48dp button with a visible icon, not a glyph in a text button.
+ *
+ * The running imbalance is shown as you type, and **the app never balances the transaction
+ * for you**: it shows the residual and offers an elided posting, which is how you ask Beancount
+ * to compute it (docs/ux.md §4).
  */
 @Composable
 fun QuickAddScreen(
@@ -134,13 +147,17 @@ fun QuickAddScreen(
     /** The open ledger's own rendering and tolerance (B59). */
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
         io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
-    /** What this ledger calls its five trees, for the two accounts a form pre-selects (B70). */
+    /** What this ledger calls its five trees (B70). Kept for callers; the form prefills none. */
+    @Suppress("UNUSED_PARAMETER")
     names: io.github.pintofi.beanbook.core.domain.AccountNames =
         io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
     onSave: (TransactionDraft) -> Unit,
     modifier: Modifier = Modifier,
+    /** The date the form opens on. Today, on the device's clock, unless a caller says otherwise. */
     today: LocalDate = LocalDate.now(),
     saveState: String? = null,
+    /** Entries committed from this form this session (B77): what the save sweep marks. */
+    committed: Int = 0,
     /** A draft to start from -- an entry being entered again (B11). Applied once. */
     prefill: TransactionDraft? = null,
     onPrefillApplied: () -> Unit = {},
@@ -158,6 +175,8 @@ fun QuickAddScreen(
      */
     onDirtyChange: (Boolean) -> Unit = {},
 ) {
+    // Today, and intentionally so: almost every entry is for the day it is typed, and the
+    // calendar is one tap away for the rest.
     var date by remember { mutableStateOf(today.toString()) }
     var payee by remember { mutableStateOf("") }
     var narration by remember { mutableStateOf("") }
@@ -167,33 +186,30 @@ fun QuickAddScreen(
     // Transaction-level metadata, as editable rows so a half-typed key cannot be committed
     // by accident (B16).
     val metaRows = remember { mutableStateListOf<MetadataRow>() }
-    // The default a posting uses when its own currency box is left empty. There is no field
-    // for it: a transaction does not have one currency -- each posting does, and the boxes
-    // beside the amounts are where that is said. A second, transaction-wide currency field
-    // above them asked the same question twice and answered neither, since it set nothing on
-    // its own. It still moves when a template or a cloned entry names a denomination.
-    var currency by remember {
+    // Tags and links, one box each, shown only once one is asked for (B77).
+    val tagRows = remember { mutableStateListOf<WordRow>() }
+    val linkRows = remember { mutableStateListOf<WordRow>() }
+    // The default a posting uses when its own commodity box is left empty. There is no field
+    // for it: a transaction does not have one commodity -- each posting does. It still moves
+    // when a template or a cloned entry names a denomination.
+    var commodity by remember {
         mutableStateOf(vocabulary.defaultCurrency ?: vocabulary.currencies.firstOrNull() ?: "USD")
     }
 
-    val rows = remember {
-        mutableStateListOf(
-            PostingRow(
-                vocabulary.accounts.firstOrNull { it.startsWith(names.expenses) }.orEmpty(),
-            ),
-            // The second posting is elided by default: the counter-amount is Beancount's
-            // to compute, not ours to guess.
-            PostingRow(
-                vocabulary.accounts.firstOrNull { it.startsWith(names.assets) }.orEmpty(),
-            ),
-        )
-    }
+    // Two empty postings (B77). The form used to preselect the first expense account and the
+    // first asset account in alphabetical order, which for most ledgers were two accounts
+    // nobody had chosen -- "Expenses:Books" and "Assets:Bank:Old" on every new entry. The
+    // suggestions on focus make picking the right one two taps, and an empty box cannot be
+    // saved by mistake the way a wrong prefilled one can.
+    val rows = remember { mutableStateListOf(PostingRow(), PostingRow()) }
 
     val draft = TransactionDraft(
         date = date.trim(),
         flag = flag,
         payee = payee.trim().ifBlank { null },
         narration = narration.trim().ifBlank { null },
+        tags = tagRows.map { it.value.trim().removePrefix("#") }.filter { it.isNotEmpty() },
+        links = linkRows.map { it.value.trim().removePrefix("^") }.filter { it.isNotEmpty() },
         metadata = metaRows
             .filter { it.key.isNotBlank() }
             .associate { it.key.trim() to it.value.trim() },
@@ -204,27 +220,22 @@ fun QuickAddScreen(
                     .associate { it.key.trim() to it.value.trim() },
                 account = row.account.trim(),
                 amount = row.amount.trim().takeIf { it.isNotBlank() }?.let { value ->
-                    val denomination = row.currency.trim().ifBlank { currency.trim() }
+                    val denomination = row.commodity.trim().ifBlank { commodity.trim() }
                     runCatching { Amount(BigDecimal(value), denomination) }.getOrNull()
                 },
-                // The lot's own currency defaults to the transaction's, the way the amount's
-                // does. A cost with no figure is not written at all: `{}` asks Beancount to
-                // book against whatever it can find, which is a different instruction from
-                // the one an empty box means.
-                cost = row.lotAmount(row.cost, row.costCurrency, currency)
-                    ?.let { io.github.pintofi.beanbook.core.domain.Cost(it) },
-                price = row.lotAmount(row.price, row.priceCurrency, currency),
+                details = row.details.trim().takeIf { row.showDetails && it.isNotEmpty() },
             )
         },
     )
     val problems = draft.validate(format)
 
     // What counts as something to lose: words typed, a figure entered, a page photographed.
-    // Not the date, which the form fills in by itself, and not an account the form
-    // pre-selected -- neither is anything the user would miss.
+    // Not the date, which the form fills in by itself.
     val dirty = payee.isNotBlank() ||
         narration.isNotBlank() ||
-        rows.any { it.amount.isNotBlank() || it.cost.isNotBlank() || it.price.isNotBlank() } ||
+        rows.any { it.account.isNotBlank() || it.amount.isNotBlank() || it.details.isNotBlank() } ||
+        tagRows.any { it.value.isNotBlank() } ||
+        linkRows.any { it.value.isNotBlank() } ||
         metaRows.any { it.key.isNotBlank() || it.value.isNotBlank() } ||
         capture?.pages?.isEmpty == false
     LaunchedEffect(dirty) { onDirtyChange(dirty) }
@@ -235,6 +246,17 @@ fun QuickAddScreen(
     // What the user typed under the pages, if anything. Held here because the Save button is
     // what files them now (B66).
     var documentName by remember { mutableStateOf("") }
+    // Scanning straight from the action row (B77): one tap to the camera, with the permission
+    // asked for at the moment it is needed, as the document section used to do behind a
+    // second button.
+    val cameraGranted = rememberCameraPermission()
+    var cameraAllowed by remember(cameraGranted) { mutableStateOf(cameraGranted) }
+    val askForCamera = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { allowed ->
+        cameraAllowed = allowed
+        if (allowed) capture?.onStartScanning?.invoke()
+    }
 
     /**
      * Applies a template through the same domain call the tests exercise, so there is one
@@ -248,7 +270,7 @@ fun QuickAddScreen(
         date = applied.date
         payee = applied.payee.orEmpty()
         narration = applied.narration.orEmpty()
-        currency = template.currency
+        commodity = template.currency
         rows.clear()
         applied.postings.forEach { posting ->
             rows.add(PostingRow(posting.account, posting.amount?.number?.toPlainString().orEmpty()))
@@ -262,29 +284,34 @@ fun QuickAddScreen(
             date = draft.date
             payee = draft.payee.orEmpty()
             narration = draft.narration.orEmpty()
-            draft.postings.firstOrNull()?.amount?.currency?.let { currency = it }
+            tagRows.clear()
+            draft.tags.forEach { tagRows.add(WordRow(it)) }
+            linkRows.clear()
+            draft.links.forEach { linkRows.add(WordRow(it)) }
+            draft.postings.firstOrNull()?.amount?.currency?.let { commodity = it }
             rows.clear()
             draft.postings.forEach { posting ->
-                // Each posting keeps its own currency, so cloning a multi-currency entry
+                // Each posting keeps its own commodity, so cloning a multi-commodity entry
                 // does not quietly redenominate half of it into the transaction's default.
                 val denomination = posting.amount?.currency.orEmpty()
                 rows.add(
                     PostingRow(
                         account = posting.account,
                         amount = posting.amount?.number?.toPlainString().orEmpty(),
-                        currency = if (denomination == currency) "" else denomination,
+                        commodity = if (denomination == commodity) "" else denomination,
                         // A clone of a holding keeps the lot it was held at, so the form shows
                         // the entry it is about to write rather than a stripped one.
-                        cost = posting.cost?.amount?.number?.toPlainString().orEmpty(),
-                        costCurrency = posting.cost?.amount?.currency.orEmpty(),
-                        price = posting.price?.number?.toPlainString().orEmpty(),
-                        priceCurrency = posting.price?.currency.orEmpty(),
-                    )
+                        details = posting.details
+                            ?: CommodityDetails.textOf(posting.cost, posting.price),
+                    ),
                 )
             }
             onPrefillApplied()
         }
     }
+
+    // At large text two fields side by side stop fitting; the flag goes under the date.
+    val large = LocalDensity.current.fontScale > 1.3f
 
     Column(
         // No `imePadding()` here: the Scaffold above insets the whole app for the keyboard,
@@ -293,18 +320,15 @@ fun QuickAddScreen(
         modifier = modifier
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Measure.gutter)
-            .padding(top = Measure.gap, bottom = Measure.section),
-        verticalArrangement = Arrangement.spacedBy(Measure.gap),
+            .padding(top = Measure.snug, bottom = Measure.section),
     ) {
         // Templates come first because that is when they are useful: before anything has
         // been typed. Applying one fills the form and stops there — the entry is still
-        // previewed and validated like any other, so a template cannot write anything the
-        // user has not seen (docs/ux.md 4).
+        // previewed and validated like any other (docs/ux.md 4).
         if (templates.isNotEmpty()) {
-            LedgerHeading("Templates")
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(Measure.snug),
             ) {
                 templates.forEach { template ->
                     AssistChip(
@@ -316,272 +340,215 @@ fun QuickAddScreen(
                     )
                 }
             }
+            FormGap()
         }
 
-        // Cleared or pending, as two chips rather than free text: these are the only two
-        // flags Beancount accepts on a transaction, and typing is not the right way to pick
-        // from a closed set of two (B15).
-        SingleChoiceSegmentedButtonRow {
-            SegmentedButton(
-                selected = flag == "*",
-                onClick = { flag = "*" },
-                shape = SegmentedButtonDefaults.itemShape(0, 2, baseShape = BeanbookShape.control),
-                modifier = Modifier.semantics { contentDescription = "Cleared transaction" },
-            ) { Text("Cleared") }
-            SegmentedButton(
-                selected = flag == "!",
-                onClick = { flag = "!" },
-                shape = SegmentedButtonDefaults.itemShape(1, 2, baseShape = BeanbookShape.control),
-                modifier = Modifier.semantics { contentDescription = "Pending transaction" },
-            ) { Text("Pending") }
-        }
-
-        DateField(
-            value = date,
-            onValueChange = { date = it },
-            modifier = Modifier.fillMaxWidth(),
-            today = today,
-        )
-
-        SuggestingField(
-            value = payee,
-            onValueChange = { payee = it },
-            label = "Payee",
-            suggestions = vocabulary.payees,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        // "Use what you used last time" — offered, never applied silently, because reusing
-        // an old amount without being asked is a way to record the wrong number.
-        vocabulary.lastEntryFor(payee.trim())?.let { last ->
-            AssistChip(
-                onClick = {
-                    narration = last.narration.orEmpty()
-                    // Grow to fit: reusing a three-posting entry into two rows would drop a
-                    // posting silently, which is exactly the kind of quiet loss the app
-                    // must not do.
-                    while (rows.size < last.postings.size) rows.add(PostingRow())
-                    last.postings.forEachIndexed { index, posting ->
-                        rows[index].account = posting.account
-                        rows[index].amount =
-                            posting.amount?.number?.abs()?.toPlainString().orEmpty()
-                    }
-                    // Only the first posting keeps an amount; the rest stay elided, so
-                    // Beancount recomputes them rather than us reusing stale numbers.
-                    rows.drop(1).forEach { it.amount = "" }
-                },
-                label = { Text("Use last: ${last.postings.firstOrNull()?.account?.substringAfterLast(':')}") },
-                modifier = Modifier.semantics {
-                    contentDescription = "Reuse the last entry for ${payee.trim()}"
-                },
-            )
-        }
-
-        SuggestingField(
-            value = narration,
-            onValueChange = { narration = it },
-            label = "Description",
-            suggestions = vocabulary.narrations,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        MetadataEditor(
-            rows = metaRows,
-            label = "Details about the whole transaction",
-            describe = { "transaction" },
-        )
-
-        if (capture != null) {
-            AttachDocumentSection(
-                capture = capture,
-                // Filed under the account the document is evidence for. Blank until the
-                // first posting has one, because the account decides where the file lands
-                // and guessing it would put receipts somewhere nobody looks.
-                account = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty(),
-                attached = metaRows.filter { it.key.startsWith("document") }.map { it.value },
-                onNameChange = { documentName = it },
-            )
-        }
-
-        LedgerHeading("Postings")
-
-        // Side by side, an account and an amount stop fitting once the text is large: at
-        // 200% font the amount field is narrow enough that its own label wraps mid-word.
-        // Above 130% they stack instead, which costs a line and keeps both readable.
-        // Below this the three fields sit in a row; above it the account takes its own line.
-        // The row layout is sized for the label text at ordinary scales, so the threshold is
-        // the point past which no fixed width would hold rather than an arbitrary cutoff.
-        val stacked = LocalDensity.current.fontScale > 1.3f
-
-        rows.forEachIndexed { index, row ->
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val accountField: @Composable (Modifier) -> Unit = { fieldModifier ->
-                    SuggestingField(
-                        value = row.account,
-                        onValueChange = { row.account = it },
-                        label = "Account ${index + 1}",
-                        suggestions = vocabulary.accounts,
-                        describe = "Account for posting ${index + 1}",
-                        modifier = fieldModifier,
-                    )
-                }
-                val amountField: @Composable (Modifier) -> Unit = { fieldModifier ->
-                    OutlinedTextField(
-                        value = row.amount,
-                        onValueChange = { row.amount = it },
-                        label = { Text("Amount") },
-                        // "optional" as supporting text rather than inside the label. In the
-                        // label it made the string long enough to wrap in a field this width,
-                        // so one posting's Amount box came out two lines taller than the one
-                        // above it. Below the field it says the same thing and costs the row
-                        // nothing -- and it is where Material puts this kind of qualifier.
-                        supportingText = if (index == 0) null else { { Text("optional") } },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = fieldModifier,
-                    )
-                }
-                val currencyField: @Composable (Modifier) -> Unit = { fieldModifier ->
-                    SuggestingField(
-                        value = row.currency,
-                        onValueChange = { row.currency = it.uppercase() },
-                        label = "Cur.",
-                        suggestions = vocabulary.currencies,
-                        describe = "Currency for posting ${index + 1}",
-                        modifier = fieldModifier,
-                    )
-                }
-                val removeButton: @Composable () -> Unit = {
-                    if (rows.size > 2) {
-                        TextButton(
-                            onClick = { rows.removeAt(index) },
-                            modifier = Modifier.semantics {
-                                contentDescription = "Remove posting ${index + 1}"
-                            },
-                        ) { Text("×") }
-                    }
-                }
-
-                if (stacked) {
-                    accountField(Modifier.fillMaxWidth())
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        amountField(Modifier.weight(2f))
-                        currencyField(Modifier.weight(1f))
-                        removeButton()
-                    }
-                } else {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        // Top, not centre. These fields do not always come out the same
-                        // height -- "Amount (optional)" wraps to two lines where "Amount"
-                        // does not -- and centring ragged heights is what made the row look
-                        // like it was sagging in the middle.
-                        verticalAlignment = Alignment.Top,
-                    ) {
-                        // Amount and currency are sized to their contents; the account name
-                        // takes whatever is left, because it is the one that is never long
-                        // enough. Currency was `weight(1f)`, which at this width left it too
-                        // narrow for its own label: "Cur." wrapped, putting the full stop on a
-                        // line of its own and making the field taller than its neighbours.
-                        // That stray dot under the label was the label.
-                        accountField(Modifier.weight(1f))
-                        amountField(Modifier.width(AMOUNT_FIELD_WIDTH))
-                        currencyField(Modifier.width(CURRENCY_FIELD_WIDTH))
-                        removeButton()
-                    }
-                }
-                if (row.showLot) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.Top,
-                    ) {
-                        OutlinedTextField(
-                            value = row.cost,
-                            onValueChange = { row.cost = it },
-                            label = { Text("Cost each") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            modifier = Modifier.weight(2f).semantics {
-                                contentDescription = "Cost per unit for posting ${index + 1}"
-                            },
-                        )
-                        SuggestingField(
-                            value = row.costCurrency,
-                            onValueChange = { row.costCurrency = it.uppercase() },
-                            label = "Cur.",
-                            suggestions = vocabulary.currencies,
-                            describe = "Cost currency for posting ${index + 1}",
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.Top,
-                    ) {
-                        OutlinedTextField(
-                            value = row.price,
-                            onValueChange = { row.price = it },
-                            label = { Text("Price each") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            modifier = Modifier.weight(2f).semantics {
-                                contentDescription = "Price per unit for posting ${index + 1}"
-                            },
-                        )
-                        SuggestingField(
-                            value = row.priceCurrency,
-                            onValueChange = { row.priceCurrency = it.uppercase() },
-                            label = "Cur.",
-                            suggestions = vocabulary.currencies,
-                            describe = "Price currency for posting ${index + 1}",
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = { row.showLot = true },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Add a cost or price to posting ${index + 1}"
-                        },
-                    ) { Text("Cost or price") }
-                }
-                MetadataEditor(
-                    rows = row.metadata,
-                    label = "Details about this posting only",
-                    describe = { "posting ${index + 1}" },
+        // ---- When and who -------------------------------------------------------------
+        FormGroup {
+            val pendingChip: @Composable () -> Unit = {
+                // One chip rather than a two-way segmented row: cleared is what nearly every
+                // entry is, so the control that says otherwise is the one that needs to exist
+                // (B15, B77). A chip stays the height of a finger rather than of a field.
+                FilterChip(
+                    selected = flag == "!",
+                    onClick = { flag = if (flag == "!") "*" else "!" },
+                    label = { Text("Pending") },
+                    modifier = Modifier.semantics {
+                        contentDescription = if (flag == "!") {
+                            "Pending transaction"
+                        } else {
+                            "Cleared transaction. Tap to mark pending"
+                        }
+                    },
                 )
+            }
+            if (large) {
+                DateField(
+                    value = date,
+                    onValueChange = { date = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    today = today,
+                )
+                pendingChip()
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Measure.gap),
+                ) {
+                    DateField(
+                        value = date,
+                        onValueChange = { date = it },
+                        modifier = Modifier.weight(1f),
+                        today = today,
+                    )
+                    pendingChip()
+                }
+            }
+
+            SuggestingField(
+                value = payee,
+                onValueChange = { payee = it },
+                label = "Payee",
+                suggestions = vocabulary.payees,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            // "Use what you used last time" — offered, never applied silently, because reusing
+            // an old amount without being asked is a way to record the wrong number.
+            vocabulary.lastEntryFor(payee.trim())?.let { last ->
+                AssistChip(
+                    onClick = {
+                        narration = last.narration.orEmpty()
+                        // Grow to fit: reusing a three-posting entry into two rows would drop
+                        // a posting silently, which is exactly the quiet loss the app must not do.
+                        while (rows.size < last.postings.size) rows.add(PostingRow())
+                        last.postings.forEachIndexed { index, posting ->
+                            rows[index].account = posting.account
+                            rows[index].amount =
+                                posting.amount?.number?.abs()?.toPlainString().orEmpty()
+                        }
+                        // Only the first posting keeps an amount; the rest stay elided, so
+                        // Beancount recomputes them rather than us reusing stale numbers.
+                        rows.drop(1).forEach { it.amount = "" }
+                    },
+                    label = { Text("Use last: ${last.postings.firstOrNull()?.account?.substringAfterLast(':')}") },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Reuse the last entry for ${payee.trim()}"
+                    },
+                )
+            }
+
+            SuggestingField(
+                value = narration,
+                onValueChange = { narration = it },
+                label = "Description",
+                suggestions = vocabulary.narrations,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        FormGap()
+
+        // ---- The postings ---------------------------------------------------------------
+        LedgerHeading("Postings")
+        FormGroup {
+            rows.forEachIndexed { index, row ->
+                if (index > 0) LedgerHairline(Modifier.padding(vertical = Measure.tight))
+                PostingEditor(
+                    index = index,
+                    row = row,
+                    vocabulary = vocabulary,
+                    removable = rows.size > 2,
+                    onRemove = { rows.removeAt(index) },
+                )
+            }
+            SmallAction(
+                text = "Add posting",
+                describe = "Add another posting",
+                onClick = { rows.add(PostingRow()) },
+            )
+        }
+
+        FormGap()
+
+        // ---- Extras, on demand -------------------------------------------------------------
+        FormGroup {
+            if (tagRows.isNotEmpty()) {
+                WordEditor(
+                    rows = tagRows,
+                    kind = "Tag",
+                    sigil = "#",
+                    suggestions = vocabulary.tags,
+                )
+            }
+            if (linkRows.isNotEmpty()) {
+                WordEditor(
+                    rows = linkRows,
+                    kind = "Link",
+                    sigil = "^",
+                    suggestions = vocabulary.links,
+                )
+            }
+            MetadataEditor(
+                rows = metaRows,
+                label = "Details about the whole transaction",
+                describe = { "transaction" },
+            )
+            if (capture != null && !capture.pages.isEmpty) {
+                AttachDocumentSection(
+                    capture = capture,
+                    // Filed under the account the document is evidence for. Blank until the
+                    // first posting has one, because the account decides where the file lands
+                    // and guessing it would put receipts somewhere nobody looks.
+                    account = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty(),
+                    attached = metaRows.filter { it.key.startsWith("document") }.map { it.value },
+                    onNameChange = { documentName = it },
+                )
+            }
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Measure.tight),
+            ) {
+                SmallAction(
+                    text = if (tagRows.isEmpty()) "Tag" else "Another tag",
+                    describe = "Add a tag to this transaction",
+                    onClick = { tagRows.add(WordRow()) },
+                )
+                SmallAction(
+                    text = if (linkRows.isEmpty()) "Link" else "Another link",
+                    describe = "Add a link to this transaction",
+                    onClick = { linkRows.add(WordRow()) },
+                )
+                SmallAction(
+                    text = if (metaRows.isEmpty()) "Detail" else "Another detail",
+                    describe = if (metaRows.isEmpty()) {
+                        "Add a detail to transaction"
+                    } else {
+                        "Add another detail to transaction"
+                    },
+                    onClick = { metaRows.add(MetadataRow()) },
+                )
+                if (capture != null && capture.pages.isEmpty) {
+                    SmallAction(
+                        text = "Scan document",
+                        describe = "Scan a document for this transaction",
+                        onClick = {
+                            if (cameraAllowed) {
+                                capture.onStartScanning()
+                            } else {
+                                askForCamera.launch(Manifest.permission.CAMERA)
+                            }
+                        },
+                    )
+                }
             }
         }
 
-        OutlinedButton(
-            onClick = { rows.add(PostingRow()) },
-            modifier = Modifier.semantics { contentDescription = "Add another posting" },
-        ) { Text("Add posting") }
-
         // The imbalance is information, not an error: an elided posting is the normal way
         // to let Beancount finish the arithmetic.
-        if (residuals.isNotEmpty()) {
+        LedgerReveal(visible = residuals.isNotEmpty(), label = "residual") {
+            val shownResiduals = remember(residuals) { residuals }
             val elided = draft.postings.count { it.isElided }
-            Notice(if (elided == 1) NoticeTone.QUIET else NoticeTone.ATTENTION) {
+            Notice(
+                if (elided == 1) NoticeTone.QUIET else NoticeTone.ATTENTION,
+                modifier = Modifier.padding(top = Measure.gap),
+            ) {
                 Text(
                     text = if (elided == 1) {
-                        "Beancount will put ${residuals.joinToString(", ") { format.format(it) }} " +
+                        "Beancount will put ${shownResiduals.joinToString(", ") { format.format(it) }} " +
                             "on the posting with no amount."
                     } else {
-                        "Does not balance: ${residuals.joinToString(", ") { format.format(it) }}"
+                        "Does not balance: ${shownResiduals.joinToString(", ") { format.format(it) }}"
                     },
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
         }
 
-        // The promise the form makes, and the one moment in it that looks like the file:
-        // the lines about to be written, in the source face, on a surface a shade off the
-        // page and hung from the same rule as everything else the app states as fact.
-        RuledColumn(modifier = Modifier.padding(top = Measure.snug)) {
+        FormGap()
+
+        // The promise the form makes, and the one moment in it that looks like the file: the
+        // lines about to be written, in the source face, hung from the app's rule.
+        RuledColumn {
             LedgerHeading("Will be written as")
             Text(
                 text = draft.render(),
@@ -589,13 +556,14 @@ fun QuickAddScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                    // The signature (B76). When a save lands, the lines that were written
-                    // are swept once by the app's own rule, left to right, and it is over in
-                    // a third of a second. It is the only moment in the app that marks an
-                    // action rather than explaining a change, and it marks the right one: the
-                    // entry going into the book is what the whole form is for. Drawn rather
-                    // than laid out, so the preview does not move while it happens.
-                    .filedSweep(key = saveState, colour = BeancountTheme.ledger.rule)
+                    // The signature (B76). When a save *commits*, the lines that were written
+                    // are swept once by the app's rule. Keyed on the commit count, not on the
+                    // message (B77): the message changes to "Saving…" first and again to the
+                    // result, and keying on it swept twice and swept refusals too.
+                    .filedSweep(
+                        key = committed.takeIf { it > 0 },
+                        colour = BeancountTheme.ledger.rule,
+                    )
                     .padding(Measure.indent)
                     .semantics { contentDescription = "Preview of the entry to be saved" },
             )
@@ -603,9 +571,12 @@ fun QuickAddScreen(
 
         // A validation message pushes the form down rather than appearing between two fields
         // that were already there: what changed is that the form has something to say.
-        LedgerReveal(visible = problems.isNotEmpty(), label = "problems") {
-            val shown = androidx.compose.runtime.remember(problems) { problems }
-            Notice(NoticeTone.PROBLEM) {
+        // Not before anything has been typed (B77): an empty form is not wrong, it is empty,
+        // and greeting it with "needs at least two postings" is noise the person did nothing
+        // to cause. The button stays disabled either way.
+        LedgerReveal(visible = dirty && problems.isNotEmpty(), label = "problems") {
+            val shown = remember(problems) { problems }
+            Notice(NoticeTone.PROBLEM, modifier = Modifier.padding(top = Measure.gap)) {
                 shown.forEach { problem ->
                     Text(problem.describe(), style = MaterialTheme.typography.bodyMedium)
                 }
@@ -613,36 +584,24 @@ fun QuickAddScreen(
         }
 
         // Invariant 6: a retried write never creates a duplicate entry. `ProjectWriter.append`
-        // cannot enforce that on its own -- it computes `expectedSha` from the file at call
-        // time, so the stale-hash check that protects `replace` sees nothing wrong with the
-        // second write, and the write mutex serialises the two taps rather than collapsing
-        // them. Two taps on this button therefore produced two identical transactions, both
-        // reported as saved.
-        //
-        // The guard is the draft itself: once this exact draft has been submitted the button
-        // is disabled, and it comes back the moment any field changes. Somebody entering two
-        // genuinely identical transactions edits something and edits it back, which is a
-        // deliberate act rather than a slip.
+        // cannot enforce that on its own, so the guard is the draft itself: once this exact
+        // draft has been submitted the button is disabled, and it comes back the moment any
+        // field changes.
         var submitted by remember { mutableStateOf<TransactionDraft?>(null) }
 
-        // Pages photographed but never filed (B57). Saving the entry writes the transaction
-        // and leaves the captures in a cache the next scan will reuse -- so a receipt taken
-        // *for this entry* silently belongs to nothing. Said before the save, not after, and
-        // it does not block: the entry is the user's to write, and the app's job is to make
-        // sure the loss is a choice.
+        // Pages photographed but never filed (B57), filed by saving the entry (B66).
         val unfiledPages = capture?.pages?.pages?.size ?: 0
         val documentAccount = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty()
 
-        // A page photographed for this entry is filed by saving the entry (B66). What used to
-        // stand here was a warning that pages were "not attached", pointing at a second button
-        // the user had to find; missing it filed the receipt under nothing.
         if (unfiledPages > 0 && documentAccount.isBlank()) {
             Notice(
                 NoticeTone.ATTENTION,
-                modifier = Modifier.semantics {
-                    contentDescription =
-                        "$unfiledPages photographed page(s) cannot be filed without an account"
-                },
+                modifier = Modifier
+                    .padding(top = Measure.gap)
+                    .semantics {
+                        contentDescription =
+                            "$unfiledPages photographed page(s) cannot be filed without an account"
+                    },
             ) {
                 Text(
                     "$unfiledPages page${if (unfiledPages == 1) "" else "s"} photographed. " +
@@ -652,25 +611,21 @@ fun QuickAddScreen(
             }
         }
 
+        FormGap()
+
         Button(
             onClick = {
                 submitted = draft
-                // Pages first, then the entry that names them. The order is what makes the
-                // pair legal: `fava.plugins.link_documents` reports "Document not found" for
-                // an entry whose `document:` metadata has no `document` directive to link to,
-                // and a new error is what the write protocol rolls a save back for.
+                // Pages first, then the entry that names them: `fava.plugins.link_documents`
+                // reports "Document not found" for an entry whose `document:` metadata has no
+                // `document` directive to link to, and a new error rolls the save back.
                 if (capture != null && unfiledPages > 0 && documentAccount.isNotBlank()) {
                     capture.onFile(documentAccount, documentName.trim().ifBlank { null }) { path ->
                         val key = BeancountText.nextDocumentKey(
                             draft.metadata.keys + metaRows.map { it.key }.toSet(),
                         )
-                        // The file's own name, not the path to it. `fava.plugins.link_documents`
-                        // matches a `document:` value against the *basename* of each
-                        // `document` directive (and against a path resolved relative to the
-                        // file the entry is written in, which for an entry in
-                        // files/transactions.beancount is not where the documents live). A
-                        // project-relative path matches neither, and the plugin then reports
-                        // "Document not found" -- a new error, which rolls the save back.
+                        // The file's own name, not the path to it: the plugin matches a
+                        // `document:` value against the basename of each `document` directive.
                         onSave(
                             draft.copy(
                                 metadata = draft.metadata + (key to path.substringAfterLast('/')),
@@ -683,7 +638,7 @@ fun QuickAddScreen(
             },
             enabled = problems.isEmpty() && draft != submitted &&
                 (unfiledPages == 0 || documentAccount.isNotBlank()),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         ) {
             Text(
                 if (unfiledPages > 0) {
@@ -694,16 +649,31 @@ fun QuickAddScreen(
             )
         }
 
-        OutlinedButton(
+        // What the write did, arriving under the button that did it.
+        LedgerReveal(visible = saveState != null, label = "saveState") {
+            val shown = remember(saveState) { saveState }
+            Text(
+                shown.orEmpty(),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = Measure.snug),
+            )
+        }
+
+        TextButton(
             onClick = { namingTemplate = true },
-            enabled = rows.any { it.account.isNotBlank() },
-            modifier = Modifier.semantics { contentDescription = "Save this entry as a template" },
+            // Also where saved templates are deleted, so it opens whenever there are any --
+            // the form no longer arrives with accounts filled in, and gating it on one would
+            // hide the only way to remove a template from an empty form.
+            enabled = rows.any { it.account.isNotBlank() } || templates.isNotEmpty(),
+            modifier = Modifier
+                .padding(top = Measure.tight)
+                .semantics { contentDescription = "Save this entry as a template" },
         ) { Text("Save as template") }
 
         if (namingTemplate) {
             TemplateDialog(
                 draft = draft,
-                fallbackCurrency = currency.trim(),
+                fallbackCurrency = commodity.trim(),
                 existing = templates,
                 onSave = { template ->
                     onSaveTemplate(template)
@@ -713,11 +683,199 @@ fun QuickAddScreen(
                 onDismiss = { namingTemplate = false },
             )
         }
+    }
+}
 
-        // What the write did, arriving under the button that did it.
-        LedgerReveal(visible = saveState != null, label = "saveState") {
-            val shown = androidx.compose.runtime.remember(saveState) { saveState }
-            Text(shown.orEmpty(), style = MaterialTheme.typography.bodyMedium)
+/** A group of related fields: tight inside, so the group reads as one thing. */
+@Composable
+private fun FormGroup(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Measure.snug), content = content)
+}
+
+/** The space between two groups: wider than inside one, which is what makes them groups. */
+@Composable
+private fun FormGap() {
+    androidx.compose.foundation.layout.Spacer(Modifier.heightIn(min = Measure.section))
+}
+
+/**
+ * A small action that adds something to the form.
+ *
+ * A text button with a plus rather than an outlined one: these are secondary, several of them
+ * sit on one line, and an outlined pill for each read as five primary actions competing with
+ * Save. The target is still 48dp tall, which is the part a finger cares about.
+ */
+@Composable
+private fun SmallAction(text: String, describe: String, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .semantics { contentDescription = describe },
+    ) {
+        Icon(
+            androidx.compose.material.icons.Icons.Filled.Add,
+            contentDescription = null,
+            modifier = Modifier.padding(end = 4.dp).size(18.dp),
+        )
+        Text(text, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+/**
+ * A remove button that looks like one (B77).
+ *
+ * It was a "×" typed into a text button: a character the size of the label text, the colour of
+ * a link, easy to miss and easy to hit instead of the field beside it. A tonal icon button is
+ * the full 48dp target Material asks for, with an icon that reads as removal at a glance.
+ */
+@Composable
+private fun RemoveButton(describe: String, onClick: () -> Unit) {
+    androidx.compose.material3.FilledTonalIconButton(
+        onClick = onClick,
+        modifier = Modifier.semantics { contentDescription = describe },
+    ) {
+        Icon(
+            androidx.compose.material.icons.Icons.Filled.Close,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+/**
+ * One posting: the account on its own line, the amount and commodity beneath it (B77).
+ *
+ * The three used to share one line, which left the account -- the longest thing typed -- a
+ * third of the width and the commodity a box too narrow for its own label. Top to bottom is
+ * also how a posting reads in the file: where the money is, then how much of what.
+ */
+@Composable
+private fun PostingEditor(
+    index: Int,
+    row: PostingRow,
+    vocabulary: LedgerVocabulary,
+    removable: Boolean,
+    onRemove: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SuggestingField(
+                value = row.account,
+                onValueChange = { row.account = it },
+                label = "Account ${index + 1}",
+                suggestions = vocabulary.accounts,
+                describe = "Account for posting ${index + 1}",
+                modifier = Modifier.weight(1f),
+            )
+            if (removable) {
+                androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
+                RemoveButton("Remove posting ${index + 1}", onRemove)
+            }
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Measure.snug),
+            verticalAlignment = Alignment.Top,
+        ) {
+            OutlinedTextField(
+                value = row.amount,
+                onValueChange = { row.amount = it },
+                label = { Text("Amount") },
+                placeholder = if (index == 0) null else { { Text("optional") } },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.weight(3f),
+            )
+            SuggestingField(
+                value = row.commodity,
+                onValueChange = { row.commodity = it },
+                label = "Commodity",
+                suggestions = vocabulary.currencies,
+                describe = "Commodity for posting ${index + 1}",
+                transform = { it.uppercase().filterNot(Char::isWhitespace) },
+                modifier = Modifier.weight(2f),
+            )
+        }
+        if (row.showDetails) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = row.details,
+                    onValueChange = { row.details = it },
+                    label = { Text("Commodity details") },
+                    placeholder = { Text("{400.00 PKR} @ 483.05 PKR") },
+                    supportingText = { Text("Written after the amount, as the file writes a lot or price") },
+                    singleLine = true,
+                    textStyle = LedgerType.source,
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { contentDescription = "Commodity details for posting ${index + 1}" },
+                )
+                androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
+                RemoveButton("Remove commodity details from posting ${index + 1}") {
+                    row.details = ""
+                    row.showDetails = false
+                }
+            }
+        }
+        MetadataEditor(
+            rows = row.metadata,
+            label = "Details about this posting only",
+            describe = { "posting ${index + 1}" },
+            showAddButton = false,
+        )
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Measure.tight),
+        ) {
+            if (!row.showDetails) {
+                SmallAction(
+                    text = "Commodity details",
+                    describe = "Add commodity details to posting ${index + 1}",
+                    onClick = { row.showDetails = true },
+                )
+            }
+            SmallAction(
+                text = if (row.metadata.isEmpty()) "Detail" else "Another detail",
+                describe = if (row.metadata.isEmpty()) {
+                    "Add a detail to posting ${index + 1}"
+                } else {
+                    "Add another detail to posting ${index + 1}"
+                },
+                onClick = { row.metadata.add(MetadataRow()) },
+            )
+        }
+    }
+}
+
+/**
+ * Tags or links, one box each (B77).
+ *
+ * Beancount writes them after the narration -- `#trip-2026` and `^invoice-4411` -- and neither
+ * may contain a space, so a space typed here is dropped as it is typed rather than refused at
+ * save. The sigil is accepted and stripped, because people type it. Suggestions are the ones
+ * the ledger already uses, which is what keeps a tag from being spelled three ways.
+ */
+@Composable
+private fun WordEditor(
+    rows: MutableList<WordRow>,
+    kind: String,
+    sigil: String,
+    suggestions: List<String>,
+) {
+    rows.forEachIndexed { index, word ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SuggestingField(
+                value = word.value,
+                onValueChange = { word.value = it },
+                label = if (rows.size == 1) kind else "$kind ${index + 1}",
+                suggestions = suggestions,
+                describe = "$kind ${index + 1}",
+                transform = { typed -> typed.removePrefix(sigil).filterNot(Char::isWhitespace) },
+                trailingIcon = null,
+                modifier = Modifier.weight(1f),
+            )
+            androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
+            RemoveButton("Remove ${kind.lowercase()} ${index + 1}") { rows.removeAt(index) }
         }
     }
 }
@@ -813,7 +971,10 @@ private fun TemplateDialog(
         onDismissRequest = onDismiss,
         title = { Text("Save as template") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
                 Text(
                     "The accounts, payee, description and any amounts on the form are kept. " +
                         "The date is not: a template is applied to the date you are entering.",
@@ -888,19 +1049,24 @@ private fun MetadataEditor(
     rows: MutableList<MetadataRow>,
     label: String,
     describe: () -> String,
+    /** Whether this editor draws its own add button, or the form's action row does. */
+    showAddButton: Boolean = false,
 ) {
     if (rows.isEmpty()) {
-        OutlinedButton(
-            onClick = { rows.add(MetadataRow()) },
-            modifier = Modifier.semantics { contentDescription = "Add a detail to ${describe()}" },
-        ) { Text("Add a detail") }
+        if (showAddButton) {
+            SmallAction(
+                text = "Detail",
+                describe = "Add a detail to ${describe()}",
+                onClick = { rows.add(MetadataRow()) },
+            )
+        }
         return
     }
 
-    Text(label, style = MaterialTheme.typography.labelMedium)
+    Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     rows.forEachIndexed { index, meta ->
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Measure.snug),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlinedTextField(
@@ -921,18 +1087,9 @@ private fun MetadataEditor(
                     contentDescription = "Detail ${index + 1} value for ${describe()}"
                 },
             )
-            TextButton(
-                onClick = { rows.removeAt(index) },
-                modifier = Modifier.semantics {
-                    contentDescription = "Remove detail ${index + 1} from ${describe()}"
-                },
-            ) { Text("\u00d7") }
+            RemoveButton("Remove detail ${index + 1} from ${describe()}") { rows.removeAt(index) }
         }
     }
-    OutlinedButton(
-        onClick = { rows.add(MetadataRow()) },
-        modifier = Modifier.semantics { contentDescription = "Add another detail to ${describe()}" },
-    ) { Text("Add another detail") }
 }
 
 /**
@@ -1064,8 +1221,4 @@ private fun AttachDocumentSection(
     }
 }
 
-/** Wide enough for a figure with two decimal places, and for the "Amount" label above it. */
-internal val AMOUNT_FIELD_WIDTH = 116.dp
 
-/** Wide enough for a three-letter code, and for the "Cur." label that used to wrap onto two. */
-internal val CURRENCY_FIELD_WIDTH = 92.dp

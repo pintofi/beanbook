@@ -33,6 +33,7 @@ import java.time.LocalDate
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 import androidx.compose.foundation.background
+import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 
 /** The directive types the app can compose, in the order people reach for them. */
 enum class DirectiveKind(val label: String) {
@@ -62,6 +63,8 @@ fun DirectiveEntryScreen(
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
     saveState: String? = null,
+    /** Directives committed from the form this session (B77); a change marks the preview. */
+    committed: Int = 0,
     /** Whether anything has been typed that leaving would lose (B61). */
     onDirtyChange: (Boolean) -> Unit = {},
 ) {
@@ -174,7 +177,7 @@ fun DirectiveEntryScreen(
                 SuggestingField(
                     value = currency,
                     onValueChange = { currency = it.uppercase() },
-                    label = "Currency",
+                    label = "Commodity",
                     suggestions = vocabulary.currencies,
                     modifier = Modifier.weight(1f),
                 )
@@ -185,7 +188,7 @@ fun DirectiveEntryScreen(
             SuggestingField(
                 value = currency,
                 onValueChange = { currency = it.uppercase() },
-                label = "Currency (optional)",
+                label = "Commodity (optional)",
                 suggestions = vocabulary.currencies,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -218,6 +221,7 @@ fun DirectiveEntryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .filedSweep(key = committed.takeIf { it > 0 }, colour = BeancountTheme.ledger.rule)
                     .padding(Measure.indent)
                     .semantics { contentDescription = "Preview of the directive to be saved" },
             )

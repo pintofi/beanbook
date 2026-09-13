@@ -47,6 +47,27 @@ class WidgetCacheTest {
         loadMillis = 5,
     )
 
+    /**
+     * The accounts widget writes figures the way the file asks, like every other figure.
+     *
+     * It used the plain default while the headline widgets used the ledger's format, so a file
+     * with `option "render_commas"` showed 1,240.00 as net worth and 1240.00 beside the account
+     * that held it.
+     */
+    @Test
+    fun `account rows follow the ledger's separators and places`() {
+        val grouped = ledger().copy(
+            format = io.github.pintofi.beanbook.core.domain.LedgerFormat(
+                groupThousands = true,
+                precision = mapOf("USD" to 2),
+            ),
+        )
+
+        val snapshot = WidgetCache.from("my-ledger", grouped, entitled = true, nowEpochMs = 1)
+
+        assertEquals("1,240.00 USD", snapshot.balances["Assets:Bank:Checking"])
+    }
+
     @Test
     fun `a snapshot survives a round trip through disk`() {
         val snapshot = WidgetCache.from("my-ledger", ledger(), entitled = true, nowEpochMs = 1_700_000)

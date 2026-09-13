@@ -194,7 +194,7 @@ class AccessibilityTest {
         }
 
         compose.onAllNodesWithText("Date")[0].assertExists()
-        compose.onNodeWithContentDescription("Currency for posting 1").assertExists()
+        compose.onNodeWithContentDescription("Commodity for posting 1").assertExists()
         assertNull("nothing should be saved until Save is pressed", saved)
         compose.onNodeWithText("Save").performClick()
         assertEquals(
@@ -267,7 +267,7 @@ class AccessibilityTest {
         // The currency field shares the amount's line rather than taking a third: it is
         // short enough to, and a three-line posting at 200% font leaves room for almost
         // nothing else (B4).
-        val currency = compose.onAllNodesWithContentDescription("Currency for posting 1")
+        val currency = compose.onAllNodesWithContentDescription("Commodity for posting 1")
             .fetchSemanticsNodes().first().boundsInRoot
         assertTrue(
             "currency ($currency) dropped onto its own line below the amount ($amount)",

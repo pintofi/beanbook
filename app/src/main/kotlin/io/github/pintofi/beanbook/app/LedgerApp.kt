@@ -334,6 +334,10 @@ internal fun LedgerApp(
     onRemoteDiscard: () -> Unit,
     onSaveDirective: (io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
+    /** Entries committed from the form this session; a change closes the form (B77). */
+    entryCommits: Int = 0,
+    /** Ends the engine and the app and opens it again (B77). */
+    onRestartApp: () -> Unit = {},
     projects: List<ProjectSummary>,
     activeProjectId: String?,
     projectMessage: String?,
@@ -378,6 +382,28 @@ internal fun LedgerApp(
     /** Leaves the entry form, asking first when there is something to lose. */
     fun leavingAdd(then: () -> Unit) {
         if (adding && addDirty) confirmingLeave = then else then()
+    }
+
+    // A save that committed closes the form and shows the entry where it now lives (B77). The
+    // form stayed open after every save and still counted as holding something, so closing
+    // it asked whether to discard an entry that was already in the file.
+    //
+    // Keyed on the count of commits, never on the message: "Saving…" and a refusal both change
+    // the message, and neither is a reason to leave. The only wait is the signature sweep over
+    // the lines just written -- the write is already durable and re-parsed by the time this
+    // runs, so the pause is choreography after the fact, not a guess about I/O -- and there is
+    // no wait at all when the user has turned animation off.
+    val motion = io.github.pintofi.beanbook.app.ui.theme.LocalMotionEnabled.current
+    var seenCommits by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(entryCommits) }
+    androidx.compose.runtime.LaunchedEffect(entryCommits) {
+        if (entryCommits == seenCommits) return@LaunchedEffect
+        seenCommits = entryCommits
+        if (!adding) return@LaunchedEffect
+        if (motion) kotlinx.coroutines.delay(io.github.pintofi.beanbook.app.ui.theme.Motion.RULE_MS.toLong())
+        addDirty = false
+        confirmingLeave = null
+        adding = false
+        selected = Surface.JOURNAL
     }
 
     // An entry being entered again (B11). Held here because applying it means switching to
@@ -712,6 +738,7 @@ internal fun LedgerApp(
                 onDeleteTemplate = onDeleteTemplate,
                 onSaveDirective = onSaveDirective,
                 saveState = saveState,
+                entryCommits = entryCommits,
                 projects = projects,
                 activeProjectId = activeProjectId,
                 projectMessage = projectMessage,
@@ -739,6 +766,7 @@ internal fun LedgerApp(
                 refreshing = refreshing,
                 onRefresh = onRefresh,
                 onAddDirtyChange = { addDirty = it },
+                onRestartApp = onRestartApp,
             )
             }
             }

@@ -94,9 +94,11 @@ class TemplateEntryTest {
         var captured: EntryTemplate? = null
         show(onSaveTemplate = { captured = it })
 
-        // The accounts are already prefilled from the ledger, which is the state someone is
-        // actually in when they decide to keep a form as a template.
+        // The form no longer preselects accounts (B77), so they are typed, the way someone
+        // building a template would pick them.
         compose.onNodeWithText("Payee").performTextInput("Landlord")
+        compose.onNodeWithContentDescription("Account for posting 1").performTextInput("Expenses:Rent")
+        compose.onNodeWithContentDescription("Account for posting 2").performTextInput("Assets:Bank:Giro")
         // The first posting's amount. Every posting's field is labelled "Amount" now — the
         // second used to say "Amount (optional)", which made an exact match unique by
         // accident, until that qualifier moved to supporting text because it was long enough
@@ -125,7 +127,7 @@ class TemplateEntryTest {
 
         // One posting only: a transaction needs two, so this template would be a trap. The
         // refusal happens now, with a reason, not on the day it is applied.
-        compose.onNodeWithText("Assets:Bank:Giro").performTextClearance()
+        compose.onNodeWithContentDescription("Account for posting 1").performTextInput("Expenses:Rent")
         compose.onNodeWithText("Save as template").performScrollTo().performClick()
         compose.onNodeWithText("Template name").performTextInput("Broken")
 

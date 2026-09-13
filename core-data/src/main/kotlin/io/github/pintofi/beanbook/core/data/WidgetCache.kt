@@ -161,7 +161,12 @@ class WidgetCache(stateDir: File) {
             // is worse than one the user never added.
             val balances = ledger.accounts
                 .filter { it.name in wanted }
-                .mapNotNull { account -> LedgerSummary.format(account.positions)?.let { account.name to it } }
+                // Through the ledger's own format, like the three headline figures above it:
+                // this row used the plain default, so a file asking for thousands separators got
+                // them on Home and in the headline widgets and not in the accounts widget.
+                .mapNotNull { account ->
+                    LedgerSummary.format(account.positions, ledger.format)?.let { account.name to it }
+                }
                 .toMap()
 
             return WidgetSnapshot(

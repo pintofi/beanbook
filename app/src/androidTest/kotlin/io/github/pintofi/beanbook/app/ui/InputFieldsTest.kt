@@ -2,9 +2,12 @@ package io.github.pintofi.beanbook.app.ui
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -100,6 +103,57 @@ class InputFieldsTest {
         compose.onNodeWithContentDescription("Use Expenses:Food:Coffee").performClick()
 
         assert(value == "Expenses:Food:Coffee") { "the tapped suggestion was not used: $value" }
+    }
+
+    /**
+     * A chosen suggestion leaves the cursor after its last character (B77).
+     *
+     * The field held a plain string, so choosing "Expenses:Food:Coffee" after typing "coff"
+     * kept the cursor at index 4 -- in the middle of the word the person had just finished.
+     */
+    @Test fun choosingASuggestionPutsTheCursorAtTheEnd() {
+        var value by androidx.compose.runtime.mutableStateOf("")
+        compose.setContent {
+            MaterialTheme {
+                SuggestingField(
+                    value = value,
+                    onValueChange = { value = it },
+                    label = "Account",
+                    suggestions = listOf("Expenses:Food:Coffee"),
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Account").performTextInput("coff")
+        compose.onNodeWithContentDescription("Use Expenses:Food:Coffee").performClick()
+
+        val selection = compose.onNodeWithContentDescription("Account").fetchSemanticsNode()
+            .config[androidx.compose.ui.semantics.SemanticsProperties.TextSelectionRange]
+        assert(selection.start == "Expenses:Food:Coffee".length && selection.collapsed) {
+            "the cursor was left at $selection"
+        }
+        // And the list closes under what was chosen, instead of offering it back.
+        compose.onAllNodesWithContentDescription("Use Expenses:Food:Coffee").assertCountEqualsZero()
+    }
+
+    /** A tag cannot contain a space in Beancount, so a typed space never reaches the file (B77). */
+    @Test fun aFieldCanRefuseCharactersAsTheyAreTyped() {
+        var value = ""
+        compose.setContent {
+            MaterialTheme {
+                SuggestingField(
+                    value = value,
+                    onValueChange = { value = it },
+                    label = "Tag",
+                    suggestions = emptyList(),
+                    transform = { it.removePrefix("#").filterNot(Char::isWhitespace) },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Tag").performTextInput("#trip 2026")
+
+        assert(value == "trip2026") { "the tag reached the form as \"$value\"" }
     }
 
     @Test fun theJournalIsSearchable() {

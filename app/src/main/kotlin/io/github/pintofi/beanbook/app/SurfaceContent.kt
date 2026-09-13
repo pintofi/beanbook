@@ -162,6 +162,8 @@ internal fun SurfaceContent(
     onDeleteTemplate: (String) -> Unit,
     onSaveDirective: (io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
+    /** Entries committed from the form this session (B77): what the save sweep marks. */
+    entryCommits: Int = 0,
     projects: List<ProjectSummary>,
     activeProjectId: String?,
     projectMessage: String?,
@@ -188,6 +190,7 @@ internal fun SurfaceContent(
     onDiscardDraft: () -> Unit,
     refreshing: Boolean,
     onRefresh: () -> Unit,
+    onRestartApp: () -> Unit = {},
 ) {
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
     run {
@@ -255,6 +258,7 @@ internal fun SurfaceContent(
                                 vocabulary = LedgerVocabulary.from(ledger),
                                 onSave = onSaveDirective,
                                 saveState = saveState,
+                                committed = entryCommits,
                                 onDirtyChange = onAddDirtyChange,
                             )
                         } else {
@@ -265,6 +269,7 @@ internal fun SurfaceContent(
                                 onDirtyChange = onAddDirtyChange,
                                 onSave = onSaveEntry,
                                 saveState = saveState,
+                                committed = entryCommits,
                                 prefill = prefill,
                                 onPrefillApplied = onPrefillApplied,
                                 templates = templates,
@@ -289,6 +294,7 @@ internal fun SurfaceContent(
                             entitlement = entitlement,
                             onContribute = onContribute,
                             onOpen = onMoreSection,
+                            onRestartApp = onRestartApp,
                         )
                         return@Column
                     }

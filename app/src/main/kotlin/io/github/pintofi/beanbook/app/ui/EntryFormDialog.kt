@@ -141,7 +141,6 @@ fun EntryFormDialog(
         },
     )
     val problems = draft.validate()
-    val stacked = LocalDensity.current.fontScale > 1.3f
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -214,38 +213,31 @@ fun EntryFormDialog(
                     val currencyField: @Composable (Modifier) -> Unit = { fieldModifier ->
                         SuggestingField(
                             value = row.currency,
-                            onValueChange = { row.currency = it.uppercase() },
-                            label = "Cur.",
+                            onValueChange = { row.currency = it },
+                            label = "Commodity",
                             suggestions = vocabulary.currencies,
-                            describe = "Currency for posting ${index + 1}",
+                            describe = "Commodity for posting ${index + 1}",
+                            transform = { it.uppercase().filterNot(Char::isWhitespace) },
                             modifier = fieldModifier,
                         )
                     }
-                    if (stacked) {
-                        accountField(Modifier.fillMaxWidth())
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            amountField(Modifier.weight(2f))
-                            currencyField(Modifier.weight(1f))
-                        }
-                    } else {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            accountField(Modifier.weight(1f))
-                            amountField(Modifier.width(AMOUNT_FIELD_WIDTH))
-                            currencyField(Modifier.width(CURRENCY_FIELD_WIDTH))
-                        }
+                    // The account on its own line and the amount and commodity under it, as
+                    // in the entry form (B77): side by side the account got a third of the
+                    // width and the commodity a box too narrow for its label.
+                    accountField(Modifier.fillMaxWidth())
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        amountField(Modifier.weight(3f))
+                        currencyField(Modifier.weight(2f))
                     }
                     // Shown, not hidden: this posting keeps its lot through the edit, and a
                     // figure that survives a save the user cannot see is one they cannot
                     // check.
                     row.lotText().takeIf { it.isNotEmpty() }?.let { lot ->
                         Text(
-                            text = "Kept as written: $lot",
+                            text = "Commodity details, kept as written: $lot",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

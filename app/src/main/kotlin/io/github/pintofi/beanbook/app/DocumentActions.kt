@@ -437,6 +437,34 @@ internal fun MainActivity.restartEngine(app: BeancountApplication, projectId: St
 }
 
 /**
+ * Ends every process the app runs and opens it again, reading everything from disk (B77).
+ *
+ * The engine restart above keeps the app's own process, which is right after installing a
+ * plugin and not enough when the app itself is in a bad state -- a stuck screen, a keyboard
+ * inset that never came back -- where the only fix used to be swiping the app away.
+ *
+ * Safe by construction rather than by timing: every write goes through the journalled
+ * protocol, so a process that ends mid-write is recovered from its snapshot on the next start
+ * (invariant 3), and the relaunch is started before the processes end so the task comes
+ * straight back rather than to the launcher.
+ */
+internal fun MainActivity.restartApp() {
+    val manager = getSystemService(android.app.ActivityManager::class.java)
+    val mine = android.os.Process.myPid()
+    // Our own uid's processes only: the platform lists nothing else to an ordinary app, and
+    // `killProcess` refuses a pid that is not ours.
+    manager?.runningAppProcesses
+        ?.filter { it.pid != mine && it.processName.startsWith(packageName) }
+        ?.forEach { android.os.Process.killProcess(it.pid) }
+    val relaunch = android.content.Intent.makeRestartActivityTask(
+        android.content.ComponentName(this, MainActivity::class.java),
+    )
+    startActivity(relaunch)
+    finishAffinity()
+    Runtime.getRuntime().exit(0)
+}
+
+/**
  * A `document` directive's path as a file on disk (B57).
  *
  * Directives name a document relative to the project root, which is what makes a project
