@@ -399,7 +399,9 @@ internal fun LedgerApp(
         if (entryCommits == seenCommits) return@LaunchedEffect
         seenCommits = entryCommits
         if (!adding) return@LaunchedEffect
-        if (motion) kotlinx.coroutines.delay(io.github.pintofi.beanbook.app.ui.theme.Motion.RULE_MS.toLong())
+        if (motion) {
+            kotlinx.coroutines.delay(io.github.pintofi.beanbook.app.ui.theme.Motion.SAVE_ACKNOWLEDGE_MS.toLong())
+        }
         addDirty = false
         confirmingLeave = null
         adding = false
@@ -485,7 +487,7 @@ internal fun LedgerApp(
         // empty screen the height of the navigation bar sat above the keyboard, and the last
         // field of a form could not be scrolled into it. Insetting the whole Scaffold lifts
         // the bar and the content together, which is what Material describes.
-        modifier = Modifier.weight(1f).imePadding(),
+        modifier = Modifier.weight(1f).keyboardPadding(),
         // The keyboard's height is applied once, by `imePadding` above (B68). `Scaffold`'s
         // default content insets are `safeDrawing`, which *includes* the IME, so the content
         // was being pushed up by the keyboard twice: once by the modifier and again by the
@@ -799,3 +801,25 @@ internal fun LedgerApp(
         )
     }
 }
+
+/**
+ * The keyboard's height, applied only while the keyboard is actually showing (B78).
+ *
+ * `imePadding()` follows the keyboard's *animated* inset, frame by frame. When that animation
+ * does not reach its end -- the keyboard shown and hidden quickly across several fields, a
+ * layout change landing mid-animation as the destination bar comes back -- the animated value
+ * can stay where it stopped, and the app was left with a band the keyboard's size, or half of
+ * it, painted in the window's own colour until the process was killed. That is the black area
+ * people saw after tapping between fields.
+ *
+ * Whether the keyboard is visible comes from the final insets the window was given, not from
+ * the animation. So the padding is taken from the animated inset while the keyboard is visible,
+ * and is simply absent when it is not: a stuck animation cannot leave space behind, because the
+ * moment the window says the keyboard is gone the padding goes with it. The same flag already
+ * decides whether the destination bar is shown, so the two can no longer disagree for a frame
+ * and float the bar in the middle of the screen.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun Modifier.keyboardPadding(): Modifier =
+    if (WindowInsets.isImeVisible) this.imePadding() else this

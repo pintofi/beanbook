@@ -315,32 +315,40 @@ fun Modifier.filedSweep(
     colour: Color,
 ): Modifier {
     val animate = LocalMotionEnabled.current
-    var progress by remember { mutableFloatStateOf(if (key == null) 0f else 1f) }
+    // Two values rather than one (B78): how far the band has travelled, and how strongly it
+    // shows. The first version drew the band at full width on the first frame and shrank it,
+    // which read as a flicker rather than as anything being written -- over in the same third
+    // of a second the form took to leave.
+    var extent by remember { mutableFloatStateOf(0f) }
+    var strength by remember { mutableFloatStateOf(0f) }
     val swept = remember { mutableStateOf<Any?>(null) }
     LaunchedEffect(key) {
-        if (key == null || key == swept.value || !animate) {
-            progress = 0f
-            return@LaunchedEffect
-        }
+        if (key == null || key == swept.value || !animate) return@LaunchedEffect
         swept.value = key
+        strength = 1f
         androidx.compose.animation.core.Animatable(0f).animateTo(
             targetValue = 1f,
-            animationSpec = MotionRole.signature(),
-        ) { progress = 1f - value }
-        progress = 0f
+            animationSpec = tween(Motion.SAVE_SWEEP_MS, easing = Motion.enter),
+        ) { extent = value }
+        kotlinx.coroutines.delay(Motion.SAVE_HOLD_MS.toLong())
+        androidx.compose.animation.core.Animatable(1f).animateTo(
+            targetValue = 0f,
+            animationSpec = tween(Motion.SAVE_FADE_MS, easing = Motion.exit),
+        ) { strength = value }
+        extent = 0f
     }
-    if (progress <= 0f) return this
+    if (strength <= 0f || extent <= 0f) return this
     return drawWithContent {
         drawContent()
-        val width = size.width * progress
-        val rule = 2.dp.toPx()
+        val width = size.width * extent
+        val rule = 3.dp.toPx()
         drawRect(
-            color = colour.copy(alpha = 0.18f * progress),
+            color = colour.copy(alpha = 0.22f * strength),
             topLeft = Offset.Zero,
             size = Size(width = width, height = size.height),
         )
         drawRect(
-            color = colour.copy(alpha = 0.9f * progress),
+            color = colour.copy(alpha = strength),
             topLeft = Offset(x = (width - rule).coerceAtLeast(0f), y = 0f),
             size = Size(width = rule, height = size.height),
         )

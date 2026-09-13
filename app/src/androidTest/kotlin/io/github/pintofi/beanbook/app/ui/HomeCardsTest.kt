@@ -159,9 +159,10 @@ class HomeCardsTest {
         assertTrue("the documents screen was not opened", opened)
     }
 
-    @Test fun recentEntriesAreOffByDefault() {
-        // The card that made Home a second Journal is available and not shown unless asked.
+    @Test fun recentEntriesAreNotACardAnyMore() {
+        // Removed as an option (B78): the Journal is one tap away and is the list.
         show()
+        compose.onNodeWithContentDescription("Choose what Home shows").performScrollTo().performClick()
 
         compose.onAllNodesWithText("Recent entries").assertCountEquals(0)
     }

@@ -341,8 +341,10 @@ internal fun MainActivity.beginEntryEdit(
             return@launch
         }
         editingEntry = slice
+        // Hand-written entries too (B78): an entry whose only difference from the app's own
+        // rendering is its spacing opens as fields, and the form says the spacing will change.
         editingDraft = io.github.pintofi.beanbook.core.domain.StructuredEdit
-            .losslessDraftOf(entry, slice.text)
+            .editableDraftOf(entry, slice.text)
     }
 }
 
@@ -406,7 +408,8 @@ internal fun MainActivity.EntryEditor(
     if (projectId == null) return
     io.github.pintofi.beanbook.app.ui.EntryEditHost(
         slice = slice,
-        draft = editingDraft,
+        draft = editingDraft?.draft,
+        reformats = editingDraft?.reformats == true,
         ledger = ledger,
         onSave = { text -> saveEntryEdit(app, projectId, slice, text) },
         onEditAsText = { editingDraft = null },

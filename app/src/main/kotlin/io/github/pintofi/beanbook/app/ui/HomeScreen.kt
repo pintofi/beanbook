@@ -55,7 +55,6 @@ import io.github.pintofi.beanbook.core.domain.LedgerFormat
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.core.domain.LedgerSummary
 import io.github.pintofi.beanbook.core.domain.SpendingPeriod
-import io.github.pintofi.beanbook.core.domain.recentEntries
 import java.time.LocalDate
 import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 
@@ -135,7 +134,6 @@ fun HomeScreen(
                     onOpenMirror = onOpenMirror,
                 )
                 HomeCard.PENDING -> PendingCard(ledger, hideAmounts, onOpenEntry)
-                HomeCard.RECENT -> RecentCard(ledger, hideAmounts, onOpenEntry)
             }
         }
 
@@ -195,19 +193,6 @@ private fun FiguresCard(ledger: LedgerSnapshot, hideAmounts: Boolean) {
                 label = ledger.accountNames.expenses,
                 value = shown(summary.expenses, hideAmounts),
                 modifier = Modifier.weight(1f),
-            )
-        }
-    }
-
-    // The ledger's own errors matter more than any figure above them: the figures were
-    // computed from a file Beancount could not fully read, and saying so second would be
-    // saying it too late.
-    if (ledger.errors.isNotEmpty()) {
-        Notice(NoticeTone.PROBLEM) {
-            Text(
-                "The figures above are what could be read, not the whole file.",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.semantics { contentDescription = "This ledger has errors" },
             )
         }
     }
@@ -503,38 +488,6 @@ private fun PendingCard(
     }
 }
 
-/** Kept as a choice rather than removed: some people want it, and it costs one card. */
-@Composable
-private fun RecentCard(
-    ledger: LedgerSnapshot,
-    hideAmounts: Boolean,
-    onOpenEntry: (JournalEntry) -> Unit,
-) {
-    val recent = ledger.recentEntries(RECENT_ENTRIES)
-    RuledColumn {
-        LedgerHeading("Recent entries")
-        if (recent.isEmpty()) {
-            Text(
-                "Nothing yet. Anything you add shows up here.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            return@RuledColumn
-        }
-        recent.forEachIndexed { index, entry ->
-            if (index > 0) LedgerHairline()
-            EntryRow(entry, hideAmounts, onOpenEntry, markOf(entry), ledger.format)
-        }
-        LedgerHairline()
-        Text(
-            "Showing ${recent.size} of ${ledger.journal.size}. The Journal has all of them.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = Measure.snug),
-        )
-    }
-}
-
 /** Choose the cards, their order, and how the spending card is set up (B71). */
 @Composable
 private fun CustomiseHomeDialog(
@@ -761,6 +714,3 @@ private fun EntryRow(
         }
     }
 }
-
-/** Enough to recognise the last few days without becoming a second journal. */
-private const val RECENT_ENTRIES = 5

@@ -47,6 +47,18 @@ object Motion {
     const val RULE_MS = 320
 
     /**
+     * The save acknowledgement (B78): the band crosses the written lines, holds, and fades.
+     * Long enough to be seen -- the first version was over before anyone looked -- and short
+     * enough that the fifth entry of an evening is not waiting on it.
+     */
+    const val SAVE_SWEEP_MS = 480
+    const val SAVE_HOLD_MS = 220
+    const val SAVE_FADE_MS = 260
+
+    /** How long the form stays after a committed save, so the acknowledgement is seen. */
+    const val SAVE_ACKNOWLEDGE_MS = SAVE_SWEEP_MS + SAVE_HOLD_MS
+
+    /**
      * Material's emphasised-decelerate curve: quick to start, long to settle. It reads as
      * something arriving under its own weight rather than being switched on.
      */

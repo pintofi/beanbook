@@ -231,6 +231,7 @@ fun BalancesScreen(
     // used to get five headings with nothing under any of them.
     val roots = snapshot.accountNames.roots
     var filter by rememberSaveable { mutableStateOf("") }
+    var tagFilter by rememberSaveable { mutableStateOf("") }
     // Remembered across launches, not just recompositions (B53). Somebody who keeps their
     // books at market value sets that once; asking again on every start is the app forgetting
     // something it was told.
@@ -294,6 +295,24 @@ fun BalancesScreen(
                 .padding(horizontal = Measure.gutter, vertical = Measure.snug),
         )
 
+        // Tags and links, as Fava's filter bar takes them (B78): `#trip`, `^invoice-4411`, or
+        // both. The totals below then come from the matching transactions only.
+        val tagSuggestions = remember(snapshot.journal) {
+            (snapshot.journal.flatMap { it.tags }.distinct().sorted().map { "#$it" } +
+                snapshot.journal.flatMap { it.links }.distinct().sorted().map { "^$it" })
+        }
+        SuggestingField(
+            value = tagFilter,
+            onValueChange = { tagFilter = it },
+            label = "Tags or links",
+            suggestions = tagSuggestions,
+            describe = "Filter balances by tags or links",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Measure.gutter)
+                .padding(bottom = Measure.snug),
+        )
+
         if (valuationAllowed) {
             // Segmented buttons, not chips. These are one basis at a time -- the same figures
             // valued three ways -- and a segmented row is what Material uses to say "pick one
@@ -319,6 +338,19 @@ fun BalancesScreen(
         }
 
         val needle = filter.trim()
+        val tagged = remember(tagFilter) {
+            io.github.pintofi.beanbook.core.domain.TagBalances.Filter.parse(tagFilter)
+        }
+        // The engine's balances, or the matching transactions' own totals when a tag or link
+        // is asked for. Computed here from the journal the snapshot already carries, so the
+        // filter answers as it is typed with no second parse.
+        val source = remember(snapshot.accounts, snapshot.journal, tagged) {
+            if (tagged.isEmpty) {
+                snapshot.accounts
+            } else {
+                io.github.pintofi.beanbook.core.domain.TagBalances.of(snapshot.journal, tagged)
+            }
+        }
 
         // Which branches are open, by full account name. Saved, so rotating the phone or
         // coming back from another surface does not fold the tree the user just opened.
@@ -339,8 +371,23 @@ fun BalancesScreen(
             if (snapshot.hasErrors) {
                 item { ErrorBanner(snapshot.errors) }
             }
+            if (!tagged.isEmpty) {
+                item(key = "tagNotice") {
+                    Text(
+                        text = if (basis == Valuation.VALUE) {
+                            "Totals of the entries tagged or linked as asked. Market value " +
+                                "is shown at cost here: prices are not part of a filtered set."
+                        } else {
+                            "Totals of the entries tagged or linked as asked."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = Measure.gutter, vertical = Measure.snug),
+                    )
+                }
+            }
             roots.forEach { root ->
-                val accounts = snapshot.accounts
+                val accounts = source
                     .filter { it.name == root || it.name.startsWith("$root:") }
                     .filter { needle.isEmpty() || it.name.contains(needle, ignoreCase = true) }
                 if (accounts.isEmpty()) return@forEach
@@ -348,7 +395,7 @@ fun BalancesScreen(
                 val tree = AccountTree.of(accounts, root)
                 // A filter is a search, and a search that hides its own results behind a
                 // fold has not answered anything: while one is typed every branch is open.
-                val open = needle.isNotEmpty()
+                val open = needle.isNotEmpty() || !tagged.isEmpty
                 val rows = mutableListOf<AccountNode>()
                 fun collect(nodes: List<AccountNode>) {
                     nodes.forEach { node ->
@@ -364,7 +411,7 @@ fun BalancesScreen(
                     // under it, which reads as an arithmetic error.
                     RootHeader(
                         root = root,
-                        totals = if (needle.isEmpty()) {
+                        totals = if (needle.isEmpty() && tagged.isEmpty) {
                             snapshot.totalFor(root, basis::of)
                         } else {
                             LedgerSummary.sumByCurrency(accounts.flatMap { basis.of(it) })
@@ -521,7 +568,9 @@ private fun AccountRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             if (node.hasChildren) {
-                DisclosureChevron(expanded)
+                // Tinted, not left to the icon default (B78): the default is black, and a black
+                // chevron on the dark and pure-black themes could not be seen at all.
+                DisclosureChevron(expanded, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             // The leaf alone. A ledger with both Expenses:Rent and Expenses:Home:Rent used to
             // show two rows called "Rent" with different figures and nothing to tell them
@@ -924,7 +973,7 @@ fun ErrorBanner(errors: List<LedgerError>, modifier: Modifier = Modifier) {
 private fun DisclosureChevron(
     expanded: Boolean,
     modifier: Modifier = Modifier,
-    tint: Color = androidx.compose.ui.graphics.Color.Unspecified,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     val animate = io.github.pintofi.beanbook.app.ui.theme.LocalMotionEnabled.current
     val turn by androidx.compose.animation.core.animateFloatAsState(

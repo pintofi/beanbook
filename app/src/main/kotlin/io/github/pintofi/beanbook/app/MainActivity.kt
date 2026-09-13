@@ -113,8 +113,8 @@ class MainActivity : ComponentActivity() {
     /** The entry whose own source is open for editing, if any (B11). */
     internal var editingEntry: io.github.pintofi.beanbook.engine.local.EntrySlice? by mutableStateOf(null)
 
-    /** The same entry as fields, when the draft was proved to describe it fully (B45). */
-    internal var editingDraft: io.github.pintofi.beanbook.core.domain.TransactionDraft?
+    /** The same entry as fields, when a draft describes it fully (B45, B78). */
+    internal var editingDraft: io.github.pintofi.beanbook.core.domain.StructuredEdit.Editable?
         by mutableStateOf(null)
 
     /** The documents already filed in the open project; refreshed after every change. */

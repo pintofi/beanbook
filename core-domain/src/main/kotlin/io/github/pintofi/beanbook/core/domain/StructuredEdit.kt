@@ -70,6 +70,104 @@ object StructuredEdit {
             .firstOrNull { normalise(it.render()) == wanted }
     }
 
+    /**
+     * An entry the form can edit, and whether saving it will change only its layout (B78).
+     *
+     * [reformats] is the honest part. A hand-written entry is usually aligned or indented
+     * differently from how the app writes one, and its figures may carry thousands separators;
+     * none of that is information, but invariant 4 says whitespace is never *silently*
+     * discarded. So such an entry is editable as fields, and the form says, before saving,
+     * that the entry's spacing will be rewritten -- the person chooses, rather than the app
+     * choosing for them by sending every such entry to the text editor.
+     */
+    data class Editable(val draft: TransactionDraft, val reformats: Boolean)
+
+    /**
+     * The draft a form can edit [entry] with, or null when only the text editor can.
+     *
+     * Tried in order, strictest first: the draft exactly as the app would write it; the same
+     * with the posting details (a lot, a price, `@@` totals) taken from the file's own text, so
+     * what Beancount normalised is written back as it was typed; and then either of those
+     * compared by content alone -- the same words, amounts and structure, in different spacing.
+     * A comment, a line the draft does not model, or a different figure still fails all of
+     * them, and those entries stay in the text editor, where nothing can be lost.
+     */
+    fun editableDraftOf(entry: JournalEntry, source: String): Editable? {
+        val plain = draftOf(entry)
+        val typed = plain.copy(postings = withTypedDetails(plain.postings, source))
+        val candidates = listOf(plain, typed).distinct().flatMap(::elisionVariants)
+        candidates.firstOrNull { normalise(it.render()) == normalise(source) }
+            ?.let { return Editable(it, reformats = false) }
+        val wanted = content(source)
+        return candidates.firstOrNull { content(it.render()) == wanted }
+            ?.let { Editable(it, reformats = true) }
+    }
+
+    /** The draft as it is, then with each single posting elided in turn. */
+    private fun elisionVariants(draft: TransactionDraft): List<TransactionDraft> =
+        listOf(draft) + draft.postings.indices.map { index ->
+            draft.copy(
+                postings = draft.postings.mapIndexed { at, posting ->
+                    if (at == index) posting.copy(amount = null) else posting
+                },
+            )
+        }
+
+    /**
+     * Each posting's details -- whatever follows the units on its line -- read from the file.
+     *
+     * Beancount divides an `@@` total into a per-unit price and books a lot with its date, so
+     * the parsed posting renders a line the file does not contain. The file's own text is what
+     * the person wrote and what the form should keep.
+     */
+    private fun withTypedDetails(postings: List<PostingDraft>, source: String): List<PostingDraft> {
+        val lines = source.lines().drop(1).map { it.trim() }
+        var from = 0
+        return postings.map { posting ->
+            val at = (from until lines.size).firstOrNull { lines[it].startsWith(posting.account) }
+                ?: return@map posting
+            from = at + 1
+            val rest = lines[at].removePrefix(posting.account).substringBefore(';').trim()
+            val match = POSTING_TAIL.matchEntire(rest) ?: return@map posting
+            val details = match.groupValues[3].trim()
+            if (details.startsWith("{") || details.startsWith("@")) posting.copy(details = details) else posting
+        }
+    }
+
+    /**
+     * The entry's content with its layout removed: indentation as a depth rather than a
+     * width, runs of spaces as one, and thousands separators out of figures. Quoted strings
+     * are left exactly as they are, spaces and all, because their spacing is the text.
+     */
+    private fun content(text: String): String {
+        val lines = text.lines().map { it.trimEnd() }.dropWhile { it.isBlank() }.dropLastWhile { it.isBlank() }
+        val widths = lines.map { line -> line.length - line.trimStart().length }.distinct().sorted()
+        return lines.joinToString("\n") { line ->
+            val depth = widths.indexOf(line.length - line.trimStart().length)
+            "$depth|" + tokens(line.trim()).joinToString(" ") { token ->
+                if (GROUPED_NUMBER.matches(token)) token.replace(",", "") else token
+            }
+        }
+    }
+
+    private fun tokens(text: String): List<String> {
+        val out = mutableListOf<String>()
+        val current = StringBuilder()
+        var quoted = false
+        for (ch in text) {
+            when {
+                ch == '"' -> { quoted = !quoted; current.append(ch) }
+                ch.isWhitespace() && !quoted -> if (current.isNotEmpty()) { out += current.toString(); current.clear() }
+                else -> current.append(ch)
+            }
+        }
+        if (current.isNotEmpty()) out += current.toString()
+        return out
+    }
+
+    private val GROUPED_NUMBER = Regex("""-?\d{1,3}(,\d{3})+(\.\d+)?""")
+    private val POSTING_TAIL = Regex("""(-?[\d,]*\.?\d+)\s+([A-Z][A-Z0-9'._\-]*)\s*(.*)""")
+
     /** True when a field editor can round-trip [source] without losing anything. */
     fun isLossless(entry: JournalEntry, source: String): Boolean =
         losslessDraftOf(entry, source) != null

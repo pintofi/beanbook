@@ -10,7 +10,6 @@ enum class HomeCard(val label: String, val description: String) {
     SPENDING("Where the money went", "By category, against the period before"),
     ATTENTION("Needs attention", "Errors, documents and the mirror, in one place"),
     PENDING("Uncleared and pending", "Everything the file marks with !"),
-    RECENT("Recent entries", "The last few, as the Journal shows them"),
 }
 
 /**

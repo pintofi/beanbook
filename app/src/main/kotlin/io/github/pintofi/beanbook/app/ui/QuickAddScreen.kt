@@ -402,13 +402,31 @@ fun QuickAddScreen(
                         // Grow to fit: reusing a three-posting entry into two rows would drop
                         // a posting silently, which is exactly the quiet loss the app must not do.
                         while (rows.size < last.postings.size) rows.add(PostingRow())
+                        // And shrink back: rows left over from a longer entry would sit under
+                        // the reused ones as blanks the person has to notice and remove.
+                        while (rows.size > maxOf(2, last.postings.size) &&
+                            rows.last().account.isBlank() && rows.last().amount.isBlank()
+                        ) {
+                            rows.removeAt(rows.lastIndex)
+                        }
                         last.postings.forEachIndexed { index, posting ->
-                            rows[index].account = posting.account
-                            rows[index].amount =
-                                posting.amount?.number?.abs()?.toPlainString().orEmpty()
+                            val row = rows[index]
+                            row.account = posting.account
+                            // With its sign (B78). The absolute value was taken here, so a
+                            // refund or a transfer out came back as money in, and the preview
+                            // wrote the opposite of what was reused.
+                            row.amount = posting.amount?.number?.toPlainString().orEmpty()
+                            // The commodity goes in the box, not only into the text (B78): the
+                            // preview was right because it fell back to the default, while the
+                            // field that says what it is stayed empty.
+                            row.commodity = posting.amount?.currency.orEmpty()
+                            val details = CommodityDetails.textOf(posting.cost, posting.price)
+                            row.details = details
+                            row.showDetails = details.isNotBlank()
                         }
                         // Only the first posting keeps an amount; the rest stay elided, so
-                        // Beancount recomputes them rather than us reusing stale numbers.
+                        // Beancount recomputes them rather than us reusing stale numbers. Their
+                        // commodity stays, because it says what the elided posting is in.
                         rows.drop(1).forEach { it.amount = "" }
                     },
                     label = { Text("Use last: ${last.postings.firstOrNull()?.account?.substringAfterLast(':')}") },

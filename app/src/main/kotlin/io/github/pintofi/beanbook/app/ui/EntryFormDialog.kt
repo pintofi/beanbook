@@ -54,13 +54,15 @@ private class EditRow(
      */
     val cost: Cost? = null,
     val price: Amount? = null,
+    /** The file's own text after the units, when it had some (B78); kept as written. */
+    val details: String? = null,
 ) {
     var account by mutableStateOf(account)
     var amount by mutableStateOf(amount)
     var currency by mutableStateOf(currency)
 
     /** `{12.50 USD, 2025-01-01} @ 13.00 USD`, or empty for an ordinary posting. */
-    fun lotText(): String = buildString {
+    fun lotText(): String = details ?: buildString {
         cost?.let { append(it.format()) }
         price?.let {
             if (isNotEmpty()) append(' ')
@@ -94,6 +96,8 @@ fun EntryFormDialog(
     onSave: (TransactionDraft) -> Unit,
     onEditAsText: () -> Unit,
     onDismiss: () -> Unit,
+    /** Whether saving rewrites the entry's spacing into the app's layout (B78). */
+    reformats: Boolean = false,
 ) {
     var date by remember(original) { mutableStateOf(original.date) }
     var flag by remember(original) { mutableStateOf(original.flag) }
@@ -108,6 +112,7 @@ fun EntryFormDialog(
                     currency = posting.amount?.currency.orEmpty(),
                     cost = posting.cost,
                     price = posting.price,
+                    details = posting.details,
                 )
             }.toTypedArray(),
         )
@@ -137,6 +142,7 @@ fun EntryFormDialog(
                 },
                 cost = row.cost,
                 price = row.price,
+                details = row.details,
             )
         },
     )
@@ -150,6 +156,19 @@ fun EntryFormDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                // Said before anything is changed, not after (B78): the entry was written by
+                // hand, and saving it as fields lines it up the way the app writes entries.
+                // Nothing but spacing changes -- the check that offered this form proved it --
+                // and the text editor is one button away for anyone who wants their layout.
+                if (reformats) {
+                    Notice(NoticeTone.QUIET) {
+                        Text(
+                            "This entry was written by hand. Saving it here keeps every word and " +
+                                "figure, and lines it up the way the app writes entries.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
                 DateField(
                     value = date,
                     onValueChange = { date = it },
@@ -309,6 +328,8 @@ fun EntryFormDialog(
 fun EntryEditHost(
     slice: io.github.pintofi.beanbook.engine.local.EntrySlice,
     draft: TransactionDraft?,
+    /** Whether the form will rewrite the entry's spacing (B78). */
+    reformats: Boolean = false,
     ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?,
     onSave: (String) -> Unit,
     onEditAsText: () -> Unit,
@@ -321,6 +342,7 @@ fun EntryEditHost(
             onSave = { edited -> onSave(edited.render()) },
             onEditAsText = onEditAsText,
             onDismiss = onDismiss,
+            reformats = reformats,
         )
     } else {
         EntryEditDialog(original = slice.text, onSave = onSave, onDismiss = onDismiss)

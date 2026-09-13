@@ -91,4 +91,64 @@ class StructuredEditTest {
 
     private fun normalised(text: String) =
         text.lines().map { it.trimEnd() }.filter { it.isNotBlank() }.joinToString("\n")
+
+    // ---- Entries written by hand (B78) ------------------------------------------------------
+
+    /** Aligned to the author's own column and indented with four spaces, as hand-written files are. */
+    private val handWritten = """
+        2026-01-05 * "Grocer" "Weekly shop"
+            Expenses:Food        12.50 USD
+            Assets:Cash
+    """.trimIndent()
+
+    @Test fun `a hand-aligned entry is editable as fields, and says its spacing will change`() {
+        val editable = assertNotNull(StructuredEdit.editableDraftOf(entry, handWritten))
+
+        assertTrue(editable.reformats, "the form must say the layout will be rewritten")
+        assertEquals(null, editable.draft.postings.last().amount, "the elided leg stays elided")
+    }
+
+    @Test fun `an entry the app wrote itself is not reported as reformatted`() {
+        val editable = assertNotNull(
+            StructuredEdit.editableDraftOf(entry, StructuredEdit.draftOf(entry).render()),
+        )
+        assertFalse(editable.reformats)
+    }
+
+    @Test fun `thousands separators in the file are layout, not a different figure`() {
+        val big = entry.copy(
+            postings = listOf(
+                JournalPosting("Expenses:Rent", amount("1200.00")),
+                JournalPosting("Assets:Cash", amount("-1200.00")),
+            ),
+        )
+        val source = "2026-01-05 * \"Grocer\" \"Weekly shop\"\n  Expenses:Rent  1,200.00 USD\n  Assets:Cash\n"
+
+        assertNotNull(StructuredEdit.editableDraftOf(big, source))
+    }
+
+    /** Beancount turns `@@` into a per-unit price; the form keeps what the file says. */
+    @Test fun `a total price is kept as the file writes it`() {
+        val exchange = entry.copy(
+            postings = listOf(
+                JournalPosting("Assets:Eur", amount("100", "EUR"), price = amount("1.085")),
+                JournalPosting("Assets:Cash", amount("-108.50")),
+            ),
+        )
+        val source = "2026-01-05 * \"Grocer\" \"Weekly shop\"\n  Assets:Eur   100 EUR @@ 108.50 USD\n  Assets:Cash\n"
+
+        val editable = assertNotNull(StructuredEdit.editableDraftOf(exchange, source))
+        assertEquals("@@ 108.50 USD", editable.draft.postings.first().details)
+        assertTrue(editable.draft.render().contains("100 EUR @@ 108.50 USD"))
+    }
+
+    @Test fun `a comment still sends a hand-written entry to the text editor`() {
+        val source = handWritten.replace("    Assets:Cash", "    ; paid in coins\n    Assets:Cash")
+        assertEquals(null, StructuredEdit.editableDraftOf(entry, source))
+    }
+
+    @Test fun `a different figure is not mistaken for different spacing`() {
+        val source = handWritten.replace("12.50", "12.60")
+        assertEquals(null, StructuredEdit.editableDraftOf(entry, source))
+    }
 }
