@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -336,6 +338,8 @@ internal fun LedgerApp(
     saveState: String?,
     /** Entries committed from the form this session; a change closes the form (B77). */
     entryCommits: Int = 0,
+    /** An entry already in the file, open in the entry form (B79); null when none is. */
+    editSession: EntryEditSession? = null,
     /** Ends the engine and the app and opens it again (B77). */
     onRestartApp: () -> Unit = {},
     projects: List<ProjectSummary>,
@@ -408,6 +412,23 @@ internal fun LedgerApp(
         selected = Surface.JOURNAL
     }
 
+    // Editing opens the entry form, the same one Add uses (B79), and leaving the form -- by
+    // saving, discarding, Back or a destination -- ends the edit.
+    var editOpen by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(editSession?.editing?.original) {
+        if (editSession != null) {
+            adding = true
+            editOpen = true
+        } else if (editOpen) {
+            // The edit ended somewhere else -- "Edit as text instead" -- so the form goes too.
+            editOpen = false
+            adding = false
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(adding) {
+        if (!adding) editSession?.onClose?.invoke()
+    }
+
     // An entry being entered again (B11). Held here because applying it means switching to
     // the Add surface, which this composable owns; cleared once the form has taken it.
     var pendingClone by remember { mutableStateOf<TransactionDraft?>(null) }
@@ -457,25 +478,20 @@ internal fun LedgerApp(
     // Scanning takes the whole window, above the rail, the bars and the navigation. It is a
     // mode rather than a destination: you enter it, shoot a stack of pages, and leave, and
     // chrome around the viewfinder would make it look like a form with a camera in it.
-    if (documentCapture.scanning) {
-        ScannerScreen(
-            pages = documentCapture.pages.pages,
-            fileFor = documentCapture.fileFor,
-            captureFile = documentCapture.captureFile,
-            onCaptured = documentCapture.onScanned,
-            onRemovePage = documentCapture.onRemovePage,
-            onDone = documentCapture.onStopScanning,
-            onCancel = documentCapture.onStopScanning,
-            onRotatePage = documentCapture.onRotateBy,
-            onCropPage = documentCapture.onCrop,
-            onRestylePage = documentCapture.onRestyle,
-            onMovePage = documentCapture.onMove,
-            modifier = modifier,
-        )
-        return
-    }
-
-    Row(modifier = modifier) {
+    //
+    // Drawn *over* the app rather than instead of it (B79). Returning early took the entry
+    // form out of composition, and everything typed into it went with it: fill in a payee
+    // and two postings, scan the receipt, and come back to an empty form holding one page.
+    // Underneath, the app stays composed and keeps its state; it is hidden from accessibility
+    // services while the scanner is up, so a screen reader does not wander into a form the
+    // camera is covering.
+    val scanning = documentCapture.scanning
+    Box(modifier = modifier) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(if (scanning) Modifier.clearAndSetSemantics {} else Modifier),
+    ) {
         if (layout != PaneLayout.COMPACT) {
             LedgerNavigationRail(selected = selected, onSelect = { selected = it })
         }
@@ -503,6 +519,7 @@ internal fun LedgerApp(
                 health = ledgerHealth(engineStatus, ledger),
                 sectionTitle = if (selected == Surface.MORE) moreSection?.label else null,
                 adding = adding,
+                editing = adding && editSession != null,
                 onBack = { if (adding) leavingAdd { adding = false } else moreSection = null },
                 onSwitchProject = {
                     selected = Surface.MORE
@@ -741,6 +758,7 @@ internal fun LedgerApp(
                 onSaveDirective = onSaveDirective,
                 saveState = saveState,
                 entryCommits = entryCommits,
+                editSession = editSession,
                 projects = projects,
                 activeProjectId = activeProjectId,
                 projectMessage = projectMessage,
@@ -775,23 +793,54 @@ internal fun LedgerApp(
         }
     }
     }
+    if (scanning) {
+        ScannerScreen(
+            pages = documentCapture.pages.pages,
+            fileFor = documentCapture.fileFor,
+            captureFile = documentCapture.captureFile,
+            onCaptured = documentCapture.onScanned,
+            onRemovePage = documentCapture.onRemovePage,
+            onDone = documentCapture.onStopScanning,
+            onCancel = documentCapture.onStopScanning,
+            onRotatePage = documentCapture.onRotateBy,
+            onCropPage = documentCapture.onCrop,
+            onRestylePage = documentCapture.onRestyle,
+            onMovePage = documentCapture.onMove,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+    }
 
     confirmingLeave?.let { leave ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { confirmingLeave = null },
-            title = { Text("Discard this entry?") },
+            title = { Text(if (editSession != null) "Discard your changes?" else "Discard this entry?") },
             text = {
-                Text("What you have typed has not been written to your ledger. Leaving now loses it.")
+                Text(
+                    if (editSession != null) {
+                        "The entry in your ledger is unchanged. Leaving now loses what you changed."
+                    } else {
+                        "What you have typed has not been written to your ledger. Leaving now loses it."
+                    },
+                )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         confirmingLeave = null
                         addDirty = false
+                        // The pages go with the words (B79). They live in the capture session,
+                        // not in the form, so discarding the entry left them behind -- and the
+                        // next Add opened already holding the receipt for the entry thrown away.
+                        if (!documentCapture.pages.isEmpty) onDiscardPages()
                         leave()
                     },
                     modifier = Modifier.semantics {
-                        contentDescription = "Discard the entry and leave the form"
+                        contentDescription = if (editSession != null) {
+                            "Discard your changes and leave the form"
+                        } else {
+                            "Discard the entry and leave the form"
+                        }
                     },
                 ) { Text("Discard") }
             },
@@ -823,3 +872,16 @@ internal fun LedgerApp(
 @Composable
 private fun Modifier.keyboardPadding(): Modifier =
     if (WindowInsets.isImeVisible) this.imePadding() else this
+
+/**
+ * An entry being edited in the entry form (B79).
+ *
+ * @property editing what the form needs to know: the entry, and whether saving reformats it.
+ * @property onSave writes the edited entry over the original.
+ * @property onClose ends the edit, whether it was saved or not.
+ */
+data class EntryEditSession(
+    val editing: io.github.pintofi.beanbook.app.ui.EntryEditing,
+    val onSave: (TransactionDraft) -> Unit,
+    val onClose: () -> Unit,
+)

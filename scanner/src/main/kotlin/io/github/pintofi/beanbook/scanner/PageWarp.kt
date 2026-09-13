@@ -2,7 +2,7 @@ package io.github.pintofi.beanbook.scanner
 
 import io.github.pintofi.beanbook.core.domain.CropPoint
 import io.github.pintofi.beanbook.core.domain.CropQuad
-import org.opencv.core.CvType
+import org.opencv.core.Core
 import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Point
@@ -78,30 +78,51 @@ object PageWarp {
     }
 
     /**
-     * Paper white, ink black, shadows gone.
+     * Paper white, ink dark, shadows gone -- and the edges of the letters kept (B79).
      *
-     * Adaptive rather than a single threshold: a photograph of a page is never evenly lit —
-     * one corner is in the phone's own shadow — and a global cut turns that corner solid
-     * black. Comparing each pixel with the mean of its neighbourhood is what makes the
-     * result independent of where the lamp is.
+     * A photograph of a page is never evenly lit: one corner is in the phone's own shadow.
+     * This used to answer that with an adaptive *threshold*, which does remove the shadow but
+     * turns every pixel black or white: thin strokes broke up, small print filled in, a faint
+     * stamp vanished, and the edges of every letter came out jagged. What a scanner app means
+     * by "document" is flatter lighting, not fewer grey levels.
      *
-     * The block is large and odd, and the constant is small, because text strokes are thin
-     * relative to the page. A small block finds the texture of the paper as well as the ink.
+     * So the lighting is estimated and divided out. Dilating the page with a kernel wider than
+     * a stroke erases the ink and leaves the paper; a median blur smooths that into the light
+     * falling on the sheet. The difference between the page and its own lighting is the ink,
+     * on white, whatever the lamp did -- and the anti-aliased edge of each letter survives. A
+     * final stretch pushes the paper to white and the ink to black.
+     *
+     * Kernel sizes follow the page's width so a receipt and a full sheet are treated alike.
      */
     private fun documentise(page: Mat): Mat {
         val grey = Mat()
         Imgproc.cvtColor(page, grey, Imgproc.COLOR_RGBA2GRAY)
-        // Blur before thresholding: paper grain is high-frequency, and adaptive thresholding
-        // is happy to render every fibre of it as a speck of ink.
-        Imgproc.medianBlur(grey, grey, 3)
-        val out = Mat(grey.rows(), grey.cols(), CvType.CV_8UC1)
-        Imgproc.adaptiveThreshold(
-            grey, out, 255.0,
-            Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY,
-            /* blockSize = */ 31, /* C = */ 10.0,
+        val stroke = odd(maxOf(7, grey.cols() / 120))
+        val light = odd(maxOf(21, minOf(grey.cols() / 40, 101)))
+
+        val background = Mat()
+        val kernel = Imgproc.getStructuringElement(
+            Imgproc.MORPH_RECT,
+            Size(stroke.toDouble(), stroke.toDouble()),
         )
-        return out
+        Imgproc.dilate(grey, background, kernel)
+        Imgproc.medianBlur(background, background, light)
+
+        val ink = Mat()
+        Core.absdiff(grey, background, ink)
+        Core.bitwise_not(ink, ink)
+        Core.normalize(ink, ink, 0.0, 255.0, Core.NORM_MINMAX)
+        // Paper is everything close to white; lifting it the rest of the way clears the grain
+        // and the last of the shadow without touching the ink.
+        Imgproc.threshold(ink, ink, PAPER_LEVEL, 255.0, Imgproc.THRESH_TRUNC)
+        Core.normalize(ink, ink, 0.0, 255.0, Core.NORM_MINMAX)
+        return ink
     }
+
+    private fun odd(value: Int) = if (value % 2 == 0) value + 1 else value
+
+    /** Above this grey level a pixel is paper. */
+    private const val PAPER_LEVEL = 225.0
 
     private fun CropPoint.asPoint() = Point(x.toDouble(), y.toDouble())
 

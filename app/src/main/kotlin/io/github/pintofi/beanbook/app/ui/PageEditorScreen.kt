@@ -143,15 +143,17 @@ fun PageEditorScreen(
         HorizontalPager(state = state, modifier = Modifier.weight(1f).fillMaxWidth()) { index ->
             val page = pages.pages[index]
             val file = fileFor(page.source)
-            val bitmap = remember(file.path, file.length(), page.rotation) {
-                runCatching {
-                    io.github.pintofi.beanbook.app.documents.Photos
-                        .decodeUpright(file, maxEdge = 1600)
-                        ?.let { io.github.pintofi.beanbook.app.documents.Photos.upright(it, page.rotation) }
-                }.getOrNull()
+            // The page as it will be filed (B79): straightened on its corners and rendered in
+            // its style. The raw photograph said nothing about either until the PDF existed.
+            val render = LocalPageRenderer.current
+            val shown by androidx.compose.runtime.produceState<PageRender>(PageRender.Working, page, file.length()) {
+                value = render(page, file)?.let { PageRender.Ready(it) } ?: PageRender.Unreadable
             }
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (bitmap == null) {
+                val bitmap = (shown as? PageRender.Ready)?.bitmap
+                if (shown == PageRender.Working) {
+                    androidx.compose.material3.CircularProgressIndicator(color = Color.White)
+                } else if (bitmap == null) {
                     Text("This page could not be opened.", color = Color.White)
                 } else {
                     Image(
@@ -181,6 +183,14 @@ fun PageEditorScreen(
                     modifier = Modifier.semantics {
                         contentDescription = "Render page ${current + 1} in ${option.label()}"
                     },
+                    // Legible on the editor's black ground (B79): the theme's colours for an
+                    // unselected segment are dark text meant for a light surface.
+                    colors = SegmentedButtonDefaults.colors(
+                        inactiveContainerColor = Color.Transparent,
+                        inactiveContentColor = Color.White,
+                        inactiveBorderColor = Color.White.copy(alpha = 0.6f),
+                        activeBorderColor = Color.White.copy(alpha = 0.6f),
+                    ),
                 ) { Text(option.label()) }
             }
         }
@@ -243,4 +253,26 @@ internal fun PageStyle.label(): String = when (this) {
     PageStyle.COLOUR -> "Colour"
     PageStyle.DOCUMENT -> "Document"
     PageStyle.GREYSCALE -> "Greyscale"
+}
+
+private sealed interface PageRender {
+    data object Working : PageRender
+    data object Unreadable : PageRender
+    class Ready(val bitmap: android.graphics.Bitmap) : PageRender
+}
+
+/**
+ * How the page editor draws a page (B79). The app provides the assembler's own rendering, so
+ * the editor shows what will be filed; the default is the upright photograph, which is what a
+ * screen without the app around it -- a test -- can show.
+ */
+val LocalPageRenderer = androidx.compose.runtime.staticCompositionLocalOf<
+    suspend (io.github.pintofi.beanbook.core.domain.CapturedPage, File) -> android.graphics.Bitmap?,
+    > {
+    { page, file ->
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file, maxEdge = 1600)
+                ?.let { io.github.pintofi.beanbook.app.documents.Photos.upright(it, page.rotation) }
+        }
+    }
 }

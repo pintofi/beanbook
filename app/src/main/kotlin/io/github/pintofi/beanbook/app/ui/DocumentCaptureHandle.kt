@@ -56,6 +56,12 @@ data class DocumentCaptureHandle(
         { _, _ -> },
     /** Sets or clears one page's crop corners (B31). */
     val onCrop: (index: Int, quad: io.github.pintofi.beanbook.core.domain.CropQuad?) -> Unit = { _, _ -> },
+    /**
+     * What the pages will be filed as under an account, relative to the project, before they
+     * are (B79): what the entry form's preview names in its `document:` line. Null when there
+     * is nothing to file.
+     */
+    val plannedPath: suspend (account: String, label: String?) -> String? = { _, _ -> null },
     /** The capture on disk for a page, so it can be shown for cropping. */
     val fileFor: (String) -> File = { File(it) },
 )

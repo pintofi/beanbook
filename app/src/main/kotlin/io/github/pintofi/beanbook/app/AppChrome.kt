@@ -172,6 +172,8 @@ internal fun LedgerTopBar(
      * an arrow walks back through where you have been.
      */
     adding: Boolean = false,
+    /** The form is open on an entry already in the file (B79). */
+    editing: Boolean = false,
 ) {
     androidx.compose.material3.TopAppBar(
         // The band: a tint one step off the paper, so the chrome reads as a strip laid over
@@ -216,6 +218,7 @@ internal fun LedgerTopBar(
                     // back, so the bar and the page are telling the same story (B76).
                     io.github.pintofi.beanbook.app.ui.LedgerContent(
                         targetState = when {
+                            editing -> "Edit entry"
                             adding -> "New entry"
                             sectionTitle != null -> sectionTitle
                             else -> projectName

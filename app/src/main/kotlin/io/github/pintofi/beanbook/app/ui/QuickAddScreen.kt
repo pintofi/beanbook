@@ -174,6 +174,12 @@ fun QuickAddScreen(
      * and lets whoever is closing it decide whether to ask.
      */
     onDirtyChange: (Boolean) -> Unit = {},
+    /**
+     * An entry already in the file, being edited (B79). The same form as Add, field for field:
+     * it used to be a dialog of its own with fewer options, and the two drifted apart with
+     * every change to one of them. [prefill] carries the entry; this says what saving means.
+     */
+    editing: EntryEditing? = null,
 ) {
     // Today, and intentionally so: almost every entry is for the day it is typed, and the
     // calendar is one tap away for the rest.
@@ -231,7 +237,14 @@ fun QuickAddScreen(
 
     // What counts as something to lose: words typed, a figure entered, a page photographed.
     // Not the date, which the form fills in by itself.
-    val dirty = payee.isNotBlank() ||
+    // What the form said the moment an entry being edited was put into it (B79). Compared with
+    // what it says now, so opening an entry and leaving it again asks nothing.
+    var baseline by remember { mutableStateOf<String?>(null) }
+    var prefilled by remember { mutableStateOf(false) }
+    LaunchedEffect(prefilled) { if (prefilled && editing != null) baseline = draft.render() }
+    val dirty = if (editing != null) {
+        (baseline != null && draft.render() != baseline) || capture?.pages?.isEmpty == false
+    } else payee.isNotBlank() ||
         narration.isNotBlank() ||
         rows.any { it.account.isNotBlank() || it.amount.isNotBlank() || it.details.isNotBlank() } ||
         tagRows.any { it.value.isNotBlank() } ||
@@ -282,30 +295,40 @@ fun QuickAddScreen(
     LaunchedEffect(prefill) {
         prefill?.let { draft ->
             date = draft.date
+            flag = draft.flag
             payee = draft.payee.orEmpty()
             narration = draft.narration.orEmpty()
             tagRows.clear()
             draft.tags.forEach { tagRows.add(WordRow(it)) }
             linkRows.clear()
             draft.links.forEach { linkRows.add(WordRow(it)) }
+            // Everything the draft carries goes into a field (B79). A clone arrives without
+            // metadata by design; an entry being edited arrives with it, and a detail that
+            // was not shown would be dropped by the save.
+            metaRows.clear()
+            draft.metadata.forEach { (key, value) -> metaRows.add(MetadataRow(key, value)) }
             draft.postings.firstOrNull()?.amount?.currency?.let { commodity = it }
             rows.clear()
             draft.postings.forEach { posting ->
-                // Each posting keeps its own commodity, so cloning a multi-commodity entry
-                // does not quietly redenominate half of it into the transaction's default.
-                val denomination = posting.amount?.currency.orEmpty()
                 rows.add(
                     PostingRow(
                         account = posting.account,
                         amount = posting.amount?.number?.toPlainString().orEmpty(),
-                        commodity = if (denomination == commodity) "" else denomination,
+                        // Each posting says its own commodity in its own box, so what is on
+                        // screen is what the preview writes -- the rule "Use last" follows
+                        // since B78, and a multi-commodity entry is not quietly redenominated.
+                        commodity = posting.amount?.currency.orEmpty(),
                         // A clone of a holding keeps the lot it was held at, so the form shows
                         // the entry it is about to write rather than a stripped one.
                         details = posting.details
                             ?: CommodityDetails.textOf(posting.cost, posting.price),
-                    ),
+                    ).also { row ->
+                        posting.metadata.forEach { (key, value) -> row.metadata.add(MetadataRow(key, value)) }
+                    },
                 )
             }
+            while (rows.size < 2) rows.add(PostingRow())
+            prefilled = true
             onPrefillApplied()
         }
     }
@@ -322,6 +345,18 @@ fun QuickAddScreen(
             .padding(horizontal = Measure.gutter)
             .padding(top = Measure.snug, bottom = Measure.section),
     ) {
+        // Said before anything is changed, not after (B78): the entry was written by hand, and
+        // saving it through the form lines it up the way the app writes entries.
+        if (editing?.reformats == true) {
+            Notice(NoticeTone.QUIET, modifier = Modifier.padding(bottom = Measure.gap)) {
+                Text(
+                    "This entry was written by hand. Saving it here keeps every word and " +
+                        "figure, and lines it up the way the app writes entries.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+
         // Templates come first because that is when they are useful: before anything has
         // been typed. Applying one fills the form and stops there — the entry is still
         // previewed and validated like any other (docs/ux.md 4).
@@ -443,66 +478,11 @@ fun QuickAddScreen(
                 suggestions = vocabulary.narrations,
                 modifier = Modifier.fillMaxWidth(),
             )
-        }
 
-        FormGap()
-
-        // ---- The postings ---------------------------------------------------------------
-        LedgerHeading("Postings")
-        FormGroup {
-            rows.forEachIndexed { index, row ->
-                if (index > 0) LedgerHairline(Modifier.padding(vertical = Measure.tight))
-                PostingEditor(
-                    index = index,
-                    row = row,
-                    vocabulary = vocabulary,
-                    removable = rows.size > 2,
-                    onRemove = { rows.removeAt(index) },
-                )
-            }
-            SmallAction(
-                text = "Add posting",
-                describe = "Add another posting",
-                onClick = { rows.add(PostingRow()) },
-            )
-        }
-
-        FormGap()
-
-        // ---- Extras, on demand -------------------------------------------------------------
-        FormGroup {
-            if (tagRows.isNotEmpty()) {
-                WordEditor(
-                    rows = tagRows,
-                    kind = "Tag",
-                    sigil = "#",
-                    suggestions = vocabulary.tags,
-                )
-            }
-            if (linkRows.isNotEmpty()) {
-                WordEditor(
-                    rows = linkRows,
-                    kind = "Link",
-                    sigil = "^",
-                    suggestions = vocabulary.links,
-                )
-            }
-            MetadataEditor(
-                rows = metaRows,
-                label = "Details about the whole transaction",
-                describe = { "transaction" },
-            )
-            if (capture != null && !capture.pages.isEmpty) {
-                AttachDocumentSection(
-                    capture = capture,
-                    // Filed under the account the document is evidence for. Blank until the
-                    // first posting has one, because the account decides where the file lands
-                    // and guessing it would put receipts somewhere nobody looks.
-                    account = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty(),
-                    attached = metaRows.filter { it.key.startsWith("document") }.map { it.value },
-                    onNameChange = { documentName = it },
-                )
-            }
+            // The entry's own extras, right under the words that describe it (B79). They sat
+            // below the postings, where a tag for the whole entry read as belonging to the
+            // last posting, and reaching them meant scrolling past every amount. The row stays
+            // where it is as fields open beneath it, so the next tap lands where the last did.
             androidx.compose.foundation.layout.FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(Measure.tight),
             ) {
@@ -539,6 +519,60 @@ fun QuickAddScreen(
                     )
                 }
             }
+            if (tagRows.isNotEmpty()) {
+                WordEditor(
+                    rows = tagRows,
+                    kind = "Tag",
+                    sigil = "#",
+                    suggestions = vocabulary.tags,
+                )
+            }
+            if (linkRows.isNotEmpty()) {
+                WordEditor(
+                    rows = linkRows,
+                    kind = "Link",
+                    sigil = "^",
+                    suggestions = vocabulary.links,
+                )
+            }
+            MetadataEditor(
+                rows = metaRows,
+                label = "Details about the whole transaction",
+                describe = { "transaction" },
+            )
+            if (capture != null && !capture.pages.isEmpty) {
+                AttachDocumentSection(
+                    capture = capture,
+                    // Filed under the account the document is evidence for. Blank until the
+                    // first posting has one, because the account decides where the file lands
+                    // and guessing it would put receipts somewhere nobody looks.
+                    account = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty(),
+                    attached = metaRows.filter { it.key.startsWith("document") }.map { it.value },
+                    onNameChange = { documentName = it },
+                )
+            }
+        }
+
+        FormGap()
+
+        // ---- The postings ---------------------------------------------------------------
+        LedgerHeading("Postings")
+        FormGroup {
+            rows.forEachIndexed { index, row ->
+                if (index > 0) LedgerHairline(Modifier.padding(vertical = Measure.tight))
+                PostingEditor(
+                    index = index,
+                    row = row,
+                    vocabulary = vocabulary,
+                    removable = rows.size > 2,
+                    onRemove = { rows.removeAt(index) },
+                )
+            }
+            SmallAction(
+                text = "Add posting",
+                describe = "Add another posting",
+                onClick = { rows.add(PostingRow()) },
+            )
         }
 
         // The imbalance is information, not an error: an elided posting is the normal way
@@ -564,12 +598,41 @@ fun QuickAddScreen(
 
         FormGap()
 
+        // The link the pages will make, shown before the save that makes it (B79). The preview
+        // used to leave it out until the moment of saving, so a person who had just scanned a
+        // receipt saw an entry with nothing connecting it to one. The name is the real one --
+        // a hash of the PDF these pages assemble into, the same bytes the save files.
+        val pendingAccount = rows.firstOrNull { it.account.isNotBlank() }?.account?.trim().orEmpty()
+        val plannedPath by androidx.compose.runtime.produceState<String?>(
+            null,
+            capture?.pages,
+            pendingAccount,
+            documentName,
+        ) {
+            value = if (capture == null || capture.pages.isEmpty || pendingAccount.isBlank()) {
+                null
+            } else {
+                kotlinx.coroutines.delay(PLANNED_NAME_DEBOUNCE_MS)
+                capture.plannedPath(pendingAccount, documentName.trim().ifBlank { null })
+            }
+        }
+        val previewDraft = plannedPath?.let { path ->
+            val key = BeancountText.nextDocumentKey(draft.metadata.keys)
+            draft.copy(metadata = draft.metadata + (key to path.substringAfterLast('/')))
+        } ?: draft
+
         // The promise the form makes, and the one moment in it that looks like the file: the
         // lines about to be written, in the source face, hung from the app's rule.
         RuledColumn {
             LedgerHeading("Will be written as")
             Text(
-                text = draft.render(),
+                text = previewDraft.render() + plannedPath?.let { path ->
+                    "\n" + io.github.pintofi.beanbook.core.domain.DirectiveDraft.Document(
+                        date = today.toString(),
+                        account = pendingAccount,
+                        path = path,
+                    ).render()
+                }.orEmpty(),
                 style = LedgerType.source,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -658,11 +721,12 @@ fun QuickAddScreen(
                 (unfiledPages == 0 || documentAccount.isNotBlank()),
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         ) {
+            val what = if (editing != null) "Save changes" else "Save entry"
             Text(
                 if (unfiledPages > 0) {
-                    "Save entry with $unfiledPages page${if (unfiledPages == 1) "" else "s"}"
+                    "$what with $unfiledPages page${if (unfiledPages == 1) "" else "s"}"
                 } else {
-                    "Save entry"
+                    what
                 },
             )
         }
@@ -688,6 +752,15 @@ fun QuickAddScreen(
                 .semantics { contentDescription = "Save this entry as a template" },
         ) { Text("Save as template") }
 
+        // The text editor is still there for an entry being edited: for a layout of one's own,
+        // or a change the fields cannot make.
+        editing?.let { session ->
+            TextButton(
+                onClick = session.onEditAsText,
+                modifier = Modifier.semantics { contentDescription = "Edit this entry as text instead" },
+            ) { Text("Edit as text instead") }
+        }
+
         if (namingTemplate) {
             TemplateDialog(
                 draft = draft,
@@ -703,6 +776,22 @@ fun QuickAddScreen(
         }
     }
 }
+
+/**
+ * What saving means when the form holds an entry that is already in the file (B79).
+ *
+ * @property original the entry as the form received it.
+ * @property reformats whether saving rewrites the entry's spacing into the app's layout.
+ * @property onEditAsText leaves the form for the entry's text.
+ */
+data class EntryEditing(
+    val original: TransactionDraft,
+    val reformats: Boolean,
+    val onEditAsText: () -> Unit,
+)
+
+/** Long enough that typing a document's name does not assemble the PDF on every letter. */
+private const val PLANNED_NAME_DEBOUNCE_MS = 350L
 
 /** A group of related fields: tight inside, so the group reads as one thing. */
 @Composable

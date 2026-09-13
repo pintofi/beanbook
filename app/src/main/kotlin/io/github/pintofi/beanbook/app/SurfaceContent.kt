@@ -164,6 +164,8 @@ internal fun SurfaceContent(
     saveState: String?,
     /** Entries committed from the form this session (B77): what the save sweep marks. */
     entryCommits: Int = 0,
+    /** An entry already in the file, open in the form (B79). */
+    editSession: EntryEditSession? = null,
     projects: List<ProjectSummary>,
     activeProjectId: String?,
     projectMessage: String?,
@@ -234,7 +236,27 @@ internal fun SurfaceContent(
                     var otherDirectives by androidx.compose.runtime.saveable.rememberSaveable {
                         androidx.compose.runtime.mutableStateOf(false)
                     }
-                    androidx.compose.foundation.layout.Column {
+                    if (editSession != null) {
+                        // Keyed on the entry, so opening another one starts from it rather
+                        // than from what the last edit left in the fields.
+                        androidx.compose.runtime.key(editSession.editing.original) {
+                            QuickAddScreen(
+                                vocabulary = LedgerVocabulary.from(ledger),
+                                format = ledger.format,
+                                names = ledger.accountNames,
+                                onDirtyChange = onAddDirtyChange,
+                                onSave = editSession.onSave,
+                                saveState = saveState,
+                                committed = entryCommits,
+                                prefill = editSession.editing.original,
+                                templates = templates,
+                                onSaveTemplate = onSaveTemplate,
+                                onDeleteTemplate = onDeleteTemplate,
+                                capture = documentCapture,
+                                editing = editSession.editing,
+                            )
+                        }
+                    } else androidx.compose.foundation.layout.Column {
                         // One or the other, never both: a segmented row rather than chips,
                         // matching the flag and valuation selectors elsewhere.
                         SingleChoiceSegmentedButtonRow(

@@ -151,4 +151,27 @@ class StructuredEditTest {
         val source = handWritten.replace("12.50", "12.60")
         assertEquals(null, StructuredEdit.editableDraftOf(entry, source))
     }
+
+    /** `fava.plugins.link_documents` links every entry with a document; the file never says so. */
+    @Test fun `a link a plugin added does not send the entry to the text editor`() {
+        val linked = entry.copy(
+            links = listOf("dok-2026-09-13"),
+            metadata = mapOf("document" to "2026-09-13.f64293477180.pdf"),
+        )
+        val source = "2026-01-05 * \"Grocer\" \"Weekly shop\"\n" +
+            "  document: \"2026-09-13.f64293477180.pdf\"\n" +
+            "  Expenses:Food        12.50 USD\n  Assets:Cash\n"
+
+        val editable = assertNotNull(StructuredEdit.editableDraftOf(linked, source))
+        assertEquals(emptyList(), editable.draft.links, "the plugin's link must not be written into the file")
+    }
+
+    @Test fun `a link the file does write is kept`() {
+        val linked = entry.copy(links = listOf("invoice-4411"))
+        val source = StructuredEdit.draftOf(linked).render()
+
+        val editable = assertNotNull(StructuredEdit.editableDraftOf(linked, source))
+        assertEquals(listOf("invoice-4411"), editable.draft.links)
+        assertFalse(editable.reformats)
+    }
 }

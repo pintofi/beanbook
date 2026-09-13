@@ -97,6 +97,7 @@ class LedgerState(
         val started = ++generation
         job = scope.launch {
             try {
+                ensureDocumentRoots(ledgerPath)
                 reader.read(
                     ledgerPath,
                     pluginDirs = pluginContext.directories(),
@@ -124,6 +125,20 @@ class LedgerState(
                 if (started == generation) _loading.value = false
             }
         }
+    }
+
+    /**
+     * Creates the folders `option "documents"` names before Beancount looks for them (B79).
+     *
+     * A ledger with no receipts yet used to load with "Document root does not exist" on every
+     * screen, and in Fava too. Logged when it does something, because a folder appearing in a
+     * project should be explainable.
+     */
+    private suspend fun ensureDocumentRoots(ledgerPath: String) {
+        val created = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            io.github.pintofi.beanbook.core.data.DocumentRoots.ensure(java.io.File(ledgerPath))
+        }
+        if (created.isNotEmpty()) Diagnostics.i(TAG, "created documents folders: $created")
     }
 
     /**

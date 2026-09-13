@@ -406,6 +406,11 @@ class MainActivity : ComponentActivity() {
             val themeChoice by app.themeSettings.choice.collectAsStateWithLifecycle()
             val dynamicColour by app.themeSettings.dynamicColour.collectAsStateWithLifecycle()
             BeancountTheme(choice = themeChoice, dynamicColour = dynamicColour) {
+            androidx.compose.runtime.CompositionLocalProvider(
+                io.github.pintofi.beanbook.app.ui.LocalPageRenderer provides { page, _ ->
+                    app.documentCapture.preview(page)
+                },
+            ) {
                 // What actually keeps content clear of the bars. At the root rather than per
                 // screen, because onboarding and the project picker render outside the
                 // Scaffold that would otherwise have handled it — and those are the first
@@ -725,6 +730,7 @@ class MainActivity : ComponentActivity() {
                         // that is what the Add screen has to report — otherwise a remote
                         // save looks like nothing happened at all.
                         entryCommits = entryCommits,
+                        editSession = entryEditSession(app, activeId),
                         onRestartApp = { restartApp() },
                         saveState = if (remoteStatus is EngineStatus.Serving) {
                             remoteMessage
@@ -768,8 +774,9 @@ class MainActivity : ComponentActivity() {
                     // Over the app rather than inside a screen: an entry can be opened for
                     // editing from the journal or from its detail view, and the dialog
                     // should not belong to whichever one happened to open it (B11).
-                    EntryEditor(app, activeId, ledger)
+                    EntryEditor(app, activeId)
                 }
+            }
             }
         }
     }

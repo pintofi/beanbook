@@ -223,15 +223,21 @@ internal fun MainActivity.refileDocument(
 /** Hands one document to another app as a temporary read-only URI, and nothing else. */
 internal fun MainActivity.shareDocument(app: BeancountApplication, projectId: String, path: String) {
     val projectDir = app.workspace.projectDir(projectId)
-    val documents = File(projectDir, "documents")
-    val file = projectDir.resolve(path)
-
-    // Only out of the documents directory, and only from inside it. The FileProvider is
-    // configured over `projects/`, because it cannot express `projects/*/documents`, so this
-    // call site is where the narrower rule actually lives: without it, any path this function
-    // is handed becomes a content:// URI another app can read -- a ledger included (R9).
-    if (!file.canonicalPath.startsWith(documents.canonicalPath + File.separator)) {
-        saveMessage = "Only documents can be shared out of a project."
+    val file = documentFile(app, projectId, path)
+    // Only out of a documents folder, and only from inside it: the app's own, or one the
+    // ledger names with `option "documents"` (B79). The FileProvider is configured over
+    // `projects/`, because it cannot express `projects/*/documents`, so this call site is
+    // where the narrower rule actually lives: without it, any path this function is handed
+    // becomes a content:// URI another app can read -- a ledger included (R9).
+    val roots = (listOf(io.github.pintofi.beanbook.core.domain.DocumentName.ROOT) +
+        app.ledgerState.snapshot.value?.documentRoots.orEmpty())
+        .map { File(projectDir, it).canonicalPath + File.separator }
+    if (roots.none { file.canonicalPath.startsWith(it) }) {
+        saveMessage = if (file.isFile) {
+            "Only documents can be shared out of a project."
+        } else {
+            "That document is not in the project any more."
+        }
         return
     }
     if (!file.isFile) {
@@ -244,7 +250,8 @@ internal fun MainActivity.shareDocument(app: BeancountApplication, projectId: St
         file,
     )
     val send = Intent(Intent.ACTION_SEND).apply {
-        type = "application/pdf"
+        type = android.webkit.MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(file.extension.lowercase()) ?: "application/octet-stream"
         putExtra(Intent.EXTRA_STREAM, uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
@@ -360,6 +367,12 @@ internal fun MainActivity.saveEntryEdit(
     projectId: String,
     slice: io.github.pintofi.beanbook.engine.local.EntrySlice,
     newText: String,
+    /**
+     * Whether the entry form saved this (B79). The form closes itself once the save has been
+     * seen to land, the way Add does, and stays open with the reason when it did not; the text
+     * dialog closes either way, as it always has.
+     */
+    fromForm: Boolean = false,
 ) {
     lifecycleScope.launch {
         val target = java.io.File(slice.file)
@@ -386,8 +399,13 @@ internal fun MainActivity.saveEntryEdit(
                 "Not saved: ${result.reason}. Your ledger is unchanged."
             is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> "Not saved: ${result.reason}"
         }
-        editingEntry = null
-        editingDraft = null
+        if (!fromForm) {
+            editingEntry = null
+            editingDraft = null
+        } else if (result is io.github.pintofi.beanbook.core.data.WriteResult.Committed) {
+            // What the form's save sweep and close are keyed on, as for a new entry.
+            entryCommits++
+        }
         app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
     }
 }
@@ -402,18 +420,43 @@ internal fun MainActivity.saveEntryEdit(
 internal fun MainActivity.EntryEditor(
     app: BeancountApplication,
     projectId: String?,
-    ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?,
 ) {
     val slice = editingEntry ?: return
     if (projectId == null) return
-    io.github.pintofi.beanbook.app.ui.EntryEditHost(
-        slice = slice,
-        draft = editingDraft?.draft,
-        reformats = editingDraft?.reformats == true,
-        ledger = ledger,
+    // An entry the form can hold is edited in the form, full screen (B79); this dialog is the
+    // text editor, for the entries it cannot hold and for anyone who asks for the text.
+    if (editingDraft != null) return
+    io.github.pintofi.beanbook.app.ui.EntryEditDialog(
+        original = slice.text,
         onSave = { text -> saveEntryEdit(app, projectId, slice, text) },
-        onEditAsText = { editingDraft = null },
         onDismiss = {
+            editingEntry = null
+            editingDraft = null
+        },
+    )
+}
+
+/**
+ * The entry open in the form, when it is one the form can hold (B79).
+ *
+ * Built here rather than in the activity, which is already the largest class in the app.
+ */
+internal fun MainActivity.entryEditSession(
+    app: BeancountApplication,
+    projectId: String?,
+): EntryEditSession? {
+    val slice = editingEntry ?: return null
+    val editable = editingDraft ?: return null
+    val id = projectId ?: return null
+    return EntryEditSession(
+        editing = io.github.pintofi.beanbook.app.ui.EntryEditing(
+            original = editable.draft,
+            reformats = editable.reformats,
+            // Into the text dialog: the entry stays open, as text.
+            onEditAsText = { editingDraft = null },
+        ),
+        onSave = { draft -> saveEntryEdit(app, id, slice, draft.render(), fromForm = true) },
+        onClose = {
             editingEntry = null
             editingDraft = null
         },
@@ -468,25 +511,24 @@ internal fun MainActivity.restartApp() {
 }
 
 /**
- * A `document` directive's path as a file on disk (B57).
+ * A document reference from the ledger, as a file on disk (B57, B79).
  *
- * Directives name a document relative to the project root, which is what makes a project
- * openable on a desktop; the viewer needs the file. Resolved against the open project rather
- * than trusted as a path, so a directive cannot point the reader outside the project tree
- * (invariant 5).
+ * Resolved by [io.github.pintofi.beanbook.core.data.DocumentLocator], which reads a reference
+ * the ways Beancount and Fava do -- a directive's path, a bare file name in `document:`
+ * metadata, a path relative to the entry's file -- and never leaves the project tree. When
+ * nothing is found the unresolved path is returned, so the viewer can say which file it looked
+ * for rather than showing nothing.
  */
 internal fun MainActivity.documentFile(
     app: BeancountApplication,
     projectId: String?,
     path: String,
+    entryFile: String? = null,
 ): java.io.File {
     val root = app.workspace.projectDir(projectId.orEmpty())
-    val resolved = java.io.File(root, path)
-    return if (resolved.canonicalPath.startsWith(root.canonicalPath)) {
-        resolved
-    } else {
-        java.io.File(root, path.substringAfterLast('/'))
-    }
+    val known = documents + app.ledgerState.snapshot.value?.documents.orEmpty().map { it.path }
+    return io.github.pintofi.beanbook.core.data.DocumentLocator.locate(root, path, entryFile, known)
+        ?: java.io.File(root, path.substringAfterLast('/'))
 }
 
 /**
@@ -558,10 +600,7 @@ internal fun MainActivity.captureHandle(
                 // a wrong detection is a drag away from being corrected
                 // rather than something that destroyed the original (J3).
                 if (file.length() > 0) {
-                    app.documentCapture.add(file, pageStyleOf(style))
-                    if (quad != null) {
-                        app.documentCapture.crop(documentPages.pages.lastIndex, quad)
-                    }
+                    app.documentCapture.add(file, pageStyleOf(style), crop = quad)
                 }
             },
             onRotate = { app.documentCapture.rotate(it) },
@@ -575,6 +614,7 @@ internal fun MainActivity.captureHandle(
             onRemovePage = { app.documentCapture.remove(it) },
             onCrop = { index, quad -> app.documentCapture.crop(index, quad) },
             fileFor = { name -> app.documentCapture.fileFor(name) },
+            plannedPath = { account, label -> app.documentCapture.plannedPath(account, label) },
             onFile = { account, label, onFiled ->
                 // The PDF, then the `document` directive, then whoever asked -- in that
                 // order (B66). Filing from the entry form used to write the file and the

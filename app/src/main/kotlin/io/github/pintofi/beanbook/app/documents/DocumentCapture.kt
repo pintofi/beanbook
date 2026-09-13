@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -47,9 +48,22 @@ class DocumentCapture(
         return File(captureDir, "page-${System.currentTimeMillis()}.jpg")
     }
 
-    fun add(file: File, style: io.github.pintofi.beanbook.core.domain.PageStyle =
-        io.github.pintofi.beanbook.core.domain.PageStyle.COLOUR) {
-        _pages.value = _pages.value.add(file.name, style)
+    /**
+     * Adds a page, with the outline the scanner found for it when there is one.
+     *
+     * One update rather than an add followed by a crop (B79). The scanner used to crop "the
+     * last page" through a list it had read *before* adding, so the outline went to the page
+     * before -- or, for the first page of a batch, to index -1, which is nothing -- and every
+     * detected crop landed on the wrong page or none.
+     */
+    fun add(
+        file: File,
+        style: io.github.pintofi.beanbook.core.domain.PageStyle =
+            io.github.pintofi.beanbook.core.domain.PageStyle.COLOUR,
+        crop: io.github.pintofi.beanbook.core.domain.CropQuad? = null,
+    ) {
+        val added = _pages.value.add(file.name, style)
+        _pages.value = if (crop == null) added else added.crop(added.pages.lastIndex, crop)
     }
 
     /** Renders one page differently (B58). Nothing on disk changes; the PDF is what changes. */
@@ -80,6 +94,49 @@ class DocumentCapture(
 
     fun fileFor(source: String): File = File(captureDir, source)
 
+    /** One page as it will be filed, sized for the screen (B79). */
+    suspend fun preview(page: io.github.pintofi.beanbook.core.domain.CapturedPage): android.graphics.Bitmap? =
+        withContext(Dispatchers.Default) {
+            runCatching { assembler.renderPage(page, ::fileFor, maxEdge = PREVIEW_EDGE) }
+                .onFailure { Log.w(TAG, "could not render a page preview", it) }
+                .getOrNull()
+        }
+
+    private val assembling = kotlinx.coroutines.sync.Mutex()
+    private var assembled: Pair<CapturedPages, ByteArray>? = null
+
+    /**
+     * The PDF the current pages make, assembled once per arrangement of them (B79).
+     *
+     * The entry form shows the document's name in its preview before anything is saved, and
+     * the name is a hash of these bytes -- so the preview and the save must use the same
+     * assembly, not two that could differ. Null when there are no pages.
+     */
+    suspend fun assembledBytes(): ByteArray? {
+        val pages = _pages.value
+        if (pages.isEmpty) return null
+        return assembling.withLock {
+            assembled?.takeIf { it.first == pages }?.second
+                ?: withContext(Dispatchers.IO) { assembler.assemble(pages) { fileFor(it) } }
+                    .also { assembled = pages to it }
+        }
+    }
+
+    /**
+     * What the pages will be filed as under [account], relative to the project, or null when
+     * there are none or they cannot be assembled. The same name [save] will use unless a
+     * *different* file already has it, which is what an ordinal is for.
+     */
+    suspend fun plannedPath(account: String, label: String?, date: LocalDate = LocalDate.now()): String? {
+        val bytes = runCatching { assembledBytes() }
+            .onFailure { Log.w(TAG, "could not assemble the pages for the preview", it) }
+            .getOrNull() ?: return null
+        return runCatching {
+            io.github.pintofi.beanbook.core.domain.DocumentName.forContent(account, date, bytes, label = label)
+                .relativePath
+        }.getOrNull()
+    }
+
     /**
      * Assembles the pages into a PDF, files it against [account], and reports where it went.
      *
@@ -104,7 +161,7 @@ class DocumentCapture(
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val pdf = assembler.assemble(pages) { fileFor(it) }
+                    val pdf = checkNotNull(assembledBytes()) { "there are no pages to file" }
                     store.store(projectId, account, date, pdf, label = label)
                 }
             }
@@ -167,5 +224,8 @@ class DocumentCapture(
 
     private companion object {
         const val TAG = "DocumentCapture"
+
+        /** Enough for a phone screen at full width; the file itself is rendered larger. */
+        const val PREVIEW_EDGE = 1600
     }
 }

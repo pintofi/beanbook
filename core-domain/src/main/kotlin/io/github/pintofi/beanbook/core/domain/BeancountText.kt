@@ -223,6 +223,22 @@ object BeancountText {
         return if (removed) kept.joinToString("\n") else null
     }
 
+    /**
+     * The folders `option "documents"` names in [source], as written (B79).
+     *
+     * Only the top-level file is worth reading: Beancount takes options from the file it was
+     * asked to load and ignores them in included files. An option commented out with `;` does
+     * not match, because the line must start with `option`.
+     */
+    fun documentRoots(source: String): List<String> =
+        DOCUMENTS_OPTION.findAll(source)
+            .map { it.groupValues[1].replace("\\\"", "\"").replace("\\\\", "\\") }
+            .filter { it.isNotBlank() }
+            .toList()
+
+    private val DOCUMENTS_OPTION =
+        Regex("""^[ \t]*option[ \t]+"documents"[ \t]+"((?:[^"\\]|\\.)*)"""", RegexOption.MULTILINE)
+
     private fun directiveRegex(module: String, extension: Boolean): Regex {
         val quoted = Regex.escape(module)
         return if (extension) {

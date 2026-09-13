@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.HighlightOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.MotionPhotosAuto
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -110,14 +111,17 @@ fun ScannerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     var style by remember { mutableStateOf(ScanStyle.DOCUMENT) }
     var busy by remember { mutableStateOf(false) }
-    var lastQuad by remember { mutableStateOf<CropQuad?>(null) }
-    var shotSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
     val scope = rememberCoroutineScope()
 
     // Back leaves the scanner, not the app (B55). The scanner is a mode drawn over
     // everything else, and without this the system's back gesture went to the activity --
     // which had nothing behind it, so a stray swipe closed Beanbook mid-batch.
     androidx.activity.compose.BackHandler(enabled = true) { onCancel() }
+
+    // The form underneath stays composed while scanning (B79), and a field in it may still
+    // hold focus -- which would keep the keyboard up over the viewfinder.
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    LaunchedEffect(Unit) { focus.clearFocus(force = true) }
 
     val capture = remember {
         ImageCapture.Builder()
@@ -158,6 +162,11 @@ fun ScannerScreen(
     var autoCapture by rememberSaveable { mutableStateOf(true) }
     var previewView by remember { mutableStateOf<PreviewView?>(null) }
     var aimed by remember { mutableStateOf(false) }
+    // The page as the detector sees it right now, in the sampled frame's pixels (B79). The
+    // outline used to be the *last shot's*, stretched over the whole window without allowing
+    // for the letterboxing, so it sat somewhere near the page rather than on it.
+    var liveQuad by remember { mutableStateOf<CropQuad?>(null) }
+    var liveFrame by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
 
     LaunchedEffect(flash) { capture.flashMode = flash }
 
@@ -192,14 +201,7 @@ fun ScannerScreen(
                     // Detect here, once, and hand the crop up with the file. The overlay
                     // reads the same result, so a page is never analysed twice for one shot.
                     scope.launch {
-                        val quad = withContext(Dispatchers.Default) {
-                            io.github.pintofi.beanbook.app.documents.Photos
-                                .decodeUpright(target)?.let { shot ->
-                                    shotSize = androidx.compose.ui.unit.IntSize(shot.width, shot.height)
-                                    Scanner.detect(shot)
-                                }
-                        }
-                        lastQuad = quad
+                        val quad = withContext(Dispatchers.Default) { detectIn(target) }
                         onCaptured(target, quad, style)
                         busy = false
                     }
@@ -212,31 +214,65 @@ fun ScannerScreen(
         )
     }
 
-    // Fires the shutter when the page is squarely in frame, which is what a scanner does
-    // that a camera does not (B56). Sampled from the preview a few times a second rather
-    // than through a second analysis pipeline: the detector only needs a small bitmap, and a
-    // full ImageAnalysis stream costs another camera surface and its battery for a hint.
+    // Watches the preview a few times a second: the outline drawn over the page, and the
+    // shutter fired when the page is squarely in frame, which is what a scanner does that a
+    // camera does not (B56). Sampled from the preview rather than through a second analysis
+    // pipeline: the detector only needs a small bitmap, and a full ImageAnalysis stream costs
+    // another camera surface and its battery.
     //
-    // Two consecutive frames have to agree before it fires. One is a hand passing over the
-    // table; two is a page held still.
+    // Firing needs the page to be *still*, not merely found twice (B79): two detections of a
+    // page sliding across the table used to be enough, and the shot came out blurred.
     LaunchedEffect(autoCapture, previewView) {
-        if (!autoCapture) return@LaunchedEffect
         val view = previewView ?: return@LaunchedEffect
+        var previous: CropQuad? = null
         var steady = 0
         while (true) {
             kotlinx.coroutines.delay(AUTO_SAMPLE_MILLIS)
             if (busy) continue
             val frame = view.bitmap ?: continue
-            val found = withContext(Dispatchers.Default) {
+            val (quad, size) = withContext(Dispatchers.Default) {
                 val small = frame.scale()
-                Scanner.detect(small) != null
+                Scanner.detect(small) to androidx.compose.ui.unit.IntSize(small.width, small.height)
             }
-            aimed = found
-            steady = if (found) steady + 1 else 0
-            if (steady >= 2) {
+            liveQuad = quad
+            liveFrame = size
+            aimed = quad != null
+            val still = quad != null && previous?.let { quad.closeTo(it, size) } == true
+            previous = quad
+            steady = if (still) steady + 1 else 0
+            if (autoCapture && steady >= STEADY_SAMPLES) {
                 steady = 0
+                previous = null
                 shoot()
             }
+        }
+    }
+
+    // Photographs already on the phone become pages too (B79): a receipt someone else sent, a
+    // screenshot of a bill. The system photo picker needs no storage permission, and each
+    // picture goes through the same detection as a shot from the camera.
+    val importPictures = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia(MAX_IMPORT),
+    ) { uris ->
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        busy = true
+        scope.launch {
+            uris.forEach { uri ->
+                val target = captureFile()
+                val copied = withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            target.outputStream().use { input.copyTo(it) }
+                        } != null
+                    }.onFailure { android.util.Log.w("Scanner", "could not import a picture", it) }
+                        .getOrDefault(false)
+                }
+                if (copied && target.length() > 0) {
+                    val quad = withContext(Dispatchers.Default) { detectIn(target) }
+                    onCaptured(target, quad, style)
+                }
+            }
+            busy = false
         }
     }
 
@@ -298,17 +334,29 @@ fun ScannerScreen(
                     }, ContextCompat.getMainExecutor(viewContext))
                 }
             },
-            modifier = Modifier.fillMaxSize(),
+            // Tap to focus, the way the camera app does (B79): a receipt close to the lens is
+            // where continuous focus most often settles on the table instead.
+            modifier = Modifier.fillMaxSize().pointerInput(camera, previewView) {
+                detectTapGestures { position ->
+                    val control = camera?.cameraControl ?: return@detectTapGestures
+                    val factory = previewView?.meteringPointFactory ?: return@detectTapGestures
+                    control.startFocusAndMetering(
+                        androidx.camera.core.FocusMeteringAction
+                            .Builder(factory.createPoint(position.x, position.y))
+                            .build(),
+                    )
+                }
+            },
         )
 
-        // The outline of the page the last shot found, over the preview. Drawn from the last
-        // capture rather than from a live analysis stream: running detection on every frame
-        // costs a second camera pipeline and battery for a hint, and the shot itself is what
-        // the crop is taken from anyway.
-        lastQuad?.let { quad ->
+        // The page the detector sees now, on the preview (B79). The sampled frame is the
+        // preview view's own bitmap, letterboxing included, so its pixels map onto this canvas
+        // -- which has the preview's bounds -- by one scale on each axis.
+        liveQuad?.let { quad ->
             androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                val sx = size.width / (shotSize.width.takeIf { it > 0 } ?: 1)
-                val sy = size.height / (shotSize.height.takeIf { it > 0 } ?: 1)
+                if (liveFrame.width == 0 || liveFrame.height == 0) return@Canvas
+                val sx = size.width / liveFrame.width
+                val sy = size.height / liveFrame.height
                 val path = Path().apply {
                     val corners = listOf(quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft)
                     val pts = corners.map { Offset(it.x * sx, it.y * sy) }
@@ -316,6 +364,7 @@ fun ScannerScreen(
                     pts.drop(1).forEach { lineTo(it.x, it.y) }
                     close()
                 }
+                drawPath(path, Color(0xFF80D5D4).copy(alpha = 0.22f))
                 drawPath(path, Color(0xFF80D5D4), style = Stroke(width = 6f))
             }
         }
@@ -487,7 +536,21 @@ fun ScannerScreen(
                 // which page it was or let the others be reached. The strip does both jobs,
                 // so the box is gone and its width stays, because it is what keeps the
                 // shutter in the middle of the screen rather than left of it.
-                Spacer(Modifier.size(56.dp))
+                IconButton(
+                    onClick = {
+                        importPictures.launch(
+                            androidx.activity.result.PickVisualMediaRequest(
+                                androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly,
+                            ),
+                        )
+                    },
+                    enabled = !busy,
+                    modifier = Modifier.size(56.dp).semantics {
+                        contentDescription = "Add pages from photos on this phone"
+                    },
+                ) {
+                    Icon(Icons.Filled.PhotoLibrary, contentDescription = null, tint = Color.White)
+                }
 
                 ShutterButton(
                     busy = busy,
@@ -668,7 +731,48 @@ private const val MAX_ZOOM_LABEL = 5f
 
 
 /** A few times a second: often enough to feel immediate, rare enough to cost nothing. */
-private const val AUTO_SAMPLE_MILLIS = 600L
+private const val AUTO_SAMPLE_MILLIS = 400L
+
+/** Consecutive samples with the page in the same place before the shutter fires. */
+private const val STEADY_SAMPLES = 2
+
+/** How far a corner may move between samples, as a fraction of the frame's diagonal. */
+private const val STILL_FRACTION = 0.025f
+
+/** What the photo picker offers at once; a batch larger than this is a second visit. */
+private const val MAX_IMPORT = 20
+
+/** Whether every corner of this outline is where [other] had it, within [STILL_FRACTION]. */
+private fun CropQuad.closeTo(other: CropQuad, frame: androidx.compose.ui.unit.IntSize): Boolean {
+    val limit = kotlin.math.hypot(frame.width.toFloat(), frame.height.toFloat()) * STILL_FRACTION
+    val mine = listOf(topLeft, topRight, bottomRight, bottomLeft)
+    val theirs = listOf(other.topLeft, other.topRight, other.bottomRight, other.bottomLeft)
+    return mine.zip(theirs).all { (a, b) -> kotlin.math.hypot(a.x - b.x, a.y - b.y) <= limit }
+}
+
+/**
+ * The page in a photograph on disk, found on the upright image -- the one the crop editor and
+ * the assembler both place corners on.
+ */
+private fun detectIn(file: File): CropQuad? =
+    io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file, maxEdge = DETECT_EDGE)
+        ?.let { sampled ->
+            val full = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                .also { BitmapFactory.decodeFile(file.path, it) }
+            val longest = maxOf(full.outWidth, full.outHeight).toFloat()
+            val factor = longest / maxOf(sampled.width, sampled.height)
+            Scanner.detect(sampled)?.let { quad ->
+                fun io.github.pintofi.beanbook.core.domain.CropPoint.up() =
+                    io.github.pintofi.beanbook.core.domain.CropPoint(x * factor, y * factor)
+                CropQuad(quad.topLeft.up(), quad.topRight.up(), quad.bottomRight.up(), quad.bottomLeft.up())
+            }.also { sampled.recycle() }
+        }
+
+/**
+ * The size the detector reads a saved photograph at. It resizes to 500 px itself, so decoding
+ * a 12 MP photograph at full size first -- which it used to -- was 48 MB spent on nothing.
+ */
+private const val DETECT_EDGE = 1600
 
 /** The detector works on a small image; a preview frame at full size is wasted work. */
 private fun android.graphics.Bitmap.scale(): android.graphics.Bitmap {

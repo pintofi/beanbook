@@ -184,19 +184,20 @@ class AccessibilityTest {
         )
         val original = io.github.pintofi.beanbook.core.domain.StructuredEdit.draftOf(entry)
         render(widthDp = 320, fontScale = 2f) {
-            EntryFormDialog(
-                original = original,
+            // The same form as Add (B79), holding the entry.
+            QuickAddScreen(
                 vocabulary = vocabulary,
                 onSave = { saved = it },
-                onEditAsText = {},
-                onDismiss = {},
+                today = today,
+                prefill = original,
+                editing = EntryEditing(original, reformats = false, onEditAsText = {}),
             )
         }
 
         compose.onAllNodesWithText("Date")[0].assertExists()
         compose.onNodeWithContentDescription("Commodity for posting 1").assertExists()
         assertNull("nothing should be saved until Save is pressed", saved)
-        compose.onNodeWithText("Save").performClick()
+        compose.onNodeWithText("Save changes").performScrollTo().performClick()
         assertEquals(
             "an untouched entry should be written back exactly as it was",
             original.render(),

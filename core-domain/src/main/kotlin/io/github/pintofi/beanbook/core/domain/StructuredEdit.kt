@@ -93,7 +93,19 @@ object StructuredEdit {
      * them, and those entries stay in the text editor, where nothing can be lost.
      */
     fun editableDraftOf(entry: JournalEntry, source: String): Editable? {
-        val plain = draftOf(entry)
+        val plain = draftOf(entry).let { draft ->
+            // Tags and links the file does not write were added on the way in (B79): by
+            // `fava.plugins.link_documents`, which links every entry that has a document, or
+            // by a `pushtag` above it. They are not the entry's text and never were, so the
+            // form leaves them out and the next load adds them again. Without this, every
+            // entry with a receipt had a link the source did not contain and could only be
+            // edited as text.
+            val header = source.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty()
+            draft.copy(
+                tags = draft.tags.filter { writtenIn(header, "#", it) },
+                links = draft.links.filter { writtenIn(header, "^", it) },
+            )
+        }
         val typed = plain.copy(postings = withTypedDetails(plain.postings, source))
         val candidates = listOf(plain, typed).distinct().flatMap(::elisionVariants)
         candidates.firstOrNull { normalise(it.render()) == normalise(source) }
@@ -102,6 +114,9 @@ object StructuredEdit {
         return candidates.firstOrNull { content(it.render()) == wanted }
             ?.let { Editable(it, reformats = true) }
     }
+
+    private fun writtenIn(header: String, sigil: String, word: String): Boolean =
+        Regex("""(^|\s)${Regex.escape(sigil + word)}(\s|$)""").containsMatchIn(header)
 
     /** The draft as it is, then with each single posting elided in turn. */
     private fun elisionVariants(draft: TransactionDraft): List<TransactionDraft> =

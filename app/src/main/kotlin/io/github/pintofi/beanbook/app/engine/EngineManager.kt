@@ -55,6 +55,11 @@ class EngineManager(
             // to be set before start rather than after (docs/milestones/m14-part26.md).
             (engine as? io.github.pintofi.beanbook.engine.local.LocalEngineClient)?.pluginDirs =
                 pluginDirectories()
+            // Fava loads the ledger itself, so the documents folder has to be there before it
+            // does, not only before the app's own read (B79).
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                io.github.pintofi.beanbook.core.data.DocumentRoots.ensure(java.io.File(projectPath))
+            }
             val result = engine.start(projectPath)
             if (result is EngineStatus.Failed) {
                 Diagnostics.w(TAG, "engine failed to start: ${result.message}")
