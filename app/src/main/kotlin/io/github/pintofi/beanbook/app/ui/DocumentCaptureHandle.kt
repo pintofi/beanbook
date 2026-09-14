@@ -48,7 +48,7 @@ data class DocumentCaptureHandle(
      * The file is durably in place before the callback runs, so a caller writing a link to
      * it cannot name a file that does not exist yet (invariant 5).
      */
-    val onFile: (account: String, label: String?, onFiled: (String) -> Unit) -> Unit,
+    val onFile: (account: String, label: String?, onFiled: (List<String>) -> Unit) -> Unit,
     /** Turns one page either way (B58). The single-argument [onRotate] is the clockwise case. */
     val onRotateBy: (index: Int, clockwise: Boolean) -> Unit = { _, _ -> },
     /** Renders one page in a different style (B58). */
@@ -57,11 +57,17 @@ data class DocumentCaptureHandle(
     /** Sets or clears one page's crop corners (B31). */
     val onCrop: (index: Int, quad: io.github.pintofi.beanbook.core.domain.CropQuad?) -> Unit = { _, _ -> },
     /**
-     * What the pages will be filed as under an account, relative to the project, before they
-     * are (B79): what the entry form's preview names in its `document:` line. Null when there
+     * What the pages and files will be filed as under an account, relative to the project, before they
+     * are (B79): what the entry form's preview names in its `document:` lines. Empty when there
      * is nothing to file.
      */
-    val plannedPath: suspend (account: String, label: String?) -> String? = { _, _ -> null },
+    val plannedPaths: suspend (account: String, label: String?) -> List<String> = { _, _ -> emptyList() },
+    /** Files attached as they are, by the name they had (B80). */
+    val attachedFiles: kotlinx.coroutines.flow.StateFlow<List<String>> =
+        kotlinx.coroutines.flow.MutableStateFlow(emptyList()),
+    /** Attaches a file the person picked (B80). */
+    val onAttachFile: (android.net.Uri) -> Unit = {},
+    val onRemoveFile: (Int) -> Unit = {},
     /** The capture on disk for a page, so it can be shown for cropping. */
     val fileFor: (String) -> File = { File(it) },
 )

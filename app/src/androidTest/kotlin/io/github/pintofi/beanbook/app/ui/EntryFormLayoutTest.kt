@@ -142,9 +142,13 @@ class EntryFormLayoutTest {
             onMove = { _, _ -> },
             onRemovePage = {},
             onFile = { _, _, _ -> },
-            plannedPath = { account, _ ->
-                "documents/${account.replace(':', '/')}/2026-09-13.0123456789ab.pdf"
+            plannedPaths = { account, _ ->
+                listOf(
+                    "documents/${account.replace(':', '/')}/2026-09-13.0123456789ab.pdf",
+                    "documents/${account.replace(':', '/')}/2026-09-13.ba9876543210.jpg",
+                )
             },
+            attachedFiles = kotlinx.coroutines.flow.MutableStateFlow(listOf("invoice.jpg")),
         )
         compose.setContent {
             MaterialTheme {
@@ -169,5 +173,31 @@ class EntryFormLayoutTest {
                 substring = true,
             ),
         ).assertExists()
+        // An attached file is a second link, under its own key, and is listed in the form (B80).
+        compose.onNode(hasText("document-2: \"2026-09-13.ba9876543210.jpg\"", substring = true)).assertExists()
+        compose.onNodeWithContentDescription("Remove the attached file invoice.jpg").assertExists()
+        compose.onNodeWithText("Save entry with 1 page and 1 file").performScrollTo().assertExists()
+    }
+
+    @Test fun aFileCanBeAttachedFromTheEntrysOwnActions() {
+        compose.setContent {
+            MaterialTheme {
+                QuickAddScreen(
+                    vocabulary,
+                    onSave = {},
+                    today = today,
+                    capture = DocumentCaptureHandle(
+                        pages = CapturedPages(),
+                        captureFile = { File("unused") },
+                        onCapture = {},
+                        onRotate = {},
+                        onMove = { _, _ -> },
+                        onRemovePage = {},
+                        onFile = { _, _, _ -> },
+                    ),
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Attach a file to this transaction").assertIsDisplayed()
     }
 }

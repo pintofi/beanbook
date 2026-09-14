@@ -39,22 +39,24 @@ internal fun MainActivity.attachDocument(
     account: String,
     label: String? = null,
 ) {
-    app.documentCapture.save(projectId, account, label = label) { relativePath ->
-        val directive = DirectiveDraft.Document(
-            date = LocalDate.now().toString(),
-            account = account,
-            path = relativePath,
-        )
+    app.documentCapture.save(projectId, account, label = label) { paths ->
+        val directives = paths.joinToString("") { relativePath ->
+            DirectiveDraft.Document(
+                date = LocalDate.now().toString(),
+                account = account,
+                path = relativePath,
+            ).render()
+        }
         saveText(
             app,
             projectId,
-            directive.render(),
+            directives,
             operation = "attach-document",
             target = app.workspace.mainFile(projectId),
         ) { outcome ->
             saveMessage = outcome
             // Said where the user is standing, not on a screen they have left.
-            app.documentCapture.report("Filed ${relativePath.substringAfterLast('/')}. $outcome")
+            app.documentCapture.report("Filed ${paths.joinToString { it.substringAfterLast('/') }}. $outcome")
         }
         app.documentCapture.reset()
         refreshDocuments(app, projectId)
@@ -614,7 +616,12 @@ internal fun MainActivity.captureHandle(
             onRemovePage = { app.documentCapture.remove(it) },
             onCrop = { index, quad -> app.documentCapture.crop(index, quad) },
             fileFor = { name -> app.documentCapture.fileFor(name) },
-            plannedPath = { account, label -> app.documentCapture.plannedPath(account, label) },
+            plannedPaths = { account, label -> app.documentCapture.plannedPaths(account, label) },
+            attachedFiles = app.documentFileNames,
+            onAttachFile = { uri ->
+                lifecycleScope.launch { app.documentCapture.attach(contentResolver, uri) }
+            },
+            onRemoveFile = { app.documentCapture.removeFile(it) },
             onFile = { account, label, onFiled ->
                 // The PDF, then the `document` directive, then whoever asked -- in that
                 // order (B66). Filing from the entry form used to write the file and the
@@ -624,16 +631,18 @@ internal fun MainActivity.captureHandle(
                 // not found". That is a new error, so the write protocol rolled the entry
                 // back and the user was told their ledger was unchanged -- for a receipt
                 // that had been photographed, filed and named.
-                app.documentCapture.save(projectId.orEmpty(), account, label = label) { path ->
-                    val directive = io.github.pintofi.beanbook.core.domain.DirectiveDraft.Document(
-                        date = java.time.LocalDate.now().toString(),
-                        account = account,
-                        path = path,
-                    )
+                app.documentCapture.save(projectId.orEmpty(), account, label = label) { paths ->
+                    val directives = paths.joinToString("") { path ->
+                        io.github.pintofi.beanbook.core.domain.DirectiveDraft.Document(
+                            date = java.time.LocalDate.now().toString(),
+                            account = account,
+                            path = path,
+                        ).render()
+                    }
                     saveText(
                         app,
                         projectId.orEmpty(),
-                        directive.render(),
+                        directives,
                         operation = "attach-document",
                         target = app.workspace.mainFile(projectId.orEmpty()),
                     ) { outcome ->
@@ -643,7 +652,7 @@ internal fun MainActivity.captureHandle(
                         // entry pointing at a document the file does not declare, which is
                         // the very pair that fails to load.
                         if (outcome.startsWith("Saved")) {
-                            onFiled(path)
+                            onFiled(paths)
                             app.documentCapture.reset()
                             refreshDocuments(app, projectId.orEmpty())
                         }

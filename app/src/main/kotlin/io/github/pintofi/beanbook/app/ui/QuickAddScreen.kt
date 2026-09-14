@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -235,6 +236,12 @@ fun QuickAddScreen(
     )
     val problems = draft.validate(format)
 
+    // Files attached as they are (B80), beside the photographed pages.
+    val attachedFiles by (capture?.attachedFiles ?: remember { kotlinx.coroutines.flow.MutableStateFlow(emptyList()) })
+        .collectAsState()
+    val pageCount = capture?.pages?.pages?.size ?: 0
+    val hasDocuments = pageCount > 0 || attachedFiles.isNotEmpty()
+
     // What counts as something to lose: words typed, a figure entered, a page photographed.
     // Not the date, which the form fills in by itself.
     // What the form said the moment an entry being edited was put into it (B79). Compared with
@@ -243,14 +250,14 @@ fun QuickAddScreen(
     var prefilled by remember { mutableStateOf(false) }
     LaunchedEffect(prefilled) { if (prefilled && editing != null) baseline = draft.render() }
     val dirty = if (editing != null) {
-        (baseline != null && draft.render() != baseline) || capture?.pages?.isEmpty == false
+        (baseline != null && draft.render() != baseline) || hasDocuments
     } else payee.isNotBlank() ||
         narration.isNotBlank() ||
         rows.any { it.account.isNotBlank() || it.amount.isNotBlank() || it.details.isNotBlank() } ||
         tagRows.any { it.value.isNotBlank() } ||
         linkRows.any { it.value.isNotBlank() } ||
         metaRows.any { it.key.isNotBlank() || it.value.isNotBlank() } ||
-        capture?.pages?.isEmpty == false
+        hasDocuments
     LaunchedEffect(dirty) { onDirtyChange(dirty) }
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onDirtyChange(false) } }
     val residuals = draft.residuals()
@@ -262,6 +269,11 @@ fun QuickAddScreen(
     // Scanning straight from the action row (B77): one tap to the camera, with the permission
     // asked for at the moment it is needed, as the document section used to do behind a
     // second button.
+    // A file the person already has -- an emailed invoice, a saved picture -- attached as it is
+    // (B80). The document picker needs no storage permission.
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) capture?.onAttachFile?.invoke(uri)
+    }
     val cameraGranted = rememberCameraPermission()
     var cameraAllowed by remember(cameraGranted) { mutableStateOf(cameraGranted) }
     val askForCamera = rememberLauncherForActivityResult(
@@ -505,6 +517,13 @@ fun QuickAddScreen(
                     },
                     onClick = { metaRows.add(MetadataRow()) },
                 )
+                if (capture != null) {
+                    SmallAction(
+                        text = if (attachedFiles.isEmpty()) "Attach file" else "Another file",
+                        describe = "Attach a file to this transaction",
+                        onClick = { pickFile.launch(arrayOf("application/pdf", "image/*")) },
+                    )
+                }
                 if (capture != null && capture.pages.isEmpty) {
                     SmallAction(
                         text = "Scan document",
@@ -540,7 +559,7 @@ fun QuickAddScreen(
                 label = "Details about the whole transaction",
                 describe = { "transaction" },
             )
-            if (capture != null && !capture.pages.isEmpty) {
+            if (capture != null && hasDocuments) {
                 AttachDocumentSection(
                     capture = capture,
                     // Filed under the account the document is evidence for. Blank until the
@@ -603,35 +622,35 @@ fun QuickAddScreen(
         // receipt saw an entry with nothing connecting it to one. The name is the real one --
         // a hash of the PDF these pages assemble into, the same bytes the save files.
         val pendingAccount = rows.firstOrNull { it.account.isNotBlank() }?.account?.trim().orEmpty()
-        val plannedPath by androidx.compose.runtime.produceState<String?>(
-            null,
+        val plannedPaths by androidx.compose.runtime.produceState(
+            emptyList<String>(),
             capture?.pages,
+            attachedFiles,
             pendingAccount,
             documentName,
         ) {
-            value = if (capture == null || capture.pages.isEmpty || pendingAccount.isBlank()) {
-                null
+            value = if (capture == null || !hasDocuments || pendingAccount.isBlank()) {
+                emptyList()
             } else {
                 kotlinx.coroutines.delay(PLANNED_NAME_DEBOUNCE_MS)
-                capture.plannedPath(pendingAccount, documentName.trim().ifBlank { null })
+                capture.plannedPaths(pendingAccount, documentName.trim().ifBlank { null })
             }
         }
-        val previewDraft = plannedPath?.let { path ->
-            val key = BeancountText.nextDocumentKey(draft.metadata.keys)
-            draft.copy(metadata = draft.metadata + (key to path.substringAfterLast('/')))
-        } ?: draft
+        val previewDraft = withDocuments(draft, plannedPaths)
 
         // The promise the form makes, and the one moment in it that looks like the file: the
         // lines about to be written, in the source face, hung from the app's rule.
         RuledColumn {
             LedgerHeading("Will be written as")
             Text(
-                text = previewDraft.render() + plannedPath?.let { path ->
-                    "\n" + io.github.pintofi.beanbook.core.domain.DirectiveDraft.Document(
-                        date = today.toString(),
-                        account = pendingAccount,
-                        path = path,
-                    ).render()
+                text = previewDraft.render() + plannedPaths.takeIf { it.isNotEmpty() }?.let { paths ->
+                    "\n" + paths.joinToString("") { path ->
+                        io.github.pintofi.beanbook.core.domain.DirectiveDraft.Document(
+                            date = today.toString(),
+                            account = pendingAccount,
+                            path = path,
+                        ).render()
+                    }
                 }.orEmpty(),
                 style = LedgerType.source,
                 modifier = Modifier
@@ -670,22 +689,22 @@ fun QuickAddScreen(
         // field changes.
         var submitted by remember { mutableStateOf<TransactionDraft?>(null) }
 
-        // Pages photographed but never filed (B57), filed by saving the entry (B66).
-        val unfiledPages = capture?.pages?.pages?.size ?: 0
+        // Pages photographed, or files attached, and not yet filed (B57, B66, B80): filed by
+        // saving the entry.
         val documentAccount = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty()
+        val documentsWord = documentsLabel(pageCount, attachedFiles.size)
 
-        if (unfiledPages > 0 && documentAccount.isBlank()) {
+        if (hasDocuments && documentAccount.isBlank()) {
             Notice(
                 NoticeTone.ATTENTION,
                 modifier = Modifier
                     .padding(top = Measure.gap)
                     .semantics {
-                        contentDescription =
-                            "$unfiledPages photographed page(s) cannot be filed without an account"
+                        contentDescription = "$documentsWord cannot be filed without an account"
                     },
             ) {
                 Text(
-                    "$unfiledPages page${if (unfiledPages == 1) "" else "s"} photographed. " +
+                    "${documentsWord.replaceFirstChar { it.uppercase() }} waiting. " +
                         "Give the first posting an account so they can be filed under it.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -700,31 +719,22 @@ fun QuickAddScreen(
                 // Pages first, then the entry that names them: `fava.plugins.link_documents`
                 // reports "Document not found" for an entry whose `document:` metadata has no
                 // `document` directive to link to, and a new error rolls the save back.
-                if (capture != null && unfiledPages > 0 && documentAccount.isNotBlank()) {
-                    capture.onFile(documentAccount, documentName.trim().ifBlank { null }) { path ->
-                        val key = BeancountText.nextDocumentKey(
-                            draft.metadata.keys + metaRows.map { it.key }.toSet(),
-                        )
-                        // The file's own name, not the path to it: the plugin matches a
-                        // `document:` value against the basename of each `document` directive.
-                        onSave(
-                            draft.copy(
-                                metadata = draft.metadata + (key to path.substringAfterLast('/')),
-                            ),
-                        )
+                if (capture != null && hasDocuments && documentAccount.isNotBlank()) {
+                    capture.onFile(documentAccount, documentName.trim().ifBlank { null }) { paths ->
+                        onSave(withDocuments(draft, paths))
                     }
                 } else {
                     onSave(draft)
                 }
             },
             enabled = problems.isEmpty() && draft != submitted &&
-                (unfiledPages == 0 || documentAccount.isNotBlank()),
+                (!hasDocuments || documentAccount.isNotBlank()),
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         ) {
             val what = if (editing != null) "Save changes" else "Save entry"
             Text(
-                if (unfiledPages > 0) {
-                    "$what with $unfiledPages page${if (unfiledPages == 1) "" else "s"}"
+                if (hasDocuments) {
+                    "$what with $documentsWord"
                 } else {
                     what
                 },
@@ -789,6 +799,22 @@ data class EntryEditing(
     val reformats: Boolean,
     val onEditAsText: () -> Unit,
 )
+
+/**
+ * [draft] with a `document:` key for each filed path, by file name: the plugin matches a
+ * `document:` value against the basename of each `document` directive.
+ */
+private fun withDocuments(draft: TransactionDraft, paths: List<String>): TransactionDraft =
+    paths.fold(draft) { current, path ->
+        val key = BeancountText.nextDocumentKey(current.metadata.keys)
+        current.copy(metadata = current.metadata + (key to path.substringAfterLast('/')))
+    }
+
+/** "2 pages", "1 file", "1 page and 2 files". */
+internal fun documentsLabel(pages: Int, files: Int): String = listOfNotNull(
+    pages.takeIf { it > 0 }?.let { "$it page${if (it == 1) "" else "s"}" },
+    files.takeIf { it > 0 }?.let { "$it file${if (it == 1) "" else "s"}" },
+).joinToString(" and ")
 
 /** Long enough that typing a document's name does not assemble the PDF on every letter. */
 private const val PLANNED_NAME_DEBOUNCE_MS = 350L
@@ -1261,7 +1287,22 @@ private fun AttachDocumentSection(
             Text("Scan a document")
         }
 
-        if (!capture.pages.isEmpty) {
+        // Attached files, each with its own way out (B80).
+        val files by capture.attachedFiles.collectAsState()
+        files.forEachIndexed { index, name ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.MiddleEllipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                RemoveButton("Remove the attached file $name") { capture.onRemoveFile(index) }
+            }
+        }
+
+        if (!capture.pages.isEmpty || files.isNotEmpty()) {
             if (account.isBlank()) {
                 // Said rather than silently disabled: the reason is not guessable from a
                 // greyed-out button, and the fix is one field away.
@@ -1274,7 +1315,7 @@ private fun AttachDocumentSection(
                 // One row of thumbnails and one way in, rather than four text buttons under
                 // every page (B58): tapping a page opens the editor at it, where rotating,
                 // cropping and re-rendering are done on the page itself.
-                Row(
+                if (!capture.pages.isEmpty) Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -1294,11 +1335,13 @@ private fun AttachDocumentSection(
                         }
                     }
                 }
-                Text(
-                    "${capture.pages.size} page${if (capture.pages.size == 1) "" else "s"}. " +
-                        "Tap one to rotate, crop or change how it is rendered.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                if (!capture.pages.isEmpty) {
+                    Text(
+                        "${capture.pages.size} page${if (capture.pages.size == 1) "" else "s"}. " +
+                            "Tap one to rotate, crop or change how it is rendered.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 OutlinedTextField(
                     value = documentName,
                     onValueChange = { documentName = it },
@@ -1314,7 +1357,8 @@ private fun AttachDocumentSection(
                 // button to make that true was a step whose only possible outcome, if they
                 // missed it, was a page filed under nothing.
                 Text(
-                    "These pages are filed under $account and linked to this entry when you " +
+                    "${documentsLabel(capture.pages.size, files.size).replaceFirstChar { it.uppercase() }} " +
+                        "will be filed under $account and linked to this entry when you " +
                         "save it.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

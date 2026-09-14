@@ -39,6 +39,18 @@ class DocumentCapture(
     private val _pages = MutableStateFlow(CapturedPages())
     val pages: StateFlow<CapturedPages> = _pages.asStateFlow()
 
+    /**
+     * Files the person already had -- a PDF invoice, a picture -- attached as they are (B80).
+     *
+     * Kept beside the pages rather than turned into pages: a PDF someone was sent is already the
+     * document, and re-rendering it as photographs would lose its text.
+     */
+    private val _files = MutableStateFlow<List<AttachedFile>>(emptyList())
+    val files: StateFlow<List<AttachedFile>> = _files.asStateFlow()
+
+    /** One attached file: its copy in the capture folder, and what it was called. */
+    data class AttachedFile(val source: String, val displayName: String, val extension: String)
+
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
@@ -94,6 +106,52 @@ class DocumentCapture(
 
     fun fileFor(source: String): File = File(captureDir, source)
 
+    /**
+     * Copies a picked file into the capture folder, where it waits to be filed with the entry.
+     *
+     * Copied rather than referenced: the grant to a picked document lasts as long as the
+     * activity that received it, and the entry may be saved after that. A file whose extension
+     * cannot be a document name's (letters and digits, up to eight) is refused with the reason.
+     */
+    suspend fun attach(resolver: android.content.ContentResolver, uri: android.net.Uri) {
+        val attached = withContext(Dispatchers.IO) {
+            runCatching {
+                val name = resolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                    ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+                    ?: uri.lastPathSegment.orEmpty()
+                val extension = name.substringAfterLast('.', "").lowercase().takeIf { EXTENSION.matches(it) }
+                    ?: android.webkit.MimeTypeMap.getSingleton()
+                        .getExtensionFromMimeType(resolver.getType(uri))
+                        ?.lowercase()?.takeIf { EXTENSION.matches(it) }
+                    ?: error("\"$name\" has no file type a document can be filed as")
+                captureDir.mkdirs()
+                val target = File(captureDir, "file-${System.currentTimeMillis()}.$extension")
+                resolver.openInputStream(uri)?.use { input -> target.outputStream().use { input.copyTo(it) } }
+                    ?: error("the file could not be opened")
+                check(target.length() > 0) { "the file is empty" }
+                AttachedFile(target.name, name.ifBlank { target.name }, extension)
+            }
+        }
+        attached
+            .onSuccess { _files.value = _files.value + it }
+            .onFailure { error ->
+                Log.w(TAG, "could not attach a file", error)
+                _message.value = "Could not attach that file: ${error.message}"
+            }
+    }
+
+    fun removeFile(index: Int) {
+        _files.value = _files.value.filterIndexed { at, _ -> at != index }
+    }
+
+    /** Everything that will be filed: the pages as one PDF, then each attached file as it is. */
+    private suspend fun documents(): List<Pair<ByteArray, String>> = buildList {
+        assembledBytes()?.let { add(it to "pdf") }
+        _files.value.forEach { file ->
+            add(withContext(Dispatchers.IO) { fileFor(file.source).readBytes() } to file.extension)
+        }
+    }
+
     /** One page as it will be filed, sized for the screen (B79). */
     suspend fun preview(page: io.github.pintofi.beanbook.core.domain.CapturedPage): android.graphics.Bitmap? =
         withContext(Dispatchers.Default) {
@@ -123,25 +181,27 @@ class DocumentCapture(
     }
 
     /**
-     * What the pages will be filed as under [account], relative to the project, or null when
-     * there are none or they cannot be assembled. The same name [save] will use unless a
-     * *different* file already has it, which is what an ordinal is for.
+     * What the pages and files will be filed as under [account], relative to the project, in
+     * the order [save] files them. Empty when there is nothing. The same names [save] uses
+     * unless a *different* file already has one, which is what an ordinal is for.
      */
-    suspend fun plannedPath(account: String, label: String?, date: LocalDate = LocalDate.now()): String? {
-        val bytes = runCatching { assembledBytes() }
-            .onFailure { Log.w(TAG, "could not assemble the pages for the preview", it) }
-            .getOrNull() ?: return null
+    suspend fun plannedPaths(account: String, label: String?, date: LocalDate = LocalDate.now()): List<String> {
+        val documents = runCatching { documents() }
+            .onFailure { Log.w(TAG, "could not prepare the documents for the preview", it) }
+            .getOrNull() ?: return emptyList()
         return runCatching {
-            io.github.pintofi.beanbook.core.domain.DocumentName.forContent(account, date, bytes, label = label)
-                .relativePath
-        }.getOrNull()
+            documents.map { (bytes, extension) ->
+                io.github.pintofi.beanbook.core.domain.DocumentName
+                    .forContent(account, date, bytes, extension, label).relativePath
+            }
+        }.getOrDefault(emptyList())
     }
 
     /**
-     * Assembles the pages into a PDF, files it against [account], and reports where it went.
+     * Files the pages as one PDF, and each attached file as it is, against [account].
      *
-     * @param onFiled called with the project-relative path once the file is durably in
-     *   place — the caller then writes the `document` directive through the usual write
+     * @param onFiled called with the project-relative paths once every file is durably in
+     *   place — the caller then writes the `document` directives through the usual write
      *   protocol. Nothing here touches the ledger.
      */
     fun save(
@@ -150,29 +210,30 @@ class DocumentCapture(
         date: LocalDate = LocalDate.now(),
         /** What to call it, if the user typed something (B57). */
         label: String? = null,
-        onFiled: (String) -> Unit,
+        onFiled: (List<String>) -> Unit,
     ) {
         val pages = _pages.value
-        if (pages.isEmpty) {
-            _message.value = "Take at least one photo first."
+        if (pages.isEmpty && _files.value.isEmpty()) {
+            _message.value = "Take a photo or attach a file first."
             return
         }
 
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val pdf = checkNotNull(assembledBytes()) { "there are no pages to file" }
-                    store.store(projectId, account, date, pdf, label = label)
+                    documents().map { (bytes, extension) ->
+                        store.store(projectId, account, date, bytes, extension = extension, label = label)
+                    }
                 }
             }
             result
                 .onSuccess { stored ->
-                    _message.value = if (stored.alreadyExisted) {
-                        "Already saved as ${stored.file} — nothing was duplicated."
+                    _message.value = if (stored.all { it.alreadyExisted }) {
+                        "Already saved as ${stored.joinToString { it.file }} — nothing was duplicated."
                     } else {
-                        "Saved ${pages.size} page${if (pages.size == 1) "" else "s"} as ${stored.file}."
+                        "Saved ${stored.joinToString { it.file }}."
                     }
-                    onFiled(stored.relativePath)
+                    onFiled(stored.map { it.relativePath })
                 }
                 .onFailure { error ->
                     // The reason, not "save failed": a document that cannot be assembled is
@@ -196,6 +257,7 @@ class DocumentCapture(
      */
     fun reset(discardCaptures: Boolean = false) {
         _pages.value = CapturedPages()
+        _files.value = emptyList()
         if (discardCaptures) {
             scope.launch { withContext(Dispatchers.IO) { captureDir.deleteRecursively() } }
         }
@@ -224,6 +286,9 @@ class DocumentCapture(
 
     private companion object {
         const val TAG = "DocumentCapture"
+
+        /** The extensions a document name accepts (`DocumentName`). */
+        val EXTENSION = Regex("[a-z0-9]{1,8}")
 
         /** Enough for a phone screen at full width; the file itself is rendered larger. */
         const val PREVIEW_EDGE = 1600

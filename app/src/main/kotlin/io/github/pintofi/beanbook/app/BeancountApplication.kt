@@ -34,6 +34,9 @@ import io.github.pintofi.beanbook.engine.local.LocalEngineClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 /**
  * Application-scoped wiring.
@@ -119,6 +122,13 @@ class BeancountApplication : Application() {
                 },
             ),
         )
+    }
+
+    /** The names of files attached to the entry being written, for the form to show (B80). */
+    val documentFileNames: kotlinx.coroutines.flow.StateFlow<List<String>> by lazy {
+        documentCapture.files
+            .map { files -> files.map { it.displayName } }
+            .stateIn(appScope, SharingStarted.Eagerly, emptyList())
     }
 
     /** Where scheduled backups go, and what happened on the last run. */
