@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,13 +43,11 @@ fun PageThumbnail(
     modifier: Modifier = Modifier,
     size: androidx.compose.ui.unit.Dp = 56.dp,
 ) {
-    val bitmap = remember(file.path, file.length()) {
-        // Upright, and sampled down to something a 56dp box can use: a camera writes its
-        // orientation into EXIF and leaves the pixels sideways (B55).
-        runCatching {
-            io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file, maxEdge = 256)
-        }.getOrNull()
-    }
+    // Upright, and sampled down to something a 56dp box can use: a camera writes its
+    // orientation into EXIF and leaves the pixels sideways (B55). Off the main thread (B83):
+    // this decoded a camera JPEG inside composition, once per thumbnail, which is a stutter
+    // every time a batch of pages appears.
+    val bitmap = rememberDecodedPage(file)
 
     Box(
         modifier = modifier
@@ -71,3 +69,22 @@ fun PageThumbnail(
         }
     }
 }
+
+/**
+ * [file] decoded upright at thumbnail size on the IO dispatcher; null until it is ready, and
+ * null for a file that cannot be decoded, which the caller draws as a failed capture.
+ */
+@Composable
+internal fun rememberDecodedPage(file: File, maxEdge: Int = THUMBNAIL_EDGE): android.graphics.Bitmap? {
+    val decoded by androidx.compose.runtime.produceState<android.graphics.Bitmap?>(null, file.path, file.length()) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file, maxEdge = maxEdge)
+            }.getOrNull()
+        }
+    }
+    return decoded
+}
+
+private const val THUMBNAIL_EDGE = 256
+

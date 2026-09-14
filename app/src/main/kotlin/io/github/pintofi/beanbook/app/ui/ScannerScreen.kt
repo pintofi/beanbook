@@ -615,12 +615,8 @@ private fun PageStrip(
     ) {
         items(pages.size) { index ->
             val page = pages[index]
-            val bitmap = remember(page.source) {
-                runCatching {
-                    io.github.pintofi.beanbook.app.documents.Photos
-                        .decodeUpright(fileFor(page.source), maxEdge = 256)
-                }.getOrNull()
-            }
+            // Decoded off the main thread (B83), like every other thumbnail.
+            val bitmap = rememberDecodedPage(fileFor(page.source))
             Box(
                 modifier = Modifier
                     .size(72.dp)

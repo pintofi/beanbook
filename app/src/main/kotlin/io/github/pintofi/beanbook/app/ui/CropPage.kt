@@ -56,10 +56,8 @@ import java.io.File
  * It is now the same black, full-bleed surface as the page editor it opens from, with the
  * same top bar, so pressing Crop changes what the controls do rather than where the page is.
  *
- * Corners are dragged by hand rather than detected. Automatic edge detection means ML Kit,
- * which is proprietary and needs this app's own GPL linking exception before it could be used
- * at all (CLAUDE.md), or OpenCV, which is a large native dependency for one feature. Dragging
- * four handles costs the user a few seconds and the project nothing.
+ * Corners arrive detected by the scanner (OpenCV, `:scanner`) where it found the page, and are
+ * dragged by hand from there.
  */
 @Composable
 fun CropPageScreen(
@@ -73,16 +71,30 @@ fun CropPageScreen(
     // to mean the nearest "this" first.
     androidx.activity.compose.BackHandler(enabled = true) { onDismiss() }
 
-    val image: ImageBitmap? = remember(file.path) {
-        // Upright: the corners a person drags have to sit on the page as they see it (B55).
-        runCatching {
-            io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file)?.asImageBitmap()
-        }.getOrNull()
+    // Upright: the corners a person drags have to sit on the page as they see it (B55).
+    //
+    // Sampled and off the main thread (B83). This decoded the photograph at full size inside
+    // composition: a 12 MP camera page is a 48 MB bitmap, decoded on the UI thread, which is a
+    // freeze on opening the crop and a real risk of running out of memory. The corners stay in
+    // the full photograph's pixels, which is what the detector and the assembler use, so they
+    // are scaled by [CropSource.scale] on the way in and out.
+    val loaded by androidx.compose.runtime.produceState<CropSource?>(null, file.path) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { cropSourceOf(file) }
     }
+    val source = loaded
+    if (source == null) {
+        Box(modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.CircularProgressIndicator(color = Color.White)
+        }
+        return
+    }
+    val image: ImageBitmap? = source.image
     // Held here, where both the canvas that moves it and the tick that applies it can see it.
+    // In the shown bitmap's pixels.
     var quad by remember(file.path, image) {
         mutableStateOf(
-            initial ?: image?.let { CropQuad.whole(it.width.toFloat(), it.height.toFloat()) },
+            initial?.scaled(1f / source.scale)
+                ?: image?.let { CropQuad.whole(it.width.toFloat(), it.height.toFloat()) },
         )
     }
 
@@ -110,7 +122,7 @@ fun CropPageScreen(
             )
             if (image != null) {
                 IconButton(
-                    onClick = { onCropped(quad) },
+                    onClick = { onCropped(quad?.scaled(source.scale)) },
                     modifier = Modifier.semantics { contentDescription = "Use this crop" },
                 ) { Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White) }
             }
@@ -242,3 +254,29 @@ internal fun nearestCorner(quad: CropQuad, to: CropPoint): CropCorner {
         dx * dx + dy * dy
     }.first
 }
+
+/**
+ * The photograph as the crop editor shows it: sampled to fit a screen, and how many pixels of
+ * the full, upright photograph each shown pixel stands for. Null [image] when it cannot be read.
+ */
+internal class CropSource(val image: ImageBitmap?, val scale: Float)
+
+private fun cropSourceOf(file: File): CropSource {
+    val shown = runCatching {
+        io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file, maxEdge = CROP_EDGE)
+    }.getOrNull() ?: return CropSource(null, 1f)
+    val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    android.graphics.BitmapFactory.decodeFile(file.path, bounds)
+    val full = maxOf(bounds.outWidth, bounds.outHeight).toFloat()
+    val scale = if (full > 0) full / maxOf(shown.width, shown.height) else 1f
+    return CropSource(shown.asImageBitmap(), scale)
+}
+
+private fun CropQuad.scaled(factor: Float): CropQuad {
+    fun CropPoint.times() = CropPoint(x * factor, y * factor)
+    return CropQuad(topLeft.times(), topRight.times(), bottomRight.times(), bottomLeft.times())
+}
+
+/** Enough to place corners precisely on a phone or tablet screen. */
+private const val CROP_EDGE = 2048
+
