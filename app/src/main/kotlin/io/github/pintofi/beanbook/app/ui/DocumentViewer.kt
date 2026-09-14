@@ -7,12 +7,6 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculatePan
-import androidx.compose.foundation.gestures.calculateZoom
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,8 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Share
@@ -33,21 +25,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.geometry.Size
+import me.saket.telephoto.zoomable.ZoomSpec
+import me.saket.telephoto.zoomable.ZoomableContentLocation
+import me.saket.telephoto.zoomable.rememberZoomableState
+import me.saket.telephoto.zoomable.zoomable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -133,38 +124,6 @@ private fun DocumentPages(file: File) {
         onDispose { (current as? Opened.Pdf)?.source?.close() }
     }
 
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-    val zoom = Modifier
-        .pointerInput(Unit) {
-            detectTapGestures(onDoubleTap = {
-                // Double-tap is the way back to the whole page after a pinch.
-                if (scale > 1f) { scale = 1f; offset = Offset.Zero } else scale = DOUBLE_TAP_ZOOM
-            })
-        }
-        .pointerInput(Unit) {
-            // Two fingers only. One finger belongs to the list, which is how a person scrolls
-            // to the next page; a transform detector would take that drag for a pan.
-            awaitEachGesture {
-                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                do {
-                    // The initial pass, so a pinch is taken before the list reads it as a scroll.
-                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                    if (event.changes.count { it.pressed } >= 2) {
-                        scale = (scale * event.calculateZoom()).coerceIn(1f, MAX_ZOOM)
-                        offset = if (scale == 1f) Offset.Zero else offset + event.calculatePan()
-                        event.changes.forEach { it.consume() }
-                    }
-                } while (event.changes.any { it.pressed })
-            }
-        }
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-            translationX = offset.x
-            translationY = offset.y
-        }
-
     when (current) {
         Opened.Opening -> Text("Opening…", modifier = Modifier.padding(24.dp))
         is Opened.Failed -> Text(
@@ -172,27 +131,22 @@ private fun DocumentPages(file: File) {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(24.dp),
         )
-        is Opened.Picture -> Image(
+        is Opened.Picture -> ZoomablePage(
             bitmap = current.bitmap,
-            contentDescription = "The document ${file.name}",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize().then(zoom),
+            description = "The document ${file.name}",
         )
         is Opened.Pdf -> {
-            val list = rememberLazyListState()
-            val page by remember { derivedStateOf { list.firstVisibleItemIndex + 1 } }
+            // A page at a time, each with its own zoom (B84). Pinch, pan, fling and double-tap
+            // come from Telephoto, which also hands a drag to the pager once a page is at its
+            // edge -- the hand-written two-finger gesture this replaced could not fling or stop
+            // at the page's bounds, and could only zoom the whole list at once.
+            val pager = rememberPagerState { current.source.pageCount }
             Box(Modifier.fillMaxSize()) {
-                LazyColumn(
-                    state = list,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize().then(zoom),
-                ) {
-                    items(current.source.pageCount) { index ->
-                        PdfPage(current.source, index)
-                    }
+                VerticalPager(state = pager, modifier = Modifier.fillMaxSize()) { index ->
+                    PdfPage(current.source, index)
                 }
                 Text(
-                    "Page $page of ${current.source.pageCount}",
+                    "Page ${pager.currentPage + 1} of ${current.source.pageCount}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.inverseOnSurface,
                     modifier = Modifier
@@ -212,24 +166,43 @@ private fun PdfPage(source: PdfSource, index: Int) {
         value = source.render(index)
     }
     val shown = bitmap
-    val ratio = source.aspect(index)
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp)
-            .aspectRatio(ratio)
-            .background(androidx.compose.ui.graphics.Color.White)
+            .fillMaxSize()
             .semantics { contentDescription = "Page ${index + 1} of ${source.pageCount}" },
+        contentAlignment = Alignment.Center,
     ) {
-        if (shown != null) {
-            Image(
-                bitmap = shown,
-                contentDescription = null,
-                contentScale = ContentScale.FillWidth,
-                modifier = Modifier.fillMaxSize(),
+        if (shown == null) {
+            Box(
+                Modifier
+                    .padding(12.dp)
+                    .fillMaxWidth()
+                    .aspectRatio(source.aspect(index))
+                    .background(androidx.compose.ui.graphics.Color.White),
             )
+        } else {
+            ZoomablePage(bitmap = shown, description = null)
         }
     }
+}
+
+/** One page, fitted to the screen, with pinch, pan, fling and double-tap zoom (Telephoto). */
+@Composable
+internal fun ZoomablePage(bitmap: ImageBitmap, description: String?, modifier: Modifier = Modifier) {
+    val zoom = rememberZoomableState(zoomSpec = ZoomSpec(maxZoomFactor = MAX_ZOOM))
+    LaunchedEffect(bitmap) {
+        zoom.setContentLocation(
+            ZoomableContentLocation.scaledInsideAndCenterAligned(
+                Size(bitmap.width.toFloat(), bitmap.height.toFloat()),
+            ),
+        )
+    }
+    Image(
+        bitmap = bitmap,
+        contentDescription = description,
+        contentScale = ContentScale.Inside,
+        modifier = modifier.fillMaxSize().zoomable(zoom),
+    )
 }
 
 /**
@@ -323,7 +296,6 @@ private const val TAG = "DocumentViewer"
 private const val PAGE_WIDTH = 1440
 
 private const val MAX_ZOOM = 5f
-private const val DOUBLE_TAP_ZOOM = 2.5f
 
 /** A page shape outside this range is a malformed media box, not a very long receipt. */
 private const val MIN_RATIO = 0.05f

@@ -1,6 +1,5 @@
 package io.github.pintofi.beanbook.app.ui
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,7 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -156,11 +154,14 @@ fun PageEditorScreen(
                 } else if (bitmap == null) {
                     Text("This page could not be opened.", color = Color.White)
                 } else {
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "Page ${index + 1}",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize().padding(8.dp),
+                    // Pinch to check the small print before filing it (B84). Telephoto hands a
+                    // horizontal drag to the pager at the page's edge, so swiping between pages
+                    // still works at normal size.
+                    val shown = remember(bitmap) { bitmap.asImageBitmap() }
+                    ZoomablePage(
+                        bitmap = shown,
+                        description = "Page ${index + 1}",
+                        modifier = Modifier.padding(8.dp),
                     )
                 }
             }

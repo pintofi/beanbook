@@ -26,8 +26,10 @@ KNOWN_LICENCES = {
     "org.jetbrains.kotlin": ("Apache-2.0", "Kotlin stdlib and compiler runtime"),
     "org.jetbrains.kotlinx": ("Apache-2.0", "kotlinx.coroutines"),
     "com.google.android.material": ("Apache-2.0", "Material Components"),
-    "net.i2p.crypto": ("CC0-1.0", "ed25519-java is public-domain dedicated"),
     "com.lambdapioneer.argon2kt": ("Apache-2.0", "argon2kt"),
+    "me.saket.telephoto": ("Apache-2.0", "Telephoto, zoom and pan for Compose; licence in its POM, checked 2026-09-14"),
+    "sh.calvin.reorderable": ("Apache-2.0", "Reorderable, drag to reorder in Compose lists; licence in its POM, checked 2026-09-14"),
+    "org.opencv": ("Apache-2.0", "OpenCV is Apache-2.0 from 4.5.0; the document scanner's edge detection"),
     "com.chaquo.python": ("MIT", "Chaquopy runtime; the Gradle plugin is separately licensed"),
     "junit": ("EPL-1.0", "test only, not shipped"),
 }

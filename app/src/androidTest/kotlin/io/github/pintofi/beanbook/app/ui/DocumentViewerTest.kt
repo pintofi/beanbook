@@ -66,6 +66,8 @@ class DocumentViewerTest {
                 compose.onAllNodesWithTextSafely("Opening…").fetchSemanticsNodes().isEmpty()
         }
         compose.onNodeWithText("statement.pdf").assertIsDisplayed()
+        // One page at a time, each zoomable (B84), with the count on screen.
+        compose.onNodeWithText("Page 1 of 2").assertIsDisplayed()
         compose.onNodeWithContentDescription("Close statement.pdf").assertIsDisplayed()
     }
 

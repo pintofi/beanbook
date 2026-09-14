@@ -5,7 +5,8 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
+import androidx.camera.lifecycle.awaitInstance
+import sh.calvin.reorderable.ReorderableItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,12 +60,14 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -160,8 +163,10 @@ fun ScannerScreen(
     var frontLens by rememberSaveable { mutableStateOf(false) }
     var zoom by remember { mutableStateOf(0f) }
     var autoCapture by rememberSaveable { mutableStateOf(true) }
-    var previewView by remember { mutableStateOf<PreviewView?>(null) }
     var aimed by remember { mutableStateOf(false) }
+    // What the viewfinder draws into, handed over by CameraX each time it (re)binds (B84).
+    var surfaceRequest by remember { mutableStateOf<androidx.camera.core.SurfaceRequest?>(null) }
+    val transformer = remember { androidx.camera.viewfinder.compose.MutableCoordinateTransformer() }
     // The page as the detector sees it right now, in the sampled frame's pixels (B79). The
     // outline used to be the *last shot's*, stretched over the whole window without allowing
     // for the letterboxing, so it sat somewhere near the page rather than on it.
@@ -169,18 +174,6 @@ fun ScannerScreen(
     var liveFrame by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
 
     LaunchedEffect(flash) { capture.flashMode = flash }
-
-    // The lamp goes out with the screen (B65). The camera is bound to the *activity's*
-    // lifecycle, not to this composable, so leaving the scanner left the use cases bound and
-    // the torch burning -- with no control anywhere in the app to turn it off again, because
-    // the only switch had gone with the screen. Turning it off and unbinding on the way out
-    // is what makes leaving the scanner mean leaving the camera.
-    androidx.compose.runtime.DisposableEffect(Unit) {
-        onDispose {
-            runCatching { camera?.cameraControl?.enableTorch(false) }
-            runCatching { provider?.unbindAll() }
-        }
-    }
 
     /**
      * Takes one page: shoot, detect, hand the crop up with the file.
@@ -214,38 +207,109 @@ fun ScannerScreen(
         )
     }
 
-    // Watches the preview a few times a second: the outline drawn over the page, and the
+    // Watches the camera a few times a second: the outline drawn over the page, and the
     // shutter fired when the page is squarely in frame, which is what a scanner does that a
-    // camera does not (B56). Sampled from the preview rather than through a second analysis
-    // pipeline: the detector only needs a small bitmap, and a full ImageAnalysis stream costs
-    // another camera surface and its battery.
+    // camera does not (B56). Firing needs the page to be *still*, not merely found twice (B79):
+    // two detections of a page sliding across the table used to be enough, and the shot came
+    // out blurred.
     //
-    // Firing needs the page to be *still*, not merely found twice (B79): two detections of a
-    // page sliding across the table used to be enough, and the shot came out blurred.
-    LaunchedEffect(autoCapture, previewView) {
-        val view = previewView ?: return@LaunchedEffect
-        var previous: CropQuad? = null
-        var steady = 0
-        while (true) {
-            kotlinx.coroutines.delay(AUTO_SAMPLE_MILLIS)
-            if (busy) continue
-            val frame = view.bitmap ?: continue
-            val (quad, size) = withContext(Dispatchers.Default) {
-                val small = frame.scale()
-                Scanner.detect(small) to androidx.compose.ui.unit.IntSize(small.width, small.height)
-            }
-            liveQuad = quad
-            liveFrame = size
-            aimed = quad != null
-            val still = quad != null && previous?.let { quad.closeTo(it, size) } == true
-            previous = quad
-            steady = if (still) steady + 1 else 0
-            if (autoCapture && steady >= STEADY_SAMPLES) {
-                steady = 0
-                previous = null
-                shoot()
+    // Frames come from a small ImageAnalysis stream now (B84). They used to be copied out of the
+    // preview view's own bitmap, which the Compose viewfinder does not have -- and the analysis
+    // frame is the camera's picture rather than a screenshot of the view, so the outline no
+    // longer depends on how the preview happens to be letterboxed.
+    var previousQuad by remember { mutableStateOf<CropQuad?>(null) }
+    var steady by remember { mutableIntStateOf(0) }
+    fun onSample(quad: CropQuad?, frame: androidx.compose.ui.unit.IntSize) {
+        if (busy) return
+        liveQuad = quad
+        liveFrame = frame
+        aimed = quad != null
+        val still = quad != null && previousQuad?.let { quad.closeTo(it, frame) } == true
+        previousQuad = quad
+        steady = if (still) steady + 1 else 0
+        if (autoCapture && steady >= STEADY_SAMPLES) {
+            steady = 0
+            previousQuad = null
+            shoot()
+        }
+    }
+
+    val analysisExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
+    val analysis = remember {
+        androidx.camera.core.ImageAnalysis.Builder()
+            .setResolutionSelector(
+                androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
+                    .setAspectRatioStrategy(
+                        androidx.camera.core.resolutionselector.AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY,
+                    )
+                    .setResolutionStrategy(
+                        androidx.camera.core.resolutionselector.ResolutionStrategy(
+                            android.util.Size(ANALYSIS_WIDTH, ANALYSIS_HEIGHT),
+                            androidx.camera.core.resolutionselector.ResolutionStrategy
+                                .FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
+                        ),
+                    )
+                    .build(),
+            )
+            .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setOutputImageFormat(androidx.camera.core.ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+            .build()
+    }
+    val mainExecutor = remember { ContextCompat.getMainExecutor(context) }
+    LaunchedEffect(analysis) {
+        var last = 0L
+        analysis.setAnalyzer(analysisExecutor) { image ->
+            image.use { frame ->
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (now - last < AUTO_SAMPLE_MILLIS) return@use
+                last = now
+                val upright = io.github.pintofi.beanbook.app.documents.Photos
+                    .upright(frame.toBitmap(), frame.imageInfo.rotationDegrees)
+                val small = upright.scale()
+                val quad = Scanner.detect(small)
+                val size = androidx.compose.ui.unit.IntSize(small.width, small.height)
+                mainExecutor.execute { onSample(quad, size) }
             }
         }
+    }
+
+    // The lamp goes out with the screen (B65). The camera is bound to the *activity's*
+    // lifecycle, not to this composable, so leaving the scanner left the use cases bound and
+    // the torch burning -- with no control anywhere in the app to turn it off again, because
+    // the only switch had gone with the screen. Turning it off and unbinding on the way out
+    // is what makes leaving the scanner mean leaving the camera.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            runCatching { camera?.cameraControl?.enableTorch(false) }
+            runCatching { provider?.unbindAll() }
+            analysis.clearAnalyzer()
+            analysisExecutor.shutdown()
+        }
+    }
+
+    // Bound here rather than in a view factory, so turning to the front camera rebinds -- the
+    // factory ran once, and the lens switch changed an icon and nothing else.
+    LaunchedEffect(frontLens) {
+        val cameraProvider = ProcessCameraProvider.awaitInstance(context)
+        provider = cameraProvider
+        val preview = androidx.camera.core.Preview.Builder()
+            .setResolutionSelector(
+                androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
+                    .setAspectRatioStrategy(
+                        androidx.camera.core.resolutionselector.AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY,
+                    )
+                    .build(),
+            )
+            .build()
+            .also { it.setSurfaceProvider { request -> surfaceRequest = request } }
+        cameraProvider.unbindAll()
+        camera = cameraProvider.bindToLifecycle(
+            lifecycleOwner,
+            if (frontLens) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA,
+            preview,
+            capture,
+            analysis,
+        )
     }
 
     // Photographs already on the phone become pages too (B79): a receipt someone else sent, a
@@ -291,75 +355,51 @@ fun ScannerScreen(
             // The preview runs under the system bars; the controls must not.
             .systemBarsPadding(),
     ) {
-        androidx.compose.ui.viewinterop.AndroidView(
-            factory = { viewContext ->
-                PreviewView(viewContext).also { preview ->
-                    // COMPATIBLE for the same reason CameraPane uses it: a SurfaceView is
-                    // composited outside the hierarchy and would draw over the controls.
-                    preview.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                    // FIT_CENTER, not the default FILL_CENTER: filling the window crops the
-                    // frame to the screen's shape, so the viewfinder showed less than the
-                    // camera saw and everything looked zoomed in (B55). Letterboxing shows
-                    // the whole frame, which is the one the shutter actually captures.
-                    preview.scaleType = PreviewView.ScaleType.FIT_CENTER
-                    previewView = preview
-                    val future = ProcessCameraProvider.getInstance(viewContext)
-                    future.addListener({
-                        val cameraProvider = future.get()
-                        provider = cameraProvider
-                        cameraProvider.unbindAll()
-                        camera = cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            if (frontLens) {
-                                CameraSelector.DEFAULT_FRONT_CAMERA
-                            } else {
-                                CameraSelector.DEFAULT_BACK_CAMERA
-                            },
-                            androidx.camera.core.Preview.Builder()
-                                .setResolutionSelector(
-                                    androidx.camera.core.resolutionselector.ResolutionSelector
-                                        .Builder()
-                                        .setAspectRatioStrategy(
-                                            androidx.camera.core.resolutionselector
-                                                .AspectRatioStrategy
-                                                .RATIO_4_3_FALLBACK_AUTO_STRATEGY,
-                                        )
-                                        .build(),
-                                )
-                                .build().also {
-                                it.surfaceProvider = preview.surfaceProvider
-                            },
-                            capture,
+        // The Compose viewfinder (B84), in place of a PreviewView inside AndroidView. Fitted, not
+        // filled: filling the window crops the frame to the screen's shape, so the viewfinder
+        // showed less than the camera saw (B55). Embedded, so the controls draw over it.
+        surfaceRequest?.let { request ->
+            androidx.camera.compose.CameraXViewfinder(
+                surfaceRequest = request,
+                implementationMode = androidx.camera.viewfinder.core.ImplementationMode.EMBEDDED,
+                coordinateTransformer = transformer,
+                contentScale = ContentScale.Fit,
+                // Tap to focus, the way the camera app does (B79): a receipt close to the lens is
+                // where continuous focus most often settles on the table instead. The tap is
+                // mapped from the screen onto the camera's own buffer by the viewfinder.
+                modifier = Modifier
+                    .fillMaxSize()
+                    .semantics { contentDescription = "Camera viewfinder. Tap to focus." }
+                    .pointerInput(camera, request) {
+                    detectTapGestures { position ->
+                        val control = camera?.cameraControl ?: return@detectTapGestures
+                        val onSurface = with(transformer) { position.transform() }
+                        val factory = androidx.camera.core.SurfaceOrientedMeteringPointFactory(
+                            request.resolution.width.toFloat(),
+                            request.resolution.height.toFloat(),
                         )
-                    }, ContextCompat.getMainExecutor(viewContext))
-                }
-            },
-            // Tap to focus, the way the camera app does (B79): a receipt close to the lens is
-            // where continuous focus most often settles on the table instead.
-            modifier = Modifier.fillMaxSize().pointerInput(camera, previewView) {
-                detectTapGestures { position ->
-                    val control = camera?.cameraControl ?: return@detectTapGestures
-                    val factory = previewView?.meteringPointFactory ?: return@detectTapGestures
-                    control.startFocusAndMetering(
-                        androidx.camera.core.FocusMeteringAction
-                            .Builder(factory.createPoint(position.x, position.y))
-                            .build(),
-                    )
-                }
-            },
-        )
+                        control.startFocusAndMetering(
+                            androidx.camera.core.FocusMeteringAction
+                                .Builder(factory.createPoint(onSurface.x, onSurface.y))
+                                .build(),
+                        )
+                    }
+                },
+            )
+        }
 
-        // The page the detector sees now, on the preview (B79). The sampled frame is the
-        // preview view's own bitmap, letterboxing included, so its pixels map onto this canvas
-        // -- which has the preview's bounds -- by one scale on each axis.
+        // The page the detector sees now, on the preview (B79). The analysis frame is upright
+        // and the same 4:3 shape as the preview, which is fitted into this box, so a point maps
+        // by one scale and the letterbox offset (B84).
         liveQuad?.let { quad ->
             androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
                 if (liveFrame.width == 0 || liveFrame.height == 0) return@Canvas
-                val sx = size.width / liveFrame.width
-                val sy = size.height / liveFrame.height
+                val fit = minOf(size.width / liveFrame.width, size.height / liveFrame.height)
+                val left = (size.width - liveFrame.width * fit) / 2
+                val top = (size.height - liveFrame.height * fit) / 2
                 val path = Path().apply {
                     val corners = listOf(quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft)
-                    val pts = corners.map { Offset(it.x * sx, it.y * sy) }
+                    val pts = corners.map { Offset(left + it.x * fit, top + it.y * fit) }
                     moveTo(pts[0].x, pts[0].y)
                     pts.drop(1).forEach { lineTo(it.x, it.y) }
                     close()
@@ -523,6 +563,7 @@ fun ScannerScreen(
                     fileFor = fileFor,
                     onOpen = { previewing = it },
                     onRemovePage = onRemovePage,
+                    onMovePage = onMovePage,
                 )
             }
             Row(
@@ -608,21 +649,43 @@ private fun PageStrip(
     fileFor: (String) -> File,
     onOpen: (Int) -> Unit,
     onRemovePage: (Int) -> Unit,
+    onMovePage: (from: Int, to: Int) -> Unit = { _, _ -> },
 ) {
+    // Long-press a page and drag it along the strip to put the batch in order (B84, Reorderable).
+    // The page editor's earlier and later buttons are still there, and the same moves are
+    // offered to accessibility services as actions on each page.
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val reorder = sh.calvin.reorderable.rememberReorderableLazyListState(listState) { from, to ->
+        onMovePage(from.index, to.index)
+    }
     LazyRow(
+        state = listState,
         modifier = Modifier.fillMaxWidth().height(96.dp).padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(pages.size) { index ->
+        items(pages.size, key = { pages[it].source }) { index ->
             val page = pages[index]
             // Decoded off the main thread (B83), like every other thumbnail.
             val bitmap = rememberDecodedPage(fileFor(page.source))
+            ReorderableItem(reorder, key = page.source) { dragging ->
             Box(
                 modifier = Modifier
+                    .longPressDraggableHandle()
                     .size(72.dp)
+                    .graphicsLayer { if (dragging) { scaleX = DRAG_SCALE; scaleY = DRAG_SCALE } }
                     .clip(RoundedCornerShape(6.dp))
                     .background(Color.DarkGray)
-                    .semantics { contentDescription = "Page ${index + 1}. Tap to see it." },
+                    .semantics {
+                        contentDescription = "Page ${index + 1}. Tap to see it, or hold and drag to move it."
+                        customActions = listOfNotNull(
+                            androidx.compose.ui.semantics.CustomAccessibilityAction("Move page earlier") {
+                                onMovePage(index, index - 1); true
+                            }.takeIf { index > 0 },
+                            androidx.compose.ui.semantics.CustomAccessibilityAction("Move page later") {
+                                onMovePage(index, index + 1); true
+                            }.takeIf { index < pages.size - 1 },
+                        )
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 if (bitmap != null) {
@@ -656,6 +719,7 @@ private fun PageStrip(
                         modifier = Modifier.size(16.dp),
                     )
                 }
+            }
             }
         }
     }
@@ -725,6 +789,13 @@ private fun ShutterButton(
 /** What a linear zoom of 1.0 is called on screen. Cameras vary; the label is a hint. */
 private const val MAX_ZOOM_LABEL = 5f
 
+
+/** How much a page grows while it is being dragged, so it reads as lifted. */
+private const val DRAG_SCALE = 1.08f
+
+/** The analysis stream only feeds a detector that works at 720 px; more is wasted battery. */
+private const val ANALYSIS_WIDTH = 960
+private const val ANALYSIS_HEIGHT = 720
 
 /** A few times a second: often enough to feel immediate, rare enough to cost nothing. */
 private const val AUTO_SAMPLE_MILLIS = 400L
