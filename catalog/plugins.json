@@ -1118,13 +1118,16 @@
       "repo": "https://github.com/Akuukis/beancount_interpolate",
       "description": "Recurring, split, spread and depreciated transactions generated from metadata",
       "license": "GPL-3.0",
-      "status": "untested",
+      "status": "supported",
       "upstream": false,
       "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Not listed on awesome-beancount; catalogued because the owner's own ledger uses it (2026-09-14).",
       "tested": {
-        "on": null,
-        "how": "not yet run by tools/plugin-compat/run_catalog.py",
-        "reason": "added 2026-09-14; no compatibility claim is made"
+        "on": "2026-09-14",
+        "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
+        "reason": "imports, executes and preserves every directive",
+        "version": "2.5.1",
+        "on_device": "installed from the catalogue on Android (emulator API 36, Expert debug), with beancount-plugin-utils; fixtures/common-ledger, which names beancount_interpolate.depreciate, then loaded with 0 errors (2026-09-14)",
+        "module": "beancount_interpolate.depreciate"
       },
       "distribution": "beancount-interpolate",
       "install": {

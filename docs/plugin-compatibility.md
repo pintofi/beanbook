@@ -86,13 +86,12 @@ As of 2026-09-14, for the 35 plugins on awesome-beancount plus `beancount-interp
 
 | Status | Count | Meaning |
 |---|---:|---|
-| supported | 14 | install, import, execute and round-trip passed |
+| supported | 15 | install, import, execute and round-trip passed |
 | needs-config | 5 | works with a configuration string (the `reds.*` plugins) |
 | partial | 14 | some steps passed; mostly Fava extensions whose UI is not exercised, or a dependency to fetch |
 | unsupported | 2 | `autobean.truelayer` (an importer), `fava-classy-portfolio` |
-| untested | 1 | `beancount-interpolate`, added 2026-09-14; loaded without errors on the API 36 emulator against `fixtures/common-ledger` after installing from the catalogue, which is not yet a harness run |
 
-Runs were on desktop CPython with Beancount 3.2.3 (2026-08-28), and the `supported` and
+Runs were on desktop CPython with Beancount 3.2.3 (2026-08-28; `beancount-interpolate` 2026-09-14, which also loaded `fixtures/common-ledger` with no errors on the API 36 emulator after installing from the catalogue), and the `supported` and
 `needs-config` entries were loaded again on Android by `CatalogManifestTest` and
 `CatalogPluginTest`. **beangrow** is `supported` on a device through the SciPy overlay
 ([on-demand-packages.md](on-demand-packages.md), m14-part28); the old "untested (Spike 9)" rows

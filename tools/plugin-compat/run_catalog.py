@@ -327,7 +327,10 @@ def main() -> int:
 
     results = {}
     for entry in catalog["entries"]:
-        record = fetched.get(entry["id"], {})
+        record = fetched.get(entry["id"])
+        if record is None:
+            # Not fetched in this run (`fetch.py --only`): nothing to say about it here.
+            continue
         if record.get("error"):
             results[entry["id"]] = {
                 "status": "unavailable",
@@ -483,7 +486,9 @@ def main() -> int:
         }
 
     for entry in catalog["entries"]:
-        result = results[entry["id"]]
+        result = results.get(entry["id"])
+        if result is None:
+            continue
         print(f"{result['status']:<12} {entry['id']:<38} {result['reason'][:90]}")
 
     tally: dict[str, int] = {}
@@ -499,7 +504,9 @@ def main() -> int:
     # here cannot be silently left out of the run that matters.
     manifest = []
     for entry in catalog["entries"]:
-        result = results[entry["id"]]
+        result = results.get(entry["id"])
+        if result is None:
+            continue
         # Fava extensions too, and `partial` with them. `partial` is what this harness says
         # about every extension — it can import one but cannot drive its UI — so filtering to
         # supported would push no extension at all. That is not hypothetical: doing exactly
@@ -553,7 +560,9 @@ def main() -> int:
             ["date", "-u", "+%Y-%m-%d"], capture_output=True, text=True
         ).stdout.strip()
         for entry in catalog["entries"]:
-            result = results[entry["id"]]
+            result = results.get(entry["id"])
+            if result is None:
+                continue
             entry["status"] = result["status"]
             entry["tested"] = {
                 "on": stamp,
