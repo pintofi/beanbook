@@ -7,7 +7,7 @@
       name="description"
       content="Beancount plugins, Fava extensions and importers people use with Beanbook, and what to expect when running them on a phone."
     />
-    <meta name="theme-color" content="#006a6a" />
+    <meta name="theme-color" content="#0b5f5b" />
     <title>Beanbook — Add-ons</title>
     <script>
       try {
@@ -18,6 +18,7 @@
     </script>
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="preload" href="assets/fonts/archivo-variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
     <script src="site.js" defer></script>
   </head>
@@ -26,17 +27,17 @@
     <header class="site-header">
       <div class="nav-shell">
         <a class="brand" href="index.html">
-          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="36" height="36" />
           <span>Beanbook</span>
         </a>
         <nav class="primary-nav" aria-label="Primary navigation">
-          <a class="nav-link" href="index.html">Home</a
-          ><a class="nav-link" href="features.html">Features</a
-          ><a class="nav-link" href="plugins.html" aria-current="page">Add-ons</a
-          ><a class="nav-link" href="download.html">Download</a
-          ><a class="nav-link" href="support.html">Support</a
-          ><a class="nav-link" href="help.html">Help</a
-          ><a class="nav-link" href="privacy.html">Privacy</a>
+          <a class="nav-link" href="index.html">Home</a>
+          <a class="nav-link" href="features.html">Features</a>
+          <a class="nav-link" href="plugins.html" aria-current="page">Add-ons</a>
+          <a class="nav-link" href="download.html">Download</a>
+          <a class="nav-link" href="support.html">Support</a>
+          <a class="nav-link" href="help.html">Help</a>
+          <a class="nav-link" href="privacy.html">Privacy</a>
         </nav>
         <button
           class="theme-toggle"
@@ -62,11 +63,12 @@
         </button>
       </div>
     </header>
+
     <main id="main">
-      <section class="shell hero hero-compact" data-reveal>
+      <section class="shell hero hero-page">
         <div>
-          <p class="eyebrow">Add-ons</p>
-          <h1>Extra behaviour, written by other people.</h1>
+          <p class="folio">Beanbook:Add-ons</p>
+          <h1 class="display display-sub" data-split>Extra behaviour, written by other people.</h1>
           <p class="lede">
             An add-on is a small Python program you install yourself. Beancount
             plugins check or transform your ledger as it loads; Fava extensions
@@ -74,14 +76,18 @@
             None of them are bundled, and none of them are ours.
           </p>
         </div>
+        <figure class="slip slip-drop">
+          <figcaption class="slip-head"><span>Naming a plugin in a ledger</span><span>main.beancount</span></figcaption>
+          <pre class="slip-code"><code><span class="ln"><span class="k">plugin</span> <span class="s">"beancount.plugins.auto_accounts"</span></span><span class="ln"><span class="k">plugin</span> <span class="s">"beancount.plugins.check_commodity"</span></span><span class="ln"><span class="k">plugin</span> <span class="s">"beancount.plugins.implicit_prices"</span></span></code></pre>
+        </figure>
       </section>
 
-      <section class="section section-tint">
+      <section class="section section-tint torn">
         <div class="shell">
-          <div class="section-header" data-reveal>
-            <h2>Before you install one</h2>
+          <div class="section-header" data-in>
+            <h2 class="total">Before you install one</h2>
           </div>
-          <div class="callout callout-warning" data-reveal>
+          <div class="callout callout-warning">
             <strong>An add-on is a program you are trusting.</strong>
             <p>
               It runs with the app's permissions: it can read and change your
@@ -91,7 +97,7 @@
               back without deleting anything.
             </p>
           </div>
-          <div class="callout" data-reveal>
+          <div class="callout callout-pending">
             <strong>We have not tested these on a phone.</strong>
             <p>
               The projects below are listed because people use them with
@@ -107,114 +113,100 @@
 
       <section class="section">
         <div class="shell">
-          <div class="section-header" data-reveal>
-            <h2>Already included</h2>
+          <div class="section-header" data-in>
+            <h2 class="total">Already included</h2>
             <p>
               Beancount's own plugins ship with the engine. Nothing to install:
               name one in your ledger and it runs.
             </p>
           </div>
-          <div class="card-grid">
-            <article class="card card-tonal" data-reveal>
+          <ul class="rows rows-2">
+            <li class="row">
               <h3><code>auto_accounts</code></h3>
               <p>
                 Opens accounts as it meets them, so a ledger does not need an
                 <code>open</code> directive for everything before it will load.
               </p>
-            </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
+            </li>
+            <li class="row">
               <h3><code>check_commodity</code></h3>
               <p>
                 Complains about a currency you never declared, which is usually
                 a typo in a currency code.
               </p>
-            </article>
-            <article class="card" data-reveal>
+            </li>
+            <li class="row">
               <h3><code>implicit_prices</code></h3>
               <p>
                 Records a price from each transaction that names one, so
                 holdings can be valued without a separate price list.
               </p>
-            </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
+            </li>
+            <li class="row">
               <h3><code>nounused</code> and <code>leafonly</code></h3>
               <p>
                 Housekeeping: accounts you opened and never used, and postings
                 to an account that has children.
               </p>
-            </article>
-          </div>
+            </li>
+          </ul>
         </div>
       </section>
 
-      <section class="section section-tint">
+      <section class="section section-tint torn">
         <div class="shell">
-          <div class="section-header" data-reveal>
-            <h2>Add-ons people use</h2>
+          <div class="section-header" data-in>
+            <h2 class="total">Add-ons people use</h2>
             <p>
               Independent projects, each with its own authors and licence. The
               links go to their own pages.
             </p>
           </div>
-          <div class="card-grid">
-            <article class="card card-primary" data-reveal>
+          <div class="tiles tiles-3">
+            <article class="tile tile-key">
               <h3>beangrow</h3>
               <p>
-                Investment returns done properly — money-weighted and
-                time-weighted — over groups of accounts you define. Needs
+                Investment returns done properly, money-weighted and
+                time-weighted, over groups of accounts you define. Needs
                 several large libraries, which the Expert edition can fetch on
                 demand.
               </p>
-              <p>
-                <a href="https://github.com/beancount/beangrow">beangrow on GitHub</a>
-              </p>
+              <p><a href="https://github.com/beancount/beangrow">beangrow on GitHub</a></p>
             </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
+            <article class="tile">
               <h3>fava-investor</h3>
               <p>
                 Fava pages for investing: asset allocation, tax-lot selection,
                 and cash drag. Adds screens to the Reports tab rather than
                 changing your ledger.
               </p>
-              <p>
-                <a href="https://github.com/redstreet/fava_investor">fava-investor on GitHub</a>
-              </p>
+              <p><a href="https://github.com/redstreet/fava_investor">fava-investor on GitHub</a></p>
             </article>
-            <article class="card" data-reveal>
+            <article class="tile">
               <h3>fava-portfolio-returns</h3>
               <p>
                 Charts a portfolio's returns over time inside Fava, using
                 beangrow's calculations.
               </p>
-              <p>
-                <a href="https://github.com/andreasgerstmayr/fava-portfolio-returns"
-                  >fava-portfolio-returns on GitHub</a
-                >
-              </p>
+              <p><a href="https://github.com/andreasgerstmayr/fava-portfolio-returns">fava-portfolio-returns on GitHub</a></p>
             </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
+            <article class="tile">
               <h3>fava-dashboards</h3>
               <p>
                 Charts and tables you describe in a configuration file, shown as
                 a dashboard page in Fava.
               </p>
-              <p>
-                <a href="https://github.com/andreasgerstmayr/fava-dashboards"
-                  >fava-dashboards on GitHub</a
-                >
-              </p>
+              <p><a href="https://github.com/andreasgerstmayr/fava-dashboards">fava-dashboards on GitHub</a></p>
             </article>
-            <article class="card" data-reveal>
+            <article class="tile">
               <h3>smart_importer</h3>
               <p>
                 Guesses the account for an imported transaction from what you
                 have categorised before, so a bank export needs less editing.
               </p>
-              <p>
-                <a href="https://github.com/beancount/smart_importer">smart_importer on GitHub</a>
-              </p>
+              <p><a href="https://github.com/beancount/smart_importer">smart_importer on GitHub</a></p>
             </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
+            <article class="tile tile-ink">
               <h3>Your bank's importer</h3>
               <p>
                 Most importers are a short beangulp script written for one
@@ -228,8 +220,8 @@
 
       <section class="section">
         <div class="shell split">
-          <div data-reveal><h2>What to expect on a phone</h2></div>
-          <div class="prose" data-reveal style="--reveal-index: 1">
+          <div data-in><h2 class="total">What to expect on a phone</h2></div>
+          <div class="prose">
             <p>
               An add-on written for a desktop can fail here for ordinary
               reasons: it needs a library with no Android build, it expects a
@@ -250,22 +242,24 @@
         </div>
       </section>
 
-      <section class="section section-strong">
+      <section class="section cover">
         <div class="shell split">
-          <div><h2>Add-ons are optional.</h2></div>
+          <div data-in><h2 class="total">Add-ons are optional.</h2></div>
           <div>
             <p>
-              Everything the app does with a ledger — entering, editing,
-              balances, reports, documents — works with no add-ons at all.
+              Everything the app does with a ledger (entering, editing,
+              balances, reports, documents) works with no add-ons at all.
             </p>
             <div class="actions">
-              <a class="button button-filled" href="features.html">See features</a
-              ><a class="button button-outlined" href="help.html">Read help</a>
+              <a class="button button-filled" href="features.html">See features</a>
+              <a class="button button-outlined" href="help.html">Read help</a>
             </div>
           </div>
         </div>
       </section>
+
     </main>
+
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div>
@@ -279,9 +273,11 @@
         </div>
         <nav class="footer-links" aria-label="Footer navigation">
           <a href="privacy.html">Privacy</a><a href="help.html">Help</a
-          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+          ><a href="assets/fonts/LICENSE.txt">Roboto licence</a
+          ><a href="assets/fonts/OFL-Archivo.txt">Archivo licence</a>
         </nav>
       </div>
+      <div class="shell"><span class="wordmark" aria-hidden="true">Beanbook</span></div>
     </footer>
   </body>
 </html>

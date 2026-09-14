@@ -7,7 +7,7 @@
       name="description"
       content="Real Beancount and Fava on Android, with plain-text files, local processing, and no account or telemetry."
     />
-    <meta name="theme-color" content="#006a6a" />
+    <meta name="theme-color" content="#0b5f5b" />
     <title>Beanbook</title>
     <script>
       try {
@@ -18,6 +18,7 @@
     </script>
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="preload" href="assets/fonts/archivo-variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
     <script src="site.js" defer></script>
   </head>
@@ -26,7 +27,7 @@
     <header class="site-header">
       <div class="nav-shell">
         <a class="brand" href="index.html">
-          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="36" height="36" />
           <span>Beanbook</span>
         </a>
         <nav class="primary-nav" aria-label="Primary navigation">
@@ -66,9 +67,9 @@
     <main id="main">
       <!-- Sources: existing site/index.html; CLAUDE.md What this is; verified facts in site brief. -->
       <section class="shell hero">
-        <div data-reveal>
-          <p class="eyebrow">Track your money on Android</p>
-          <h1>Your money, written down where you can read it.</h1>
+        <div>
+          <p class="folio">Beanbook:Android</p>
+          <h1 class="display" data-split>Your money, written down where you can read it.</h1>
           <p class="lede">
             Record what you spend and earn, see where it goes, and keep receipts
             with the entries they belong to. Everything stays on your phone as
@@ -77,138 +78,145 @@
           </p>
           <div class="actions">
             <a class="button button-filled" href="download.html">Download</a>
-            <a class="button button-outlined" href="help.html"
-              >Read the guide</a
-            >
+            <a class="button button-outlined" href="help.html">Read the guide</a>
           </div>
         </div>
-        <aside
-          class="hero-panel"
-          data-reveal
-          style="--reveal-index: 1"
-          aria-label="Embedded engine versions"
-        >
-          <strong>The real thing, not a copy of it</strong>
-          <p>
-            The app runs the same Beancount and Fava software people use on a
-            desktop, so a ledger opens the same way in both places.
-          </p>
-          <dl class="version-list">
-            <div>
-              <dt>CPython</dt>
-              <dd>3.13</dd>
-            </div>
-            <div>
-              <dt>Beancount</dt>
-              <dd>3.2.3</dd>
-            </div>
-            <div>
-              <dt>Fava</dt>
-              <dd>1.30.15</dd>
-            </div>
-            <div>
-              <dt>beanquery</dt>
-              <dd>0.2.0</dd>
-            </div>
-            <div>
-              <dt>beangulp</dt>
-              <dd>0.2.0</dd>
-            </div>
-          </dl>
-        </aside>
+
+        <figure class="slip slip-drop" data-slip data-first="42.50 EUR">
+          <figcaption class="slip-head">
+            <span>Illustrative entry</span><span>ledger.beancount</span>
+          </figcaption>
+          <pre class="slip-code"><code><span class="ln"><span class="k">2026-09-14 *</span> <span class="s">"Corner grocer"</span> <span class="s">"Weekly shop"</span></span><span class="ln" data-posting="1">  Expenses:Food:Groceries     42.50 EUR</span><span class="ln" data-posting="2">  Assets:Cash                -42.50 EUR</span></code></pre>
+          <div class="slip-foot">
+            <p class="tally">
+              <span class="tally-label">Sum of the postings</span>
+              <span class="tally-value">0.00 EUR</span>
+            </p>
+            <span class="stamp" aria-hidden="true">Balances</span>
+          </div>
+        </figure>
       </section>
 
+      <section class="shell section-tight" aria-labelledby="engine-heading">
+        <h2 id="engine-heading" class="visually-hidden">Embedded engine versions</h2>
+        <dl class="versions">
+          <div><dt>CPython</dt><dd>3.13</dd></div>
+          <div><dt>Beancount</dt><dd>3.2.3</dd></div>
+          <div><dt>Fava</dt><dd>1.30.15</dd></div>
+          <div><dt>beanquery</dt><dd>0.2.0</dd></div>
+          <div><dt>beangulp</dt><dd>0.2.0</dd></div>
+        </dl>
+        <p class="versions-note">
+          <strong>The real thing, not a copy of it.</strong> The app runs the same
+          Beancount and Fava software people use on a desktop, so a ledger opens
+          the same way in both places.
+        </p>
+      </section>
+
+      <div class="tape" aria-hidden="true">
+        <div class="tape-track">
+          <span>open</span><span>2026-01-01</span><span>balance</span><span>0.00</span><span>price</span><span>EUR</span><span>document</span><span>^receipt</span><span>pad</span><span>#trip</span><span>note</span><span>include</span><span>close</span><span>plugin</span>
+          <span>open</span><span>2026-01-01</span><span>balance</span><span>0.00</span><span>price</span><span>EUR</span><span>document</span><span>^receipt</span><span>pad</span><span>#trip</span><span>note</span><span>include</span><span>close</span><span>plugin</span>
+        </div>
+      </div>
+
       <!-- Sources: storage-and-backup.md sections 1-3; distribution.md sections 2 and 4.4. -->
-      <section class="section section-tint">
+      <section class="section">
         <div class="shell">
-          <div class="section-header" data-reveal>
-            <h2>Your file stays yours</h2>
+          <div class="section-header" data-in>
+            <h2 class="total">Your file stays yours</h2>
             <p>
-              Your records are text files in a folder — your own layout,
+              Your records are text files in a folder: your own layout,
               comments and receipts kept as they are, not locked inside a
               database only this app can read.
             </p>
           </div>
-          <div class="feature-grid">
-            <article class="feature-card" data-reveal>
+          <ul class="rows">
+            <li class="row">
               <h3>Edit without giving up text</h3>
               <p>
                 Use guided entry for transactions and common directives, or edit
                 every included file directly with highlighting, search,
                 validation, and stale-write detection.
               </p>
-              <a class="link" href="features.html#entries"
-                >Entries and editing</a
-              >
-            </article>
-            <article class="feature-card" data-reveal style="--reveal-index: 1">
+              <a class="row-link" href="features.html#entries">Entries and editing</a>
+            </li>
+            <li class="row">
               <h3>Read the full reports</h3>
               <p>
                 Use Fava reports, charts, account views, and BQL queries from
                 the device.
               </p>
-              <a class="link" href="features.html#reports">Reports</a>
-            </article>
-            <article class="feature-card" data-reveal>
+              <a class="row-link" href="features.html#reports">Reports</a>
+            </li>
+            <li class="row">
               <h3>Move data manually, free</h3>
               <p>
                 Import, export, backup, and restore, like everything else, are
                 free in both editions.
               </p>
-              <a class="link" href="support.html">Everything is free</a>
-            </article>
-            <article class="feature-card" data-reveal style="--reveal-index: 1">
+              <a class="row-link" href="support.html">Everything is free</a>
+            </li>
+            <li class="row">
               <h3>Keep control of network use</h3>
               <p>
                 Local mode makes zero network requests. Remote mode connects
                 only to the Fava server address you enter.
               </p>
-              <a class="link" href="privacy.html">Privacy policy</a>
-            </article>
-          </div>
+              <a class="row-link" href="privacy.html">Privacy policy</a>
+            </li>
+          </ul>
         </div>
       </section>
 
       <!-- Sources: verified facts in site brief; known-limitations.md Devices and Privacy. -->
-      <div class="section">
-        <div class="shell fact-band" data-reveal>
-          <div class="fact">
-            <strong>Android 10+</strong><span>API 29 or later</span>
-          </div>
-          <div class="fact">
-            <strong>2 ABIs</strong><span>arm64-v8a and x86_64</span>
-          </div>
-          <div class="fact">
-            <strong>0 tracking</strong
-            ><span>No analytics, ads, or crash reporting</span>
+      <section class="section slab" aria-labelledby="facts-heading">
+        <div class="shell">
+          <h2 id="facts-heading" class="visually-hidden">At a glance</h2>
+          <div class="figures">
+            <p class="figure">
+              <strong><span data-roll>10</span>+</strong>
+              <span class="figure-unit">Android</span>
+              <span>API 29 or later</span>
+            </p>
+            <p class="figure">
+              <strong data-roll>2</strong>
+              <span class="figure-unit">ABIs</span>
+              <span>arm64-v8a and x86_64</span>
+            </p>
+            <p class="figure">
+              <strong data-roll>0</strong>
+              <span class="figure-unit">tracking</span>
+              <span>No analytics, ads, or crash reporting</span>
+            </p>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- Sources: screenshots decision in site brief. No product image is fabricated. -->
-      <section class="section section-tint">
-        <div class="shell screenshot-note" data-reveal>
-          <div>
-            <h2>Real screens will go here</h2>
+      <section class="section section-tint torn">
+        <div class="shell">
+          <div class="section-header" data-in>
+            <h2 class="total">Real screens will go here</h2>
             <p>
               The app is still being finished. Screenshots will be captured once
               from a real device, then added without changing this layout.
             </p>
           </div>
-          <ul class="capture-list" aria-label="Planned screenshots">
-            <li><strong>Home</strong><br />Light theme</li>
-            <li><strong>Journal</strong><br />Dark theme</li>
-            <li><strong>Reports</strong><br />Fava on device</li>
-            <li><strong>Documents</strong><br />Organize view</li>
+          <ul class="frames" aria-label="Planned screenshots">
+            <li class="frame"><span class="pending-tag">Not captured yet</span><strong>Home</strong><span>Light theme</span></li>
+            <li class="frame"><span class="pending-tag">Not captured yet</span><strong>Journal</strong><span>Dark theme</span></li>
+            <li class="frame"><span class="pending-tag">Not captured yet</span><strong>Reports</strong><span>Fava on device</span></li>
+            <li class="frame"><span class="pending-tag">Not captured yet</span><strong>Documents</strong><span>Organize view</span></li>
           </ul>
         </div>
       </section>
 
       <!-- Sources: distribution.md sections 2 and 4. -->
-      <section class="section section-strong">
+      <section class="section cover">
         <div class="shell split">
-          <div data-reveal><h2>Two editions. The same ledger format.</h2></div>
-          <div data-reveal style="--reveal-index: 1">
+          <div data-in><h2 class="total">Two editions. The same ledger format.</h2></div>
+          <div>
             <p>
               Play and Expert share the same features, and both are
               free. They differ only in where add-ons may get
@@ -216,11 +224,8 @@
               features, and how the app updates.
             </p>
             <div class="actions">
-              <a class="button button-filled" href="download.html"
-                >Compare editions</a
-              ><a class="button button-outlined" href="features.html"
-                >See all features</a
-              >
+              <a class="button button-filled" href="download.html">Compare editions</a>
+              <a class="button button-outlined" href="features.html">See all features</a>
             </div>
           </div>
         </div>
@@ -240,9 +245,11 @@
         </div>
         <nav class="footer-links" aria-label="Footer navigation">
           <a href="privacy.html">Privacy</a><a href="help.html">Help</a
-          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+          ><a href="assets/fonts/LICENSE.txt">Roboto licence</a
+          ><a href="assets/fonts/OFL-Archivo.txt">Archivo licence</a>
         </nav>
       </div>
+      <div class="shell"><span class="wordmark" aria-hidden="true">Beanbook</span></div>
     </footer>
   </body>
 </html>

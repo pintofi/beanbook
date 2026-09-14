@@ -7,7 +7,7 @@
       name="description"
       content="Beanbook is free. How to support the project."
     />
-    <meta name="theme-color" content="#006a6a" />
+    <meta name="theme-color" content="#0b5f5b" />
     <title>Support | Beanbook</title>
     <script>
       try {
@@ -18,6 +18,7 @@
     </script>
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="preload" href="assets/fonts/archivo-variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
     <script src="site.js" defer></script>
   </head>
@@ -26,17 +27,17 @@
     <header class="site-header">
       <div class="nav-shell">
         <a class="brand" href="index.html">
-          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="36" height="36" />
           <span>Beanbook</span>
         </a>
         <nav class="primary-nav" aria-label="Primary navigation">
-          <a class="nav-link" href="index.html">Home</a
-          ><a class="nav-link" href="features.html">Features</a
-          ><a class="nav-link" href="plugins.html">Add-ons</a
-          ><a class="nav-link" href="download.html">Download</a
-          ><a class="nav-link" href="support.html" aria-current="page">Support</a
-          ><a class="nav-link" href="help.html">Help</a
-          ><a class="nav-link" href="privacy.html">Privacy</a>
+          <a class="nav-link" href="index.html">Home</a>
+          <a class="nav-link" href="features.html">Features</a>
+          <a class="nav-link" href="plugins.html">Add-ons</a>
+          <a class="nav-link" href="download.html">Download</a>
+          <a class="nav-link" href="support.html" aria-current="page">Support</a>
+          <a class="nav-link" href="help.html">Help</a>
+          <a class="nav-link" href="privacy.html">Privacy</a>
         </nav>
         <button
           class="theme-toggle"
@@ -62,23 +63,35 @@
         </button>
       </div>
     </header>
+
     <main id="main">
       <!-- Source: docs/support-model.md. -->
-      <section class="shell hero hero-compact" data-reveal>
+      <section class="shell hero hero-page">
         <div>
-          <p class="eyebrow">Support</p>
-          <h1>Beanbook is free. All of it.</h1>
+          <p class="folio">Beanbook:Support</p>
+          <h1 class="display display-sub" data-split>Beanbook is free. All of it.</h1>
           <p class="lede">
             No trial, no paid features, no keys and no ads, in either edition.
             If the app is useful to you, you can help it along with a donation.
           </p>
         </div>
+        <figure class="slip slip-drop">
+          <figcaption class="slip-head"><span>Illustrative entry</span><span>What it costs</span></figcaption>
+          <pre class="slip-code"><code><span class="ln"><span class="k">2026-09-14 *</span> <span class="s">"Beanbook"</span> <span class="s">"Every feature"</span></span><span class="ln">  Expenses:Software           0.00 EUR</span><span class="ln">  Assets:Cash                 0.00 EUR</span></code></pre>
+          <div class="slip-foot">
+            <p class="tally"><span class="tally-label">Paid for features</span><span class="tally-value">0.00 EUR</span></p>
+            <span class="stamp" aria-hidden="true">Free</span>
+          </div>
+        </figure>
       </section>
 
-      <section class="section section-tint">
+      <section class="section section-tint torn">
         <div class="shell split">
-          <div data-reveal><h2>The Ko-fi page is not open yet.</h2></div>
-          <div data-reveal style="--reveal-index: 1">
+          <div data-in>
+            <span class="stamp stamp-pending stamp-wide" data-in aria-hidden="true">Not open yet</span>
+            <h2 class="total stamp-follow">The Ko-fi page is not open yet.</h2>
+          </div>
+          <div class="prose">
             <p>
               Donations will be taken on Ko-fi, in your browser, and unlock
               nothing: everything is already yours. The link will appear here
@@ -93,25 +106,24 @@
         </div>
       </section>
 
-      <section class="section section-strong">
+      <section class="section cover">
         <div class="shell split">
-          <div><h2>Other ways to help.</h2></div>
+          <div data-in><h2 class="total">Other ways to help.</h2></div>
           <div>
             <p>
               Report a bug, suggest something, or send a patch. The app is free
               software, licensed GPL-2.0-only, and the source is public.
             </p>
             <div class="actions">
-              <a class="button button-filled" href="features.html"
-                >See features</a
-              ><a class="button button-outlined" href="download.html"
-                >Compare editions</a
-              >
+              <a class="button button-filled" href="features.html">See features</a>
+              <a class="button button-outlined" href="download.html">Compare editions</a>
             </div>
           </div>
         </div>
       </section>
+
     </main>
+
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div>
@@ -125,9 +137,11 @@
         </div>
         <nav class="footer-links" aria-label="Footer navigation">
           <a href="privacy.html">Privacy</a><a href="help.html">Help</a
-          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+          ><a href="assets/fonts/LICENSE.txt">Roboto licence</a
+          ><a href="assets/fonts/OFL-Archivo.txt">Archivo licence</a>
         </nav>
       </div>
+      <div class="shell"><span class="wordmark" aria-hidden="true">Beanbook</span></div>
     </footer>
   </body>
 </html>

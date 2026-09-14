@@ -7,7 +7,7 @@
       name="description"
       content="Privacy policy for Beanbook: no accounts, analytics, telemetry, crash reporting, ads, or developer-operated data server."
     />
-    <meta name="theme-color" content="#006a6a" />
+    <meta name="theme-color" content="#0b5f5b" />
     <title>Privacy policy | Beanbook</title>
     <script>
       try {
@@ -18,6 +18,7 @@
     </script>
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="preload" href="assets/fonts/archivo-variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
     <script src="site.js" defer></script>
   </head>
@@ -26,19 +27,17 @@
     <header class="site-header">
       <div class="nav-shell">
         <a class="brand" href="index.html">
-          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="36" height="36" />
           <span>Beanbook</span>
         </a>
         <nav class="primary-nav" aria-label="Primary navigation">
-          <a class="nav-link" href="index.html">Home</a
-          ><a class="nav-link" href="features.html">Features</a
-          ><a class="nav-link" href="plugins.html">Add-ons</a
-          ><a class="nav-link" href="download.html">Download</a
-          ><a class="nav-link" href="support.html">Support</a
-          ><a class="nav-link" href="help.html">Help</a
-          ><a class="nav-link" href="privacy.html" aria-current="page"
-            >Privacy</a
-          >
+          <a class="nav-link" href="index.html">Home</a>
+          <a class="nav-link" href="features.html">Features</a>
+          <a class="nav-link" href="plugins.html">Add-ons</a>
+          <a class="nav-link" href="download.html">Download</a>
+          <a class="nav-link" href="support.html">Support</a>
+          <a class="nav-link" href="help.html">Help</a>
+          <a class="nav-link" href="privacy.html" aria-current="page">Privacy</a>
         </nav>
         <button
           class="theme-toggle"
@@ -64,12 +63,13 @@
         </button>
       </div>
     </header>
+
     <main id="main">
       <!-- Every policy claim below traces only to pending-verification.md B35 or threat-model.md. -->
-      <section class="shell hero hero-compact" data-reveal>
+      <section class="shell hero hero-page hero-single">
         <div>
-          <p class="eyebrow">Privacy policy</p>
-          <h1>Your ledger is not our data.</h1>
+          <p class="folio">Beanbook:Privacy</p>
+          <h1 class="display display-sub" data-split>Your ledger is not our data.</h1>
           <p class="lede">
             There is no account, sign-in, analytics, telemetry, crash reporting,
             advertising, or licence server.
@@ -77,24 +77,28 @@
         </div>
       </section>
 
-      <section class="section section-tint">
-        <div class="shell reading prose">
-          <p>
-            <strong
-              >Applies to both the Play and Expert editions. Last updated 4
-              September 2026.</strong
-            >
-          </p>
-          <div class="callout">
-            <strong>Local mode makes zero network requests.</strong>
+      <section class="section slab section-tight">
+        <div class="shell zero">
+          <p class="zero-figure" data-in aria-hidden="true">0</p>
+          <div>
+            <h2>Local mode makes zero network requests.</h2>
             <p>
               It works with the network off. The local Fava service binds only
               to <code>127.0.0.1</code> on an ephemeral port and requires a
               per-process token.
             </p>
           </div>
+        </div>
+      </section>
 
-          <h2>What the developer collects</h2>
+      <section class="section">
+        <div class="shell reading prose">
+          <p>
+            <strong>Applies to both the Play and Expert editions. Last updated 4
+            September 2026.</strong>
+          </p>
+
+          <h2 class="total">What the developer collects</h2>
           <p>
             Nothing. The app has no user accounts and no developer-operated
             service that receives your ledger, receipts, balances,
@@ -106,7 +110,7 @@
             there is no billing library, licence server or phone-home check.
           </p>
 
-          <h2>Data on the device</h2>
+          <h2 class="total">Data on the device</h2>
           <p>
             Ledger files, financial information, documents and receipt photos,
             in-app searches, and remote credentials
@@ -124,7 +128,7 @@
             and diagnostics.
           </p>
 
-          <h2>When data leaves the device</h2>
+          <h2 class="total">When data leaves the device</h2>
           <p>
             The repository audit found two outbound code paths: the address
             entered for remote mode and, in the Expert edition only, optional
@@ -170,7 +174,7 @@
             file rather than the project as a whole.
           </p>
 
-          <h2>Diagnostics</h2>
+          <h2 class="total">Diagnostics</h2>
           <p>
             Diagnostics remain on the device until the user chooses to share
             them. The bundle is redacted by default: it excludes ledger content,
@@ -178,7 +182,7 @@
             secrets, and it is shown before sharing.
           </p>
 
-          <h2>Permissions</h2>
+          <h2 class="total">Permissions</h2>
           <ul>
             <li>
               <strong>Camera:</strong> requested at the point of use for receipt
@@ -200,7 +204,7 @@
             Android's Storage Access Framework.
           </p>
 
-          <h2>No account deletion process</h2>
+          <h2 class="total">No account deletion process</h2>
           <p>
             There is no account to delete. The developer cannot delete local
             data that the developer never receives.
@@ -208,9 +212,9 @@
         </div>
       </section>
 
-      <section class="section section-strong">
+      <section class="section cover">
         <div class="shell split">
-          <div><h2>The cleartext case is not hidden.</h2></div>
+          <div data-in><h2 class="total">The cleartext case is not hidden.</h2></div>
           <div>
             <p>
               An address beginning with <code>http://</code> is a user decision
@@ -218,16 +222,15 @@
               a fallback.
             </p>
             <div class="actions">
-              <a class="button button-filled" href="help.html"
-                >Read remote help</a
-              ><a class="button button-outlined" href="features.html#remote"
-                >Remote mode</a
-              >
+              <a class="button button-filled" href="help.html">Read remote help</a>
+              <a class="button button-outlined" href="features.html#remote">Remote mode</a>
             </div>
           </div>
         </div>
       </section>
+
     </main>
+
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div>
@@ -241,9 +244,11 @@
         </div>
         <nav class="footer-links" aria-label="Footer navigation">
           <a href="privacy.html">Privacy</a><a href="help.html">Help</a
-          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+          ><a href="assets/fonts/LICENSE.txt">Roboto licence</a
+          ><a href="assets/fonts/OFL-Archivo.txt">Archivo licence</a>
         </nav>
       </div>
+      <div class="shell"><span class="wordmark" aria-hidden="true">Beanbook</span></div>
     </footer>
   </body>
 </html>

@@ -7,7 +7,7 @@
       name="description"
       content="Getting started, importing a ledger, file locations, troubleshooting, and limitations for Beanbook."
     />
-    <meta name="theme-color" content="#006a6a" />
+    <meta name="theme-color" content="#0b5f5b" />
     <title>Help | Beanbook</title>
     <script>
       try {
@@ -18,6 +18,7 @@
     </script>
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="preload" href="assets/fonts/archivo-variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
     <script src="site.js" defer></script>
   </head>
@@ -26,17 +27,17 @@
     <header class="site-header">
       <div class="nav-shell">
         <a class="brand" href="index.html">
-          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="36" height="36" />
           <span>Beanbook</span>
         </a>
         <nav class="primary-nav" aria-label="Primary navigation">
-          <a class="nav-link" href="index.html">Home</a
-          ><a class="nav-link" href="features.html">Features</a
-          ><a class="nav-link" href="plugins.html">Add-ons</a
-          ><a class="nav-link" href="download.html">Download</a
-          ><a class="nav-link" href="support.html">Support</a
-          ><a class="nav-link" href="help.html" aria-current="page">Help</a
-          ><a class="nav-link" href="privacy.html">Privacy</a>
+          <a class="nav-link" href="index.html">Home</a>
+          <a class="nav-link" href="features.html">Features</a>
+          <a class="nav-link" href="plugins.html">Add-ons</a>
+          <a class="nav-link" href="download.html">Download</a>
+          <a class="nav-link" href="support.html">Support</a>
+          <a class="nav-link" href="help.html" aria-current="page">Help</a>
+          <a class="nav-link" href="privacy.html">Privacy</a>
         </nav>
         <button
           class="theme-toggle"
@@ -62,40 +63,45 @@
         </button>
       </div>
     </header>
+
     <main id="main">
-      <section class="shell hero hero-compact" data-reveal>
+      <section class="shell hero hero-page">
         <div>
-          <p class="eyebrow">Help</p>
-          <h1>Start with a project, not an account.</h1>
+          <p class="folio">Beanbook:Help</p>
+          <h1 class="display display-sub" data-split>Start with a project, not an account.</h1>
           <p class="lede">
             Create a ledger or import a complete project tree. The app reads the
             same Beancount syntax used on desktop.
           </p>
         </div>
+        <figure class="slip slip-drop">
+          <figcaption class="slip-head"><span>A project that stays together</span><span>main.beancount</span></figcaption>
+          <pre class="slip-code"><code><span class="ln"><span class="k">option</span> <span class="s">"title"</span> <span class="s">"Household"</span></span><span class="ln"><span class="k">option</span> <span class="s">"documents"</span> <span class="s">"documents"</span></span><span class="ln"><span class="k">include</span> <span class="s">"accounts.beancount"</span></span><span class="ln"><span class="k">include</span> <span class="s">"2026/*.beancount"</span></span></code></pre>
+        </figure>
       </section>
 
       <!-- Sources: AppChrome.kt Projects description; storage-and-backup.md 2 and 4. -->
-      <section class="section section-tint">
-        <div class="shell">
-          <div class="section-header" data-reveal><h2>Getting started</h2></div>
+      <section class="section section-tint torn">
+        <div class="shell split">
+          <div data-in><h2 class="total">Getting started</h2></div>
           <ol class="steps">
-            <li data-reveal>
+            <li>
               <strong>Open Projects.</strong>Create a new ledger, select a
               folder tree, or select an archive.
             </li>
-            <li data-reveal style="--reveal-index: 1">
+            <li>
               <strong>Keep the whole tree together.</strong>Import the project
               rather than only one file so includes and document links remain
               valid.
             </li>
-            <li data-reveal style="--reveal-index: 2">
+            <li>
               <strong>Fix ordinary parse errors.</strong>Import completes even
               if Beancount reports errors, so you can correct them in the raw
               editor with file, line, and column information.
             </li>
-            <li data-reveal style="--reveal-index: 3">
+            <li>
               <strong>Export a copy.</strong>Keep an ordinary folder you can
-              open on a computer, make a backup file, or turn on auto-mirror
+              open on a computer, make a backup file, or turn on auto-mirror to
               keep a folder in step for you.
             </li>
           </ol>
@@ -105,8 +111,8 @@
       <!-- Source: storage-and-backup.md 1, 1.1, 2, 4, 5. -->
       <section class="section">
         <div class="shell split">
-          <div data-reveal><h2>Importing an existing ledger</h2></div>
-          <div class="prose" data-reveal style="--reveal-index: 1">
+          <div data-in><h2 class="total">Importing an existing ledger</h2></div>
+          <div class="prose">
             <p>
               Import the whole folder tree or an archive, not only the root
               <code>.beancount</code> file. That keeps included files and linked
@@ -126,54 +132,54 @@
         </div>
       </section>
 
-      <section class="section section-tint">
+      <section class="section slab">
         <div class="shell">
-          <div class="section-header" data-reveal>
-            <h2>Where your files live</h2>
+          <div class="section-header" data-in>
+            <h2 class="total">Where your files live</h2>
             <p>
               The app-private workspace is canonical. This is required because
               Python and Fava need real POSIX paths, while Android's folder
               picker provides content URIs.
             </p>
           </div>
-          <div class="card-grid">
-            <article class="card card-primary" data-reveal>
+          <ul class="rows rows-2">
+            <li class="row">
               <h3>Canonical workspace</h3>
               <p>
                 Projects live in app-private storage. Modern file managers
                 cannot browse that location.
               </p>
-            </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
+            </li>
+            <li class="row">
               <h3>In-app raw editor</h3>
               <p>
                 Every included file remains directly editable inside the app.
                 This is permanently free.
               </p>
-            </article>
-            <article class="card" data-reveal>
+            </li>
+            <li class="row">
               <h3>Portable copies</h3>
               <p>
                 Import, export, and mirror connect the private workspace to a
                 folder chosen through Android's Storage Access Framework.
               </p>
-            </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
+            </li>
+            <li class="row">
               <h3>Clean project tree</h3>
               <p>
                 Caches, logs, credentials, and generated state
                 live outside the portable project tree.
               </p>
-            </article>
-          </div>
+            </li>
+          </ul>
         </div>
       </section>
 
       <!-- Sources: known-limitations.md; threat-model.md; storage-and-backup.md. -->
       <section class="section">
         <div class="shell split">
-          <div><h2>Troubleshooting</h2></div>
-          <div class="prose" data-reveal style="--reveal-index: 1">
+          <div data-in><h2 class="total">Troubleshooting</h2></div>
+          <div class="prose faq">
             <h3>A ledger will not load</h3>
             <p>
               Open the reported file, line, and column in the raw editor. A file
@@ -207,45 +213,47 @@
       </section>
 
       <!-- Source: known-limitations.md, written for this audience. -->
-      <section class="section section-tint">
+      <section class="section section-tint torn">
         <div class="shell">
-          <div class="section-header" data-reveal>
-            <h2>What it does not do</h2>
+          <div class="section-header" data-in>
+            <h2 class="total">What it does not do</h2>
             <p>These are product limits, not hidden roadmap promises.</p>
           </div>
-          <div class="card-grid">
-            <article class="card" data-reveal>
+          <div class="tiles tiles-3">
+            <article class="tile">
               <h3>No Git integration</h3>
               <p>
                 The app can edit a working tree but leaves version control to
                 you.
               </p>
             </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
+            <article class="tile">
               <h3>No remote offline cache</h3>
               <p>
                 Remote mode requires the server and provides reports plus
                 quick-add, not existing-entry editing or two-way sync.
               </p>
             </article>
-            <article class="card" data-reveal>
+            <article class="tile">
               <h3>No 32-bit support</h3>
               <p>Only arm64-v8a and x86_64 builds are provided.</p>
             </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
+            <article class="tile">
               <h3>No OCR in v1</h3>
               <p>
                 Camera capture and PDF assembly ship first. OCR is deferred.
               </p>
             </article>
-            <article class="card" data-reveal>
-              <h3>No plugin marketplace</h3>
+            <article class="tile">
+              <h3>A short plugin list, not a store</h3>
               <p>
-                You supply plugin files. The app does not provide a vetted
-                catalog.
+                The app lists the plugins from awesome-beancount with what is
+                known about each. The Expert edition installs them one at a
+                time; the Play edition lists them only. Nothing is reviewed for
+                safety, and plugins run with the app's own access.
               </p>
             </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
+            <article class="tile">
               <h3>English UI only</h3>
               <p>
                 The UI is prepared for localization, but translations do not
@@ -253,7 +261,7 @@
               </p>
             </article>
           </div>
-          <div class="callout" data-reveal>
+          <div class="callout">
             <strong>Large ledgers cost time once.</strong>
             <p>
               The app was built and measured around roughly 25,000 transactions
@@ -269,25 +277,24 @@
         </div>
       </section>
 
-      <section class="section section-strong">
+      <section class="section cover">
         <div class="shell split">
-          <div><h2>Before relying on it</h2></div>
+          <div data-in><h2 class="total">Before relying on it</h2></div>
           <div>
             <p>
               Review the privacy policy and edition boundaries, especially if
               you plan to use remote mode or user Python.
             </p>
             <div class="actions">
-              <a class="button button-filled" href="privacy.html"
-                >Read privacy</a
-              ><a class="button button-outlined" href="download.html"
-                >Compare editions</a
-              >
+              <a class="button button-filled" href="privacy.html">Read privacy</a>
+              <a class="button button-outlined" href="download.html">Compare editions</a>
             </div>
           </div>
         </div>
       </section>
+
     </main>
+
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div>
@@ -301,9 +308,11 @@
         </div>
         <nav class="footer-links" aria-label="Footer navigation">
           <a href="privacy.html">Privacy</a><a href="help.html">Help</a
-          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+          ><a href="assets/fonts/LICENSE.txt">Roboto licence</a
+          ><a href="assets/fonts/OFL-Archivo.txt">Archivo licence</a>
         </nav>
       </div>
+      <div class="shell"><span class="wordmark" aria-hidden="true">Beanbook</span></div>
     </footer>
   </body>
 </html>

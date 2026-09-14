@@ -7,7 +7,7 @@
       name="description"
       content="Compare the Play and Expert editions of Beanbook, requirements, sizes, and availability."
     />
-    <meta name="theme-color" content="#006a6a" />
+    <meta name="theme-color" content="#0b5f5b" />
     <title>Download | Beanbook</title>
     <script>
       try {
@@ -18,6 +18,7 @@
     </script>
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="preload" href="assets/fonts/archivo-variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
     <script src="site.js" defer></script>
   </head>
@@ -26,18 +27,17 @@
     <header class="site-header">
       <div class="nav-shell">
         <a class="brand" href="index.html">
-          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="36" height="36" />
           <span>Beanbook</span>
         </a>
         <nav class="primary-nav" aria-label="Primary navigation">
-          <a class="nav-link" href="index.html">Home</a
-          ><a class="nav-link" href="features.html">Features</a
-          ><a class="nav-link" href="plugins.html">Add-ons</a
-          ><a class="nav-link" href="download.html" aria-current="page"
-            >Download</a
-          ><a class="nav-link" href="support.html">Support</a
-          ><a class="nav-link" href="help.html">Help</a
-          ><a class="nav-link" href="privacy.html">Privacy</a>
+          <a class="nav-link" href="index.html">Home</a>
+          <a class="nav-link" href="features.html">Features</a>
+          <a class="nav-link" href="plugins.html">Add-ons</a>
+          <a class="nav-link" href="download.html" aria-current="page">Download</a>
+          <a class="nav-link" href="support.html">Support</a>
+          <a class="nav-link" href="help.html">Help</a>
+          <a class="nav-link" href="privacy.html">Privacy</a>
         </nav>
         <button
           class="theme-toggle"
@@ -63,21 +63,21 @@
         </button>
       </div>
     </header>
+
     <main id="main">
       <!-- Sources: distribution.md section 2; known-limitations.md Devices; verified facts in site brief. -->
-      <section class="shell hero hero-compact" data-reveal>
+      <section class="shell hero hero-page">
         <div>
-          <p class="eyebrow">Download</p>
-          <h1>Choose by where code may come from.</h1>
+          <p class="folio">Beanbook:Download</p>
+          <h1 class="display display-sub" data-split>Choose by where code may come from.</h1>
           <p class="lede">
-            Both editions read the same projects, and both are free. Google Play policy creates three practical differences.
+            Both editions read the same projects, and both are free. Google Play
+            policy creates three practical differences.
           </p>
         </div>
-      </section>
-
-      <div class="section section-tint">
-        <div class="shell">
-          <div class="download-status" data-reveal>
+        <div class="status-card">
+          <span class="stamp stamp-pending stamp-wide" data-in aria-hidden="true">Not live yet</span>
+          <div class="callout callout-pending">
             <strong>Downloads are not live yet.</strong>
             <p>
               There are no download links on this page yet. Play and Expert
@@ -85,25 +85,19 @@
             </p>
           </div>
         </div>
-      </div>
+      </section>
 
-      <section class="section">
+      <section class="section section-tint torn">
         <div class="shell">
-          <div class="section-header" data-reveal>
-            <h2>Edition comparison</h2>
+          <div class="section-header" data-in>
+            <h2 class="total">Edition comparison</h2>
             <p>
               Everything not listed as a difference is shared, including local
               Beancount and Fava, reports, editing, documents, backups, remote
               mode, and every other feature.
             </p>
           </div>
-          <div
-            class="table-wrap"
-            data-reveal
-            tabindex="0"
-            role="region"
-            aria-label="Edition comparison table"
-          >
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Edition comparison table">
             <table>
               <thead>
                 <tr>
@@ -145,22 +139,24 @@
       </section>
 
       <!-- Sources: verified facts in site brief; known-limitations.md Devices. -->
-      <section class="section section-tint">
+      <section class="section slab">
         <div class="shell">
-          <div class="section-header" data-reveal>
-            <h2>Requirements and size</h2>
+          <div class="section-header" data-in>
+            <h2 class="total">Requirements and size</h2>
           </div>
-          <div class="card-grid">
-            <article class="card card-primary" data-reveal>
-              <h3>Android</h3>
-              <p>Android 10 (API 29) or later. Android 9 is not supported.</p>
-            </article>
-            <article class="card" data-reveal style="--reveal-index: 1">
-              <h3>Processor</h3>
-              <p>arm64-v8a and x86_64. There is no 32-bit build.</p>
-            </article>
+          <div class="figures figures-2">
+            <p class="figure">
+              <strong><span data-roll>10</span>+</strong>
+              <span class="figure-unit">Android</span>
+              <span>Android 10 (API 29) or later. Android 9 is not supported.</span>
+            </p>
+            <p class="figure">
+              <strong>64-bit</strong>
+              <span class="figure-unit">Processor</span>
+              <span>arm64-v8a and x86_64. There is no 32-bit build.</span>
+            </p>
           </div>
-          <div class="callout" data-reveal>
+          <div class="callout">
             <strong>Optional libraries use more space.</strong>
             <p>
               The Expert edition downloads extra Python libraries only when you
@@ -173,21 +169,25 @@
 
       <section class="section">
         <div class="shell split">
-          <div data-reveal><h2>Which edition should you use?</h2></div>
-          <div class="prose" data-reveal style="--reveal-index: 1">
-            <h3>Play</h3>
-            <p>
-              Use it when you want updates through the Play Store and your
-              add-ons do not need to download libraries or use your phone's own
-              features.
-            </p>
-            <h3>Expert</h3>
-            <p>
-              Use it when your add-ons need libraries downloaded on demand or
-              access to your phone's own features, and you are comfortable
-              installing signed releases yourself.
-            </p>
-            <p>
+          <div data-in><h2 class="total">Which edition should you use?</h2></div>
+          <div class="tiles tiles-stack">
+            <article class="tile">
+              <h3>Play</h3>
+              <p>
+                Use it when you want updates through the Play Store and your
+                add-ons do not need to download libraries or use your phone's own
+                features.
+              </p>
+            </article>
+            <article class="tile tile-key">
+              <h3>Expert</h3>
+              <p>
+                Use it when your add-ons need libraries downloaded on demand or
+                access to your phone's own features, and you are comfortable
+                installing signed releases yourself.
+              </p>
+            </article>
+            <p class="muted tiles-note">
               Files are identical between editions. A project created in one
               opens unchanged in the other and in desktop Beancount.
             </p>
@@ -195,25 +195,24 @@
         </div>
       </section>
 
-      <section class="section section-strong">
+      <section class="section cover">
         <div class="shell split">
-          <div><h2>New to the app?</h2></div>
+          <div data-in><h2 class="total">New to the app?</h2></div>
           <div>
             <p>
               Read the storage and import model before moving an existing
               ledger.
             </p>
             <div class="actions">
-              <a class="button button-filled" href="help.html"
-                >Getting started</a
-              ><a class="button button-outlined" href="privacy.html"
-                >Read privacy</a
-              >
+              <a class="button button-filled" href="help.html">Getting started</a>
+              <a class="button button-outlined" href="privacy.html">Read privacy</a>
             </div>
           </div>
         </div>
       </section>
+
     </main>
+
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div>
@@ -227,9 +226,11 @@
         </div>
         <nav class="footer-links" aria-label="Footer navigation">
           <a href="privacy.html">Privacy</a><a href="help.html">Help</a
-          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+          ><a href="assets/fonts/LICENSE.txt">Roboto licence</a
+          ><a href="assets/fonts/OFL-Archivo.txt">Archivo licence</a>
         </nav>
       </div>
+      <div class="shell"><span class="wordmark" aria-hidden="true">Beanbook</span></div>
     </footer>
   </body>
 </html>
