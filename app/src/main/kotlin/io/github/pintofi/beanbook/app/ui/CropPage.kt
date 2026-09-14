@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -176,6 +177,10 @@ private fun CropCanvas(
     val imageWidth = image.width.toFloat()
     val imageHeight = image.height.toFloat()
     var dragging by remember(file.path) { mutableStateOf<CropCorner?>(null) }
+    // The gesture below is started once per page and outlives many recompositions, so it reads
+    // the corners through this rather than capturing them: a captured `quad` was the one from
+    // when the page opened, and moving a second corner put the first one back.
+    val current by rememberUpdatedState(quad)
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Canvas(
@@ -204,14 +209,14 @@ private fun CropCanvas(
                         // did first -- lets a quick drag pass closer to a different corner
                         // and silently start dragging that one instead.
                         onDragStart = { position ->
-                            dragging = nearestCorner(quad, toImage(position))
+                            dragging = nearestCorner(current, toImage(position))
                         },
                         onDragEnd = { dragging = null },
                         onDragCancel = { dragging = null },
                     ) { change, _ ->
                         dragging?.let { corner ->
                             onQuadChange(
-                                quad.move(corner, toImage(change.position), imageWidth, imageHeight),
+                                current.move(corner, toImage(change.position), imageWidth, imageHeight),
                             )
                         }
                         change.consume()

@@ -13,11 +13,15 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RotateLeft
 import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,6 +48,7 @@ import io.github.pintofi.beanbook.core.domain.CapturedPages
 import io.github.pintofi.beanbook.core.domain.CropQuad
 import io.github.pintofi.beanbook.core.domain.PageStyle
 import java.io.File
+import kotlinx.coroutines.launch
 import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 
 /**
@@ -84,6 +90,13 @@ fun PageEditorScreen(
     )
     var cropping by rememberSaveable { mutableStateOf<Int?>(null) }
     val current = state.currentPage.coerceIn(0, pages.size - 1)
+    val scope = rememberCoroutineScope()
+    var moveMenu by remember { mutableStateOf(false) }
+    // A moved page stays in front of you, so the counter names where it went.
+    val move = { from: Int, to: Int ->
+        onMove(from, to)
+        scope.launch { state.scrollToPage(to) }
+    }
 
     // Cropping takes the screen in place of the editor rather than opening a card over it
     // (B73): it is the same page, at the same size, and only the controls change.
@@ -136,6 +149,34 @@ fun PageEditorScreen(
                     contentDescription = "Remove page ${current + 1}"
                 },
             ) { Icon(Icons.Filled.Delete, contentDescription = null, tint = Color.White) }
+            // Moving a page is in words, in a menu, because it used to be the arrows under the
+            // page -- which everyone read as "show me the next page". Pressing one swapped two
+            // pages while the counter stayed put, and pressing it again swapped them back.
+            Box {
+                IconButton(
+                    onClick = { moveMenu = true },
+                    enabled = pages.size > 1,
+                    modifier = Modifier.semantics { contentDescription = "Change the order of the pages" },
+                ) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = null,
+                        tint = if (pages.size > 1) Color.White else Color.Gray,
+                    )
+                }
+                DropdownMenu(expanded = moveMenu, onDismissRequest = { moveMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Move page ${current + 1} earlier") },
+                        enabled = current > 0,
+                        onClick = { moveMenu = false; move(current, current - 1) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Move page ${current + 1} later") },
+                        enabled = current < pages.size - 1,
+                        onClick = { moveMenu = false; move(current, current + 1) },
+                    )
+                }
+            }
         }
 
         HorizontalPager(state = state, modifier = Modifier.weight(1f).fillMaxWidth()) { index ->
@@ -213,28 +254,25 @@ fun PageEditorScreen(
                     contentDescription = "Turn page ${current + 1} clockwise"
                 },
             ) { Icon(Icons.Filled.RotateRight, contentDescription = null, tint = Color.White) }
+            // Between pages, stopping at either end rather than wrapping round.
             IconButton(
-                onClick = { onMove(current, current - 1) },
+                onClick = { scope.launch { state.animateScrollToPage(current - 1) } },
                 enabled = current > 0,
-                modifier = Modifier.semantics {
-                    contentDescription = "Move page ${current + 1} earlier"
-                },
+                modifier = Modifier.semantics { contentDescription = "Previous page" },
             ) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                     contentDescription = null,
                     tint = if (current > 0) Color.White else Color.Gray,
                 )
             }
             IconButton(
-                onClick = { onMove(current, current + 1) },
+                onClick = { scope.launch { state.animateScrollToPage(current + 1) } },
                 enabled = current < pages.size - 1,
-                modifier = Modifier.semantics {
-                    contentDescription = "Move page ${current + 1} later"
-                },
+                modifier = Modifier.semantics { contentDescription = "Next page" },
             ) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowForward,
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
                     tint = if (current < pages.size - 1) Color.White else Color.Gray,
                 )

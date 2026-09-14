@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -146,8 +148,38 @@ class PageEditorTest {
                 )
             }
         }
-        compose.onNodeWithContentDescription("Move page 2 earlier").performClick()
+        compose.onNodeWithContentDescription("Change the order of the pages").performClick()
+        compose.onNodeWithText("Move page 2 later").assertIsNotEnabled()
+        compose.onNodeWithText("Move page 2 earlier").performClick()
         assertEquals(1 to 0, moved)
+        // The moved page stays in front, so the counter follows it.
+        compose.onNodeWithText("Page 1 of 2").assertIsDisplayed()
+    }
+
+    /** The arrows turn pages, stop at either end, and the counter follows (B85). */
+    @Test fun theArrowsTurnPagesAndStopAtTheEnds() {
+        compose.setContent {
+            MaterialTheme {
+                PageEditorScreen(
+                    pages = pages,
+                    fileFor = { File(dir, it) },
+                    startAt = 0,
+                    onRotate = { _, _ -> },
+                    onCrop = { _, _ -> },
+                    onRestyle = { _, _ -> },
+                    onRemove = {},
+                    onDone = {},
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Previous page").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Next page").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Page 2 of 2").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Next page").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Previous page").assertIsEnabled().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Page 1 of 2").assertIsDisplayed()
     }
 
     /** An empty batch has nothing to edit, and must not strand the user on a blank screen. */

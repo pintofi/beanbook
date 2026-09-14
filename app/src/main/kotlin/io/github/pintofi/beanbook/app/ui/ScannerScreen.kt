@@ -41,6 +41,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -166,6 +169,9 @@ fun ScannerScreen(
     var aimed by remember { mutableStateOf(false) }
     // What the viewfinder draws into, handed over by CameraX each time it (re)binds (B84).
     var surfaceRequest by remember { mutableStateOf<androidx.camera.core.SurfaceRequest?>(null) }
+    // Where the last tap to focus landed, and a count so a second tap restarts the ring.
+    var focusPoint by remember { mutableStateOf<Offset?>(null) }
+    var focusTaps by remember { mutableIntStateOf(0) }
     val transformer = remember { androidx.camera.viewfinder.compose.MutableCoordinateTransformer() }
     // The page as the detector sees it right now, in the sampled frame's pixels (B79). The
     // outline used to be the *last shot's*, stretched over the whole window without allowing
@@ -373,6 +379,8 @@ fun ScannerScreen(
                     .pointerInput(camera, request) {
                     detectTapGestures { position ->
                         val control = camera?.cameraControl ?: return@detectTapGestures
+                        focusPoint = position
+                        focusTaps++
                         val onSurface = with(transformer) { position.transform() }
                         val factory = androidx.camera.core.SurfaceOrientedMeteringPointFactory(
                             request.resolution.width.toFloat(),
@@ -386,6 +394,37 @@ fun ScannerScreen(
                     }
                 },
             )
+        }
+
+        // A ring where the tap landed, as camera apps draw one (B85): it closes in on the point,
+        // holds while the lens settles, and fades. Without it a tap looked like nothing happened.
+        focusPoint?.let { point ->
+            val ring = remember { Animatable(0f) }
+            LaunchedEffect(focusTaps) {
+                ring.snapTo(0f)
+                ring.animateTo(1f, tween(FOCUS_RING_MILLIS, easing = LinearEasing))
+                focusPoint = null
+            }
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                val t = ring.value
+                val closing = (t / FOCUS_RING_CLOSE).coerceAtMost(1f)
+                val eased = 1f - (1f - closing) * (1f - closing)
+                val radius = FOCUS_RING_RADIUS.dp.toPx() * (FOCUS_RING_START - (FOCUS_RING_START - 1f) * eased)
+                val fade = if (t < FOCUS_RING_FADE) 1f else (1f - t) / (1f - FOCUS_RING_FADE)
+                // A dark edge under the white, so the ring still shows against a white receipt.
+                drawCircle(
+                    color = Color.Black.copy(alpha = FOCUS_RING_SHADOW * fade),
+                    radius = radius,
+                    center = point,
+                    style = Stroke(width = 4.dp.toPx()),
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = fade),
+                    radius = radius,
+                    center = point,
+                    style = Stroke(width = 2.dp.toPx()),
+                )
+            }
         }
 
         // The page the detector sees now, on the preview (B79). The analysis frame is upright
@@ -792,6 +831,14 @@ private const val MAX_ZOOM_LABEL = 5f
 
 /** How much a page grows while it is being dragged, so it reads as lifted. */
 private const val DRAG_SCALE = 1.08f
+
+/** The focus ring: how long it shows, how big it starts, and when it stops closing and fades. */
+private const val FOCUS_RING_MILLIS = 900
+private const val FOCUS_RING_RADIUS = 36
+private const val FOCUS_RING_START = 1.5f
+private const val FOCUS_RING_CLOSE = 0.25f
+private const val FOCUS_RING_FADE = 0.7f
+private const val FOCUS_RING_SHADOW = 0.4f
 
 /** The analysis stream only feeds a detector that works at 720 px; more is wasted battery. */
 private const val ANALYSIS_WIDTH = 960
