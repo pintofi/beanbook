@@ -26,7 +26,6 @@ rootProject.name = "beancount-android"
 // (see PLAN.md); an empty module is a placeholder, and placeholders are forbidden.
 include(":core-domain")     // pure Kotlin, holds the data invariants
 include(":core-data")      // workspace layout and project files
-include(":core-entitlement") // trial, contribution keys, feature gating
 include(":core-engine")     // EngineClient boundary + flavor policy types
 include(":engine-local")    // Chaquopy + Beancount/Fava, loopback server
 include(":engine-remote")   // hardened HTTPS client for a self-hosted Fava

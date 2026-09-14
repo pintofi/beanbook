@@ -169,17 +169,9 @@ android {
 }
 
 dependencies {
-    // Raises the floor rather than adding a dependency: androidx.fragment is never used
-    // directly, but Play Billing puts an old one on the play compile classpath. See the
-    // note beside `fragment` in the version catalog.
-    constraints {
-        implementation(libs.androidx.fragment)
-    }
-
     implementation(project(":core-domain"))
     implementation(project(":core-data"))
     implementation(project(":core-engine"))
-    implementation(project(":core-entitlement"))
     implementation(project(":engine-local"))
     implementation(project(":engine-remote"))
     implementation(project(":scanner"))
@@ -192,10 +184,6 @@ dependencies {
     implementation(libs.camera.view)
     implementation(libs.androidx.work.runtime)
     implementation(libs.argon2kt)
-    // Play Billing, play flavor only. `playImplementation` rather than `implementation` is
-    // what keeps it off the expert classpath; :verifyPlayFlavorBoundaries fails if that
-    // changes (M1).
-    "playImplementation"(libs.billing)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime)
     implementation(libs.androidx.lifecycle.process)

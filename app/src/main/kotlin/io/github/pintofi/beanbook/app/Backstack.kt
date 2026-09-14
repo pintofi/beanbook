@@ -9,7 +9,6 @@ package io.github.pintofi.beanbook.app
  *
  *     BackHandler(enabled = adding) { ... }
  *     BackHandler(enabled = !adding && moreSection != null) { ... }
- *     BackHandler(enabled = !adding && moreSection == null && showContribute) { ... }
  *
  * — so opening a fifth thing meant editing the other four, and forgetting one silently broke
  * Back. That happened once already when the add form moved to a button.
@@ -20,9 +19,6 @@ internal sealed interface Overlay {
 
     /** A section of the More hub. */
     data class Section(val section: MoreSection) : Overlay
-
-    /** The Contribute sheet. */
-    data object Contribute : Overlay
 }
 
 /**
@@ -41,7 +37,6 @@ internal data class Backstack(
 
     val isAdding: Boolean get() = top == Overlay.AddEntry
     val openSection: MoreSection? get() = (top as? Overlay.Section)?.section
-    val isContributing: Boolean get() = top == Overlay.Contribute
 
     /** Opens [overlay] on top, replacing an identical one rather than stacking it twice. */
     fun open(overlay: Overlay): Backstack =

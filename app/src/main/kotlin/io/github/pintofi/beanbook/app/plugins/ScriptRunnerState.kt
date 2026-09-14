@@ -51,7 +51,7 @@ data class ScriptOutcome(
 }
 
 /**
- * Running a user script against the open ledger (SPEC.md Tier 3, N10).
+ * Running a user script against the open ledger (N10).
  *
  * The engine has been able to do this since M11 — with a deadline, cancellation, output
  * capture and redaction — and nothing in the app called it, so a paid feature shipped dead.

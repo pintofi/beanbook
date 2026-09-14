@@ -35,25 +35,6 @@ private fun hasAnyText() = SemanticsMatcher("has text") {
 @RunWith(AndroidJUnit4::class)
 class WindowInsetsTest {
 
-    companion object {
-        /**
-         * Marks the app as already welcomed before the activity launches.
-         *
-         * The first-run welcome is a dialog, and a dialog's title is the topmost text on
-         * screen — which this test would then measure and report as content drawing under
-         * the status bar. It failed exactly that way once the welcome was added (B27).
-         *
-         * In `@BeforeClass` rather than `@Before` because the compose rule launches the
-         * activity as part of applying the rule, which happens first.
-         */
-        @JvmStatic
-        @BeforeClass
-        fun skipTheWelcome() {
-            val context = InstrumentationRegistry.getInstrumentation().targetContext
-            io.github.pintofi.beanbook.app.ui.FirstRun(java.io.File(context.filesDir, "state")).markWelcomed()
-        }
-    }
-
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun contentDoesNotDrawUnderTheStatusBar() {

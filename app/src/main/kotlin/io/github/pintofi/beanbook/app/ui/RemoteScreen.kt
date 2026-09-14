@@ -65,7 +65,7 @@ private fun CleartextWarning(hasPassword: Boolean) {
 }
 
 /**
- * Remote mode: point the app at your own Fava (SPEC.md J4, Tier 3).
+ * Remote mode: point the app at your own Fava (SPEC.md J4).
  *
  * Two things this screen must never do, and does not: offer a way past a certificate error,
  * and imply the app keeps a copy of a remote ledger. Remote is a viewer plus quick-add — the

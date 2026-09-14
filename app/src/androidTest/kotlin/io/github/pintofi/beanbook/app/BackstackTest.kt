@@ -54,9 +54,9 @@ class BackstackTest {
 
     @Test fun onlyTheTopOverlayIsReportedOpen() {
         val stack = Backstack()
-            .open(Overlay.Contribute)
+            .open(Overlay.Section(MoreSection.BACKUP))
             .open(Overlay.AddEntry)
         assertTrue(stack.isAdding)
-        assertTrue("Contribute is underneath, not open", !stack.isContributing)
+        assertNull("the section is underneath, not open", stack.openSection)
     }
 }

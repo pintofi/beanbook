@@ -74,15 +74,6 @@ object WidgetRenderer {
             return views
         }
 
-        if (!snapshot.entitled) {
-            views.setTextViewText(R.id.widget_value, "—")
-            views.setTextViewText(
-                R.id.widget_footnote,
-                "Widgets are part of the Workflow tier. Your ledger is unaffected.",
-            )
-            return views
-        }
-
         if (metric == WidgetMetric.QUICK_ADD) {
             views.setTextViewText(R.id.widget_value, "+")
             views.setTextViewText(R.id.widget_footnote, snapshot.projectTitle)
@@ -144,12 +135,8 @@ object WidgetRenderer {
         )
         views.removeAllViews(R.id.widget_rows)
 
-        if (snapshot == null || !snapshot.entitled) {
-            views.setTextViewText(
-                R.id.widget_footnote,
-                if (snapshot == null) "Open the app once to set this up."
-                else "Widgets are part of the Workflow tier. Your ledger is unaffected.",
-            )
+        if (snapshot == null) {
+            views.setTextViewText(R.id.widget_footnote, "Open the app once to set this up.")
             return views
         }
 

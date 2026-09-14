@@ -66,7 +66,7 @@ import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import androidx.compose.ui.graphics.graphicsLayer
 
 /**
- * The free-tier native surfaces: the account balances list and the journal
+ * The native surfaces: the account balances list and the journal
  * (docs/distribution.md §4.4). Both read from a [LedgerSnapshot] that Beancount produced,
  * so the app displays accounting facts rather than computing its own.
  */
@@ -220,8 +220,6 @@ internal fun PostingLotText(
 fun BalancesScreen(
     snapshot: LedgerSnapshot,
     modifier: Modifier = Modifier,
-    /** Cost and market value are Tier 3; the units everyone can see (B14). */
-    valuationAllowed: Boolean = false,
     /** The period the figures cover, as Fava's time filter expresses it (B53). */
     dateFrom: String = "",
     dateTo: String = "",
@@ -313,29 +311,28 @@ fun BalancesScreen(
                 .padding(bottom = Measure.snug),
         )
 
-        if (valuationAllowed) {
-            // Segmented buttons, not chips. These are one basis at a time -- the same figures
-            // valued three ways -- and a segmented row is what Material uses to say "pick one
-            // of these". Chips read as filters that combine, which is the opposite.
-            SingleChoiceSegmentedButtonRow(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = Measure.gutter),
-            ) {
-                Valuation.entries.forEachIndexed { index, option ->
-                    SegmentedButton(
-                        selected = basis == option,
-                        onClick = { basis = option; store.write(option) },
-                        shape = SegmentedButtonDefaults.itemShape(
-                            index,
-                            Valuation.entries.size,
-                            baseShape = BeanbookShape.control,
-                        ),
-                        modifier = Modifier.semantics {
-                            contentDescription = "Show balances ${option.label}"
-                        },
-                    ) { Text(option.label) }
-                }
+        // Segmented buttons, not chips. These are one basis at a time -- the same figures
+        // valued three ways -- and a segmented row is what Material uses to say "pick one
+        // of these". Chips read as filters that combine, which is the opposite.
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Measure.gutter),
+        ) {
+            Valuation.entries.forEachIndexed { index, option ->
+                SegmentedButton(
+                    selected = basis == option,
+                    onClick = { basis = option; store.write(option) },
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index,
+                        Valuation.entries.size,
+                        baseShape = BeanbookShape.control,
+                    ),
+                    modifier = Modifier.semantics {
+                        contentDescription = "Show balances ${option.label}"
+                    },
+                ) { Text(option.label) }
             }
         }
+    
 
         val needle = filter.trim()
         val tagged = remember(tagFilter) {

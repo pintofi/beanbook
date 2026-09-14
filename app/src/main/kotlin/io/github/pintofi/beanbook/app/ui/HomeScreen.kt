@@ -92,6 +92,8 @@ fun HomeScreen(
     today: LocalDate = LocalDate.now(),
     layout: HomePreferences.Layout? = null,
     onLayoutChange: (HomePreferences.Layout) -> Unit = {},
+    /** Above the cards: the one-time support notice, when it is due (B81). */
+    header: @Composable () -> Unit = {},
 ) {
     val context = LocalContext.current
     val store = remember(context) { HomePreferences(context) }
@@ -112,6 +114,7 @@ fun HomeScreen(
             .padding(top = Measure.gap, bottom = Measure.actionClearance),
         verticalArrangement = Arrangement.spacedBy(Measure.section),
     ) {
+        header()
         if (ledger == null) {
             EmptyState(
                 title = "No ledger open",

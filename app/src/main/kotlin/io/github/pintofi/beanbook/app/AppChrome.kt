@@ -46,8 +46,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.core.engine.EngineStatus
-import io.github.pintofi.beanbook.core.entitlement.Entitlement
-import io.github.pintofi.beanbook.core.entitlement.Grant
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.RuledColumn
@@ -81,35 +79,6 @@ internal fun RemoteReportProblem(message: String, modifier: Modifier = Modifier)
             message,
             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
         )
-    }
-}
-
-/**
- * A locked feature says what it is, which tier unlocks it, and nothing else. No countdown,
- * no modal, no nagging (docs/ux.md §10) — and the user's data is never involved.
- */
-@Composable
-internal fun LockedFeature(
-    title: String,
-    tier: String,
-    onContribute: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(title, style = MaterialTheme.typography.headlineSmall)
-        Text("Part of the $tier tier.")
-        Text(
-            "The ledger, journal, balances, raw editing, import and export stay free.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-        // The route decides the wording: the Play edition sells, the Expert edition takes a
-        // pasted key. Hardcoding "Enter key" showed a Play user a control that is not there.
-        androidx.compose.material3.TextButton(onClick = onContribute) {
-            Text(io.github.pintofi.beanbook.app.billing.currentPurchaseRoute().label)
-        }
     }
 }
 
@@ -363,8 +332,6 @@ internal fun ledgerHealth(status: EngineStatus, ledger: LedgerSnapshot?): String
  */
 @Composable
 internal fun MoreMenu(
-    entitlement: Entitlement,
-    onContribute: () -> Unit,
     onOpen: (MoreSection) -> Unit,
     /** Ends the engine and the app and opens it again (B77). */
     onRestartApp: () -> Unit = {},
@@ -391,10 +358,9 @@ internal fun MoreMenu(
     val sections = MoreSection.entries
 
     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-        // The entitlement is stated here, once, instead of above every screen. It is a fact
-        // worth being able to find, not one worth being told on the way to everything else
-        // -- a line the user sees on every tab is a line they stop reading (B27).
-        TrialCard(entitlement, onClick = onContribute)
+        // What this edition is, and what the other one adds (B81). Said in More, where people
+        // go looking for what the app can do, rather than over their ledger.
+        io.github.pintofi.beanbook.app.about.EditionNotice()
         sections.forEach { entry ->
             androidx.compose.material3.ListItem(
                 headlineContent = { Text(entry.label) },
@@ -505,54 +471,6 @@ internal fun RecoveryBanner(message: String, onDismiss: () -> Unit) {
             onClick = onDismiss,
             modifier = Modifier.semantics { contentDescription = "Dismiss this notice" },
         ) { Text("Got it") }
-    }
-}
-
-/**
- * Where the entitlement stands, stated once in More rather than above every screen (B27).
- *
- * Deliberately heavier than a journal row: this is a status about the app, not a line of the
- * user's data, and it sits among a list of plain rows where it would otherwise disappear. It
- * It is a notice in the app's own vocabulary rather than a colour of its own, so it reads as
- * "notice" and not as "error" -- nothing here is wrong, and a trial running out is not a
- * failure.
- *
- * It replaced a line above every screen. A countdown that demands attention on the way to
- * everything else is the dark pattern this app promised not to have
- * (docs/distribution.md 4.7); told once and then available where it can be looked up is how
- * somebody actually keeps the fact.
- */
-@Composable
-internal fun TrialCard(entitlement: Entitlement, onClick: () -> Unit) {
-    val (headline, detail) = when (val grant = entitlement.grant) {
-        is Grant.Trial -> {
-            val days = entitlement.trialDaysRemaining ?: 0
-            val head = if (days <= 1) "Last day of your trial" else "$days days left in your trial"
-            head to "Everything is unlocked. Tap to see what happens when it ends."
-        }
-        is Grant.TrialEnded ->
-            "Your trial has ended" to
-                "Your ledger is untouched and stays fully editable. Tap to see the extras."
-        // The tier, not the email: the address a key was issued to belongs on Contribute
-        // (docs/distribution.md 4.5), and this card is in any screenshot of More.
-        is Grant.Key -> "${grant.tier.label} key" to "Tap to manage your key."
-        // Named as a purchase rather than a key, because the two are restored and refunded
-        // differently and the user needs to know which one they have.
-        is Grant.Purchase -> "${grant.tier.label}" to "Tap to see what you have."
-        Grant.Free -> return
-    }
-    // Quiet while the trial is running, and in the attention tone once it has ended, so the
-    // one state that changes what the app offers is the one that speaks up.
-    val tone = if (entitlement.grant is Grant.TrialEnded) NoticeTone.ATTENTION else NoticeTone.QUIET
-    Notice(
-        tone,
-        modifier = Modifier
-            .padding(horizontal = Measure.gutter, vertical = Measure.gap)
-            .clickable(role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = "$headline. $detail" },
-    ) {
-        Text(headline, style = MaterialTheme.typography.titleMedium)
-        Text(detail, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

@@ -8,7 +8,7 @@
   the previous comment here claimed only the documents directory was exposed, which was not
   true of this file and made the boundary look stronger than it was.
 
-  The write journal, snapshots, drafts and the entitlement key are siblings of `projects/`,
+  The write journal, snapshots and drafts are siblings of `projects/`,
   not children, so they are outside this grant (docs/threat-model.md).
 -->
 <paths>

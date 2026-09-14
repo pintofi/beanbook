@@ -15,15 +15,9 @@ a statement that none is received.
 There is no analytics, telemetry, crash reporting, advertising, attribution, or tracking SDK in
 either edition.
 
-The Play edition includes **Google Play's billing library**, because Play requires its billing
-system for unlocking app features. When you buy a tier, Google handles the payment and tells
-the app what you own; the developer never sees your payment details, and no ledger data is
-involved. That library brings some of Google's own client code onto the classpath, but it adds
-no permissions: the built Play package requests no location and no advertising ID, which is
-checked against the merged manifest rather than assumed.
-
-The Expert edition has no billing library at all. Its contribution keys are verified on the
-device with a signature check, so there is no licence server and nothing to phone home to.
+Nothing is sold in either edition, so neither contains a billing library, and there is no
+licence server or key check to phone home to. If you choose to donate on Ko-fi, that happens in
+your browser, on Ko-fi, and the app learns nothing about it.
 
 ## What stays on your device
 
@@ -32,8 +26,8 @@ device with a signature check, so there is no licence server and nothing to phon
   photo library; it sees images you capture in it or attach yourself.
 - **Backups**, written where you choose, encrypted with your passphrase if you ask for that.
 - **Settings**, including your theme.
-- **A contribution key, if you have one.** It contains the email address it was issued to, so
-  the app can show you which key is installed. It is checked offline and never transmitted.
+- **One date**: when the app was first opened, so the single mention of donations comes after
+  a week (Expert edition), and whether you have answered it.
 - **A password for your own server, if you set one.** Encrypted with a key held in the Android
   Keystore, which the app itself cannot read.
 
@@ -56,10 +50,6 @@ on.
 **Optional Python packages, Expert edition only.** When you ask for a package, it is downloaded
 from the Python Package Index. The request contains the package name; none of your ledger goes
 with it. The Play edition never downloads code from anywhere.
-
-**Buying a tier, Play edition only.** The purchase runs through Google Play. The app asks Play
-what you own when it starts and when you open the Contribute screen, which is also how a refund
-takes effect and how a purchase follows you to a new device.
 
 Sharing a document to another app is a fourth transfer, but it happens only when you tap Share
 and choose the recipient. Android grants that app read access to the one file.
@@ -95,19 +85,16 @@ no other time.
 
 ## What is deliberately absent
 
-No device fingerprinting. The 30-day trial is counted locally, which means a reinstall starts a
-new one. Preventing that would require identifying your device, and that trade was declined.
+No device fingerprinting, and nothing that would need it: there is no trial to protect.
 
 No advertising identifiers, no analytics or attribution SDKs, and no hidden diagnostic uploads.
 Diagnostics stay on the device unless you share them yourself.
 
-The one third-party component that talks to anyone is Google Play's billing library in the
-Play edition, and it talks to Google about purchases and nothing else.
+No third-party component in the app talks to anyone.
 
 ## Deleting your data
 
-Uninstalling removes app-private storage, including any stored server password and contribution
-key. Your exported copies, backups, and mirrored folders are yours and are left alone, because
+Uninstalling removes app-private storage, including any stored server password. Your exported copies, backups, and mirrored folders are yours and are left alone, because
 they are your records and they live where you put them. There is no account to close.
 
 ## Further reading

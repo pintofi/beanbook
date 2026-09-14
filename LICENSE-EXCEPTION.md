@@ -1,5 +1,10 @@
 # Additional permission for the Google Play Billing Library
 
+> **Status, 2026-09-14: no build uses this.** Beanbook sells nothing any more (B81,
+> [docs/support-model.md](docs/support-model.md)), so neither edition links the Google Play
+> Billing Library, and `:verifyPlayFlavorBoundaries` fails if either does. The permission below
+> is left as it was granted, and would apply again only if Play billing were reintroduced.
+
 Beanbook is licensed under the GNU General Public License, version 2 only, the text of which
 is in [COPYING](COPYING). The following additional permission is granted by the copyright
 holders listed in [AUTHORS](AUTHORS).
@@ -20,8 +25,7 @@ holders listed in [AUTHORS](AUTHORS).
 ## What this covers, and what it does not
 
 **It covers only code whose copyright is held by this project.** That is the app itself: the
-Kotlin sources in `app/`, `core-domain`, `core-data`, `core-engine`, `core-entitlement` and
-`engine-remote`. Those are the parts that are combined with the Google Play Libraries in the
+Kotlin sources in `app/`, `core-domain`, `core-data`, `core-engine` and `engine-remote`. Those are the parts that are combined with the Google Play Libraries in the
 Play edition.
 
 **It does not cover, and could not cover, Beancount, beanquery, beangulp or Fava.** They are

@@ -1,6 +1,6 @@
 # Plugin and script compatibility
 
-Applies to **both editions** (Tier 3). The `play` edition accepts pure-Python plugins and
+Applies to **both editions**. The `play` edition accepts pure-Python plugins and
 Fava extensions with the Java/Android bridge withheld; the `expert` edition accepts native
 wheels and exposes the bridge. See [distribution.md](distribution.md) §2.1 for why.
 

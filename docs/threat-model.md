@@ -12,7 +12,6 @@ network interactions. Written before implementation; revised at each milestone.
 | A1 Ledger files | The user's complete financial history. Loss or corruption is the worst outcome in this product. |
 | A2 Documents | Receipts, invoices, statements — often contain names, addresses, card fragments |
 | A3 Remote credentials | Access to a self-hosted Fava, potentially the whole ledger |
-| A4 Entitlement keys | Revenue integrity (not user security) |
 | A5 Backup archives | A1+A2 in one portable, exfiltratable file |
 | A6 App integrity | A tampered APK could exfiltrate everything above |
 
@@ -37,7 +36,7 @@ network interactions. Written before implementation; revised at each milestone.
 
 ## 3. Attack surfaces and mitigations
 
-### 3.1 Ledger and file parsing (T1)
+### 3.1 Ledger and file parsing
 
 Beancount's own parser handles malformed input by producing errors, not crashes; we
 surface those errors. Parsing runs off the main thread with a size guard and a cancellable
@@ -45,7 +44,7 @@ timeout. `include` targets that escape the project root are reported, never foll
 silently. Files are read as bytes and decoded explicitly; encoding failures are errors,
 not silent replacements.
 
-### 3.2 Expert plugin execution (T2) — accepted residual risk
+### 3.2 Expert plugin execution — accepted residual risk
 
 User Python runs **in the app's process, with the app's permissions**. It can read and
 destroy the ledger, read anything the app can read, and use the network if the app has
@@ -129,9 +128,8 @@ and never handed to a component with elevated privileges.
 Exact version pins with lockfiles and checksums for Maven and Python wheels; a generated
 SBOM and license inventory per release; wheels we cross-build ourselves are built from
 verified upstream sdists with recorded hashes and reproducible build scripts; CI runs
-dependency and secret scanning; release signing keys live outside the repository; the
-entitlement signing key lives in a separate private repo's protected environment with
-per-run approval and `kid`-based rotation.
+dependency and secret scanning; release signing keys live outside the repository. (The entitlement signing key went with the
+keys themselves, B81.)
 
 ### 3.8 Device loss (T9)
 
@@ -154,11 +152,11 @@ no success is reported before a durable, re-parsed write.
 
 - Local mode makes **zero** network requests. Verifiable by the user with airplane mode.
 - No analytics, telemetry, crash reporting, ad SDKs, or attribution SDKs in any edition.
-- Entitlement verification is offline; no license server, no phone-home.
+- Nothing is sold, so there is no licence check of any kind.
 - Update checks (expert only) are opt-in, off by default, and disclosed.
 - The diagnostics bundle is redacted by default: no ledger content, no amounts, no
   account names, no credentials, no keys — and it is shown to the user before sharing.
-- Permissions requested: `CAMERA` (Tier 2, at point of use), `INTERNET`,
+- Permissions requested: `CAMERA` (at point of use), `INTERNET`,
   `POST_NOTIFICATIONS` (backup/script results). No storage permissions — SAF only. No
   location, contacts, or account access.
 
@@ -181,8 +179,6 @@ configured over plain HTTP.
 | # | Risk | Why accepted |
 |---|---|---|
 | R1 | Expert plugins are unsandboxed | No Android mechanism achieves isolation with in-process Fava; disclosed, controllable, and absent from `play` |
-| R2 | Entitlement keys can be shared, and the app can be rebuilt without the gate | The app is GPL-2.0; a contribution model is honest about this |
-| R3 | Signing key transits GitHub Actions during issuance | Protected environment, manual approval, rotation via `kid`; loss is revenue, not user data |
 | R4 | Loopback port is visible to other apps on the device | Mitigated by the per-process token and origin checks; documented |
 | R5 | A forgotten backup passphrase is unrecoverable | Correct cryptographic behaviour; warned about explicitly, and encryption is off by default |
 | R6 | ML Kit (future OCR) is proprietary and GPL-incompatible without a linking exception | Tracked as a licensing task before OCR ships; no OCR in v1 |

@@ -28,7 +28,7 @@ import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 
 /**
- * Run a script against the open ledger (Tier 3, N10).
+ * Run a script against the open ledger (N10).
  *
  * The engine could do this from M11 and nothing called it. What this screen adds beyond a
  * button is the honesty the engine already provides and had no way to show: whether a script

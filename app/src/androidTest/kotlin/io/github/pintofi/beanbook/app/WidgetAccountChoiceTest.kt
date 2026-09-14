@@ -50,7 +50,6 @@ class WidgetAccountChoiceTest {
         periodIncome = null,
         periodExpense = null,
         clean = true,
-        entitled = true,
     )
 
     /** Reads the three text fields a metric widget renders. */

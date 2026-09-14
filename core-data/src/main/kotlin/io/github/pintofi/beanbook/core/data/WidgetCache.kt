@@ -30,8 +30,6 @@ data class WidgetSnapshot(
     val periodExpense: String?,
     /** True when the ledger parsed with no errors; a widget says so when it did not. */
     val clean: Boolean,
-    /** Whether the tier that includes widgets is active, so a widget can say so itself. */
-    val entitled: Boolean,
 ) {
     /**
      * Whether this is too old to show as current.
@@ -50,7 +48,6 @@ data class WidgetSnapshot(
             put("title", Json.Str(projectTitle))
             put("generated_at", Json.Num(generatedAtEpochMs.toDouble()))
             put("clean", Json.Bool(clean))
-            put("entitled", Json.Bool(entitled))
             put(
                 "balances",
                 Json.Obj(balances.mapValues { (_, value) -> Json.Str(value) }),
@@ -99,7 +96,6 @@ data class WidgetSnapshot(
                 periodIncome = obj.string("period_income"),
                 periodExpense = obj.string("period_expense"),
                 clean = (obj["clean"] as? Json.Bool)?.value ?: false,
-                entitled = (obj["entitled"] as? Json.Bool)?.value ?: false,
             )
         }
     }
@@ -150,7 +146,6 @@ class WidgetCache(stateDir: File) {
         fun from(
             projectId: String,
             ledger: LedgerSnapshot,
-            entitled: Boolean,
             nowEpochMs: Long,
             accounts: Collection<String> = ledger.accounts.map { it.name },
         ): WidgetSnapshot {
@@ -181,7 +176,6 @@ class WidgetCache(stateDir: File) {
                 periodIncome = summary.income,
                 periodExpense = summary.expenses,
                 clean = ledger.errors.isEmpty(),
-                entitled = entitled,
             )
         }
 

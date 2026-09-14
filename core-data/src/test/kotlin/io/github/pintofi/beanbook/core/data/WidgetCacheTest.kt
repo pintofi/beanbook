@@ -63,14 +63,14 @@ class WidgetCacheTest {
             ),
         )
 
-        val snapshot = WidgetCache.from("my-ledger", grouped, entitled = true, nowEpochMs = 1)
+        val snapshot = WidgetCache.from("my-ledger", grouped, nowEpochMs = 1)
 
         assertEquals("1,240.00 USD", snapshot.balances["Assets:Bank:Checking"])
     }
 
     @Test
     fun `a snapshot survives a round trip through disk`() {
-        val snapshot = WidgetCache.from("my-ledger", ledger(), entitled = true, nowEpochMs = 1_700_000)
+        val snapshot = WidgetCache.from("my-ledger", ledger(), nowEpochMs = 1_700_000)
 
         cache.write(snapshot)
 
@@ -81,7 +81,7 @@ class WidgetCacheTest {
     fun `income is shown the way a person reads it, not the way the ledger stores it`() {
         // Income is a credit balance, so it is negative in double-entry terms. A widget
         // headed "Income" showing "-3000.00" would be correct and useless.
-        val snapshot = WidgetCache.from("my-ledger", ledger(), entitled = true, nowEpochMs = 0)
+        val snapshot = WidgetCache.from("my-ledger", ledger(), nowEpochMs = 0)
 
         assertTrue(snapshot.periodIncome!!.startsWith("3000.00"), snapshot.periodIncome!!)
         assertTrue(snapshot.periodExpense!!.startsWith("262.00"), snapshot.periodExpense!!)
@@ -89,7 +89,7 @@ class WidgetCacheTest {
 
     @Test
     fun `net worth is assets less liabilities`() {
-        val snapshot = WidgetCache.from("my-ledger", ledger(), entitled = true, nowEpochMs = 0)
+        val snapshot = WidgetCache.from("my-ledger", ledger(), nowEpochMs = 0)
 
         // 1240.00 in assets, 300.00 owed. The liability is already stored negative, so
         // this also catches negating it a second time — which made debt *raise* net worth.
@@ -106,7 +106,7 @@ class WidgetCacheTest {
             ),
         )
 
-        val snapshot = WidgetCache.from("my-ledger", multi, entitled = true, nowEpochMs = 0)
+        val snapshot = WidgetCache.from("my-ledger", multi, nowEpochMs = 0)
 
         // One per line since B3: the property under test is that they are not added
         // together, which is unchanged. Only the separator moved, because two spaces made a
@@ -116,7 +116,7 @@ class WidgetCacheTest {
 
     @Test
     fun `an account with nothing in it is left out rather than shown blank`() {
-        val snapshot = WidgetCache.from("my-ledger", ledger(), entitled = true, nowEpochMs = 0)
+        val snapshot = WidgetCache.from("my-ledger", ledger(), nowEpochMs = 0)
 
         assertFalse("Assets:Empty" in snapshot.balances, snapshot.balances.keys.toString())
         assertTrue("Assets:Bank:Checking" in snapshot.balances)
@@ -129,7 +129,6 @@ class WidgetCacheTest {
         val snapshot = WidgetCache.from(
             "my-ledger",
             ledger(),
-            entitled = true,
             nowEpochMs = 0,
             accounts = listOf("Assets:Bank:Checking"),
         )
@@ -142,17 +141,16 @@ class WidgetCacheTest {
         val broken = WidgetCache.from(
             "my-ledger",
             ledger(listOf(LedgerError("something is wrong", null, null, "ParserError"))),
-            entitled = true,
             nowEpochMs = 0,
         )
 
         assertFalse(broken.clean)
-        assertTrue(WidgetCache.from("my-ledger", ledger(), true, 0).clean)
+        assertTrue(WidgetCache.from("my-ledger", ledger(), 0).clean)
     }
 
     @Test
     fun `staleness is measured from when the snapshot was taken`() {
-        val snapshot = WidgetCache.from("my-ledger", ledger(), entitled = true, nowEpochMs = 1_000_000)
+        val snapshot = WidgetCache.from("my-ledger", ledger(), nowEpochMs = 1_000_000)
 
         assertFalse(snapshot.isStale(nowEpochMs = 1_000_000 + 60_000))
         assertTrue(snapshot.isStale(nowEpochMs = 1_000_000 + WidgetSnapshot.DEFAULT_MAX_AGE_MS + 1))
@@ -171,7 +169,7 @@ class WidgetCacheTest {
 
     @Test
     fun `clearing removes it`() {
-        cache.write(WidgetCache.from("my-ledger", ledger(), entitled = true, nowEpochMs = 0))
+        cache.write(WidgetCache.from("my-ledger", ledger(), nowEpochMs = 0))
         cache.clear()
 
         assertNull(cache.read())

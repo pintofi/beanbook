@@ -45,9 +45,9 @@ ways to reach your data:
   highlighting, search, and validation. This is free, permanently.
 - **Export a copy** to any folder you choose through Android's folder picker.
 - **Backup archives**, with optional passphrase encryption.
-- **Auto-mirror** to a folder, which keeps a copy in step as you work (Tier 2).
+- **Auto-mirror** to a folder, which keeps a copy in step as you work.
 
-Caches, logs, credentials, generated state, and entitlement keys are stored outside the
+Caches, logs, credentials, and generated state are stored outside the
 portable project tree. An exported copy contains your ledger and its documents, and nothing
 belonging to the app.
 
@@ -60,16 +60,16 @@ valid, so the exported tree opens in desktop Beancount unchanged.
 optional; when you turn it on, the archive uses AES-256-GCM with a key derived from your
 passphrase using Argon2id. Nobody can recover the contents if you lose the passphrase.
 
-**Auto-mirror** (Tier 2) keeps a chosen folder in step after each successful write. It never
+**Auto-mirror** keeps a chosen folder in step after each successful write. It never
 picks a winner silently. If a file changed both in the app and in the folder, both are kept,
 you get a conflict card, and you decide per file with a diff in front of you.
 
-**Scheduled backups** (Tier 2) run through Android's `WorkManager`. Android does not guarantee
+**Scheduled backups** run through Android's `WorkManager`. Android does not guarantee
 exact timing for background work, and the app says so rather than pretending otherwise. Retention is
 configurable by count and age, and a partial failure is reported per file instead of being
 rounded up to success.
 
-Manual import, export, backup, and restore are free in every tier and both editions.
+Import, export, backup, and restore are free in both editions, like everything else.
 
 ## Restoring
 
@@ -119,6 +119,6 @@ load each time, so they stay slow on a large ledger.
 ## Further reading
 
 - [known-limitations.md](known-limitations.md) — what the app does not do
-- [editions.md](editions.md) — Play against Expert, and the contribution tiers
+- [editions.md](editions.md) — Play against Expert, and supporting the project
 - [privacy.md](privacy.md) — what stays on the device
 - [storage-and-backup.md](storage-and-backup.md) — the storage model in technical detail

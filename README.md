@@ -15,7 +15,7 @@ sign-in, and no server run by this project.
 ## Status
 
 Implemented, not released. Both editions build and the quality gates pass, but the app has
-never been submitted to Google Play and no contribution key has been sold. There are no
+never been submitted to Google Play. There are no
 download links yet, here or anywhere else. When that changes, this section changes with it.
 
 [docs/release-readiness.md](docs/release-readiness.md) tracks where the project stands against
@@ -41,7 +41,7 @@ the files directly.
   has no editor for all survive editing, export, and backup.
 - Guided entry covers common work. When a form is the wrong tool, you edit the file itself,
   with highlighting, search, validation, and stale-write detection.
-- Import, export, backup, and restore are free in every tier and both editions. Getting your
+- Import, export, backup, and restore are free in both editions, like everything else. Getting your
   records out is not a paid feature.
 
 ## Requirements
@@ -77,7 +77,7 @@ remote entries, or attempt two-way sync.
 
 ## Two editions
 
-Play and Expert read the same projects, use the same contribution tiers, and share every
+Play and Expert read the same projects, are both entirely free, and share every
 feature except three points that Google Play policy decides:
 
 | | Play | Expert |
@@ -87,9 +87,8 @@ feature except three points that Google Play policy decides:
 | Optional package downloads | None | User-confirmed |
 
 Updates differ too: Play through the store, Expert through a signed package you confirm.
-The Play edition sells tiers through Google Play; the Expert edition takes a key you paste
-in. Neither links out to a payment page. [docs/editions.md](docs/editions.md)
-explains which to pick and what the contribution tiers unlock.
+The Play edition tells you the Expert edition exists and what it adds.
+[docs/editions.md](docs/editions.md) explains which to pick.
 
 ## Getting started
 
@@ -110,7 +109,7 @@ Projects live in app-private storage, which is canonical. That is not an aesthet
 Python and Fava need real POSIX paths, and Android's folder picker hands out content URIs.
 Modern file managers cannot browse app-private storage, so the app provides explicit routes
 out — an in-app editor for every included file, export to a folder you pick, backup archives,
-and optional mirroring. Caches, logs, credentials, and entitlement keys are kept outside the
+and optional mirroring. Caches, logs and credentials are kept outside the
 portable project tree, so an exported copy contains your ledger and nothing else.
 
 ## Privacy and network use
@@ -143,18 +142,13 @@ after a change costs real time.
 [docs/known-limitations.md](docs/known-limitations.md) is the full list, written for someone
 deciding whether to depend on this.
 
-## Trial and contribution keys
+## Free, with donations welcome
 
-Every install starts with a 30-day trial, all tiers unlocked. It needs no account, no card,
-and no network call: the app records the date locally and counts down.
-
-When the trial ends, only the paid features switch off. Writing, editing, deleting, the journal,
-account balances, raw file editing, and all manual import, export, backup, and restore keep
-working. A key is a short signed block of text you paste into the app, verified on your device
-with no licence server and no check-in.
-
-Nothing is on sale yet: the Play products are not published and no key has been issued.
-[docs/editions.md](docs/editions.md) describes the tiers.
+Every feature is free in both editions: no trial, no paid tiers, no keys, no ads. If Beanbook
+is useful to you, the project will accept donations on Ko-fi -- the page is not open yet. The
+Expert edition mentions it once, after a week of use; the Play edition does not link to it,
+because Google Play's payment rules do not allow that. [docs/support-model.md](docs/support-model.md)
+explains the decision.
 
 ## Documentation
 
@@ -163,7 +157,7 @@ For users:
 | Document | Contents |
 |---|---|
 | [docs/getting-started.md](docs/getting-started.md) | First project, importing an existing ledger, moving data, troubleshooting |
-| [docs/editions.md](docs/editions.md) | Play against Expert, contribution tiers, how keys work |
+| [docs/editions.md](docs/editions.md) | Play against Expert, and supporting the project |
 | [docs/privacy.md](docs/privacy.md) | What stays on the device and when the network is used |
 | [docs/known-limitations.md](docs/known-limitations.md) | What the app cannot do, and why |
 | [docs/on-demand-packages.md](docs/on-demand-packages.md) | Fetching extra Python packages, Expert only |
@@ -177,7 +171,7 @@ For developers:
 | [docs/architecture.md](docs/architecture.md) | Components, trust boundaries, process model, dependency direction |
 | [docs/storage-and-backup.md](docs/storage-and-backup.md) | Workspace layout, atomic writes, SAF import and export, archives |
 | [docs/threat-model.md](docs/threat-model.md) | Assets, adversaries, mitigations, accepted risk |
-| [docs/distribution.md](docs/distribution.md) | Edition matrix, update channels, key issuance |
+| [docs/distribution.md](docs/distribution.md) | Edition matrix, update channels, the Play payment rules |
 | [SPEC.md](SPEC.md) | Product scope, non-goals, acceptance criteria |
 
 ## Licence
@@ -188,14 +182,9 @@ Beancount, beanquery, and beangulp are GPL-2.0-*only*, explicitly not "or later"
 cannot be used here. The full text is in [COPYING](COPYING), and the copyright holders are
 listed in [AUTHORS](AUTHORS).
 
-The Play edition carries one additional permission, for Google Play's billing library, which is
-proprietary and which Play requires for selling app features. It is narrow, it covers only this
-project's own code, and it is written out in
-[LICENSE-EXCEPTION.md](LICENSE-EXCEPTION.md). It is not needed for Beancount or Fava: those run
-in a separate process and are never linked with it.
-
-Because the source is GPL, anyone can build the app without a key. That is the point: this is a
-contribution model, not DRM, and the app says as much where it asks.
+Neither edition links any proprietary library for payments: nothing is sold (B81).
+[LICENSE-EXCEPTION.md](LICENSE-EXCEPTION.md) records the linking permission the project granted
+while Play Billing was planned; no shipped build relies on it now.
 
 Beancount and Fava are independent projects. This app is built on their work and is not
 affiliated with or endorsed by them.

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Beanbook is free. How to support the project."
+    />
+    <meta name="theme-color" content="#006a6a" />
+    <title>Support | Beanbook</title>
+    <script>
+      try {
+        const t = localStorage.getItem("beancount-site-theme");
+        if (t === "light" || t === "dark")
+          document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="nav-shell">
+        <a class="brand" href="index.html">
+          <img class="brand-mark" src="assets/icon.svg" alt="" width="32" height="32" />
+          <span>Beanbook</span>
+        </a>
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a class="nav-link" href="index.html">Home</a
+          ><a class="nav-link" href="features.html">Features</a
+          ><a class="nav-link" href="plugins.html">Add-ons</a
+          ><a class="nav-link" href="download.html">Download</a
+          ><a class="nav-link" href="support.html" aria-current="page">Support</a
+          ><a class="nav-link" href="help.html">Help</a
+          ><a class="nav-link" href="privacy.html">Privacy</a>
+        </nav>
+        <button
+          class="theme-toggle"
+          type="button"
+          data-theme-toggle
+          title="Theme: follows your device"
+          aria-label="Theme: follows your device. Activate to change."
+        >
+          <span class="visually-hidden" data-theme-text>Theme: follows your device</span>
+          <svg class="theme-icon theme-icon-system" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor"/>
+          </svg>
+          <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="4.2" fill="currentColor"/>
+            <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4M5.1 5.1l1.7 1.7M17.2 17.2l1.7 1.7M18.9 5.1l-1.7 1.7M6.8 17.2l-1.7 1.7"/>
+            </g>
+          </svg>
+          <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M21 12.9A9.1 9.1 0 1 1 11.1 3a7.1 7.1 0 0 0 9.9 9.9Z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <main id="main">
+      <!-- Source: docs/support-model.md. -->
+      <section class="shell hero hero-compact" data-reveal>
+        <div>
+          <p class="eyebrow">Support</p>
+          <h1>Beanbook is free. All of it.</h1>
+          <p class="lede">
+            No trial, no paid features, no keys and no ads, in either edition.
+            If the app is useful to you, you can help it along with a donation.
+          </p>
+        </div>
+      </section>
+
+      <section class="section section-tint">
+        <div class="shell split">
+          <div data-reveal><h2>The Ko-fi page is not open yet.</h2></div>
+          <div data-reveal style="--reveal-index: 1">
+            <p>
+              Donations will be taken on Ko-fi, in your browser, and unlock
+              nothing: everything is already yours. The link will appear here
+              when the page exists.
+            </p>
+            <p>
+              The Expert edition mentions it once, after a week of use. The Play
+              edition does not link to it, because Google Play's payment rules
+              do not allow an app to point at a payment page outside Play.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-strong">
+        <div class="shell split">
+          <div><h2>Other ways to help.</h2></div>
+          <div>
+            <p>
+              Report a bug, suggest something, or send a patch. The app is free
+              software, licensed GPL-2.0-only, and the source is public.
+            </p>
+            <div class="actions">
+              <a class="button button-filled" href="features.html"
+                >See features</a
+              ><a class="button button-outlined" href="download.html"
+                >Compare editions</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <p><strong>Beanbook</strong></p>
+          <p>Free software licensed GPL-2.0-only.</p>
+          <p>
+            Built with upstream CPython, Beancount, Fava, beanquery, and
+            beangulp. Beancount and Fava are independent projects; this app is
+            not affiliated with or endorsed by them.
+          </p>
+        </div>
+        <nav class="footer-links" aria-label="Footer navigation">
+          <a href="privacy.html">Privacy</a><a href="help.html">Help</a
+          ><a href="assets/fonts/LICENSE.txt">Font licence</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

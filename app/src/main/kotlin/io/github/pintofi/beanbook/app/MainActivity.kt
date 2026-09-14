@@ -32,16 +32,14 @@ import io.github.pintofi.beanbook.app.ui.OnboardingScreen
 import io.github.pintofi.beanbook.app.backup.ScheduledBackupWorker
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import io.github.pintofi.beanbook.app.ui.DocumentCaptureHandle
-import io.github.pintofi.beanbook.app.ui.WelcomeDialog
 import io.github.pintofi.beanbook.core.domain.DocumentIndex
 import io.github.pintofi.beanbook.app.web.AllowlistWebViewClient
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.core.engine.ReportPath
-import io.github.pintofi.beanbook.core.entitlement.Feature
 
 /**
- * M3 shell: three surfaces over one ledger — the native journal and balances (free tier)
+ * M3 shell: three surfaces over one ledger — the native journal and balances
  * and Fava's own reports in the hardened WebView.
  *
  * The project picker and guided entry arrive in M6; this screen still uses a single
@@ -49,33 +47,8 @@ import io.github.pintofi.beanbook.core.entitlement.Feature
  */
 class MainActivity : ComponentActivity() {
 
-    /**
-     * How a contribution is taken, decided by the edition.
-     *
-     * Play talks to Google Play's billing system; Expert returns a controller that reports
-     * nothing to buy, so the Contribute screen offers its key field instead. Created lazily
-     * because the Play implementation opens a connection to the billing service, and there
-     * is no reason to do that before the activity exists.
-     */
-    private val purchases: io.github.pintofi.beanbook.app.billing.PurchaseController by lazy {
-        val app = application as BeancountApplication
-        io.github.pintofi.beanbook.app.billing.currentPurchaseController(
-            context = this,
-            entitlements = app.entitlements,
-            onEntitlementChanged = { app.entitlementState.refresh() },
-        )
-    }
-
-    /**
-     * Ask the store again on every resume.
-     *
-     * This is how a refund takes effect, how a purchase made on another device arrives, and
-     * how a flow that completed while the app was backgrounded is picked up. The controller
-     * never revokes on a failed query, so doing this often is safe.
-     */
     override fun onResume() {
         super.onResume()
-        purchases.refresh()
         // Mirroring is two ways, and only one of them had a trigger: a pass ran after a
         // local commit, so an edit made in the folder on a computer sat there until somebody
         // wrote something on the phone or tapped Mirror now. Coming back to the app is the
@@ -326,12 +299,10 @@ class MainActivity : ComponentActivity() {
     ) {
         withContext(Dispatchers.IO) {
             runCatching {
-                val entitled = app.entitlementState.entitlement.value.allows(Feature.WIDGETS)
                 io.github.pintofi.beanbook.core.data.WidgetCache(filesDir.resolve("state")).write(
                     io.github.pintofi.beanbook.core.data.WidgetCache.from(
                         projectId = projectId,
                         ledger = ledger,
-                        entitled = entitled,
                         nowEpochMs = System.currentTimeMillis(),
                         // Every account, not a shortlist. It used to be the first twelve
                         // names under Assets: or Liabilities:, so a widget could not be
@@ -444,9 +415,6 @@ class MainActivity : ComponentActivity() {
                     val editorState by app.editorController.state.collectAsStateWithLifecycle()
                     val editorMessage by app.editorController.message.collectAsStateWithLifecycle()
                     val templates by app.templatesState.templates.collectAsStateWithLifecycle()
-                    val entitlement by app.entitlementState.entitlement.collectAsStateWithLifecycle()
-                    val entitlementMessage by
-                        app.entitlementState.message.collectAsStateWithLifecycle()
                     val documentPages by app.documentCapture.pages.collectAsStateWithLifecycle()
                     // Survives rotation: the scanner is a mode, and turning the phone to fit a
                     // wide receipt must not drop you back into the form mid-stack.
@@ -493,21 +461,6 @@ class MainActivity : ComponentActivity() {
                     val scriptMessage by app.scriptRunner.message.collectAsStateWithLifecycle()
                     val savedScripts by app.scriptRunner.saved.collectAsStateWithLifecycle()
 
-                    // Said once, on a first launch, so the trial does not have to be
-                    // announced above every screen for the life of the install (B27). Above
-                    // the branch below because a first launch usually has no project yet --
-                    // inside it, the greeting would wait until one existed (B27).
-                    var welcoming by remember { mutableStateOf(app.firstRun.isFirstRun) }
-                    if (welcoming) {
-                        WelcomeDialog(
-                            trialDays = entitlement.trialDaysRemaining,
-                            onDismiss = {
-                                app.firstRun.markWelcomed()
-                                welcoming = false
-                            },
-                        )
-                    }
-
                     if (activeId == null) {
                         // No project yet: onboarding, not an empty ledger screen.
                         // Outside the Scaffold, so it takes the insets itself. This is the
@@ -536,7 +489,6 @@ class MainActivity : ComponentActivity() {
                         engineStatus = engineStatus,
                         ledger = ledger,
                         editionName = app.pluginPolicy.name,
-                        entitlement = entitlement,
                         token = app.engine.sessionToken,
                         debuggingAllowed = BuildConfig.DEBUG,
                         onOpenExternally = ::openInBrowser,
@@ -710,10 +662,6 @@ class MainActivity : ComponentActivity() {
                                 ScheduledBackupWorker.cancel(this@MainActivity)
                             }
                         },
-                        onApplyKey = { app.entitlementState.applyKey(it) },
-                        onRemoveKey = { app.entitlementState.removeKey() },
-                        onClearEntitlementMessage = { app.entitlementState.clearMessage() },
-                        entitlementMessage = entitlementMessage,
                         templates = templates,
                         onSaveTemplate = { app.templatesState.save(it) },
                         onDeleteTemplate = { app.templatesState.delete(it) },
@@ -767,8 +715,6 @@ class MainActivity : ComponentActivity() {
                         onDiscardDraft = { app.editorController.discardDraft(activeId!!) },
                         refreshing = ledgerLoading,
                         onRefresh = { app.ledgerState.reload() },
-                        purchaseOffers = purchases.offers,
-                        onBuy = { tier -> purchases.buy(this@MainActivity, tier) },
                     )
 
                     // Over the app rather than inside a screen: an entry can be opened for

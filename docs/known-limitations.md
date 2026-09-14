@@ -55,7 +55,7 @@ port behind a per-process token.
 
 ## Editions
 
-Both editions have the same features, including Tier 3 plugins and Fava extensions. Three
+Both editions have the same features, including plugins and Fava extensions. Three
 differences exist, all forced by Play policy:
 
 | | Play | Expert |
@@ -164,8 +164,7 @@ No telemetry, analytics, ads or crash uploads, in any edition, ever. Nothing is 
 anywhere. Diagnostics stay on the device, and secrets are kept out of logs, backups,
 screenshots and widget previews by design and by test.
 
-**Contribution keys are verified offline** with a public key compiled into the app. There is
-no billing SDK and no purchase flow in either edition; the only route is entering a key.
+**Nothing is sold.** There is no billing SDK, purchase flow, trial or key in either edition.
 
 ---
 

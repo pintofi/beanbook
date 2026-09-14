@@ -40,12 +40,12 @@ jobs:
 
       - name: Unit tests
         # Every module with tests, not two of them. This ran :core-domain and
-        # :core-engine only, so :core-data, :core-entitlement and :engine-remote — 242
-        # tests between them — were never going to run in CI even once the workflow
+        # :core-engine only, so :core-data and :engine-remote — the tests between
+        # them — were never going to run in CI even once the workflow
         # could be loaded at all.
         run: >-
           ./gradlew :core-domain:test :core-data:test :core-engine:test
-          :core-entitlement:test :engine-remote:test
+          :engine-remote:test
 
       - name: Reproducible Python bytecode
         # Hash-based .pyc rather than timestamp-based, so two builds of the same commit are

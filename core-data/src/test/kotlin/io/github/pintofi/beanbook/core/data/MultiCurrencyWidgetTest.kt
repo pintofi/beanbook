@@ -40,7 +40,6 @@ class MultiCurrencyWidgetTest {
         val snapshot = WidgetCache.from(
             projectId = "p",
             ledger = ledgerWith(amount("1240.00", "USD"), amount("567.00", "EUR")),
-            entitled = true,
             nowEpochMs = 0,
         )
 
@@ -59,7 +58,6 @@ class MultiCurrencyWidgetTest {
         val snapshot = WidgetCache.from(
             projectId = "p",
             ledger = ledgerWith(amount("1240.00", "USD")),
-            entitled = true,
             nowEpochMs = 0,
         )
 
@@ -96,7 +94,7 @@ class PrimaryBalanceTest {
     )
 
     private fun snapshotOf(vararg accounts: Pair<String, String>) =
-        WidgetCache.from("p", ledgerOf(*accounts), entitled = true, nowEpochMs = 0)
+        WidgetCache.from("p", ledgerOf(*accounts), nowEpochMs = 0)
 
     @Test
     fun `an asset account is preferred over expenses and income`() {

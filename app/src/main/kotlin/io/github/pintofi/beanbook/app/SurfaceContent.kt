@@ -54,8 +54,6 @@ import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.core.engine.OriginAllowlist
 import io.github.pintofi.beanbook.core.engine.ReportPath
-import io.github.pintofi.beanbook.core.entitlement.Entitlement
-import io.github.pintofi.beanbook.core.entitlement.Feature
 import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 // What each destination renders. Split out of MainActivity.kt; see LedgerApp.kt.
 @Composable
@@ -65,7 +63,6 @@ internal fun SurfaceContent(
     adding: Boolean,
     /** Whether the open entry form holds anything that would be lost by leaving (B61). */
     onAddDirtyChange: (Boolean) -> Unit = {},
-    onContribute: () -> Unit,
     documentCapture: DocumentCaptureHandle,
     documents: List<DocumentRow>,
     documentMessage: String?,
@@ -178,7 +175,6 @@ internal fun SurfaceContent(
     engineStatus: EngineStatus,
     ledger: LedgerSnapshot?,
     editionName: String,
-    entitlement: Entitlement,
     token: String?,
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
@@ -202,6 +198,7 @@ internal fun SurfaceContent(
         when (showing) {
             Surface.HOME -> Refreshable(refreshing, onRefresh) {
                 HomeScreen(
+                    header = { io.github.pintofi.beanbook.app.about.SupportNoticeHost() },
                     ledger = ledger,
                     hideAmounts = hideWidgetAmounts,
                     // Counted here rather than in the composable: these come from the
@@ -313,8 +310,6 @@ internal fun SurfaceContent(
                     // suggested they were there at all.
                     if (section == null) {
                         MoreMenu(
-                            entitlement = entitlement,
-                            onContribute = onContribute,
                             onOpen = onMoreSection,
                             onRestartApp = onRestartApp,
                         )
@@ -375,94 +370,66 @@ internal fun SurfaceContent(
                             )
 
                         MoreSection.SCRIPTS ->
-                            if (!entitlement.allows(Feature.SCRIPTS)) {
-                                LockedFeature(
-                                    title = "Scripts",
-                                    tier = Feature.SCRIPTS.required.label,
-                                    onContribute = onContribute,
-                                )
-                            } else {
-                                io.github.pintofi.beanbook.app.ui.ScriptRunnerScreen(
-                                    running = scriptRunning,
-                                    outcome = scriptOutcome,
-                                    message = scriptMessage,
-                                    bridgeAvailable = currentPluginPolicy().allowsAndroidBridge,
-                                    onPick = onPickScript,
-                                    onCancel = onCancelScript,
-                                    saved = savedScripts,
-                                    onRunSaved = onRunSavedScript,
-                                    onForgetSaved = onForgetSavedScript,
-                                )
-                            }
+                            io.github.pintofi.beanbook.app.ui.ScriptRunnerScreen(
+                                running = scriptRunning,
+                                outcome = scriptOutcome,
+                                message = scriptMessage,
+                                bridgeAvailable = currentPluginPolicy().allowsAndroidBridge,
+                                onPick = onPickScript,
+                                onCancel = onCancelScript,
+                                saved = savedScripts,
+                                onRunSaved = onRunSavedScript,
+                                onForgetSaved = onForgetSavedScript,
+                            )
+
 
                         MoreSection.PLUGINS ->
-                            if (!entitlement.allows(Feature.PLUGINS)) {
-                                LockedFeature(
-                                    title = "Plugins",
-                                    tier = Feature.PLUGINS.required.label,
-                                    onContribute = onContribute,
-                                )
-                            } else {
-                                PluginsScreen(
-                                    rows = pluginRows,
-                                    safeMode = pluginSafeMode,
-                                    policy = currentPluginPolicy(),
-                                    onInstall = onInstallPlugin,
-                                    onSetEnabled = onSetPluginEnabled,
-                                    onRemove = onRemovePlugin,
-                                    onSetSafeMode = onSetPluginSafeMode,
-                                    usedModules = usedModules,
-                                    onUseModule = onUseModule,
-                                    packages = packages,
-                                    restart = engineRestart,
-                                    message = pluginMessage,
-                                )
-                            }
+                            PluginsScreen(
+                                rows = pluginRows,
+                                safeMode = pluginSafeMode,
+                                policy = currentPluginPolicy(),
+                                onInstall = onInstallPlugin,
+                                onSetEnabled = onSetPluginEnabled,
+                                onRemove = onRemovePlugin,
+                                onSetSafeMode = onSetPluginSafeMode,
+                                usedModules = usedModules,
+                                onUseModule = onUseModule,
+                                packages = packages,
+                                restart = engineRestart,
+                                message = pluginMessage,
+                            )
+
 
                         MoreSection.REMOTE ->
-                            if (!entitlement.allows(Feature.REMOTE_MODE)) {
-                                LockedFeature(
-                                    title = "Your own Fava server",
-                                    tier = Feature.REMOTE_MODE.required.label,
-                                    onContribute = onContribute,
-                                )
-                            } else {
-                                RemoteScreen(
-                                    status = remoteStatus,
-                                    capabilities = remoteCapabilities,
-                                    savedAddress = savedRemoteAddress,
-                                    savedUsername = savedRemoteUsername,
-                                    pendingRetry = remotePendingRetry,
-                                    onConnect = onRemoteConnect,
-                                    onDisconnect = onRemoteDisconnect,
-                                    onForget = onRemoteForget,
-                                    onRetryPending = onRemoteRetry,
-                                    onDiscardPending = onRemoteDiscard,
-                                    message = remoteMessage,
-                                )
-                            }
+                            RemoteScreen(
+                                status = remoteStatus,
+                                capabilities = remoteCapabilities,
+                                savedAddress = savedRemoteAddress,
+                                savedUsername = savedRemoteUsername,
+                                pendingRetry = remotePendingRetry,
+                                onConnect = onRemoteConnect,
+                                onDisconnect = onRemoteDisconnect,
+                                onForget = onRemoteForget,
+                                onRetryPending = onRemoteRetry,
+                                onDiscardPending = onRemoteDiscard,
+                                message = remoteMessage,
+                            )
+
 
                         MoreSection.MIRROR ->
-                            if (!entitlement.allows(Feature.AUTO_MIRROR)) {
-                                LockedFeature(
-                                    title = "Mirror to a folder",
-                                    tier = Feature.AUTO_MIRROR.required.label,
-                                    onContribute = onContribute,
-                                )
-                            } else {
-                                MirrorScreen(
-                                    enabled = mirrorEnabled,
-                                    folder = mirrorFolder,
-                                    conflicts = mirrorConflicts,
-                                    status = mirrorStatus,
-                                    onChooseFolder = onChooseMirrorFolder,
-                                    onEnabledChanged = onMirrorEnabledChanged,
-                                    onSyncNow = onMirrorNow,
-                                    onKeepMine = onKeepMine,
-                                    onKeepTheirs = onKeepTheirs,
-                                    message = mirrorMessage,
-                                )
-                            }
+                            MirrorScreen(
+                                enabled = mirrorEnabled,
+                                folder = mirrorFolder,
+                                conflicts = mirrorConflicts,
+                                status = mirrorStatus,
+                                onChooseFolder = onChooseMirrorFolder,
+                                onEnabledChanged = onMirrorEnabledChanged,
+                                onSyncNow = onMirrorNow,
+                                onKeepMine = onKeepMine,
+                                onKeepTheirs = onKeepTheirs,
+                                message = mirrorMessage,
+                            )
+
 
                         MoreSection.BACKUP -> BackupScreen(
                             projectTitle = projects.firstOrNull { it.id == activeProjectId }
@@ -484,38 +451,29 @@ internal fun SurfaceContent(
                         )
 
                         MoreSection.DOCUMENTS ->
-                            if (!entitlement.allows(Feature.DOCUMENTS)) {
-                                // Tier 2. The ledger, and any document already filed, stay
-                                // readable and exportable — only capturing new ones is gated.
-                                LockedFeature(
-                                    title = "Documents and receipt capture",
-                                    tier = Feature.DOCUMENTS.required.label,
-                                    onContribute = onContribute,
-                                )
-                            } else {
-                                DocumentsScreen(
-                                    capture = documentCapture,
-                                    names = ledger?.accountNames
-                                        ?: io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
-                                    documents = documents,
-                                    vocabulary = ledger?.let { LedgerVocabulary.from(it) }
-                                        ?: LedgerVocabulary(
-                                            accounts = emptyList(),
-                                            payees = emptyList(),
-                                            narrations = emptyList(),
-                                            currencies = emptyList(),
-                                            tags = emptyList(),
-                                        ),
-                                    onSave = onSaveDocument,
-                                    onDiscard = onDiscardPages,
-                                    onRefile = onRefileDocument,
-                                    onUnlink = onUnlinkDocument,
-                                    onDeleteFile = onDeleteDocumentFile,
-                                    onShare = onShareDocument,
-                                    fileForDocument = fileForDocument,
-                                    message = documentMessage,
-                                )
-                            }
+                            DocumentsScreen(
+                                capture = documentCapture,
+                                names = ledger?.accountNames
+                                    ?: io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
+                                documents = documents,
+                                vocabulary = ledger?.let { LedgerVocabulary.from(it) }
+                                    ?: LedgerVocabulary(
+                                        accounts = emptyList(),
+                                        payees = emptyList(),
+                                        narrations = emptyList(),
+                                        currencies = emptyList(),
+                                        tags = emptyList(),
+                                    ),
+                                onSave = onSaveDocument,
+                                onDiscard = onDiscardPages,
+                                onRefile = onRefileDocument,
+                                onUnlink = onUnlinkDocument,
+                                onDeleteFile = onDeleteDocumentFile,
+                                onShare = onShareDocument,
+                                fileForDocument = fileForDocument,
+                                message = documentMessage,
+                            )
+
                     }
                 }
             }
@@ -558,7 +516,6 @@ internal fun SurfaceContent(
                         BalancesScreen(
                             ledger,
                             Modifier.padding(padding),
-                            valuationAllowed = entitlement.allows(Feature.HOLDINGS_VALUATION),
                             dateFrom = dateFrom,
                             dateTo = dateTo,
                             onDateRange = onDateRange,
@@ -569,16 +526,7 @@ internal fun SurfaceContent(
 
             Surface.REPORTS -> {
                 val serving = engineStatus as? EngineStatus.Serving
-                if (!entitlement.allows(Feature.FAVA_REPORTS)) {
-                    // Tier 1. The journal, balances and raw editing stay free, and the
-                    // ledger is untouched — only this surface is locked.
-                    LockedFeature(
-                        title = "Reports and charts",
-                        tier = Feature.FAVA_REPORTS.required.label,
-                        onContribute = onContribute,
-                        modifier = Modifier.padding(padding),
-                    )
-                } else if (remoteReports != null) {
+                if (remoteReports != null) {
                     // Remote mode wins when it is connected: the user pointed the app at
                     // their own server, and showing the local ledger's reports instead
                     // would be showing them someone else's numbers.

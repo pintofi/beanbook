@@ -174,7 +174,6 @@ Seven Gradle modules, with the dependency direction described in
 |---|---|
 | `core-domain` | Pure Kotlin. Holds the data invariants. |
 | `core-data` | Workspace layout and project files |
-| `core-entitlement` | Trial, contribution keys, feature gating |
 | `core-engine` | The engine boundary and the flavor policy types |
 | `engine-local` | Chaquopy, Beancount and Fava, the loopback server |
 | `engine-remote` | Hardened client for a self-hosted Fava |

@@ -62,7 +62,7 @@ project is:
 │  ┌────────────── Kotlin / Compose (Material 3) ──────────────┐           │
 │  │ Onboarding · Project picker · Guided entry · Raw editor   │           │
 │  │ Documents · Backup/Restore · Settings · Safe mode         │           │
-│  │ Widgets (Glance) · Diagnostics · Entitlement UI           │           │
+│  │ Widgets (Glance) · Diagnostics · Support notice           │           │
 │  └───────────────┬───────────────────────────┬───────────────┘           │
 │                  │                           │                            │
 │        ┌─────────▼─────────┐       ┌─────────▼──────────┐                │
@@ -163,16 +163,15 @@ Detailed adversary analysis: [threat-model.md](threat-model.md).
         └──> :feature-*         ← Compose UI per feature area
                 └──> :core-domain      ← entities, use cases, invariants (pure Kotlin)
                         ├──> :core-data      ← workspace, SAF, journal, backup
-                        ├──> :core-engine    ← EngineClient interface
+                        └──> :core-engine    ← EngineClient interface
                         │       ├──> :engine-local   (Chaquopy, Python assets)
                         │       └──> :engine-remote  (platform HTTPS, strict TLS)
-                        └──> :core-entitlement ← Ed25519 verification (no billing dep)
 ```
 
 Rules:
 - `:core-domain` depends on nothing Android-specific and holds every invariant.
-- **No billing or payment SDK exists in any module.** `:core-entitlement` verifies signed
-  keys offline and has exactly one route implementation (`EnterKeyOnly`) in both flavors.
+- **No billing or payment SDK exists in any module.** Nothing is sold (B81); the Play edition
+  names no donation page.
 - Plugin/script loading is **shared** by both flavors (parity), but the loader takes a
   `PluginPolicy` supplied per flavor:
   `PlayPluginPolicy` — pure-Python only, no native wheel installation, Java/Android bridge

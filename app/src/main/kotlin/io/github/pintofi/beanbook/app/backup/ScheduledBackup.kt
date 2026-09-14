@@ -17,7 +17,7 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * Scheduled backups (Tier 2), through `WorkManager`.
+ * Scheduled backups, through `WorkManager`.
  *
  * **Android decides when this runs, and the UI says so.** A periodic work request is a
  * request: the system batches it against doze, battery and network state, and the interval

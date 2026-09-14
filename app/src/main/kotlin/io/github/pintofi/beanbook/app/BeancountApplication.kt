@@ -8,7 +8,6 @@ import io.github.pintofi.beanbook.app.engine.EngineManager
 import io.github.pintofi.beanbook.app.mirror.MirrorController
 import io.github.pintofi.beanbook.app.mirror.MirrorSettings
 import io.github.pintofi.beanbook.app.remote.RemoteState
-import io.github.pintofi.beanbook.app.engine.EntitlementState
 import io.github.pintofi.beanbook.app.engine.EditorController
 import io.github.pintofi.beanbook.app.engine.LedgerState
 import io.github.pintofi.beanbook.app.engine.ProjectsState
@@ -23,8 +22,6 @@ import io.github.pintofi.beanbook.core.data.ProjectWriter
 import io.github.pintofi.beanbook.core.data.TemplateStore
 import io.github.pintofi.beanbook.core.data.WriteJournal
 import io.github.pintofi.beanbook.core.domain.PluginPolicy
-import io.github.pintofi.beanbook.core.entitlement.Entitlements
-import io.github.pintofi.beanbook.core.entitlement.FileEntitlementStorage
 import java.time.Instant
 import io.github.pintofi.beanbook.engine.local.BeancountEditor
 import io.github.pintofi.beanbook.engine.local.EngineConnection
@@ -147,14 +144,14 @@ class BeancountApplication : Application() {
     /** Recorded in every backup manifest, so an archive says which app wrote it. */
     val appVersion: String get() = BuildConfig.VERSION_NAME
 
-    /** Auto-mirror to a folder the user chose (Tier 2). Off until they turn it on. */
+    /** Auto-mirror to a folder the user chose. Off until they turn it on. */
     val mirrorSettings: MirrorSettings by lazy { MirrorSettings(filesDir.resolve("state")) }
 
     val mirror: MirrorController by lazy {
         MirrorController(this, workspace, journal, writer, appScope, mirrorSettings)
     }
 
-    /** Remote mode (Tier 3): a self-hosted Fava, its credentials, and the connection. */
+    /** Remote mode: a self-hosted Fava, its credentials, and the connection. */
     val remoteState: RemoteState by lazy {
         RemoteState(filesDir.resolve("state"), appScope)
     }
@@ -198,7 +195,7 @@ class BeancountApplication : Application() {
         )
     }
 
-    /** Running a user script against the open ledger (Tier 3). Same policy, chosen once. */
+    /** Running a user script against the open ledger. Same policy, chosen once. */
     val scriptRunner: io.github.pintofi.beanbook.app.plugins.ScriptRunnerState by lazy {
         io.github.pintofi.beanbook.app.plugins.ScriptRunnerState(
             this,
@@ -216,29 +213,13 @@ class BeancountApplication : Application() {
         io.github.pintofi.beanbook.app.ui.theme.ThemeSettings(filesDir.resolve("state"))
     }
 
-    /** Whether the app still has to introduce itself (B27). */
-    val firstRun: io.github.pintofi.beanbook.app.ui.FirstRun by lazy {
-        io.github.pintofi.beanbook.app.ui.FirstRun(filesDir.resolve("state"))
+    /** When to mention, once, that the project accepts donations (B81). */
+    val supportPrompt: io.github.pintofi.beanbook.core.data.SupportPrompt by lazy {
+        io.github.pintofi.beanbook.core.data.SupportPrompt(filesDir.resolve("state"))
     }
 
     val projectsState: ProjectsState by lazy {
         ProjectsState(workspace, registry, ProjectImporter(workspace), appScope)
-    }
-
-    /**
-     * Trial and contribution keys. Stored in app-private storage *outside* the project
-     * tree, so entitlement state is never exported or backed up with a ledger.
-     */
-    val entitlements: Entitlements by lazy {
-        Entitlements(FileEntitlementStorage(filesDir.resolve("entitlement")))
-    }
-
-    /**
-     * The live entitlement, and the only place a key is applied. Held as state rather than a
-     * value read once, so entering a key takes effect immediately instead of at next launch.
-     */
-    val entitlementState: EntitlementState by lazy {
-        EntitlementState(entitlements, appScope)
     }
 
     val editor: BeancountEditor by lazy { BeancountEditor(this, connection = engineConnection) }
@@ -272,8 +253,12 @@ class BeancountApplication : Application() {
             val status = engineManager.status.value
             "engine: ${status::class.simpleName}, edition: ${pluginPolicy.name}"
         }
-        // Starts the 30-day trial on first launch and records that the app was seen now.
-        entitlementState.start(Instant.now())
+        // The first launch is when the week before the one support notice starts (B81).
+        supportPrompt.recordLaunch(Instant.now())
+        // What the trial and the contribution keys left behind (B81): a stored key carries the
+        // email it was issued to, and nothing reads it any more.
+        filesDir.resolve("entitlement").deleteRecursively()
+        filesDir.resolve("state/welcomed").delete()
         ProcessLifecycleOwner.get().lifecycle.addObserver(engineManager)
     }
 

@@ -41,9 +41,9 @@ jobs:
       #
       # An earlier version of this step failed the whole deploy whenever site/ contained an
       # OWNER comment, which would have blocked the *privacy policy* -- the one page Google
-      # Play requires by URL -- because of an unrelated placeholder on the keys page. The
-      # pages are written to be publishable before payment exists: keys.html says plainly
-      # that the links are not live yet, which is true and useful. What must never ship is a
+      # Play requires by URL -- because of an unrelated placeholder on the support page. The
+      # pages are written to be publishable before the Ko-fi page exists: support.html says
+      # plainly that it is not open yet, which is true and useful. What must never ship is a
       # link that looks real and goes nowhere.
       - name: Refuse to publish a dead payment link
         run: |

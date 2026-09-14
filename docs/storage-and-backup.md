@@ -119,7 +119,7 @@ After copying, the project is parsed. Errors are shown with file/line/column; th
 still completes so the user can fix them in the app (a ledger with errors is a normal
 state in Beancount).
 
-**Free tier:** manual import is free and unlimited, for any number of projects. Onboarding
+Manual import is free and unlimited, for any number of projects. Onboarding
 must never start with a paywall, and a per-count import limit would be both unenforceable
 in spirit (the raw editor already accepts pasted text) and impossible to define cleanly.
 
@@ -138,7 +138,7 @@ partial failure explicitly (SAF providers do fail).
 
 ---
 
-## 6. Auto-mirror (Tier 2)
+## 6. Auto-mirror
 
 Optional. The private workspace stays canonical; after every successful commit, changed
 files are mirrored to the user's SAF folder.
@@ -172,8 +172,7 @@ manifest.json      schema_version, app_version, engine_versions (python/beancoun
 project/…          the portable project tree
 ```
 
-Excluded by default: caches, indexes, logs, runtime binaries, mirror state, credentials,
-entitlement keys.
+Excluded by default: caches, indexes, logs, runtime binaries, mirror state, credentials.
 
 **Encryption:** optional, off by default. Plain archives are interoperable and
 recoverable without this app — the right default for a plain-text-accounting product.
@@ -193,7 +192,7 @@ forgotten passphrase means permanently lost data — we cannot recover it.
 **Never overwrite the only good copy** — activation is a rename, and the prior project is
 kept until the user prunes it.
 
-**Scheduled backups (Tier 2)** use `WorkManager` with constraints; exact timing is not
+**Scheduled backups** use `WorkManager` with constraints; exact timing is not
 guaranteed by Android and the UI says so. Retention is configurable by count and age.
 Partial failures are reported per file, never summarised as success.
 

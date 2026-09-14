@@ -83,7 +83,7 @@ class ProjectsState(
         }
 
     /**
-     * Writes a copy of a project into a folder the user chooses (SPEC.md §55, free tier).
+     * Writes a copy of a project into a folder the user chooses (SPEC.md §55).
      *
      * Distinct from mirroring, which sets up an ongoing relationship with one folder. This is
      * a snapshot: it happens once, to wherever the user points it, and the app forgets about

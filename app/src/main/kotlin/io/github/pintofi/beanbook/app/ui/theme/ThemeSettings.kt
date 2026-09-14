@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * once at startup on the main thread before anything is drawn, and adding an asynchronous
  * store for that would mean a frame of the wrong theme while it loaded.
  *
- * Kept outside the project tree, like entitlement state — a display preference belongs to
+ * Kept outside the project tree, like the rest of the app's own state — a display preference belongs to
  * the device, not to a ledger, and must not travel in a backup or a mirror.
  */
 class ThemeSettings(stateDir: File) {

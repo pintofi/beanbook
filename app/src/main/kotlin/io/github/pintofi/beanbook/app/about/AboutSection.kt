@@ -42,7 +42,7 @@ import io.github.pintofi.beanbook.app.ui.loadLicences
 /** Where the source lives. The repository is public; nothing here is fetched from it. */
 private const val SOURCE_URL = "https://github.com/PintoFi/beanbook"
 
-/** The address on the contribution-key emails, so a reply reaches the same place. */
+/** Where to write about the app. */
 private const val CONTACT_EMAIL = "pintofinan@gmail.com"
 
 /**
@@ -52,7 +52,7 @@ private const val CONTACT_EMAIL = "pintofinan@gmail.com"
  * update, what remained was the screen every app has and this one did not: the identity of the
  * thing you are running. That matters more here than in most apps, because Beanbook is GPL
  * software handling your accounts — the licence entitles you to the source, so the source is a
- * button rather than a sentence, and the address that sends contribution keys is on screen so
+ * button rather than a sentence, and the contact address is on screen so
  * a reply is not detective work.
  *
  * The address and the URL are on the buttons and nowhere else: printing them again underneath

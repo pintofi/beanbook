@@ -7,12 +7,15 @@
 //   D2  play must not expose the Java/Android bridge to user plugin code
 //   D3  play must not contain self-update / APK-installer code
 //
-// plus the monetization rules (docs/distribution.md 4.1):
+// plus the money rules (docs/distribution.md 4):
 //
-//   M1  Play Billing belongs to the play edition and nowhere else. The expert build is not
-//       distributed through Play, so shipping Play Billing in it would carry a proprietary
-//       library that cannot work, into the one edition users install by hand.
+//   M1  no billing library in either edition. Beanbook sells nothing (B81): every feature is
+//       free, so Play Billing would be a proprietary library with nothing to do.
 //   M2  no third-party payment SDK in either edition, ever.
+//   M3  the play edition names no donation or payment page. Play's Payments policy says apps
+//       "may not lead users to a payment method other than Google Play's billing system", and
+//       exempts only tax-exempt donations; a Ko-fi tip is not one. The Ko-fi link lives in
+//       src/expert (EditionFacts), and this is what notices if it moves.
 //
 // Each check below can fail a real build. `./gradlew :app:verifyPlayFlavorBoundaries`
 // must be run for every release.
@@ -21,15 +24,11 @@ val forbiddenPlayDependencies = listOf(
     "com.paypal",                          // M2: no third-party payment SDKs
     "com.stripe",
     "com.braintreepayments",
+    "com.android.billingclient",           // M1: nothing is sold, in either edition
+    "com.google.android.gms:play-services-billing",
 )
 
-/**
- * M1: Play Billing may reach the expert classpath through nothing at all.
- *
- * The play edition needs it, so it cannot simply be forbidden everywhere. What must hold is
- * that it stays on the play side: `playImplementation` in app/build.gradle.kts is what puts
- * it there, and this is what notices when someone changes that to `implementation`.
- */
+/** M1: no billing library on either edition's classpath (B81). */
 val forbiddenExpertDependencies = listOf(
     "com.android.billingclient",
     "com.google.android.gms:play-services-billing",
@@ -40,6 +39,8 @@ val forbiddenPlaySourcePatterns = listOf(
     Regex("""allowsNativeCode\s*=\s*true"""),   // D1
     Regex("""allowsAndroidBridge\s*=\s*true"""), // D2
     Regex("""allowsPackageDownload\s*=\s*true"""), // D1: no fetching code, native or not
+    // M3: no donation or payment page named anywhere compiled into play (B81).
+    Regex("""ko-fi\.com|buymeacoffee\.com|patreon\.com|liberapay\.com|paypal\.(me|com)|github\.com/sponsors"""),
 )
 
 /**
@@ -69,8 +70,7 @@ val forbiddenInstallerPatterns = listOf(
  * asserted, not merely not-contradicted.
  */
 val forbiddenSharedSourcePatterns = listOf(
-    // M1: billing code lives in src/play only. In src/main it would compile into the expert
-    // build too, which is the thing this rule exists to stop.
+    // M1: nothing is sold, so no billing code in either edition (B81).
     Regex("""BillingClient"""),
 )
 
@@ -172,7 +172,7 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
         file("src/play"),
         file("src/main"),
     ) + listOf(
-        "core-domain", "core-data", "core-engine", "core-entitlement",
+        "core-domain", "core-data", "core-engine",
         "engine-local", "engine-remote", "scanner",
     ).map { File(rootDir, "$it/src/main") }
     val manifestFiles = playSourceDirs.map { File(it, "AndroidManifest.xml") }
@@ -208,7 +208,7 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
 
     // Shared sources: everything compiled into *both* editions.
     val sharedSourceDirs = listOf(file("src/main")) + listOf(
-        "core-domain", "core-data", "core-engine", "core-entitlement",
+        "core-domain", "core-data", "core-engine",
         "engine-local", "engine-remote",
     ).map { File(rootDir, "$it/src/main") }
 
@@ -229,8 +229,8 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
         for (coordinate in resolvedExpertCoordinates.get()) {
             for (forbidden in forbiddenExpertDependencies) {
                 if (coordinate.contains(forbidden)) {
-                    violations += "M1: Play Billing on the expert classpath: $coordinate " +
-                        "(it belongs to the play edition only)"
+                    violations += "M1: a billing library on the expert classpath: $coordinate " +
+                        "(nothing is sold in either edition)"
                 }
             }
         }
@@ -262,7 +262,7 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
                         if (pattern.containsMatchIn(text)) {
                             violations += "M1: /${pattern.pattern}/ in " +
                                 "${source.relativeTo(rootDir)}, which compiles into both " +
-                                "editions; billing code belongs in src/play"
+                                "editions; nothing is sold, so billing code belongs nowhere"
                         }
                     }
                 }

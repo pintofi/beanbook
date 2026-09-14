@@ -65,7 +65,6 @@ class WidgetEngineIsolationTest {
         periodIncome = "3000.00 USD",
         periodExpense = "262.00 USD",
         clean = true,
-        entitled = true,
     )
 
     @After fun restore() {
@@ -166,18 +165,5 @@ class WidgetEngineIsolationTest {
         // The amount must not survive anywhere on the widget, including the line that
         // usually carries the project name.
         assertFalse("the amount leaked into the footnote", footnote.text.contains("940"))
-    }
-
-    @Test fun withoutTheTierTheWidgetSaysSoAndShowsNoFigures() {
-        val locked = snapshot.copy(entitled = false)
-
-        val views = WidgetRenderer.render(context, WidgetMetric.NET_WORTH, locked, redacted = false)
-        val inflated = views.apply(context, android.widget.FrameLayout(context))
-
-        val value = inflated.findViewById<android.widget.TextView>(R.id.widget_value)
-        val footnote = inflated.findViewById<android.widget.TextView>(R.id.widget_footnote)
-        assertEquals("—", value.text.toString())
-        assertFalse("a figure showed without the tier", footnote.text.contains("940"))
-        assertTrue(footnote.text.contains("ledger is unaffected"))
     }
 }

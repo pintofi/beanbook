@@ -17,7 +17,7 @@ analysis.**
 | Project picker, project health | Native | Multi-project state is an app concern |
 | Guided entry, quick-add | Native | Fast, offline, accessible, keyboard-aware |
 | Raw source editor | Native | Needs stale-write detection, drafts, atomic save |
-| Journal (basic) | Native | Free tier, and must work before the engine is warm |
+| Journal (basic) | Native | Must work before the engine is warm |
 | Reports, balance sheet, income statement, holdings, commodities | Fava (WebView) | Highest fidelity, zero divergence risk |
 | Charts and graphs | Fava (WebView) | D3 already implemented upstream |
 | BQL query page | Fava (WebView) | Upstream editor and result rendering |
@@ -25,7 +25,7 @@ analysis.**
 | Documents, camera, PDF | Native | Platform APIs |
 | Backup, restore, import/export, sync conflicts | Native | Destructive actions need native confirmation UX |
 | Plugin management, execution logs | Native | Trust decisions must never be rendered by web content |
-| Settings, entitlement, diagnostics, safe mode | Native | Trust and platform integration |
+| Settings, diagnostics, safe mode | Native | Trust and platform integration |
 
 Every trust decision (permissions, plugin enablement, purchases, destructive
 confirmations) is rendered natively. Web content never asks for trust.
@@ -37,7 +37,7 @@ confirmations) is rendered natively. Web content never asks for trust.
 Bottom navigation (phone) / navigation rail (tablet):
 
 1. **Journal** — the default surface. Chronological entries, search, filter, quick-add FAB.
-2. **Balances** — account tree with balances (free), linking to Fava reports (T1).
+2. **Balances** — account tree with balances (free), linking to Fava reports.
 3. **Reports** — Fava WebView host: balance sheet, income statement, trial balance,
    holdings, commodities, queries, charts, extension pages.
 4. **Files** — the project's file tree with the raw editor.
@@ -131,7 +131,7 @@ Rotation and window resizing never lose editor state (drafts persist).
 
 ---
 
-## 8. Widgets (Tier 2)
+## 8. Widgets
 
 Three widgets: **account balance**, **net worth / selected metric**, **quick add**.
 
@@ -163,20 +163,17 @@ Three cards, no account required, no network:
 
 1. **Open an existing project** (free) — SAF folder or archive.
 2. **Create a new project** — generates the starter layout.
-3. **Connect to my Fava server** (Tier 3) — remote setup.
+3. **Connect to my Fava server** — remote setup.
 
 Followed by a one-screen honest explanation: everything runs on your device, no
 telemetry, files stay plain text and exportable at any time.
 
 ---
 
-## 10. Entitlement UX
+## 10. Support, not entitlement (B81)
 
-A "Contribute" screen modelled on the reference screenshot's clarity: tiers as cards with
-their unlocked features listed, a "Buy" action (Play Billing or the external link
-depending on edition), and an "Enter key" action. Gated features show a small inline
-lock with the tier name and a one-tap path to the screen — never a modal interruption
-mid-task, and never a dark pattern.
-
-The screen states plainly that the app is open source and GPL-licensed, that a key is a
-contribution rather than a technical restriction, and that keys work in both editions.
+Nothing is locked, so there is no Contribute screen, no lock, no trial card and no countdown.
+The Expert edition shows one notice on Home after a week of use -- "Beanbook is free", with
+*Support on Ko-fi* and *No thanks* -- and never again once either is pressed. The Play edition
+shows no donation notice or link (Play Payments policy); it describes the Expert edition at the
+top of More. Never a modal interruption mid-task, and never a dark pattern.

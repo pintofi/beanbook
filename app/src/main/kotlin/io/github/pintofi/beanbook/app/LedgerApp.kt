@@ -47,7 +47,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.domain.JournalEntry
 import io.github.pintofi.beanbook.app.ui.EditableFile
-import io.github.pintofi.beanbook.app.ui.ContributeScreen
 import io.github.pintofi.beanbook.core.data.MirrorAction
 import io.github.pintofi.beanbook.app.ui.DocumentCaptureHandle
 import io.github.pintofi.beanbook.app.ui.ScannerScreen
@@ -63,7 +62,6 @@ import io.github.pintofi.beanbook.core.domain.TransactionDraft
 import io.github.pintofi.beanbook.app.web.AllowlistWebViewClient
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.core.engine.EngineStatus
-import io.github.pintofi.beanbook.core.entitlement.Entitlement
 import androidx.compose.foundation.background
 // The app shell: the destinations, and the scaffold that holds them.
 //
@@ -239,7 +237,6 @@ internal fun LedgerApp(
     engineStatus: EngineStatus,
     ledger: LedgerSnapshot?,
     editionName: String,
-    entitlement: Entitlement,
     token: String?,
     /** The surface a launching widget asked for, if any (B2). */
     openOn: String? = null,
@@ -251,10 +248,6 @@ internal fun LedgerApp(
     templates: List<EntryTemplate>,
     onSaveTemplate: (EntryTemplate) -> Unit,
     onDeleteTemplate: (String) -> Unit,
-    onApplyKey: (String) -> Unit,
-    onRemoveKey: () -> Unit,
-    onClearEntitlementMessage: () -> Unit,
-    entitlementMessage: String?,
     documentCapture: DocumentCaptureHandle,
     documents: List<DocumentRow>,
     documentMessage: String?,
@@ -361,8 +354,6 @@ internal fun LedgerApp(
     onDiscardDraft: () -> Unit,
     refreshing: Boolean,
     onRefresh: () -> Unit,
-    purchaseOffers: List<io.github.pintofi.beanbook.app.billing.PurchaseController.TierOffer>,
-    onBuy: (io.github.pintofi.beanbook.core.entitlement.Tier) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Seeded from the widget that launched the app, when one did. Keyed on `openOn` so a
@@ -374,7 +365,6 @@ internal fun LedgerApp(
     // still asks for "ADD" by name, and that has to keep working now that it is no longer a
     // destination -- landing on Home instead of the form would be a silent regression.
     var adding by remember(openOn) { mutableStateOf(openOn == "ADD") }
-    var showContribute by remember { mutableStateOf(false) }
 
     // Whether anything has been typed into the open form, and what to do once the user has
     // decided (B61). Leaving a half-written entry by tapping a destination is one tap away
@@ -449,7 +439,6 @@ internal fun LedgerApp(
     val stack = Backstack(
         tab = selected,
         overlays = buildList {
-            if (showContribute) add(Overlay.Contribute)
             moreSection?.let { add(Overlay.Section(it)) }
             if (adding) add(Overlay.AddEntry)
         },
@@ -459,7 +448,6 @@ internal fun LedgerApp(
             stack.back()?.let { previous ->
                 adding = previous.isAdding
                 moreSection = previous.openSection
-                showContribute = previous.isContributing
                 selected = previous.tab
             }
         }
@@ -613,24 +601,6 @@ internal fun LedgerApp(
             }
         },
     ) { padding ->
-        if (showContribute) {
-            ContributeScreen(
-                entitlement = entitlement,
-                route = io.github.pintofi.beanbook.app.billing.currentPurchaseRoute(),
-                offers = purchaseOffers,
-                onBuy = onBuy,
-                onApplyKey = onApplyKey,
-                onRemoveKey = onRemoveKey,
-                onClose = {
-                    showContribute = false
-                    onClearEntitlementMessage()
-                },
-                message = entitlementMessage,
-                modifier = Modifier.padding(padding),
-            )
-            return@Scaffold
-        }
-
         Column(modifier = Modifier.padding(padding)) {
             // The banner makes room for itself rather than appearing in place, so the page
             // under it is pushed down by something arriving instead of being covered by
@@ -667,7 +637,6 @@ internal fun LedgerApp(
                 onMoreSection = { moreSection = it },
                 onSelectSurface = { leavingAdd { adding = false; selected = it } },
                 twoPane = layout == PaneLayout.EXPANDED,
-                onContribute = { showContribute = true },
                 documentCapture = documentCapture,
                 documents = documents,
                 documentMessage = documentMessage,
@@ -771,7 +740,6 @@ internal fun LedgerApp(
                 engineStatus = engineStatus,
                 ledger = ledger,
                 editionName = editionName,
-                entitlement = entitlement,
                 token = token,
                 debuggingAllowed = debuggingAllowed,
                 onOpenExternally = onOpenExternally,

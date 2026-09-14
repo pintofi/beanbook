@@ -54,7 +54,7 @@ enum class DirectiveKind(val label: String) {
  * Editors for every directive that is not a transaction (SPEC.md §2.1).
  *
  * A ledger where you can record a payment but cannot open the account it came from is not
- * a usable ledger, so these are part of the free tier alongside transactions.
+ * a usable ledger, so these sit alongside transactions.
  */
 @Composable
 fun DirectiveEntryScreen(
