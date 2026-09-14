@@ -4,10 +4,15 @@ import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -156,8 +161,8 @@ class PageEditorTest {
         compose.onNodeWithText("Page 1 of 2").assertIsDisplayed()
     }
 
-    /** The arrows turn pages, stop at either end, and the counter follows (B85). */
-    @Test fun theArrowsTurnPagesAndStopAtTheEnds() {
+    /** Swiping turns pages, stops at either end, and the counter follows (B86). */
+    @Test fun swipingTurnsPagesAndStopsAtTheEnds() {
         compose.setContent {
             MaterialTheme {
                 PageEditorScreen(
@@ -172,13 +177,22 @@ class PageEditorTest {
                 )
             }
         }
-        compose.onNodeWithContentDescription("Previous page").assertIsNotEnabled()
-        compose.onNodeWithContentDescription("Next page").performClick()
-        compose.waitForIdle()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithContentDescription("Page 1").fetchSemanticsNodes().isNotEmpty()
+        }
+        fun swipe(towardsLater: Boolean) {
+            compose.onRoot().performTouchInput { if (towardsLater) swipeLeft() else swipeRight() }
+            compose.waitForIdle()
+        }
+        // No arrows: the swipe is the way between pages.
+        compose.onAllNodesWithContentDescription("Next page").assertCountEquals(0)
+        swipe(towardsLater = false)
+        compose.onNodeWithText("Page 1 of 2").assertIsDisplayed()
+        swipe(towardsLater = true)
         compose.onNodeWithText("Page 2 of 2").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Next page").assertIsNotEnabled()
-        compose.onNodeWithContentDescription("Previous page").assertIsEnabled().performClick()
-        compose.waitForIdle()
+        swipe(towardsLater = true)
+        compose.onNodeWithText("Page 2 of 2").assertIsDisplayed()
+        swipe(towardsLater = false)
         compose.onNodeWithText("Page 1 of 2").assertIsDisplayed()
     }
 

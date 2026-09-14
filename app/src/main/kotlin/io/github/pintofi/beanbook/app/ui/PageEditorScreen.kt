@@ -13,8 +13,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
@@ -196,8 +194,10 @@ fun PageEditorScreen(
                     Text("This page could not be opened.", color = Color.White)
                 } else {
                     // Pinch to check the small print before filing it (B84). Telephoto hands a
-                    // horizontal drag to the pager at the page's edge, so swiping between pages
-                    // still works at normal size.
+                    // horizontal drag to the pager at the page's edge, so swiping is how you
+                    // turn pages: it stops at the first and last, and the counter follows. The
+                    // arrows that used to sit under the page are gone (B86) -- as move buttons
+                    // they read as next/previous, and as next/previous they repeated the swipe.
                     val shown = remember(bitmap) { bitmap.asImageBitmap() }
                     ZoomablePage(
                         bitmap = shown,
@@ -254,29 +254,6 @@ fun PageEditorScreen(
                     contentDescription = "Turn page ${current + 1} clockwise"
                 },
             ) { Icon(Icons.Filled.RotateRight, contentDescription = null, tint = Color.White) }
-            // Between pages, stopping at either end rather than wrapping round.
-            IconButton(
-                onClick = { scope.launch { state.animateScrollToPage(current - 1) } },
-                enabled = current > 0,
-                modifier = Modifier.semantics { contentDescription = "Previous page" },
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = null,
-                    tint = if (current > 0) Color.White else Color.Gray,
-                )
-            }
-            IconButton(
-                onClick = { scope.launch { state.animateScrollToPage(current + 1) } },
-                enabled = current < pages.size - 1,
-                modifier = Modifier.semantics { contentDescription = "Next page" },
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = if (current < pages.size - 1) Color.White else Color.Gray,
-                )
-            }
             IconButton(
                 onClick = { cropping = current },
                 modifier = Modifier.semantics {
