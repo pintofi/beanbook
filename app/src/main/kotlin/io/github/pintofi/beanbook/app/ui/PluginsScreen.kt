@@ -141,6 +141,10 @@ fun PluginsScreen(
 
         LedgerHairline()
 
+        CatalogueSection(packages.catalogue, usedModules = usedModules, onUseModule = onUseModule)
+
+        LedgerHairline()
+
         PackagesSection(policy, packages, noPluginsLeft = rows.isEmpty())
 
         LedgerHairline()
@@ -594,3 +598,175 @@ private fun PackagesSection(
         }
     }
 }
+
+/**
+ * The curated catalogue: every plugin on awesome-beancount, how it tested, and one button (B82).
+ *
+ * Installing one fetches it and the packages it needs into a folder of its own, so each can be
+ * removed without disturbing another. Nothing is downloaded until the person has seen what will
+ * be. In the Play edition the list is for reading: it says how to add a plugin from a file.
+ */
+@Composable
+internal fun CatalogueSection(
+    catalogue: io.github.pintofi.beanbook.app.plugins.CatalogueUi,
+    usedModules: Set<String> = emptySet(),
+    onUseModule: (module: String, extension: Boolean, use: Boolean) -> Unit = { _, _, _ -> },
+) {
+    if (catalogue.entries.isEmpty()) return
+    var showAll by remember { mutableStateOf(false) }
+    Text(
+        if (catalogue.canInstall) "Plugins you can install" else "Plugins people use",
+        style = MaterialTheme.typography.titleSmall,
+    )
+    Text(
+        if (catalogue.canInstall) {
+            "From the awesome-beancount list, with how each one fared when this app tested it. " +
+                "Each installs with what it needs, and removes cleanly on its own."
+        } else {
+            "From the awesome-beancount list, with how each one fared when this app tested it. " +
+                "This edition does not download plugins: add one from a file above, or use the " +
+                "Expert edition, which installs them from here."
+        },
+        style = MaterialTheme.typography.bodySmall,
+    )
+    catalogue.message?.let {
+        Notice(NoticeTone.QUIET, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
+            Text(it, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+    val installed = catalogue.entries.filter { it.id in catalogue.installed }
+    val rest = catalogue.entries.filterNot { it.id in catalogue.installed }
+    val shown = installed + if (showAll) rest else rest.take(CATALOGUE_PREVIEW)
+    shown.forEach { entry ->
+        CatalogueRow(entry, catalogue, usedModules, onUseModule)
+    }
+    if (rest.size > CATALOGUE_PREVIEW) {
+        TextButton(onClick = { showAll = !showAll }) {
+            Text(if (showAll) "Show fewer" else "Show all ${catalogue.entries.size}")
+        }
+    }
+}
+
+@Composable
+private fun CatalogueRow(
+    entry: io.github.pintofi.beanbook.core.data.PluginCatalogue.Entry,
+    catalogue: io.github.pintofi.beanbook.app.plugins.CatalogueUi,
+    usedModules: Set<String>,
+    onUseModule: (module: String, extension: Boolean, use: Boolean) -> Unit,
+) {
+    val version = catalogue.installed[entry.id]
+    val status = catalogue.status
+    RuledColumn(
+        modifier = Modifier.padding(vertical = Measure.snug),
+        colour = if (version != null) BeancountTheme.ledger.rule else MaterialTheme.colorScheme.outlineVariant,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(entry.name, style = MaterialTheme.typography.titleMedium)
+        Text(entry.description, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            "${kindLabel(entry.kind)} · ${statusLabel(entry.status)} · licence ${entry.licence}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        entry.statusReason?.takeIf { entry.status != "supported" }?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall)
+        }
+        entry.licenceNote?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+
+        when {
+            status is io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Confirming &&
+                status.entry.id == entry.id -> {
+                val install = entry.install
+                Notice(NoticeTone.ATTENTION) {
+                    Text("Install ${entry.name}?", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Downloads ${install?.archive?.substringAfter("https://")?.substringBefore('/')} " +
+                            "(${install?.source} ${install?.version}), checked against the catalogue's " +
+                            "checksum." + if (status.resolution.wheels.isEmpty()) {
+                                " It needs nothing else."
+                            } else {
+                                " With it: ${status.resolution.wheels.joinToString { it.name }}."
+                            },
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    if (status.resolution.unavailable.isNotEmpty()) {
+                        Text(
+                            "Not available for Android, so left out: " +
+                                "${status.resolution.unavailable.joinToString()}. " +
+                                "The parts that need them will not work.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = catalogue.onConfirm,
+                            modifier = Modifier.semantics { contentDescription = "Download and install ${entry.name}" },
+                        ) { Text("Install") }
+                        TextButton(onClick = catalogue.onCancel) { Text("Not now") }
+                    }
+                }
+            }
+            (status as? io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Resolving)?.id == entry.id ->
+                Text("Working out what it needs…", style = MaterialTheme.typography.bodySmall)
+            (status as? io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Installing)?.id == entry.id ->
+                Text("Installing…", style = MaterialTheme.typography.bodySmall)
+            version != null -> {
+                entry.install?.modules.orEmpty().take(MODULE_LIMIT).forEach { module ->
+                    val used = module in usedModules
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(
+                                value = used,
+                                onValueChange = { onUseModule(module, entry.isExtension, it) },
+                                role = Role.Switch,
+                            )
+                            .semantics {
+                                contentDescription = if (entry.isExtension) {
+                                    "Show $module in the Fava reports of this ledger"
+                                } else {
+                                    "Run $module when this ledger loads"
+                                }
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(module, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                        Switch(checked = used, onCheckedChange = null)
+                    }
+                }
+                OutlinedButton(
+                    onClick = { catalogue.onRemove(entry.id) },
+                    modifier = Modifier.semantics { contentDescription = "Remove ${entry.name} and what it installed" },
+                ) { Text("Remove") }
+            }
+            catalogue.canInstall && entry.install != null -> OutlinedButton(
+                onClick = { catalogue.onInstall(entry.id) },
+                enabled = status is io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Idle,
+                modifier = Modifier.semantics { contentDescription = "Install ${entry.name}" },
+            ) { Text("Install") }
+            else -> Unit
+        }
+    }
+}
+
+private fun kindLabel(kind: String) = when (kind) {
+    "beancount-plugin" -> "Beancount plugin"
+    "fava-extension" -> "Fava extension"
+    "beancount-importer" -> "Importer"
+    "library" -> "Library"
+    else -> kind
+}
+
+private fun statusLabel(status: String) = when (status) {
+    "supported" -> "works"
+    "needs-config" -> "works with a configuration"
+    "partial" -> "partly works"
+    "unsupported" -> "does not work here"
+    else -> "not tested"
+}
+
+/** How many uninstalled entries the section shows before "Show all". */
+private const val CATALOGUE_PREVIEW = 8
+

@@ -18,6 +18,7 @@ rather than a claim in a document.
 from __future__ import annotations
 
 import builtins
+import hashlib
 import importlib
 import importlib.util
 import io
@@ -475,6 +476,12 @@ def activated(plugin_dirs, allow_bridge: bool):
     (cold start is already over budget: docs/pending-verification.md V3).
     """
     directories = _module_names(plugin_dirs)
+    # Beancount's own load cache must not answer for a different set of plugins (B82). It
+    # keys the pickle on the ledger files' modification times alone, so a load that failed to
+    # import a plugin -- "No module named beancount_interpolate" -- was served again, error
+    # and all, after the plugin had been installed. The cache file is named for the plugins
+    # in reach, so installing, removing or changing one is a different cache.
+    use_loader_cache(directories)
     guard = None if (allow_bridge or not directories) else BridgeGuard().install()
     added = []
     for directory in directories:
@@ -498,12 +505,67 @@ def activated(plugin_dirs, allow_bridge: bool):
         #
         # It also means an edited plugin is picked up on the next load instead of being
         # stale, which is what anyone editing one would expect.
+        use_loader_cache([])
         _evict_modules_under(added)
         for directory in added:
             if directory in sys.path:
                 sys.path.remove(directory)
         if guard is not None:
             guard.remove()
+
+
+def loader_cache_pattern(directories) -> str:
+    """The name Beancount's pickle cache is given while `directories` are importable.
+
+    Beancount's own name when there are none, so a ledger loaded without plugins shares its
+    cache with desktop Beancount. Otherwise the name carries a digest of each directory and
+    what is directly in it, with sizes and modification times: installing, removing or
+    replacing a plugin changes one of those, and so changes the cache. Only one level deep,
+    because a site folder can hold a hundred megabytes of numpy, and walking it on every load
+    would cost more than the cache saves.
+    """
+    from beancount import loader
+
+    if not directories:
+        return loader.PICKLE_CACHE_FILENAME
+    digest = hashlib.sha256()
+    for directory in sorted(str(Path(d).resolve()) for d in directories):
+        digest.update(directory.encode())
+        try:
+            children = sorted(os.scandir(directory), key=lambda item: item.name)
+        except OSError:
+            continue
+        for child in children:
+            try:
+                stat = child.stat()
+            except OSError:
+                continue
+            digest.update(f"{child.name}:{stat.st_size}:{stat.st_mtime_ns}".encode())
+    return ".{filename}." + digest.hexdigest()[:16] + ".picklecache"
+
+
+def use_loader_cache(directories) -> str:
+    """Points Beancount's load cache at the file for `directories`, and returns its pattern."""
+    from beancount import loader
+
+    pattern = loader_cache_pattern(directories)
+    loader.initialize(os.getenv("BEANCOUNT_DISABLE_LOAD_CACHE") is None, pattern)
+    return pattern
+
+
+def discard_other_loader_caches(ledger_path, keep_pattern: str) -> list:
+    """Deletes this ledger's pickle caches made for other plugin sets, keeping one."""
+    ledger = Path(ledger_path)
+    keep = keep_pattern.format(filename=ledger.name)
+    removed = []
+    for candidate in ledger.parent.glob(f".{ledger.name}.*.picklecache"):
+        if candidate.name != keep:
+            try:
+                candidate.unlink()
+                removed.append(candidate.name)
+            except OSError:
+                pass
+    return removed
 
 
 def _evict_modules_under(directories) -> list:

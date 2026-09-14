@@ -26,6 +26,22 @@
         "reason": "imports, executes and preserves every directive",
         "version": "0.2.3",
         "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      },
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/26/ad/537ff3ff5a54f98b05012285622cb33447a3021edb0e0a0e33d01fdfc4b9/autobean-0.2.3-py3-none-any.whl",
+        "sha256": "5e3a7041597cc960352dc66af1eb8ed98f0e4c5e010f57f15ef6a6e0733c3d2c",
+        "version": "0.2.3",
+        "paths": [
+          "autobean"
+        ],
+        "requires": [
+          "pyyaml",
+          "requests"
+        ],
+        "modules": [
+          "autobean.include"
+        ]
       }
     },
     {
@@ -42,6 +58,22 @@
         "reason": "imports, executes and preserves every directive",
         "version": "0.2.3",
         "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      },
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/26/ad/537ff3ff5a54f98b05012285622cb33447a3021edb0e0a0e33d01fdfc4b9/autobean-0.2.3-py3-none-any.whl",
+        "sha256": "5e3a7041597cc960352dc66af1eb8ed98f0e4c5e010f57f15ef6a6e0733c3d2c",
+        "version": "0.2.3",
+        "paths": [
+          "autobean"
+        ],
+        "requires": [
+          "pyyaml",
+          "requests"
+        ],
+        "modules": [
+          "autobean.narration"
+        ]
       }
     },
     {
@@ -58,6 +90,22 @@
         "reason": "with an empty config: directives disappeared: {'Open': 3, 'Note': 1}",
         "version": "0.2.3",
         "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
+      },
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/26/ad/537ff3ff5a54f98b05012285622cb33447a3021edb0e0a0e33d01fdfc4b9/autobean-0.2.3-py3-none-any.whl",
+        "sha256": "5e3a7041597cc960352dc66af1eb8ed98f0e4c5e010f57f15ef6a6e0733c3d2c",
+        "version": "0.2.3",
+        "paths": [
+          "autobean"
+        ],
+        "requires": [
+          "pyyaml",
+          "requests"
+        ],
+        "modules": [
+          "autobean.share"
+        ]
       }
     },
     {
@@ -74,6 +122,22 @@
         "reason": "imports, executes and preserves every directive",
         "version": "0.2.3",
         "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      },
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/26/ad/537ff3ff5a54f98b05012285622cb33447a3021edb0e0a0e33d01fdfc4b9/autobean-0.2.3-py3-none-any.whl",
+        "sha256": "5e3a7041597cc960352dc66af1eb8ed98f0e4c5e010f57f15ef6a6e0733c3d2c",
+        "version": "0.2.3",
+        "paths": [
+          "autobean"
+        ],
+        "requires": [
+          "pyyaml",
+          "requests"
+        ],
+        "modules": [
+          "autobean.sorted"
+        ]
       }
     },
     {
@@ -90,6 +154,20 @@
         "reason": "as a importer it fails to import: ModuleNotFoundError: No module named 'beancount.ingest'",
         "version": "0.2.3",
         "on_device": "not run on Android: it is an importer that reaches for beancount.ingest, removed in Beancount 3, so it fails identically on both and the manifest excludes it"
+      },
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/26/ad/537ff3ff5a54f98b05012285622cb33447a3021edb0e0a0e33d01fdfc4b9/autobean-0.2.3-py3-none-any.whl",
+        "sha256": "5e3a7041597cc960352dc66af1eb8ed98f0e4c5e010f57f15ef6a6e0733c3d2c",
+        "version": "0.2.3",
+        "paths": [
+          "autobean"
+        ],
+        "requires": [
+          "pyyaml",
+          "requests"
+        ],
+        "modules": []
       }
     },
     {
@@ -106,6 +184,22 @@
         "reason": "imports, executes and preserves every directive",
         "version": "0.2.3",
         "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      },
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/26/ad/537ff3ff5a54f98b05012285622cb33447a3021edb0e0a0e33d01fdfc4b9/autobean-0.2.3-py3-none-any.whl",
+        "sha256": "5e3a7041597cc960352dc66af1eb8ed98f0e4c5e010f57f15ef6a6e0733c3d2c",
+        "version": "0.2.3",
+        "paths": [
+          "autobean"
+        ],
+        "requires": [
+          "pyyaml",
+          "requests"
+        ],
+        "modules": [
+          "autobean.xcheck"
+        ]
       }
     },
     {
@@ -123,7 +217,21 @@
         "version": "main",
         "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/daniel-wells/beancount_balancechange/zip/cd5496872d9885290f4931a87f8498492bed272c",
+        "sha256": "fe80c18a8c56cb0ae55f76a499c0651dc346d6a48305ccb3349a70529bba994a",
+        "version": "cd5496872d98",
+        "strip": "beancount_balancechange-cd5496872d9885290f4931a87f8498492bed272c/",
+        "paths": [
+          "beancount_balancechange"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_balancechange.balance_change"
+        ]
+      }
     },
     {
       "id": "beancount-balexpr",
@@ -139,6 +247,19 @@
         "reason": "imports, executes and preserves every directive",
         "version": "0.5.0",
         "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
+      },
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/d6/e9/30a6a25c8949ec2aa56364ebe91b42b6b98d6788e58e6bf90d0fe2f27aa5/beancount_balexpr-0.5.0-py3-none-any.whl",
+        "sha256": "e7faeed6a9be2b7fae545281539f1cd598bcc95a358e0caafd4a59d3315d895a",
+        "version": "0.5.0",
+        "paths": [
+          "beancount_balexpr"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_balexpr.balexpr"
+        ]
       }
     },
     {
@@ -156,7 +277,21 @@
         "version": "main",
         "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/daniel-wells/beancount_checkclosed/zip/e9382b7044d62ee05be20c27a5de5a32ee87dff1",
+        "sha256": "e855f417baa2a1bfa56b1f8208879e432181520383a723896c6ec04741250552",
+        "version": "e9382b7044d6",
+        "strip": "beancount_checkclosed-e9382b7044d62ee05be20c27a5de5a32ee87dff1/",
+        "paths": [
+          "beancount_checkclosed"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_checkclosed.check_closed"
+        ]
+      }
     },
     {
       "id": "lazy.filter_map",
@@ -173,7 +308,21 @@
         "version": "main",
         "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
-      "distribution": "lazy"
+      "distribution": "lazy",
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/evernight/beancount-lazy-plugins/zip/d22b25b9a5258c312709a7e181b05bc8ce05be6c",
+        "sha256": "badf00fd78eb22c8211d18ac5acb4f2340981074fb3b736811f3913e8d1ebab5",
+        "version": "d22b25b9a525",
+        "strip": "beancount-lazy-plugins-d22b25b9a5258c312709a7e181b05bc8ce05be6c/",
+        "paths": [
+          "src/beancount_lazy_plugins"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_lazy_plugins.filter_map"
+        ]
+      }
     },
     {
       "id": "lazy.valuation",
@@ -190,7 +339,21 @@
         "version": "main",
         "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
-      "distribution": "lazy"
+      "distribution": "lazy",
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/evernight/beancount-lazy-plugins/zip/d22b25b9a5258c312709a7e181b05bc8ce05be6c",
+        "sha256": "badf00fd78eb22c8211d18ac5acb4f2340981074fb3b736811f3913e8d1ebab5",
+        "version": "d22b25b9a525",
+        "strip": "beancount-lazy-plugins-d22b25b9a5258c312709a7e181b05bc8ce05be6c/",
+        "paths": [
+          "src/beancount_lazy_plugins"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_lazy_plugins.valuation"
+        ]
+      }
     },
     {
       "id": "lazy.tag_from_continuous_events",
@@ -207,7 +370,21 @@
         "version": "main",
         "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
-      "distribution": "lazy"
+      "distribution": "lazy",
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/evernight/beancount-lazy-plugins/zip/d22b25b9a5258c312709a7e181b05bc8ce05be6c",
+        "sha256": "badf00fd78eb22c8211d18ac5acb4f2340981074fb3b736811f3913e8d1ebab5",
+        "version": "d22b25b9a525",
+        "strip": "beancount-lazy-plugins-d22b25b9a5258c312709a7e181b05bc8ce05be6c/",
+        "paths": [
+          "src/beancount_lazy_plugins"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_lazy_plugins.tag_from_continuous_events"
+        ]
+      }
     },
     {
       "id": "lazy.balance_extended",
@@ -224,7 +401,21 @@
         "version": "main",
         "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
-      "distribution": "lazy"
+      "distribution": "lazy",
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/evernight/beancount-lazy-plugins/zip/d22b25b9a5258c312709a7e181b05bc8ce05be6c",
+        "sha256": "badf00fd78eb22c8211d18ac5acb4f2340981074fb3b736811f3913e8d1ebab5",
+        "version": "d22b25b9a525",
+        "strip": "beancount-lazy-plugins-d22b25b9a5258c312709a7e181b05bc8ce05be6c/",
+        "paths": [
+          "src/beancount_lazy_plugins"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_lazy_plugins.balance_extended"
+        ]
+      }
     },
     {
       "id": "beangrow",
@@ -241,7 +432,27 @@
         "version": "1.0.1",
         "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
-      "distribution": "beangrow"
+      "distribution": "beangrow",
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/9f/6e/0389989b4d10ea993fe6f38e107c0e6e3fcbe4d91510b084a7160af75642/beangrow-1.0.1-py3-none-any.whl",
+        "sha256": "fe97967515ce70f9b7d80db8d2cedba2a23d9d50a5ebcf9d12d5e3fe9403a941",
+        "version": "1.0.1",
+        "paths": [
+          "beangrow"
+        ],
+        "requires": [
+          "scipy",
+          "beanprice",
+          "protobuf",
+          "numpy",
+          "pandas",
+          "matplotlib"
+        ],
+        "modules": [
+          "beangrow"
+        ]
+      }
     },
     {
       "id": "metadata-spray",
@@ -258,7 +469,20 @@
         "version": "0.0.1",
         "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/c7/af/a920fca89b6090b7c5db75746d11e1f3ad2840e95cf570aec02959b95870/beancount_plugins_metadata_spray-0.0.1-py3-none-any.whl",
+        "sha256": "deb9e6595fa409dfbc51afdb384fc3c70b3c40316e64b56a35dc4e6df824fd91",
+        "version": "0.0.1",
+        "paths": [
+          "beancount_plugins_metadata_spray"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_plugins_metadata_spray.plugins.metadata_spray"
+        ]
+      }
     },
     {
       "id": "portfolio_allocation",
@@ -275,7 +499,22 @@
         "version": "1.0.0",
         "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
-      "distribution": "portfolio_allocation"
+      "distribution": "portfolio_allocation",
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/fb/4b/61404d5729f4e87b47bd99606801e39d13a2568e134b297da6ffd6f1bccf/beancount_portfolio_allocation-1.0.0-py3-none-any.whl",
+        "sha256": "c20fb88191b2b9e0557588f57646995c2107cb47e276a7d71e85feb833ffcf46",
+        "version": "1.0.0",
+        "paths": [
+          "beancount_portfolio_allocation"
+        ],
+        "requires": [
+          "tabulate"
+        ],
+        "modules": [
+          "beancount_portfolio_allocation"
+        ]
+      }
     },
     {
       "id": "portfolio-returns",
@@ -292,7 +531,21 @@
         "version": "master",
         "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/hoostus/portfolio-returns/zip/20b30ee34a4493da0e7c4f1847e2557d2dd8bf2c",
+        "sha256": "2ffc40d104b66f514d98b950406572bd6facb029a8dc149861c6c651a538e3f6",
+        "version": "20b30ee34a44",
+        "strip": "portfolio-returns-20b30ee34a4493da0e7c4f1847e2557d2dd8bf2c/",
+        "paths": [
+          "cashflows.py"
+        ],
+        "requires": [],
+        "modules": [
+          "cashflows"
+        ]
+      }
     },
     {
       "id": "reds.capital_gains_classifier",
@@ -305,11 +558,24 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
+        "reason": "works, but the plugin directive must carry a real configuration — it parses the argument as a Python literal, so an empty one is rejected",
         "version": "0.4.0",
         "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
-      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
+      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)",
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/55/ab/307c9b30229f6e75fcad14008e06291d93452b577ebd50412c1f30c0df49/beancount_reds_plugins-0.4.0-py3-none-any.whl",
+        "sha256": "186d4d625dcd094043b489f942d44b8cb603a2d5710083e0ce2ea56c2dd133fa",
+        "version": "0.4.0",
+        "paths": [
+          "beancount_reds_plugins"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_reds_plugins.capital_gains_classifier.gain_loss"
+        ]
+      }
     },
     {
       "id": "reds.effective_date",
@@ -326,7 +592,20 @@
         "version": "0.4.0",
         "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
-      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
+      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)",
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/55/ab/307c9b30229f6e75fcad14008e06291d93452b577ebd50412c1f30c0df49/beancount_reds_plugins-0.4.0-py3-none-any.whl",
+        "sha256": "186d4d625dcd094043b489f942d44b8cb603a2d5710083e0ce2ea56c2dd133fa",
+        "version": "0.4.0",
+        "paths": [
+          "beancount_reds_plugins"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_reds_plugins.effective_date.effective_date"
+        ]
+      }
     },
     {
       "id": "reds.opengroup",
@@ -339,11 +618,24 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
+        "reason": "works, but the plugin directive must carry a real configuration — it parses the argument as a Python literal, so an empty one is rejected",
         "version": "0.4.0",
         "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
-      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
+      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)",
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/55/ab/307c9b30229f6e75fcad14008e06291d93452b577ebd50412c1f30c0df49/beancount_reds_plugins-0.4.0-py3-none-any.whl",
+        "sha256": "186d4d625dcd094043b489f942d44b8cb603a2d5710083e0ce2ea56c2dd133fa",
+        "version": "0.4.0",
+        "paths": [
+          "beancount_reds_plugins"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_reds_plugins.opengroup.opengroup"
+        ]
+      }
     },
     {
       "id": "reds.rename_accounts",
@@ -356,11 +648,24 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
+        "reason": "works, but the plugin directive must carry a real configuration — it parses the argument as a Python literal, so an empty one is rejected",
         "version": "0.4.0",
         "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
-      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
+      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)",
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/55/ab/307c9b30229f6e75fcad14008e06291d93452b577ebd50412c1f30c0df49/beancount_reds_plugins-0.4.0-py3-none-any.whl",
+        "sha256": "186d4d625dcd094043b489f942d44b8cb603a2d5710083e0ce2ea56c2dd133fa",
+        "version": "0.4.0",
+        "paths": [
+          "beancount_reds_plugins"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_reds_plugins.rename_accounts.rename_accounts"
+        ]
+      }
     },
     {
       "id": "reds.zerosum",
@@ -373,11 +678,24 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "works, but the plugin directive must carry a real configuration \u2014 it parses the argument as a Python literal, so an empty one is rejected",
+        "reason": "works, but the plugin directive must carry a real configuration — it parses the argument as a Python literal, so an empty one is rejected",
         "version": "0.4.0",
         "on_device": "imports on Android (emulator API 36, CatalogManifestTest, 2026-08-28); loading it needs a configuration, which CatalogPluginTest supplies for the reds.* and autobean.share cases"
       },
-      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)"
+      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Listed with that stated rather than silently recommended (docs/plugin-compatibility.md)",
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/55/ab/307c9b30229f6e75fcad14008e06291d93452b577ebd50412c1f30c0df49/beancount_reds_plugins-0.4.0-py3-none-any.whl",
+        "sha256": "186d4d625dcd094043b489f942d44b8cb603a2d5710083e0ce2ea56c2dd133fa",
+        "version": "0.4.0",
+        "paths": [
+          "beancount_reds_plugins"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_reds_plugins.zerosum.zerosum"
+        ]
+      }
     },
     {
       "id": "beancount-mortgage",
@@ -394,7 +712,21 @@
         "version": "main",
         "on_device": "loaded through a plugin directive on Android (emulator API 36) by CatalogManifestTest, 2026-08-28; the note directive survived"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/mclate/beancount-mortgage/zip/f4e0d95fe06b527060e0e39bc67dcc4f0f35c3c4",
+        "sha256": "ab2817b6df813f3b028b578f95781acc915a8a39e5b2fc444ae7e3c264998d49",
+        "version": "f4e0d95fe06b",
+        "strip": "beancount-mortgage-f4e0d95fe06b527060e0e39bc67dcc4f0f35c3c4/",
+        "paths": [
+          "mortgage.py"
+        ],
+        "requires": [],
+        "modules": [
+          "mortgage"
+        ]
+      }
     },
     {
       "id": "beancount-zakat",
@@ -407,11 +739,26 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension (beancount_zakat.fava_extension) needing hijridate, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "reason": "a Fava extension (beancount_zakat.fava_extension) needing hijridate, which the app does not bundle — the Expert edition can fetch it (on-demand-packages.md)",
         "version": "1.0.2",
         "on_device": "imported on Android as far as its dependency: it needs hijridate, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
       },
-      "distribution": "beancount-zakat"
+      "distribution": "beancount-zakat",
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/bb/07/bf622c5a4a7ece016bd9db346b854d4e22cf2eacb81625285b6c58e2547a/beancount_zakat-1.0.2-py3-none-any.whl",
+        "sha256": "148ea49cbe6771020c99c552c9175b2b6ee25a83175307854bf302a5eee3cea4",
+        "version": "1.0.2",
+        "paths": [
+          "beancount_zakat"
+        ],
+        "requires": [
+          "hijridate"
+        ],
+        "modules": [
+          "beancount_zakat.fava_extension"
+        ]
+      }
     },
     {
       "id": "fava-envelope",
@@ -424,9 +771,24 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension (fava_envelope) needing pandas, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "reason": "a Fava extension (fava_envelope) needing pandas, which the app does not bundle — the Expert edition can fetch it (on-demand-packages.md)",
         "version": "0.5.9",
         "on_device": "imported on Android as far as its dependency: it needs pandas, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
+      },
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/0c/56/e4594d90e7c36d1d08424021bfac8cb5905af9fecf87891c1ee31ba4a158/fava_envelope-0.5.9-py3-none-any.whl",
+        "sha256": "5d1a3fa99b124c2a0e998d9f91fa3fd82e8229f0145502c92157efda9dfe403b",
+        "version": "0.5.9",
+        "paths": [
+          "fava_envelope"
+        ],
+        "requires": [
+          "pandas"
+        ],
+        "modules": [
+          "fava_envelope"
+        ]
       }
     },
     {
@@ -440,9 +802,24 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension (fava_dashboards) needing yaml, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "reason": "a Fava extension (fava_dashboards) needing yaml, which the app does not bundle — the Expert edition can fetch it (on-demand-packages.md)",
         "version": "2.0.2",
         "on_device": "imported on Android as far as its dependency: it needs yaml, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
+      },
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/3e/61/79750c332ed0091977c4d7e3be3b7a0a8f5d3f73f8b09b19fd7ce95cf19b/fava_dashboards-2.0.2-py3-none-any.whl",
+        "sha256": "b0b29b581cbe993998ab200f7cb9980b74a1010f545506600f59426b3697e80c",
+        "version": "2.0.2",
+        "paths": [
+          "fava_dashboards"
+        ],
+        "requires": [
+          "pyyaml"
+        ],
+        "modules": [
+          "fava_dashboards"
+        ]
       }
     },
     {
@@ -456,9 +833,27 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension (fava_portfolio_returns) needing numpy, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "reason": "a Fava extension (fava_portfolio_returns) needing numpy, which the app does not bundle — the Expert edition can fetch it (on-demand-packages.md)",
         "version": "2.7.0",
         "on_device": "imported on Android as far as its dependency: it needs numpy, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
+      },
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/65/89/c9b79a59ad245734552be701521ee05f3f595bff9c76407c0138cf06fdb0/fava_portfolio_returns-2.7.0-py3-none-any.whl",
+        "sha256": "2e81cf10d72d203892d5688107f49951955b6ee426f0b47a169cadad77f8baa2",
+        "version": "2.7.0",
+        "paths": [
+          "fava_portfolio_returns"
+        ],
+        "requires": [
+          "numpy",
+          "pandas",
+          "protobuf",
+          "scipy"
+        ],
+        "modules": [
+          "fava_portfolio_returns"
+        ]
       }
     },
     {
@@ -476,7 +871,22 @@
         "version": "main",
         "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/phracturedblue/fava-portfolio-summary/zip/7d3301619025d735830c389948e5527456050d44",
+        "sha256": "f440395d7f79e5b5d3e35646affab2288402e9d1bb28e00700bb847136343548",
+        "version": "7d3301619025",
+        "strip": "fava-portfolio-summary-7d3301619025d735830c389948e5527456050d44/",
+        "paths": [
+          ""
+        ],
+        "requires": [],
+        "import_name": "fava_portfolio_summary",
+        "modules": [
+          "fava_portfolio_summary"
+        ]
+      }
     },
     {
       "id": "fava-classy-portfolio",
@@ -493,7 +903,21 @@
         "version": "master",
         "on_device": "the failure was found on Android first: CatalogManifestTest imported it on the emulator (API 36, 2026-08-28) and got ImportError: cannot import name 'cost_or_value' from 'fava.template_filters'. The desktop harness had called it partial because it only searched the source text for FavaExtensionBase without importing anything; it imports extensions now and agrees"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/seltzered/fava-classy-portfolio/zip/6fd98b41697f9b710eeda5695d2f2078997d2874",
+        "sha256": "07b47f0b3e124f5f786a8f54870f25c27669850cd68a10182776d6202885e4b0",
+        "version": "6fd98b41697f",
+        "strip": "fava-classy-portfolio-6fd98b41697f9b710eeda5695d2f2078997d2874/",
+        "paths": [
+          "fava_classy_portfolio"
+        ],
+        "requires": [],
+        "modules": [
+          "fava_classy_portfolio"
+        ]
+      }
     },
     {
       "id": "fava_investor",
@@ -506,9 +930,27 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension (fava_investor) needing packaging, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "reason": "a Fava extension (fava_investor) needing packaging, which the app does not bundle — the Expert edition can fetch it (on-demand-packages.md)",
         "version": "1.0.1",
         "on_device": "imported on Android as far as its dependency: it needs packaging, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28); with packaging fetched on the device Fava mounted its route and returned 200 (FavaExtensionTest)"
+      },
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/3d/d7/d9a3fa89c2afd21ee757d823527c3ec37f6ab06cb6a89a4d12431ab6dc41/fava_investor-1.0.1-py3-none-any.whl",
+        "sha256": "ce00bfd491a329ed8dd5e31e7f471c3488946264b7b896314f385aebadbcfd7c",
+        "version": "1.0.1",
+        "paths": [
+          "fava_investor"
+        ],
+        "requires": [
+          "click-aliases",
+          "packaging",
+          "tabulate",
+          "yfinance"
+        ],
+        "modules": [
+          "fava_investor"
+        ]
       }
     },
     {
@@ -526,7 +968,21 @@
         "version": "master",
         "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/leon2xiaowu/fava_budget_freedom/zip/cf61a17fa1b3f0b0bbd9e391eadc1624f38b9c3a",
+        "sha256": "0f09a0c5750c60d542261846677a1699d6127da636b7e87ecf231e45a622582c",
+        "version": "cf61a17fa1b3",
+        "strip": "fava_budget_freedom-cf61a17fa1b3f0b0bbd9e391eadc1624f38b9c3a/",
+        "paths": [
+          "fava_budget_freedom"
+        ],
+        "requires": [],
+        "modules": [
+          "fava_budget_freedom"
+        ]
+      }
     },
     {
       "id": "fava-currency-tracker",
@@ -543,7 +999,24 @@
         "version": "main",
         "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/evernight/fava-currency-tracker/zip/1f33d85ae654bfd6f6b57f2b272c09d9e295fbdf",
+        "sha256": "a69f7e98270c51a378ff60bc904852fef5c249d17bf108285905d3322ed14bcb",
+        "version": "1f33d85ae654",
+        "strip": "fava-currency-tracker-1f33d85ae654bfd6f6b57f2b272c09d9e295fbdf/",
+        "paths": [
+          "src/fava_currency_tracker"
+        ],
+        "requires": [
+          "beanprice",
+          "pricehist"
+        ],
+        "modules": [
+          "fava_currency_tracker"
+        ]
+      }
     },
     {
       "id": "fava-git",
@@ -560,7 +1033,21 @@
         "version": "main",
         "on_device": "imported on Android (emulator API 36) by CatalogManifestTest, 2026-08-28"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/evernight/fava-git/zip/18a9b6e64b636bfa8673eee808892da01adf661b",
+        "sha256": "edb18cdc2abd2d6775f8a7c8b0eba29e0c2e7cd94bb522ba1374c40a32c2fd0f",
+        "version": "18a9b6e64b63",
+        "strip": "fava-git-18a9b6e64b636bfa8673eee808892da01adf661b/",
+        "paths": [
+          "src/fava_git"
+        ],
+        "requires": [],
+        "modules": [
+          "fava_git"
+        ]
+      }
     },
     {
       "id": "beantab",
@@ -573,11 +1060,25 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension (beantab) needing beancount_lazy_plugins, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "reason": "a Fava extension (beantab) needing beancount_lazy_plugins, which the app does not bundle — the Expert edition can fetch it (on-demand-packages.md)",
         "version": "main",
         "on_device": "imported on Android as far as its dependency: it needs beancount_lazy_plugins, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/evernight/beantab/zip/702b7cc5b4201b386aca80c85169c78c0d0c0c26",
+        "sha256": "e3ef90dde84fc84547ead72bbb759ca161102313c72e0d8b5af8b8f066ca0873",
+        "version": "702b7cc5b420",
+        "strip": "beantab-702b7cc5b4201b386aca80c85169c78c0d0c0c26/",
+        "paths": [
+          "src/beantab"
+        ],
+        "requires": [],
+        "modules": [
+          "beantab"
+        ]
+      }
     },
     {
       "id": "beancount-plugin-tax-uk",
@@ -590,11 +1091,60 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension (beancount_plugin_tax_uk.fava_extension) needing pandas, which the app does not bundle \u2014 the Expert edition can fetch it (on-demand-packages.md)",
+        "reason": "a Fava extension (beancount_plugin_tax_uk.fava_extension) needing pandas, which the app does not bundle — the Expert edition can fetch it (on-demand-packages.md)",
         "version": "main",
         "on_device": "imported on Android as far as its dependency: it needs pandas, which the Expert edition fetches on demand (CatalogManifestTest, emulator API 36, 2026-08-28)"
       },
-      "distribution": null
+      "distribution": null,
+      "install": {
+        "source": "github",
+        "archive": "https://codeload.github.com/evernight/beancount-plugin-tax-uk/zip/b94287bab7566e48e710586d15c72ee6cfee503f",
+        "sha256": "9f3ab5b080d216a0ed46122f398e7092c40e6fc2def28f6486c48ff4434e4b1f",
+        "version": "b94287bab756",
+        "strip": "beancount-plugin-tax-uk-b94287bab7566e48e710586d15c72ee6cfee503f/",
+        "paths": [
+          "src/beancount_plugin_tax_uk"
+        ],
+        "requires": [],
+        "modules": [
+          "beancount_plugin_tax_uk.fava_extension"
+        ]
+      }
+    },
+    {
+      "id": "beancount-interpolate",
+      "name": "beancount-interpolate",
+      "kind": "beancount-plugin",
+      "repo": "https://github.com/Akuukis/beancount_interpolate",
+      "description": "Recurring, split, spread and depreciated transactions generated from metadata",
+      "license": "GPL-3.0",
+      "status": "untested",
+      "upstream": false,
+      "licence_note": "GPL-3.0. This app is GPL-2.0-only because Beancount is, and the two are incompatible: a user may combine them privately, but the combination cannot be redistributed. Not listed on awesome-beancount; catalogued because the owner's own ledger uses it (2026-09-14).",
+      "tested": {
+        "on": null,
+        "how": "not yet run by tools/plugin-compat/run_catalog.py",
+        "reason": "added 2026-09-14; no compatibility claim is made"
+      },
+      "distribution": "beancount-interpolate",
+      "install": {
+        "source": "pypi",
+        "archive": "https://files.pythonhosted.org/packages/4d/01/ffe2143dbbed83798498433ac4443bac90c0e3193b326df6d02c5c491dd4/beancount_interpolate-2.5.1-py3-none-any.whl",
+        "sha256": "d6a2d3fd51e3c057390b9dd18194fd8e9a37490bf1ff2f3b25ee3b6d30618bcf",
+        "version": "2.5.1",
+        "paths": [
+          "beancount_interpolate"
+        ],
+        "requires": [
+          "beancount-plugin-utils"
+        ],
+        "modules": [
+          "beancount_interpolate.recur",
+          "beancount_interpolate.split",
+          "beancount_interpolate.spread",
+          "beancount_interpolate.depreciate"
+        ]
+      }
     }
   ]
 }

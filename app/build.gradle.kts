@@ -11,6 +11,20 @@ val copyCorpusToAssets = tasks.register<Copy>("copyCorpusToAssets") {
     into(layout.buildDirectory.dir("generated/corpusAssets/corpus"))
 }
 
+// The curated plugin catalogue (B82), into the app's own assets so the Plugins screen can list
+// it with no network. One file, copied rather than duplicated, so catalog/plugins.json stays the
+// single source that tools/plugin-compat/catalogue.py maintains.
+val copyCatalogueToAssets = tasks.register<Copy>("copyCatalogueToAssets") {
+    from(rootProject.layout.projectDirectory.file("catalog/plugins.json"))
+    into(layout.buildDirectory.dir("generated/catalogueAssets/catalog"))
+}
+tasks.matching {
+    (it.name.startsWith("merge") && it.name.endsWith("Assets")) ||
+        it.name.contains("Lint", ignoreCase = true)
+}.configureEach {
+    dependsOn(copyCatalogueToAssets)
+}
+
 // AGP's SourceSet API rejects task Providers, so the dependency is declared explicitly:
 // every androidTest asset merge must wait for the corpus to be staged.
 //
@@ -148,7 +162,10 @@ android {
     kotlin { jvmToolchain(21) }
 
     sourceSets {
-        getByName("main") { kotlin.srcDir("src/main/kotlin") }
+        getByName("main") {
+            kotlin.srcDir("src/main/kotlin")
+            assets.srcDir(layout.buildDirectory.dir("generated/catalogueAssets").get().asFile)
+        }
         getByName("play") { kotlin.srcDir("src/play/kotlin") }
         getByName("expert") { kotlin.srcDir("src/expert/kotlin") }
         // Flavor-specific instrumentation. Tests for the expert edition's self-update cannot

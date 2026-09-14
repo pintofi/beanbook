@@ -114,7 +114,16 @@ class PluginsState(
             }
             ?.absolutePath
 
-        return (plugins + listOfNotNull(packages)).joinToString(",")
+        // Plugins installed from the catalogue (B82), each folder holding the plugin and what it
+        // needs. Withheld under safe mode like everything else.
+        val catalogue = if (PluginSafeMode(root).isSafeMode) {
+            emptyList()
+        } else {
+            val installer = io.github.pintofi.beanbook.core.data.CatalogueInstaller(CatalogueState.rootOf(context))
+            installer.installed().keys.map { installer.siteFor(it).absolutePath }
+        }
+
+        return (plugins + catalogue + listOfNotNull(packages)).joinToString(",")
     }
 
     fun setSafeMode(on: Boolean) {

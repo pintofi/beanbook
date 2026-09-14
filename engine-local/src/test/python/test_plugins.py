@@ -542,3 +542,61 @@ class ScriptRunnerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LoaderCacheTest(unittest.TestCase):
+    """Beancount's pickle cache must not survive a change of plugins (B82)."""
+
+    def setUp(self):
+        import tempfile
+
+        self.work = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.work, ignore_errors=True))
+        self.addCleanup(lambda: plugins.use_loader_cache([]))
+
+    def test_no_plugins_keeps_beancounts_own_name(self):
+        from beancount import loader
+
+        self.assertEqual(loader.PICKLE_CACHE_FILENAME, plugins.loader_cache_pattern([]))
+
+    def test_installing_a_plugin_changes_the_cache_name(self):
+        site = self.work / "site"
+        site.mkdir()
+        before = plugins.loader_cache_pattern([str(site)])
+        (site / "interpolate").mkdir()
+        after = plugins.loader_cache_pattern([str(site)])
+        self.assertNotEqual(before, after)
+        self.assertTrue(after.startswith(".{filename}.") and after.endswith(".picklecache"))
+
+    def test_a_ledger_whose_plugin_was_missing_loads_cleanly_once_it_is_installed(self):
+        ledger = self.work / "main.beancount"
+        ledger.write_text('plugin "late_plugin"\n\n2020-01-01 open Assets:Cash\n')
+        site = self.work / "site"
+        site.mkdir()
+
+        from beancount import loader
+
+        # Big enough ledgers are cached; force it for a tiny one.
+        threshold = loader.PICKLE_CACHE_THRESHOLD
+        loader.PICKLE_CACHE_THRESHOLD = 0
+        self.addCleanup(lambda: setattr(loader, "PICKLE_CACHE_THRESHOLD", threshold))
+
+        with plugins.activated(str(site), allow_bridge=True):
+            _, errors, _ = loader.load_file(str(ledger))
+        self.assertTrue(any("late_plugin" in str(e.message) for e in errors))
+
+        (site / "late_plugin.py").write_text(
+            "__plugins__ = ['run']\ndef run(entries, options_map):\n    return entries, []\n"
+        )
+        with plugins.activated(str(site), allow_bridge=True):
+            _, errors, _ = loader.load_file(str(ledger))
+        self.assertEqual([], errors, "the cached failure was served after the plugin arrived")
+
+    def test_caches_for_other_plugin_sets_are_discarded(self):
+        ledger = self.work / "main.beancount"
+        ledger.write_text("")
+        (self.work / ".main.beancount.aaaa.picklecache").write_text("old")
+        (self.work / ".main.beancount.bbbb.picklecache").write_text("current")
+        removed = plugins.discard_other_loader_caches(str(ledger), ".{filename}.bbbb.picklecache")
+        self.assertEqual([".main.beancount.aaaa.picklecache"], removed)
+        self.assertTrue((self.work / ".main.beancount.bbbb.picklecache").exists())

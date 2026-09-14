@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.pintofi.beanbook.app.engine.LedgerState
+import io.github.pintofi.beanbook.app.plugins.collectUi
 import io.github.pintofi.beanbook.app.engine.RecoveryOnStart
 import io.github.pintofi.beanbook.app.ui.OnboardingScreen
 import io.github.pintofi.beanbook.app.backup.ScheduledBackupWorker
@@ -443,7 +444,8 @@ class MainActivity : ComponentActivity() {
                     // Read from the ledger itself rather than remembered beside it: the file
                     // is the record of what it loads, and an edit in the raw editor has to
                     // show here too (B60).
-                    val usedModules = remember(ledger, pluginRows) {
+                    val catalogue = app.catalogueState.collectUi()
+                    val usedModules = remember(ledger, pluginRows, catalogue.installed) {
                         modulesUsedBy(app, activeId, pluginRows)
                     }
                     val packagesInstalled by app.packagesState.installed.collectAsStateWithLifecycle()
@@ -451,6 +453,7 @@ class MainActivity : ComponentActivity() {
                     val packagesMessage by app.packagesState.message.collectAsStateWithLifecycle()
                     val packages = app.packagesState
                         .ui(packagesInstalled, packagesStatus, packagesMessage)
+                        .copy(catalogue = catalogue)
                     val dateRange by app.ledgerState.dateRange.collectAsStateWithLifecycle()
                     val restartNeeded by app.engineRestart.needed.collectAsStateWithLifecycle()
                     val engineRestart = io.github.pintofi.beanbook.app.engine.EngineRestartUi(

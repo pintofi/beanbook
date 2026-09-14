@@ -130,4 +130,7 @@ data class PackagesUi(
     val onConfirm: () -> Unit,
     val onCancel: () -> Unit,
     val onRemoveAll: () -> Unit,
+    /** The curated plugin catalogue (B82), which installs through the same fetcher. */
+    val catalogue: io.github.pintofi.beanbook.app.plugins.CatalogueUi =
+        io.github.pintofi.beanbook.app.plugins.CatalogueUi.EMPTY,
 )

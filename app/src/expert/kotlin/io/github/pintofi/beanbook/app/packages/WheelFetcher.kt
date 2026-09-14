@@ -407,7 +407,15 @@ class WheelFetcher(
         )
     }
 
-    /** A pure-Python wheel from PyPI. Anything else there cannot run on Android. */
+    /**
+     * A wheel from PyPI this device can run: pure Python, or an Android wheel (B82).
+     *
+     * PyPI used to have nothing with native code for Android, so only `py3-none-any` was taken
+     * from it. PEP 738 changed that: projects now publish `android_24_arm64_v8a` wheels
+     * themselves -- `curl_cffi` does, and Chaquopy's index does not carry it -- and refusing
+     * them sent a person to a "no Android-compatible wheel" error for a package that has one.
+     * Taken only for this interpreter (`cp313`, or the stable ABI) and this device's ABI.
+     */
     private fun fromPyPI(name: String): Wheel? {
         val body = get("https://pypi.org/pypi/$name/json") ?: return null
         val root = JSONObject(body)
@@ -416,21 +424,23 @@ class WheelFetcher(
         for (index in 0 until files.length()) {
             val file = files.getJSONObject(index)
             val filename = file.getString("filename")
-            if (!filename.endsWith("-py3-none-any.whl") &&
-                !filename.endsWith("-py2.py3-none-any.whl")
-            ) {
-                continue
-            }
+            val pure = filename.endsWith("-py3-none-any.whl") ||
+                filename.endsWith("-py2.py3-none-any.whl")
+            val android = isAndroidWheelForThisDevice(filename)
+            if (!pure && !android) continue
             return Wheel(
                 name = name,
                 version = version,
                 url = file.getString("url"),
                 sha256 = file.getJSONObject("digests").getString("sha256"),
-                native = false,
+                native = !pure,
             )
         }
         return null
     }
+
+    private fun isAndroidWheelForThisDevice(filename: String): Boolean =
+        androidWheelFits(filename.substringAfterLast('/'), DEVICE_ARCH)
 
     /** `Requires-Dist` lines from a wheel's own `*.dist-info/METADATA`. */
     private fun requiresFrom(wheelBytes: ByteArray): List<String> {
@@ -509,6 +519,8 @@ class WheelFetcher(
         }
 
         val CHAQUOPY_WHEEL = Regex("""href="([^"]+\.whl)"""")
+
+        val DEVICE_ARCH: String = ABI_TAG.substringAfterLast("android_24_")
         val REQUIREMENT_END = Regex("""[\s(<>=!~\[]""")
 
         /**
@@ -522,3 +534,23 @@ class WheelFetcher(
         )
     }
 }
+
+/** `name-version[-build]-<python>-<abi>-android_<api>_<arch>.whl`, per PEP 738. */
+private val ANDROID_WHEEL =
+    Regex("""^[^-]+-[^-]+(?:-\d[^-]*)?-(cp\d+)-(cp\d+|abi3)-android_(\d+)_(arm64_v8a|x86_64)\.whl$""")
+
+/**
+ * Whether an Android wheel runs here: built for CPython 3.13 (or the stable ABI from an older
+ * CPython), for an API level no newer than this app's floor, and for [arch].
+ */
+internal fun androidWheelFits(filename: String, arch: String): Boolean {
+    val match = ANDROID_WHEEL.matchEntire(filename) ?: return false
+    val (python, abi, api, wheelArch) = match.destructured
+    val minor = python.removePrefix("cp").toIntOrNull() ?: return false
+    val interpreter = (abi == "cp313" && python == "cp313") || (abi == "abi3" && minor in 32..313)
+    return interpreter && (api.toIntOrNull() ?: Int.MAX_VALUE) <= MIN_API && wheelArch == arch
+}
+
+/** The oldest Android this app runs on; a wheel needing a newer one would fail to load. */
+private const val MIN_API = 29
+

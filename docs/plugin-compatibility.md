@@ -8,15 +8,17 @@ wheels and exposes the bridge. See [distribution.md](distribution.md) §2.1 for 
 
 ## Licences, and one combination this project will not recommend quietly
 
-Every entry records a licence, and one group needs saying out loud: the five `reds.*` plugins
-are **GPL-3.0**, and this app is **GPL-2.0-only** because Beancount is, explicitly not "or
-later". Those two licences are incompatible.
+Every entry records a licence, and one group needs saying out loud: the five `reds.*` plugins,
+`fava_investor` and `beancount-interpolate` are **GPL-3.0** (checked against PyPI on
+2026-09-14; the earlier text named only the `reds.*` five), and this app is **GPL-2.0-only**
+because Beancount is, explicitly not "or later". Those two licences are incompatible.
 
 What that does and does not mean:
 
 - **It is not a problem with the plugin.** They are good plugins and widely used.
 - **It is not something this project distributes.** No plugin source is in this repository or
-  in the APK; a user fetches one and installs it themselves.
+  in the APK. The Expert edition downloads one from its own upstream when the user taps
+  Install (§7), which is the user fetching it, not the project shipping it.
 - **A user combining them privately is fine.** The GPL restricts distribution, not what
   someone runs on their own device.
 - **What could not be done is redistribute the combination** — an APK with those plugins
@@ -73,18 +75,28 @@ explains exactly which of these applies, rather than surfacing a raw traceback.
 
 ---
 
-## 4. Compatibility matrix (to be populated by testing)
+## 4. Compatibility results
 
-| Plugin / extension | Version | Import | Execute | UI | Round-trip | Status |
-|---|---|:--:|:--:|:--:|:--:|---|
-| `beancount.plugins.*` (bundled) | 3.2.3 | — | — | — | — | untested |
-| `fava.ext.portfolio_list` (bundled) | 1.30.15 | — | — | — | — | untested |
-| `fava-portfolio-returns` | v2.7.0 | — | — | — | — | untested (Spike 9) |
-| `beangrow` | latest | — | — | — | — | untested (Spike 9) |
-| `fava-investor` | latest | — | — | — | — | untested |
+**The results live in [`catalog/plugins.json`](../catalog/plugins.json)**, one entry per plugin,
+with the step that failed where one did. This section used to be a five-row table marked
+"untested" throughout, while the catalogue beside it already held real runs; it is no longer
+duplicated here.
 
-Every row is filled by the harness in §5, with the ABI, engine versions, date, and log
-path recorded. No row is marked ✅ from reading code.
+As of 2026-09-14, for the 35 plugins on awesome-beancount plus `beancount-interpolate`:
+
+| Status | Count | Meaning |
+|---|---:|---|
+| supported | 14 | install, import, execute and round-trip passed |
+| needs-config | 5 | works with a configuration string (the `reds.*` plugins) |
+| partial | 14 | some steps passed; mostly Fava extensions whose UI is not exercised, or a dependency to fetch |
+| unsupported | 2 | `autobean.truelayer` (an importer), `fava-classy-portfolio` |
+| untested | 1 | `beancount-interpolate`, added 2026-09-14; loaded without errors on the API 36 emulator against `fixtures/common-ledger` after installing from the catalogue, which is not yet a harness run |
+
+Runs were on desktop CPython with Beancount 3.2.3 (2026-08-28), and the `supported` and
+`needs-config` entries were loaded again on Android by `CatalogManifestTest` and
+`CatalogPluginTest`. **beangrow** is `supported` on a device through the SciPy overlay
+([on-demand-packages.md](on-demand-packages.md), m14-part28); the old "untested (Spike 9)" rows
+for it and for `fava-portfolio-returns` were out of date.
 
 ---
 
@@ -100,8 +112,9 @@ path recorded. No row is marked ✅ from reading code.
 6. Byte-diff the corpus afterwards → any unexpected mutation is a **fail**, not a warning.
 7. Emit a matrix row (JSON) plus logs into `docs/feasibility/plugin-compat/<date>/`.
 
-Runs in CI on the emulator matrix and manually on the physical arm64 device before each
-release.
+Run by hand before a release (`tools/plugin-compat/run_catalog.py` on a desktop,
+`push-to-device.sh` then `CatalogManifestTest` on a device). It is not in CI: most entries are
+fetched from the network, and CI's verify job is offline by design.
 
 ---
 
@@ -129,36 +142,35 @@ Plugins are **not sandboxed** — see [threat-model.md](threat-model.md) §3.2. 
 
 ---
 
-## 7. Catalog format (designed, not shipped)
+## 7. The catalogue in the app (B82)
 
-A future vetted catalog would be a signed JSON document:
+**More → Plugins → Plugins you can install** lists every catalogue entry: what it is, how it
+tested, its licence and any licence note.
 
-```json
-{
-  "schema": 1,
-  "entries": [{
-    "id": "fava-portfolio-returns",
-    "version": "2.7.0",
-    "license": "GPL-2.0",
-    "sha256": "…",
-    "requires": {"fava": ">=1.30,<1.31", "beancount": ">=3.2,<4"},
-    "tested": {"abis": ["arm64-v8a"], "engine": "py3.13/bc3.2.3/fava1.30.15"},
-    "status": "supported"
-  }],
-  "signature": "…"
-}
-```
-
-It is **not shipped in v1** in either edition. A catalog means the *app* downloads code,
-which is a materially different policy position from the user supplying their own local
-files — in `play` it would need an explicit policy decision first.
+- **Expert edition: Install and Remove, one plugin at a time.** Install shows what it will
+  download -- one archive from PyPI or GitHub, pinned to a version or commit and checked against
+  the SHA-256 in the catalogue -- and which Python packages come with it, then fetches only after
+  the person agrees. Each plugin and its packages go into a folder of their own
+  (`files/catalogue/<id>/site`), so removing one never breaks another. Once installed, the same
+  row turns the plugin on for the open ledger by writing its `plugin` or `fava-extension`
+  directive.
+- **Play edition: listed, not installed.** Downloading code is what Play forbids (D1). The row
+  says to add the plugin from a file, or to use the Expert edition.
+- **Keeping it current.** `tools/plugin-compat/catalogue.py check` compares the catalogue with
+  the Plugins section of awesome-beancount's README and exits non-zero on anything new or
+  dropped; run it for every app release, test what it reports, and add it. `catalogue.py pin`
+  refreshes each entry's download pin. The catalogue is copied into the APK at build time.
+- **Beancount's load cache follows the plugins.** Beancount pickles a load keyed on the ledger
+  files alone, so a load that failed to import a missing plugin was served again after the
+  plugin was installed. The cache file is now named for the plugin folders in reach.
 
 ---
 
 ## 8. Known limitations (published with the app)
 
 - No `subprocess`, no shell, no arbitrary native binaries.
-- Only packages with Android wheels (Chaquopy repo, pure-Python, or wheels we build).
+- Only packages with Android wheels: pure Python, Chaquopy's index, or a PEP 738 Android wheel a
+  project publishes on PyPI itself (Expert edition).
 - `matplotlib` only with the `Agg` backend.
 - 32-bit ABIs unsupported in v1.
 - Background execution is subject to Android limits; exact scheduling is impossible.

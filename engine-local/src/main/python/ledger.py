@@ -183,6 +183,11 @@ def inspect(
         with plugins.activated("", allow_bridge):
             entries, errors, options_map = loader.load_file(ledger_path)
     load_ms = (time.monotonic() - started) * 1000
+    # A cache made for a plugin set that is no longer the one in use will never be read again.
+    plugins.discard_other_loader_caches(
+        ledger_path,
+        plugins.loader_cache_pattern(plugins._module_names("" if plugin_failure else plugin_dirs)),
+    )
 
     # A date range, applied the way Fava applies its time filter: the *entries* are narrowed,
     # and everything computed below -- balances, the journal, which accounts exist -- follows

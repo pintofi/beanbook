@@ -195,6 +195,16 @@ class BeancountApplication : Application() {
         )
     }
 
+    /** The curated plugin catalogue (B82): listed in both editions, installable in Expert. */
+    val catalogueState: io.github.pintofi.beanbook.app.plugins.CatalogueState by lazy {
+        io.github.pintofi.beanbook.app.plugins.CatalogueState(
+            this,
+            currentPluginPolicy(),
+            appScope,
+            onEngineStale = engineRestart::markNeeded,
+        )
+    }
+
     /** Running a user script against the open ledger. Same policy, chosen once. */
     val scriptRunner: io.github.pintofi.beanbook.app.plugins.ScriptRunnerState by lazy {
         io.github.pintofi.beanbook.app.plugins.ScriptRunnerState(

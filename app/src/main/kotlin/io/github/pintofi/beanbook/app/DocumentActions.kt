@@ -674,7 +674,10 @@ internal fun modulesUsedBy(
 ): Set<String> {
     val id = projectId ?: return emptySet()
     val text = runCatching { app.workspace.mainFile(id).readText() }.getOrNull() ?: return emptySet()
-    return rows.flatMap { it.plugin.modules }.filter { module ->
+    val catalogue = app.catalogueState.catalogue.entries
+        .filter { it.id in app.catalogueState.installed.value }
+        .flatMap { it.install?.modules.orEmpty() }
+    return (rows.flatMap { it.plugin.modules } + catalogue).filter { module ->
         io.github.pintofi.beanbook.core.domain.BeancountText
             .hasPluginDirective(text, module, extension = false) ||
             io.github.pintofi.beanbook.core.domain.BeancountText

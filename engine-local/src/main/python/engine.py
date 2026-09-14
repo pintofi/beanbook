@@ -109,6 +109,11 @@ def start(
     # the serving path had no reason to until now.
     importlib.invalidate_caches()
 
+    # Fava's loads read Beancount's pickle cache too; name it for these plugins (B82).
+    import plugins
+
+    plugins.use_loader_cache(list(filter(None, plugin_dirs.split(","))))
+
     from fava.application import create_app
 
     flask_app = create_app([path], load=True, poll_watcher=poll_watcher)

@@ -81,8 +81,11 @@ happened to them.
 
 ## What it will and will not fetch
 
-- **Pure-Python wheels from PyPI.** PyPI has no Android wheels for anything with a C
-  extension, so a `py3-none-any` wheel is the only thing there that can run here.
+- **Pure-Python wheels from PyPI.**
+- **Android wheels from PyPI** (B82), since PEP 738 lets projects publish them: taken only when
+  built for CPython 3.13 or the stable ABI, for API 29 or older, and for this device's
+  architecture. Until 2026-09-14 the fetcher took only `py3-none-any` from PyPI, on the belief
+  that PyPI had no Android wheels -- no longer true.
 - **Android wheels from Chaquopy's index**, for packages with native code, built against the
   exact interpreter this app embeds.
 - **Never a package already in the APK.** Fetching `beancount` would put a second copy ahead
@@ -126,3 +129,49 @@ Abuse policy prohibits, and a pure-Python wheel is still executable code. `allow
 is `false` there, `:verifyPlayFlavorBoundaries` requires the Play sources to **say** so rather
 than merely not contradict it, and the Play edition's `WheelFetcher` is a different file that
 refuses. Checked in both directions: flipping the flag fails the build.
+
+## Packages with no Android build: curl_cffi, and what can be done (B82)
+
+Reported 2026-09-14: a script needs `curl_cffi`, and the Plugins page said there was no
+Android-compatible wheel. In Termux, installing `python-cryptography` with `pkg` fixed it.
+
+**What was found (2026-09-14):**
+
+- `curl_cffi` 0.16.3 **does publish an Android wheel on PyPI**:
+  `curl_cffi-0.16.3-cp313-cp313-android_24_arm64_v8a.whl` -- CPython 3.13, arm64, exactly this
+  app's interpreter on a phone. The fetcher refused it only because it took nothing but
+  pure-Python wheels from PyPI. **Fixed**: the Expert edition now takes it on an arm64 device.
+  There is no x86_64 Android wheel, so it cannot be installed on the x86_64 emulator, and **it
+  has not yet been tried on a phone**.
+- It declares `cffi>=2.0.0` and `certifi`. `certifi` is pure Python. `cffi` has **no** Android
+  wheel on PyPI, and Chaquopy's index has `cffi` **1.17.1**. The fetcher does not enforce
+  version ranges, so it installs 1.17.1; whether `curl_cffi`'s compiled module loads against
+  that older `_cffi_backend` is **unproven** and is the first thing to check on the phone.
+- `cryptography`: Chaquopy's index has **42.0.8** for CPython 3.13 on both architectures, and the
+  fetcher takes it (PyPI's 50.x has no Android wheel). That is this app's equivalent of Termux's
+  `pkg install python-cryptography`; add it under **Extra Python packages**.
+
+**Why Termux differs.** Termux runs its own CPython 3.14 and builds packages from source with
+its own toolchain and prefix; its packages cannot be used by this app's CPython 3.13 (above).
+
+**The options, in the order worth trying:**
+
+1. **Fetch it** (done): PyPI Android wheels plus Chaquopy's index cover more than the old fetcher
+   knew. On an arm64 phone: Plugins → Extra Python packages → `curl_cffi`, then restart the
+   engine and run the script. If `cffi` 1.17.1 is too old, that surfaces as an import error
+   naming `_cffi_backend`.
+2. **Build the missing wheel ourselves** for CPython 3.13 on Android, with `cibuildwheel`'s
+   Android platform or Chaquopy's build-wheel tool, and publish it with a hash the fetcher pins.
+   This is how a `cffi` 2.x build would arrive if (1) fails. Expert only: Play may not install
+   native code (D1). Days of work for the first one, plus upkeep per release.
+3. **A pure-Python fallback in the script**, where the site does not need a browser's TLS
+   fingerprint: `curl_cffi.requests` is largely call-compatible with `requests`, which is pure
+   Python. Not a fix for sites that do need impersonation, which is what `curl_cffi` is for.
+4. **Run it in Termux** from the Expert edition, through Termux's `RUN_COMMAND` intent, against
+   the mirror folder. Everything Termux can install becomes available, at the cost of a second
+   app, a permission the user grants to it, and the script working on a copy of the ledger.
+   Not built; recorded as N22.
+5. **Run it elsewhere**, against remote mode's Fava.
+
+**Next step:** try (1) on the phone and send the script or its imports if it fails, so the
+failure can be read rather than guessed at (N22).
