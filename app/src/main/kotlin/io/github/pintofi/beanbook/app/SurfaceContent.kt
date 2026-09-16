@@ -189,6 +189,8 @@ internal fun SurfaceContent(
     refreshing: Boolean,
     onRefresh: () -> Unit,
     onRestartApp: () -> Unit = {},
+    /** The ledger is in balance again: Home stamps it (B87). */
+    stamped: Boolean = false,
 ) {
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
     run {
@@ -199,6 +201,7 @@ internal fun SurfaceContent(
             Surface.HOME -> Refreshable(refreshing, onRefresh) {
                 HomeScreen(
                     header = { io.github.pintofi.beanbook.app.about.SupportNoticeHost() },
+                    stamped = stamped,
                     ledger = ledger,
                     hideAmounts = hideWidgetAmounts,
                     // Counted here rather than in the composable: these come from the

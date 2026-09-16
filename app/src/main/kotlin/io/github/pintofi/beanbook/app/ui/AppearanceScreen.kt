@@ -83,7 +83,7 @@ fun AppearanceScreen(
                         onValueChange = onDynamicColour,
                         role = Role.Switch,
                     )
-                    .semantics { contentDescription = "Use colours from my wallpaper" }
+                    .semantics { contentDescription = "Dynamic colour. Take accent colours from your wallpaper" }
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -92,10 +92,9 @@ fun AppearanceScreen(
                 // whatever width it wants and pushes the switch off the right edge of the
                 // screen. It did exactly that, and the switch was unreachable.
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                    Text("Colours from my wallpaper", style = MaterialTheme.typography.titleSmall)
+                    Text("Dynamic colour", style = MaterialTheme.typography.titleSmall)
                     Text(
-                        "Match the rest of your phone. Turn it off if the palette makes figures " +
-                            "harder to read.",
+                        "Take accent colours from your wallpaper.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -103,8 +102,7 @@ fun AppearanceScreen(
             }
         } else {
             Text(
-                "Colours from your wallpaper need Android 12 or newer. This device uses the " +
-                    "app's own palette.",
+                "Dynamic colour needs Android 12 or newer. This phone uses the app's own colours.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }

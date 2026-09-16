@@ -94,6 +94,8 @@ fun HomeScreen(
     onLayoutChange: (HomePreferences.Layout) -> Unit = {},
     /** Above the cards: the one-time support notice, when it is due (B81). */
     header: @Composable () -> Unit = {},
+    /** The ledger went from errors to none while the app was open: stamp it (B87). */
+    stamped: Boolean = false,
 ) {
     val context = LocalContext.current
     val store = remember(context) { HomePreferences(context) }
@@ -119,6 +121,7 @@ fun HomeScreen(
             EmptyState(
                 title = "No ledger open",
                 detail = "Open a project to see where it stands.",
+                art = EmptyArt.SHEET,
             )
             return@Column
         }
@@ -128,6 +131,7 @@ fun HomeScreen(
                 HomeCard.FIGURES -> FiguresCard(ledger, hideAmounts)
                 HomeCard.SPENDING -> SpendingCard(ledger, current, hideAmounts, today, onOpenJournal)
                 HomeCard.ATTENTION -> AttentionCard(
+                    stamped = stamped,
                     ledger = ledger,
                     unfiledDocuments = unfiledDocuments,
                     brokenDocumentLinks = brokenDocumentLinks,
@@ -177,6 +181,7 @@ private fun FiguresCard(ledger: LedgerSnapshot, hideAmounts: Boolean) {
             label = "Net worth",
             value = shown(summary.netWorth, hideAmounts),
             emphasis = true,
+            introduce = HomeIntro.claim(),
         )
         Spacer(Modifier.height(Measure.gap))
         Row(
@@ -205,10 +210,9 @@ private fun FiguresCard(ledger: LedgerSnapshot, hideAmounts: Boolean) {
 @Composable
 private fun SupportingFigure(label: String, value: String, modifier: Modifier = Modifier) {
     FigureTile(modifier.semantics(mergeDescendants = true) { contentDescription = "$label: $value" }) {
-        Text(
-            value,
+        RollingFigure(
+            text = value,
             style = LedgerType.figure.copy(textAlign = TextAlign.Start),
-            maxLines = 1,
         )
         Text(
             label,
@@ -379,6 +383,7 @@ private fun CategoryRow(
 /** Everything that needs a person, from the four screens it used to be scattered across. */
 @Composable
 private fun AttentionCard(
+    stamped: Boolean,
     ledger: LedgerSnapshot,
     unfiledDocuments: Int,
     brokenDocumentLinks: Int,
@@ -412,8 +417,14 @@ private fun AttentionCard(
                     "Nothing. The ledger loads, and every document is accounted for.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = Measure.gap),
+                    modifier = Modifier.padding(start = Measure.gap).weight(1f),
                 )
+                // Stamped beside the line that says so, when the last error has just been
+                // fixed (B87): on the ledger's own health line, in space the text leaves, so
+                // it adds no row and covers no figure.
+                if (stamped) {
+                    InBalanceStamp(size = 64.dp, modifier = Modifier.padding(start = Measure.gap))
+                }
             }
         }
         return@LedgerContent
@@ -716,4 +727,14 @@ private fun EntryRow(
             MoneyText(shown, style = LedgerType.row)
         }
     }
+}
+
+/**
+ * Whether Home's figures have rolled in yet in this process (B87). Once per launch: the opening
+ * flourish belongs to opening the app, not to every return to Home.
+ */
+internal object HomeIntro {
+    private var played = false
+
+    fun claim(): Boolean = if (played) false else true.also { played = true }
 }

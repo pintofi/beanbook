@@ -204,19 +204,25 @@ fun KeyFigure(
     modifier: Modifier = Modifier,
     emphasis: Boolean = false,
     colour: Color = MaterialTheme.colorScheme.onSurface,
+    /** Roll the digits in from zero and draw the total rule, once (B87). */
+    introduce: Boolean = false,
 ) {
     Column(
         modifier = modifier.semantics { contentDescription = "$label: $value" },
         verticalArrangement = Arrangement.spacedBy(Measure.tight),
     ) {
-        Text(
-            value,
+        // The figure a screen is about is a total, so it is double-ruled the way a bookkeeper
+        // closes a column (B87), and its digits roll when it changes.
+        val rule = BeancountTheme.ledger.rule
+        val ruleDrawn = rememberRuleProgress(drawIn = introduce)
+        RollingFigure(
+            text = value,
             style = if (emphasis) LedgerType.display else LedgerType.figure.copy(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Start,
             ),
             color = colour,
-            maxLines = 1,
-            overflow = TextOverflow.Visible,
+            rollInFrom = if (introduce) zeroed(value) else null,
+            modifier = if (emphasis) Modifier.totalRule(rule, ruleDrawn) else Modifier,
         )
         Text(
             label,
@@ -282,6 +288,8 @@ fun EmptyState(
     title: String,
     detail: String,
     modifier: Modifier = Modifier,
+    /** A drawing of what is missing, above the words (B87). */
+    art: EmptyArt? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
     Column(
@@ -290,6 +298,10 @@ fun EmptyState(
             .padding(vertical = Measure.chapter),
         verticalArrangement = Arrangement.spacedBy(Measure.snug),
     ) {
+        art?.let {
+            EmptyIllustration(it)
+            Spacer(Modifier.height(Measure.gap))
+        }
         Text(title, style = MaterialTheme.typography.titleMedium)
         Text(
             detail,

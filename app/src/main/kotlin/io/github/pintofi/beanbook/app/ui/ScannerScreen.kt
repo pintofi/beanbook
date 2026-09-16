@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
-import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Highlight
 import androidx.compose.material.icons.filled.HighlightOff
 import androidx.compose.material.icons.filled.FlashOn
@@ -163,7 +162,6 @@ fun ScannerScreen(
     // is a separate control because it is a different thing: a lamp for framing, not a flash
     // for the shot.
     var flash by rememberSaveable { mutableIntStateOf(ImageCapture.FLASH_MODE_OFF) }
-    var frontLens by rememberSaveable { mutableStateOf(false) }
     var zoom by remember { mutableStateOf(0f) }
     var autoCapture by rememberSaveable { mutableStateOf(true) }
     var aimed by remember { mutableStateOf(false) }
@@ -293,9 +291,9 @@ fun ScannerScreen(
         }
     }
 
-    // Bound here rather than in a view factory, so turning to the front camera rebinds -- the
-    // factory ran once, and the lens switch changed an icon and nothing else.
-    LaunchedEffect(frontLens) {
+    // Bound once, to the back camera (B88): pages are photographed facing away from you, and
+    // the front camera switch it once offered did nothing a scanner needs.
+    LaunchedEffect(Unit) {
         val cameraProvider = ProcessCameraProvider.awaitInstance(context)
         provider = cameraProvider
         val preview = androidx.camera.core.Preview.Builder()
@@ -311,7 +309,7 @@ fun ScannerScreen(
         cameraProvider.unbindAll()
         camera = cameraProvider.bindToLifecycle(
             lifecycleOwner,
-            if (frontLens) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA,
+            CameraSelector.DEFAULT_BACK_CAMERA,
             preview,
             capture,
             analysis,
@@ -443,8 +441,34 @@ fun ScannerScreen(
                     pts.drop(1).forEach { lineTo(it.x, it.y) }
                     close()
                 }
-                drawPath(path, Color(0xFF80D5D4).copy(alpha = 0.22f))
-                drawPath(path, Color(0xFF80D5D4), style = Stroke(width = 6f))
+                drawPath(path, SCAN_INK.copy(alpha = 0.18f))
+                drawPath(path, SCAN_INK.copy(alpha = 0.7f), style = Stroke(width = 2.dp.toPx()))
+                // The page's corners, bracketed (B87): the same mark the crop editor uses for
+                // its handles, so the page found here is recognisably the page cropped there.
+                val corners = listOf(quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft)
+                pageBrackets(
+                    colour = SCAN_INK,
+                    points = corners.map { Offset(left + it.x * fit, top + it.y * fit) },
+                    arm = SCAN_BRACKET_ARM.dp.toPx(),
+                    thickness = 4.dp.toPx(),
+                )
+            }
+        }
+        // No page found yet: four quiet brackets where one would sit, so the viewfinder says what
+        // it is looking for.
+        if (liveQuad == null && surfaceRequest != null) {
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 140.dp)) {
+                pageBrackets(
+                    colour = Color.White,
+                    points = listOf(
+                        Offset.Zero,
+                        Offset(size.width, 0f),
+                        Offset(size.width, size.height),
+                        Offset(0f, size.height),
+                    ),
+                    arm = SCAN_BRACKET_ARM.dp.toPx(),
+                    thickness = 4.dp.toPx(),
+                )
             }
         }
 
@@ -533,18 +557,6 @@ fun ScannerScreen(
                     contentDescription = null,
                     tint = if (torch) Color(0xFF80D5D4) else Color.White,
                 )
-            }
-            IconButton(
-                onClick = { frontLens = !frontLens },
-                modifier = Modifier.semantics {
-                    contentDescription = if (frontLens) {
-                        "Use the back camera"
-                    } else {
-                        "Use the front camera"
-                    }
-                },
-            ) {
-                Icon(Icons.Filled.FlipCameraAndroid, contentDescription = null, tint = Color.White)
             }
             IconButton(
                 onClick = { autoCapture = !autoCapture },
@@ -833,6 +845,10 @@ private const val MAX_ZOOM_LABEL = 5f
 private const val DRAG_SCALE = 1.08f
 
 /** The focus ring: how long it shows, how big it starts, and when it stops closing and fades. */
+/** The scanner's ink: the dark theme's rule colour, legible over any camera picture. */
+private val SCAN_INK = Color(0xFF80D5D4)
+private const val SCAN_BRACKET_ARM = 28
+
 private const val FOCUS_RING_MILLIS = 900
 private const val FOCUS_RING_RADIUS = 36
 private const val FOCUS_RING_START = 1.5f

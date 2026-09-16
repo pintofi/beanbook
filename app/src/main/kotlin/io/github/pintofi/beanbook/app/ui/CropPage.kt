@@ -230,16 +230,26 @@ private fun CropCanvas(
             drawImage(image, dstSize = IntSize(size.width.toInt(), size.height.toInt()))
 
             val corners = listOf(quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft)
-            corners.forEachIndexed { index, corner ->
-                val next = corners[(index + 1) % corners.size]
-                drawLine(Color.White, on(corner), on(next), strokeWidth = 3f)
+            val points = corners.map { on(it) }
+            // What will be cut away is dimmed (B87), so the page you are keeping stands out.
+            val outline = androidx.compose.ui.graphics.Path().apply {
+                moveTo(points[0].x, points[0].y)
+                points.drop(1).forEach { lineTo(it.x, it.y) }
+                close()
             }
-            corners.forEach { corner ->
-                // Two rings, light on dark, so a handle stays visible against both a white
-                // receipt and a dark table. Larger here than in the old dialog, because the
-                // page is now the size of the screen and so is the distance a finger covers.
-                drawCircle(Color.Black, radius = 26f, center = on(corner), style = Stroke(width = 8f))
-                drawCircle(Color.White, radius = 26f, center = on(corner), style = Stroke(width = 4f))
+            val outside = androidx.compose.ui.graphics.Path().apply {
+                fillType = androidx.compose.ui.graphics.PathFillType.EvenOdd
+                addRect(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
+                addPath(outline)
+            }
+            drawPath(outside, Color.Black.copy(alpha = CROP_DIM))
+            drawPath(outline, CROP_INK.copy(alpha = 0.8f), style = Stroke(width = 1.5.dp.toPx()))
+            // Bracketed corners, as the scanner draws them, with a dot on the exact point. The
+            // bracket shows which way the page runs; the dot is where the corner will be.
+            pageBrackets(CROP_INK, points, arm = CROP_BRACKET_ARM.dp.toPx(), thickness = 6.dp.toPx())
+            points.forEach { point ->
+                drawCircle(Color.Black.copy(alpha = 0.5f), radius = 7.dp.toPx(), center = point)
+                drawCircle(Color.White, radius = 5.dp.toPx(), center = point)
             }
         }
     }
@@ -285,3 +295,6 @@ private fun CropQuad.scaled(factor: Float): CropQuad {
 /** Enough to place corners precisely on a phone or tablet screen. */
 private const val CROP_EDGE = 2048
 
+private val CROP_INK = Color(0xFF80D5D4)
+private const val CROP_DIM = 0.45f
+private const val CROP_BRACKET_ARM = 36

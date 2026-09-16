@@ -19,16 +19,16 @@ import androidx.compose.ui.platform.LocalContext
  * Dynamic colour is deliberately *not* one of these. Material treats it as where a palette
  * comes from, not which mode is on — there is a `dynamicLightColorScheme` and a
  * `dynamicDarkColorScheme` — so it applies to every entry here and stays a switch of its
- * own. Listing it beside "Always dark" would make the two look exclusive when they compose.
+ * own. Listing it beside "Dark" would make the two look exclusive when they compose.
  *
  * BLACK is a dark mode, not a fourth palette: it is [DARK] with the ground taken to #000000
  * for OLED screens, and it composes with dynamic colour like the others.
  */
 enum class ThemeChoice(val label: String) {
     SYSTEM("Follow the system"),
-    LIGHT("Always light"),
-    DARK("Always dark"),
-    BLACK("Always dark, pure black"),
+    LIGHT("Light"),
+    DARK("Dark"),
+    BLACK("AMOLED"),
     ;
 
     @Composable
@@ -95,6 +95,21 @@ fun BeancountTheme(
     // content-provider lookup, and a screen of animated rows asking individually is a screen
     // making one lookup per row (B76).
     val motion = animationsEnabled()
+
+    // The system bar icons follow the app's theme, not the phone's (B88). `enableEdgeToEdge`
+    // picks their colour from the system setting, so a person who chose "Dark" on a
+    // phone in light mode got dark clock and battery icons on the dark band: there, but
+    // unreadable. Set on every change of theme, against the window this content is in.
+    val view = androidx.compose.ui.platform.LocalView.current
+    if (!view.isInEditMode) {
+        androidx.compose.runtime.SideEffect {
+            val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+            androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !dark
+                isAppearanceLightNavigationBars = !dark
+            }
+        }
+    }
 
     CompositionLocalProvider(
         LocalLedgerColours provides ledger,

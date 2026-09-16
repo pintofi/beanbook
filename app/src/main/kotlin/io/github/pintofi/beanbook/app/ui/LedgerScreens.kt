@@ -507,7 +507,12 @@ private fun RootHeader(
                 modifier = Modifier.padding(start = Measure.snug),
             )
         }
-        Column(horizontalAlignment = Alignment.End) {
+        // The root's total, double-ruled (B87): the line a bookkeeper draws under a column
+        // that is closed.
+        Column(
+            horizontalAlignment = Alignment.End,
+            modifier = if (totals.isEmpty()) Modifier else Modifier.totalRule(rule),
+        ) {
             if (totals.isEmpty()) {
                 Text("—", style = LedgerType.row, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
@@ -688,6 +693,7 @@ fun JournalScreen(
                 EmptyState(
                     title = "Nothing matches \"$query\"",
                     detail = "Every word has to appear somewhere in the entry. Try fewer of them.",
+                    art = EmptyArt.SEARCH,
                     modifier = Modifier.padding(horizontal = Measure.gutter),
                 )
             }
@@ -708,6 +714,7 @@ fun JournalScreen(
                     EmptyState(
                         title = "No transactions yet",
                         detail = "Tap + to write your first one.",
+                        art = EmptyArt.SHEET,
                     )
                 }
             }

@@ -14,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -51,6 +52,9 @@ class PackagesStateTest {
     private val ownRoot = File(context.cacheDir, "packages-root-${System.nanoTime()}")
 
     @After fun clean() {
+        // Stop background refreshes first: a refresh left running reads a project this is
+        // about to delete, and used to crash the process in the next test (B88).
+        scope.cancel()
         project.deleteRecursively()
         ownRoot.deleteRecursively()
         // The incompleteness marker for the *shared* root, cleared here rather than at the

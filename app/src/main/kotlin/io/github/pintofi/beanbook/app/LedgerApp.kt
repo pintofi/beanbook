@@ -484,6 +484,43 @@ internal fun LedgerApp(
             LedgerNavigationRail(selected = selected, onSelect = { selected = it })
         }
 
+    // Whether the open ledger went from errors to none while the app was running (B87), for
+    // the stamp in the top bar. Watched here, above the destinations,, because the last error is usually fixed
+    // somewhere else -- the file editor, a plugin install -- and Home is not on screen then.
+    // Not in SurfaceContent: each destination gets its own, so leaving Home forgot what it had
+    // seen. Per project: opening a clean ledger after a broken one is not fixing anything.
+    // Not keyed on the project: while the engine restarts -- after a plugin install, the very
+    // moment this is for -- there is briefly no project and no ledger, and a keyed state would
+    // forget the errors it had seen. Gaps are skipped; only a different project resets it.
+    var watchedProject by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
+    var lastErrors by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<Int?>(null) }
+    var balancedAgain by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    val errorCount = ledger?.errors?.size
+    androidx.compose.runtime.LaunchedEffect(activeProjectId, errorCount) {
+        val project = activeProjectId ?: return@LaunchedEffect
+        if (errorCount == null) return@LaunchedEffect
+        if (project != watchedProject) {
+            watchedProject = project
+            lastErrors = errorCount
+            balancedAgain = false
+            return@LaunchedEffect
+        }
+        val before = lastErrors
+        if (before != null && before > 0 && errorCount == 0) balancedAgain = true
+        if (errorCount > 0) balancedAgain = false
+        lastErrors = errorCount
+    }
+    // Shown on Home, in the line that says nothing needs attention (B87): it takes no row of its
+    // own and covers no figure. Leaving Home, opening the form or a new error takes it away.
+    var stampShowing by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(balancedAgain, selected, adding, errorCount) {
+        val onHome = selected == Surface.HOME && !adding
+        if (balancedAgain && onHome && errorCount == 0) {
+            stampShowing = true
+            balancedAgain = false
+        }
+        if (!onHome || (errorCount ?: 0) > 0) stampShowing = false
+    }
     Scaffold(
         // The keyboard is handled once, here, for every screen inside (B54). Each form used
         // to apply `imePadding()` itself while the Scaffold went on reserving space for a
@@ -631,6 +668,7 @@ internal fun LedgerApp(
                 Modifier.background(MaterialTheme.colorScheme.background),
             ) {
             SurfaceContent(
+                stamped = stampShowing,
                 selected = shownSurface,
                 adding = shownAdding,
                 moreSection = shownSection,

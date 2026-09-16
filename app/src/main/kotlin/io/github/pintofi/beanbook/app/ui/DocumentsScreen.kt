@@ -236,6 +236,7 @@ fun DocumentsScreen(
             EmptyState(
                 title = "No documents yet",
                 detail = "Photograph a receipt on the Add tab and it is filed against an entry.",
+                art = EmptyArt.RECEIPT,
             )
         }
 
