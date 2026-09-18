@@ -24,9 +24,8 @@ import kotlinx.coroutines.withContext
  * The curated plugin catalogue on the Plugins screen: install one, remove one (B82).
  *
  * Each plugin is installed with the Python packages it needs into a folder of its own
- * ([CatalogueInstaller]), so installing or removing one never touches another. Nothing is
- * downloaded before the person has seen what will be: [request] resolves and stops at
- * [CatalogueStatus.Confirming]; [confirm] downloads.
+ * ([CatalogueInstaller]), so installing or removing one never touches another. [request]
+ * installs at once and reports only the outcome (B89).
  *
  * The Play edition lists the catalogue and installs nothing from it: its [ArchiveFetcher] and
  * `WheelFetcher` both refuse, and the screen says to add a plugin from a file instead.
@@ -83,10 +82,14 @@ class CatalogueState(
             _message.value = "${entry.name} has no source the app can install from."
             return
         }
-        _status.value = CatalogueStatus.Resolving(id)
+        // Straight to installing (B89): a confirmation listing download sources and package
+        // names asked people to judge detail they had no way to judge. What they see is the
+        // progress and, if it fails, why.
+        _status.value = CatalogueStatus.Installing(id)
+        _message.value = null
         scope.launch {
             val resolution = withContext(Dispatchers.IO) { resolve(entry) }
-            _status.value = CatalogueStatus.Confirming(entry, resolution)
+            install(entry, resolution)
         }
     }
 
@@ -109,42 +112,40 @@ class CatalogueState(
         return Resolution(wheels.values.toList(), unavailable.distinct().sorted())
     }
 
-    fun cancel() {
-        _status.value = CatalogueStatus.Idle
-    }
-
-    /** Downloads, verifies and installs what the person was just shown. */
-    fun confirm() {
-        val pending = _status.value as? CatalogueStatus.Confirming ?: return
-        val entry = pending.entry
-        _status.value = CatalogueStatus.Installing(entry.id)
-        scope.launch {
-            val outcome = withContext(Dispatchers.IO) {
-                runCatching {
-                    val install = checkNotNull(entry.install)
-                    val archive = ArchiveFetcher().fetch(install.archive).getOrThrow()
-                    installer.installCode(entry, archive).getOrThrow()
-                    if (pending.resolution.wheels.isNotEmpty()) {
-                        when (val result = fetcher(entry.id).install(pending.resolution.wheels)) {
-                            is FetchResult.Installed -> Unit
-                            is FetchResult.Refused -> error(result.reason)
-                            is FetchResult.Failed -> error(result.reason)
-                        }
+    /** Downloads, verifies and installs [entry] and what it needs. */
+    private suspend fun install(entry: PluginCatalogue.Entry, resolution: Resolution) {
+        val outcome = withContext(Dispatchers.IO) {
+            runCatching {
+                val install = checkNotNull(entry.install)
+                val archive = ArchiveFetcher().fetch(install.archive).getOrThrow()
+                installer.installCode(entry, archive).getOrThrow()
+                if (resolution.wheels.isNotEmpty()) {
+                    when (val result = fetcher(entry.id).install(resolution.wheels)) {
+                        is FetchResult.Installed -> Unit
+                        is FetchResult.Refused -> error(result.reason)
+                        is FetchResult.Failed -> error(result.reason)
                     }
-                    installer.markInstalled(entry)
-                }.onFailure { installer.remove(entry.id) }
-            }
-            _status.value = CatalogueStatus.Idle
-            Diagnostics.i(TAG, "catalogue install ${entry.id} -> ${outcome.isSuccess}")
-            outcome
-                .onSuccess {
-                    onEngineStale()
-                    _message.value = "Installed ${entry.name}. Restart the engine, then turn it on for " +
-                        "this ledger below."
                 }
-                .onFailure { _message.value = "${entry.name} was not installed: ${it.message}" }
-            _installed.value = installer.installed()
+                installer.markInstalled(entry)
+            }.onFailure { installer.remove(entry.id) }
         }
+        _status.value = CatalogueStatus.Idle
+        Diagnostics.i(TAG, "catalogue install ${entry.id} -> ${outcome.isSuccess}")
+        outcome
+            .onSuccess {
+                onEngineStale()
+                _message.value = if (resolution.unavailable.isEmpty()) {
+                    "Installed ${entry.name}."
+                } else {
+                    "Installed ${entry.name}. Parts that need ${resolution.unavailable.joinToString()} " +
+                        "won't work, because those aren't available for Android."
+                }
+            }
+            .onFailure {
+                _message.value = "Couldn't install ${entry.name}: ${it.message ?: "the download failed"}. " +
+                    "Check your connection and try again."
+            }
+        _installed.value = installer.installed()
     }
 
     /** Removes [id] and every package it brought, and nothing else. */
@@ -153,8 +154,8 @@ class CatalogueState(
         scope.launch {
             val freed = withContext(Dispatchers.IO) { installer.remove(id) }
             onEngineStale()
-            _message.value = "Removed ${entry?.name ?: id}, freeing ${freed / 1_000} kB. A ledger that " +
-                "still names it will say so when it next loads."
+            _message.value = "Removed ${entry?.name ?: id}."
+            Diagnostics.i(TAG, "catalogue remove $id freed ${freed / 1_000} kB")
             _installed.value = installer.installed()
         }
     }
@@ -166,8 +167,6 @@ class CatalogueState(
         message = message,
         canInstall = canInstall,
         onInstall = ::request,
-        onConfirm = ::confirm,
-        onCancel = ::cancel,
         onRemove = ::remove,
     )
 
@@ -190,8 +189,6 @@ fun CatalogueState.collectUi(): CatalogueUi {
 
 sealed interface CatalogueStatus {
     data object Idle : CatalogueStatus
-    data class Resolving(val id: String) : CatalogueStatus
-    data class Confirming(val entry: PluginCatalogue.Entry, val resolution: Resolution) : CatalogueStatus
     data class Installing(val id: String) : CatalogueStatus
 }
 
@@ -203,11 +200,9 @@ data class CatalogueUi(
     val message: String?,
     val canInstall: Boolean,
     val onInstall: (String) -> Unit,
-    val onConfirm: () -> Unit,
-    val onCancel: () -> Unit,
     val onRemove: (String) -> Unit,
 ) {
     companion object {
-        val EMPTY = CatalogueUi(emptyList(), emptyMap(), CatalogueStatus.Idle, null, false, {}, {}, {}, {})
+        val EMPTY = CatalogueUi(emptyList(), emptyMap(), CatalogueStatus.Idle, null, false, {}, {})
     }
 }

@@ -200,12 +200,6 @@ class PixelGateTest {
                     message = null,
                     onRequest = {}, onConfirm = {}, onCancel = {}, onRemoveAll = {},
                 ),
-                // Needed, so the restart card renders and its button is checked here too
-                // (B49): it is the control a person reaches for after installing anything.
-                restart = io.github.pintofi.beanbook.app.engine.EngineRestartUi(
-                    needed = false,
-                    onRestart = {},
-                ),
             )
         }
 

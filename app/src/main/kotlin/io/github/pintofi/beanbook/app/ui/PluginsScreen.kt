@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
@@ -33,13 +34,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.data.PluginIntegrity
 import io.github.pintofi.beanbook.core.domain.PluginPolicy
-import io.github.pintofi.beanbook.app.engine.EngineRestartUi
 import io.github.pintofi.beanbook.app.packages.PackagesStatus
 import io.github.pintofi.beanbook.app.packages.PackagesUi
 import io.github.pintofi.beanbook.app.plugins.PluginRow
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 
@@ -61,16 +58,7 @@ fun PluginsScreen(
     onSetEnabled: (String, Boolean) -> Unit,
     onRemove: (String) -> Unit,
     onSetSafeMode: (Boolean) -> Unit,
-    /**
-     * Whether the open ledger names a module, and the way to change that (B60).
-     *
-     * Installing a plugin does not make a ledger use it: that takes a `plugin` directive, or
-     * a `custom "fava-extension"` one. The app never wrote either.
-     */
-    usedModules: Set<String> = emptySet(),
-    onUseModule: (module: String, extension: Boolean, use: Boolean) -> Unit = { _, _, _ -> },
     packages: PackagesUi,
-    restart: EngineRestartUi,
     modifier: Modifier = Modifier,
     message: String? = null,
 ) {
@@ -83,19 +71,16 @@ fun PluginsScreen(
 
         UnsandboxedWarning(policy)
 
-        Button(
-            onClick = onInstall,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "Install a plugin from a file" },
-        ) { Text("Install from a file") }
-
-        if (!policy.allowsNativeCode) {
-            Text(
-                "This edition installs pure-Python plugins only. Anything with compiled " +
-                    "code is refused.",
-                style = MaterialTheme.typography.bodySmall,
-            )
+        // Adding a plugin from a file is only for the edition that cannot download one (B89):
+        // in Expert the list below installs everything it offers, and the file route was
+        // noise beside it.
+        if (!packages.catalogue.canInstall) {
+            Button(
+                onClick = onInstall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Install a plugin from a file" },
+            ) { Text("Install from a file") }
         }
 
         message?.let {
@@ -104,12 +89,25 @@ fun PluginsScreen(
             }
         }
 
+        CatalogueSection(packages.catalogue)
+
+        // Plugins added from a file, which only the list above used to lack a route for.
+        if (rows.isNotEmpty()) {
+            LedgerHairline()
+            Text("Added from a file", style = MaterialTheme.typography.titleSmall)
+            rows.forEach { row ->
+                PluginCard(row = row, dimmed = safeMode, onSetEnabled = onSetEnabled, onRemove = onRemove)
+            }
+        }
+
         LedgerHairline()
 
-        // The whole row toggles, not just the switch at the far edge. A row that reads as
-        // one control but only responds within 48dp of its right-hand side is a row people
-        // tap twice and conclude is broken — and on a wide screen the switch is a long way
-        // from the words that explain it.
+        PackagesSection(policy, packages, noPluginsLeft = rows.isEmpty() && packages.catalogue.installed.isEmpty())
+
+        LedgerHairline()
+
+        // Last, because it is the way out when a plugin breaks loading, not something set
+        // on every visit (B89). The whole row toggles, not just the switch at its edge.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -123,57 +121,14 @@ fun PluginsScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // weight(1f) so the switch cannot be pushed off the right edge by the text
-            // beside it — see AppearanceScreen for the same fix.
             Column(Modifier.weight(1f).padding(end = 12.dp)) {
                 Text("Safe mode", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "No plugins load. Your choices are remembered.",
+                    "Load the ledger with no plugins, for when one stops it from opening.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            // null: the row above owns the interaction, so assistive technology announces
-            // one control rather than two that do the same thing.
             Switch(checked = safeMode, onCheckedChange = null)
-        }
-
-        RestartCard(restart)
-
-        LedgerHairline()
-
-        CatalogueSection(packages.catalogue, usedModules = usedModules, onUseModule = onUseModule)
-
-        LedgerHairline()
-
-        PackagesSection(policy, packages, noPluginsLeft = rows.isEmpty())
-
-        LedgerHairline()
-
-        Text("Plugins", style = MaterialTheme.typography.titleSmall)
-
-        if (rows.isEmpty()) {
-            // Says *plugin files*, because the section above lists installed **packages** and
-            // the two sat one after the other: fetching beangrow put "Installed: beangrow"
-            // on the screen directly above "No plugins installed", which reads as the app
-            // contradicting itself (B49). A package is a library; a plugin is a file you add
-            // here. Both headings now say which is which.
-            Text(
-                "No plugins added. A plugin is a Python file you install here; it adds extra " +
-                    "checks and transformations to a ledger. Packages above are libraries a " +
-                    "plugin can use, and are not plugins themselves.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-        } else {
-            rows.forEach { row ->
-                PluginCard(
-                    row = row,
-                    dimmed = safeMode,
-                    onSetEnabled = onSetEnabled,
-                    onRemove = onRemove,
-                    usedModules = usedModules,
-                    onUseModule = onUseModule,
-                )
-            }
         }
     }
 }
@@ -214,185 +169,54 @@ private fun PluginCard(
     dimmed: Boolean,
     onSetEnabled: (String, Boolean) -> Unit,
     onRemove: (String) -> Unit,
-    usedModules: Set<String> = emptySet(),
-    onUseModule: (module: String, extension: Boolean, use: Boolean) -> Unit = { _, _, _ -> },
 ) {
     var confirming by remember(row.plugin.id) { mutableStateOf(false) }
     val plugin = row.plugin
 
     RuledColumn(
         modifier = Modifier.padding(vertical = Measure.snug),
-        colour = if (plugin.enabled) {
-            BeancountTheme.ledger.rule
-        } else {
-            MaterialTheme.colorScheme.outlineVariant
-        },
+        colour = if (plugin.enabled) BeancountTheme.ledger.rule else MaterialTheme.colorScheme.outlineVariant,
         verticalArrangement = Arrangement.spacedBy(Measure.snug),
     ) {
-        run {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(plugin.name, style = MaterialTheme.typography.titleMedium)
-                Switch(
-                    checked = plugin.enabled,
-                    onCheckedChange = { onSetEnabled(plugin.id, it) },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Run ${plugin.name} when the ledger loads"
-                    },
-                )
-            }
-
-            if (dimmed && plugin.enabled) {
-                Text(
-                    "On, but held back while safe mode is on.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-
-            // Provenance, because "where did this come from" is the question a user asks
-            // about executable code six months later (docs/threat-model.md §3.2).
-            Text(
-                "From ${plugin.sourceLabel} · added ${dateOf(plugin.installedAtEpochMs)} · " +
-                    "installed under the ${plugin.installedUnderPolicy} edition",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                "Checksum ${plugin.sourceSha256.take(12)}…",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics {
-                    contentDescription =
-                        "Checksum of the file as installed, ${plugin.sourceSha256.take(12)}"
-                },
-            )
-
-            when (val integrity = row.integrity) {
-                PluginIntegrity.Unchanged -> Unit
-                is PluginIntegrity.Changed -> Warning(
-                    "The files have changed since you installed this, so it is not loaded. " +
-                        "Install it again to check and run it.",
-                )
-                PluginIntegrity.Missing -> Warning(
-                    "Its files are gone, so it is not being loaded. Remove it to tidy up.",
-                )
-            }
-
-            if (plugin.modules.isNotEmpty()) {
-                // What the ledger has to name, and whether it does (B60). Turning a plugin on
-                // above makes it *findable*; a ledger uses it only when it says so, and this
-                // is where that is said. Two kinds, because Beancount and Fava load their
-                // add-ons differently and the file records that difference.
-                Text("Use in this ledger", style = MaterialTheme.typography.titleSmall)
-                Text(
-                    "Turning a plugin on makes it available. A ledger runs it only when it " +
-                        "names it, which is what these write into your file.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                plugin.modules.take(MODULE_LIMIT).forEach { module ->
-                    val extension = module.contains("fava_extension") || module.contains("fava_")
-                    val used = module in usedModules
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(
-                                value = used,
-                                onValueChange = { onUseModule(module, extension, it) },
-                                role = Role.Switch,
-                            )
-                            .semantics {
-                                contentDescription = if (extension) {
-                                    "Show $module in the Fava reports of this ledger"
-                                } else {
-                                    "Run $module when this ledger loads"
-                                }
-                            }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                            Text(module, style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                if (extension) {
-                                    "Adds a page to Reports"
-                                } else {
-                                    "Runs when the ledger loads"
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                        Switch(checked = used, onCheckedChange = null)
-                    }
-                }
-            }
-
-            if (confirming) {
-                Text(
-                    "Remove \"${plugin.name}\" and delete its files from this project? Your " +
-                        "ledger is not touched.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = { confirming = false; onRemove(plugin.id) },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Confirm removing ${plugin.name}"
-                        },
-                    ) { Text("Remove it") }
-                    TextButton(onClick = { confirming = false }) { Text("Keep it") }
-                }
-            } else {
-                TextButton(
-                    onClick = { confirming = true },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Remove ${plugin.name}"
-                    },
-                ) { Text("Remove") }
-            }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(value = plugin.enabled, onValueChange = { onSetEnabled(plugin.id, it) }, role = Role.Switch)
+                .semantics { contentDescription = "Load ${plugin.name}" },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(plugin.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Switch(checked = plugin.enabled, onCheckedChange = null)
         }
-    }
-}
-
-/**
- * Offers the only thing that actually picks up a newly installed plugin or package (B49).
- *
- * "Reopen the ledger" was the previous advice and it does not work: reopening re-parses
- * inside the same interpreter, and Python has already cached the answer to every import it
- * has been asked. A new engine process is what reads the files on disk.
- *
- * Shown only when something has changed under the running engine, so it is a consequence of
- * what the user just did rather than a button that is always there.
- */
-@Composable
-private fun RestartCard(restart: EngineRestartUi) {
-    // Arrives by making room, and leaves the same way when the engine comes back: installing
-    // a plugin should look like the screen answering, not like a panel blinking into the
-    // middle of the page (B76).
-    io.github.pintofi.beanbook.app.ui.LedgerReveal(
-        visible = restart.needed,
-        label = "restart",
-    ) {
-    Notice(
-        NoticeTone.ATTENTION,
-        modifier = Modifier.semantics {
-            contentDescription = "The engine is running older code than is installed"
-        },
-    ) {
-        Text("Restart needed", style = MaterialTheme.typography.titleSmall)
-        Text(
-            "What you just changed is on disk, but the running engine has already loaded " +
-                "Python and will not see it. Restarting takes a few seconds and touches " +
-                "nothing in your ledger.",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-        )
-        Button(
-            onClick = restart.onRestart,
-            modifier = Modifier.semantics { contentDescription = "Restart the engine now" },
-        ) { Text("Restart the engine") }
-    }
+        if (dimmed && plugin.enabled) {
+            Text("Held back while safe mode is on.", style = MaterialTheme.typography.bodySmall)
+        }
+        when (row.integrity) {
+            PluginIntegrity.Unchanged -> Unit
+            is PluginIntegrity.Changed -> Warning(
+                "Its files changed after you added it, so it is not loaded. Add it again to use it.",
+            )
+            PluginIntegrity.Missing -> Warning("Its files are gone, so it is not loaded. Remove it.")
+        }
+        if (confirming) {
+            Text(
+                "Remove ${plugin.name}? Your ledger is not changed.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { confirming = false; onRemove(plugin.id) },
+                    modifier = Modifier.semantics { contentDescription = "Confirm removing ${plugin.name}" },
+                ) { Text("Remove") }
+                TextButton(onClick = { confirming = false }) { Text("Cancel") }
+            }
+        } else {
+            TextButton(
+                onClick = { confirming = true },
+                modifier = Modifier.semantics { contentDescription = "Remove ${plugin.name}" },
+            ) { Text("Remove") }
+        }
     }
 }
 
@@ -402,12 +226,6 @@ private fun Warning(text: String) {
         Text(text, style = MaterialTheme.typography.bodyMedium)
     }
 }
-
-/** Enough to name what a plugin provides; a package with dozens is a library, not a menu. */
-private const val MODULE_LIMIT = 8
-
-private fun dateOf(epochMillis: Long): String =
-    SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(epochMillis))
 
 /**
  * Extra Python packages, fetched when the user asks (docs/on-demand-packages.md).
@@ -600,50 +418,78 @@ private fun PackagesSection(
 }
 
 /**
- * The curated catalogue: every plugin on awesome-beancount, how it tested, and one button (B82).
+ * The curated catalogue: every plugin on awesome-beancount, with one button each (B82, B89).
  *
- * Installing one fetches it and the packages it needs into a folder of its own, so each can be
- * removed without disturbing another. Nothing is downloaded until the person has seen what will
- * be. In the Play edition the list is for reading: it says how to add a plugin from a file.
+ * A row says what the plugin is for and nothing else: licence, test status and download
+ * source were detail nobody choosing a plugin needed, and they buried the one line that
+ * mattered. Installing is one tap; the only thing shown after it is the outcome.
  */
 @Composable
-internal fun CatalogueSection(
-    catalogue: io.github.pintofi.beanbook.app.plugins.CatalogueUi,
-    usedModules: Set<String> = emptySet(),
-    onUseModule: (module: String, extension: Boolean, use: Boolean) -> Unit = { _, _, _ -> },
-) {
+internal fun CatalogueSection(catalogue: io.github.pintofi.beanbook.app.plugins.CatalogueUi) {
     if (catalogue.entries.isEmpty()) return
-    var showAll by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    var kind by remember { mutableStateOf(PluginKind.ALL) }
+
     Text(
         if (catalogue.canInstall) "Plugins you can install" else "Plugins people use",
         style = MaterialTheme.typography.titleSmall,
     )
-    Text(
-        if (catalogue.canInstall) {
-            "From the awesome-beancount list, with how each one fared when this app tested it. " +
-                "Each installs with what it needs, and removes cleanly on its own."
-        } else {
-            "From the awesome-beancount list, with how each one fared when this app tested it. " +
-                "This edition does not download plugins: add one from a file above, or use the " +
-                "Expert edition, which installs them from here."
-        },
-        style = MaterialTheme.typography.bodySmall,
+    if (!catalogue.canInstall) {
+        Text(
+            "This edition cannot download plugins. Add one from a file above, or use the " +
+                "Expert edition, which installs them from this list.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+    OutlinedTextField(
+        value = query,
+        onValueChange = { query = it },
+        label = { Text("Search plugins") },
+        singleLine = true,
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        modifier = Modifier.fillMaxWidth(),
     )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PluginKind.entries.forEach { option ->
+            androidx.compose.material3.FilterChip(
+                selected = kind == option,
+                onClick = { kind = option },
+                label = { Text(option.label) },
+                modifier = Modifier.semantics { contentDescription = "Show ${option.described}" },
+            )
+        }
+    }
     catalogue.message?.let {
         Notice(NoticeTone.QUIET, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
             Text(it, style = MaterialTheme.typography.bodyMedium)
         }
     }
-    val installed = catalogue.entries.filter { it.id in catalogue.installed }
-    val rest = catalogue.entries.filterNot { it.id in catalogue.installed }
-    val shown = installed + if (showAll) rest else rest.take(CATALOGUE_PREVIEW)
-    shown.forEach { entry ->
-        CatalogueRow(entry, catalogue, usedModules, onUseModule)
-    }
-    if (rest.size > CATALOGUE_PREVIEW) {
-        TextButton(onClick = { showAll = !showAll }) {
-            Text(if (showAll) "Show fewer" else "Show all ${catalogue.entries.size}")
+    val words = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    val shown = catalogue.entries
+        .filter { kind.includes(it.kind) }
+        .filter { entry ->
+            val text = "${entry.name} ${entry.description}".lowercase()
+            words.all { it in text }
         }
+        // What is installed first, then the rest in the catalogue's order.
+        .sortedBy { it.id !in catalogue.installed }
+    if (shown.isEmpty()) {
+        Text("No plugin matches.", style = MaterialTheme.typography.bodyMedium)
+    }
+    shown.forEach { entry -> CatalogueRow(entry, catalogue) }
+}
+
+/** The three ways to narrow the plugin list (B89). */
+internal enum class PluginKind(val label: String, val described: String) {
+    ALL("All", "all plugins"),
+    BEANCOUNT("Beancount", "plugins that change how the ledger loads"),
+    FAVA("Fava", "plugins that add pages to Reports"),
+    ;
+
+    fun includes(kind: String): Boolean = when (this) {
+        ALL -> true
+        BEANCOUNT -> kind != "fava-extension"
+        FAVA -> kind == "fava-extension"
     }
 }
 
@@ -651,97 +497,37 @@ internal fun CatalogueSection(
 private fun CatalogueRow(
     entry: io.github.pintofi.beanbook.core.data.PluginCatalogue.Entry,
     catalogue: io.github.pintofi.beanbook.app.plugins.CatalogueUi,
-    usedModules: Set<String>,
-    onUseModule: (module: String, extension: Boolean, use: Boolean) -> Unit,
 ) {
-    val version = catalogue.installed[entry.id]
+    val installed = entry.id in catalogue.installed
     val status = catalogue.status
     RuledColumn(
         modifier = Modifier.padding(vertical = Measure.snug),
-        colour = if (version != null) BeancountTheme.ledger.rule else MaterialTheme.colorScheme.outlineVariant,
+        colour = if (installed) BeancountTheme.ledger.rule else MaterialTheme.colorScheme.outlineVariant,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(entry.name, style = MaterialTheme.typography.titleMedium)
         Text(entry.description, style = MaterialTheme.typography.bodyMedium)
-        Text(
-            "${kindLabel(entry.kind)} · ${statusLabel(entry.status)} · licence ${entry.licence}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        entry.statusReason?.takeIf { entry.status != "supported" }?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall)
+        // The one exception to "what it does": a plugin known not to run here says so, so
+        // nobody installs it to find out.
+        if (entry.status == "unsupported") {
+            Text(
+                "Does not work on Android.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-        entry.licenceNote?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-
         when {
-            status is io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Confirming &&
-                status.entry.id == entry.id -> {
-                val install = entry.install
-                Notice(NoticeTone.ATTENTION) {
-                    Text("Install ${entry.name}?", style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        "Downloads ${install?.archive?.substringAfter("https://")?.substringBefore('/')} " +
-                            "(${install?.source} ${install?.version}), checked against the catalogue's " +
-                            "checksum." + if (status.resolution.wheels.isEmpty()) {
-                                " It needs nothing else."
-                            } else {
-                                " With it: ${status.resolution.wheels.joinToString { it.name }}."
-                            },
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    if (status.resolution.unavailable.isNotEmpty()) {
-                        Text(
-                            "Not available for Android, so left out: " +
-                                "${status.resolution.unavailable.joinToString()}. " +
-                                "The parts that need them will not work.",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = catalogue.onConfirm,
-                            modifier = Modifier.semantics { contentDescription = "Download and install ${entry.name}" },
-                        ) { Text("Install") }
-                        TextButton(onClick = catalogue.onCancel) { Text("Not now") }
-                    }
-                }
-            }
-            (status as? io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Resolving)?.id == entry.id ->
-                Text("Working out what it needs…", style = MaterialTheme.typography.bodySmall)
             (status as? io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Installing)?.id == entry.id ->
-                Text("Installing…", style = MaterialTheme.typography.bodySmall)
-            version != null -> {
-                entry.install?.modules.orEmpty().take(MODULE_LIMIT).forEach { module ->
-                    val used = module in usedModules
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .toggleable(
-                                value = used,
-                                onValueChange = { onUseModule(module, entry.isExtension, it) },
-                                role = Role.Switch,
-                            )
-                            .semantics {
-                                contentDescription = if (entry.isExtension) {
-                                    "Show $module in the Fava reports of this ledger"
-                                } else {
-                                    "Run $module when this ledger loads"
-                                }
-                            }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(module, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                        Switch(checked = used, onCheckedChange = null)
-                    }
-                }
-                OutlinedButton(
-                    onClick = { catalogue.onRemove(entry.id) },
-                    modifier = Modifier.semantics { contentDescription = "Remove ${entry.name} and what it installed" },
-                ) { Text("Remove") }
-            }
-            catalogue.canInstall && entry.install != null -> OutlinedButton(
+                Text(
+                    "Installing…",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+            installed -> OutlinedButton(
+                onClick = { catalogue.onRemove(entry.id) },
+                modifier = Modifier.semantics { contentDescription = "Remove ${entry.name}" },
+            ) { Text("Remove") }
+            catalogue.canInstall && entry.install != null && entry.status != "unsupported" -> OutlinedButton(
                 onClick = { catalogue.onInstall(entry.id) },
                 enabled = status is io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Idle,
                 modifier = Modifier.semantics { contentDescription = "Install ${entry.name}" },
@@ -750,23 +536,3 @@ private fun CatalogueRow(
         }
     }
 }
-
-private fun kindLabel(kind: String) = when (kind) {
-    "beancount-plugin" -> "Beancount plugin"
-    "fava-extension" -> "Fava extension"
-    "beancount-importer" -> "Importer"
-    "library" -> "Library"
-    else -> kind
-}
-
-private fun statusLabel(status: String) = when (status) {
-    "supported" -> "works"
-    "needs-config" -> "works with a configuration"
-    "partial" -> "partly works"
-    "unsupported" -> "does not work here"
-    else -> "not tested"
-}
-
-/** How many uninstalled entries the section shows before "Show all". */
-private const val CATALOGUE_PREVIEW = 8
-

@@ -477,30 +477,23 @@ internal fun RecoveryBanner(message: String, onDismiss: () -> Unit) {
 @Composable
 internal fun LoadingOrError(
     status: EngineStatus,
-    editionName: String,
     modifier: Modifier = Modifier,
+    onRetry: () -> Unit = {},
 ) {
+    // No edition line here (B89): which edition this is belongs on More, not on a screen that
+    // is only waiting for the ledger.
     Column(
         modifier = modifier.padding(horizontal = Measure.gutter, vertical = Measure.chapter),
         verticalArrangement = Arrangement.spacedBy(Measure.section),
     ) {
-        RuledColumn {
-            Text("Beanbook", style = MaterialTheme.typography.headlineSmall)
-            Text(
-                text = "Edition: $editionName",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .padding(top = Measure.tight)
-                    .semantics { contentDescription = "Edition $editionName" },
-            )
-        }
         when (status) {
-            is EngineStatus.Failed -> Notice(NoticeTone.PROBLEM) {
-                Text(
-                    "The engine could not start: ${status.message}",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+            is EngineStatus.Failed -> {
+                val (headline, detail) = engineFailure(status.message)
+                Notice(NoticeTone.PROBLEM) {
+                    Text(headline, style = MaterialTheme.typography.titleSmall)
+                    Text(detail, style = MaterialTheme.typography.bodyMedium)
+                }
+                androidx.compose.material3.Button(onClick = onRetry) { Text("Try again") }
             }
             else -> {
                 // A rule filling, rather than a spinner: the mark the rest of the app uses to
@@ -519,6 +512,30 @@ internal fun LoadingOrError(
                 )
             }
         }
+    }
+}
+
+/**
+ * What to tell a person when the engine did not start (B89): what happened, why, what to do.
+ *
+ * The raw message was shown as it came -- "RuntimeError: engine already started; call stop()
+ * first", "Transaction failed on small parcel; remote process probably died" -- which names
+ * the app's internals and asks the reader to act on them. When the cause is the engine's
+ * process going away, that is said in words and the fix is Try again. When Beancount could
+ * not open the ledger itself, its own message is the useful part and is kept.
+ */
+internal fun engineFailure(message: String): Pair<String, String> {
+    val processTrouble = listOf(
+        "already started", "remote process", "binder", "DeadObject", "engine unavailable",
+        "did not report", "not available",
+    ).any { message.contains(it, ignoreCase = true) }
+    return if (processTrouble) {
+        "Couldn't open your ledger" to
+            "The part of Beanbook that reads your ledger stopped, usually because Android " +
+            "closed it to save memory. Your files are fine. Tap Try again."
+    } else {
+        "Couldn't open your ledger" to
+            "Beancount could not read it: $message. Fix the file it names, then tap Try again."
     }
 }
 

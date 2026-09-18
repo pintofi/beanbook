@@ -47,7 +47,15 @@ class AllowlistWebViewClient(
     // so a captured string would freeze the palette at whatever it was then and switching to
     // dark would not re-skin the reports until the WebView was rebuilt.
     private val themeScript: () -> String? = { null },
+    /** Every address the page moves to, including Fava's in-page navigation (B89). */
+    private val onUrlChanged: (String) -> Unit = {},
 ) : WebViewClient() {
+
+    override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
+        // Fava moves between reports without loading a new document, so onPageFinished does
+        // not see it; the history update does.
+        onUrlChanged(url)
+    }
 
     /** Credentials for a server that sits behind a reverse proxy's login. */
     class HttpAuth(val username: String, val password: CharArray) {
@@ -212,6 +220,47 @@ fun clearSessionToken(origin: String) {
     }
 }
 
+/**
+ * A report WebView that outlives the Reports tab (B89).
+ *
+ * Leaving Reports used to dispose of the WebView, so every visit started Fava again from its
+ * first page -- slow on a large ledger, and it forgot the report the person was reading.
+ * Held by the app's composition, it is only moved from one parent to the next, and it loads
+ * nothing unless the address the app asks for changes.
+ */
+class RetainedWebView {
+    internal var view: WebView? = null
+    internal var requested: String? = null
+    internal var loaded: Boolean = false
+
+    /** Where the page is now, including in-page moves. */
+    var currentUrl by androidx.compose.runtime.mutableStateOf<String?>(null)
+        internal set
+
+    /**
+     * The page the app's own request landed on -- for the ledger's index, the report the
+     * file's `default-page` Fava option names -- which Back returns to before leaving Reports.
+     */
+    var landing by androidx.compose.runtime.mutableStateOf<String?>(null)
+        internal set
+
+    /** Whether the page is somewhere other than where it landed. */
+    val awayFromLanding: Boolean
+        get() {
+            val here = currentUrl?.trimEnd('/') ?: return false
+            val home = landing?.trimEnd('/') ?: return false
+            return here != home
+        }
+
+    /** Loads [url] in the retained page, if there is one. */
+    fun load(url: String) {
+        view?.loadUrl(url)
+    }
+}
+
+/** The report page kept for the app's Reports tab (B89); provided by the app's composition. */
+val LocalReportsPage = androidx.compose.runtime.staticCompositionLocalOf<RetainedWebView?> { null }
+
 @Composable
 fun FavaWebView(
     url: String,
@@ -222,6 +271,8 @@ fun FavaWebView(
     onExternalLink: (Uri) -> Unit = {},
     httpAuth: (() -> AllowlistWebViewClient.HttpAuth?)? = null,
     onLoadProblem: (String) -> Unit = {},
+    /** Keeps the page across leaving and returning (B89); null for a page of its own. */
+    retained: RetainedWebView? = null,
 ) {
     // Whether the page has ever finished loading, so the native shell can hold something in
     // front of a blank WebView (B76). A report takes a moment to render and Fava paints white
@@ -229,7 +280,7 @@ fun FavaWebView(
     // the page and nothing about the WebView's security changes: this is a native cover over
     // a native slot, removed when Fava says it is ready.
     var loaded by androidx.compose.runtime.saveable.rememberSaveable(url) {
-        androidx.compose.runtime.mutableStateOf(false)
+        androidx.compose.runtime.mutableStateOf(retained?.loaded == true && retained.requested == url)
     }
     // Recomputed when the palette changes, so switching theme re-skins the reports on their
     // next load without restarting anything.
@@ -243,7 +294,14 @@ fun FavaWebView(
     }
     val currentTheme = androidx.compose.runtime.rememberUpdatedState(themeScript)
 
-    val onLoaded = androidx.compose.runtime.rememberUpdatedState { loaded = true }.value
+    val onLoaded = androidx.compose.runtime.rememberUpdatedState { at: String ->
+        loaded = true
+        retained?.let {
+            if (!it.loaded || it.landing == null) it.landing = at
+            it.loaded = true
+            it.currentUrl = at
+        }
+    }.value
 
     androidx.compose.foundation.layout.Box(modifier) {
     AndroidView(
@@ -259,8 +317,10 @@ fun FavaWebView(
             // laid out MATCH_PARENT inside it, which is what makes `vh` mean something
             // (B47, `ViewportUnitsTest`).
             android.widget.FrameLayout(context).apply {
-                val web = WebView(context).apply {
-                    applyBeancountHardening(debuggingAllowed)
+                val kept = retained?.view
+                (kept?.parent as? android.view.ViewGroup)?.removeView(kept)
+                val web = (kept ?: WebView(context).apply { applyBeancountHardening(debuggingAllowed) }).apply {
+                    retained?.view = this
                     // A page that renders nothing says nothing without this: the report is
                     // Fava's own JavaScript, and when it throws the only record is the
                     // browser console. Debug builds only, and it reads messages rather than
@@ -285,8 +345,9 @@ fun FavaWebView(
                         onExternalLink = onExternalLink,
                         httpAuth = httpAuth,
                         onLoadProblem = onLoadProblem,
-                        onPageLoaded = { onLoaded() },
+                        onPageLoaded = { onLoaded(it) },
                         themeScript = { currentTheme.value },
+                        onUrlChanged = { retained?.currentUrl = it },
                     )
                 }
                 addView(
@@ -300,7 +361,13 @@ fun FavaWebView(
         },
         update = { host ->
             val view = host.getChildAt(0) as WebView
-            if (view.url != url) {
+            // A retained page loads only when the app asks for a different address, never
+            // because the person moved to another report inside it.
+            val reload = if (retained != null) retained.requested != url else view.url != url
+            if (reload) {
+                retained?.requested = url
+                retained?.loaded = false
+                retained?.landing = null
                 view.loadUrl(url)
             } else {
                 // Same page, new palette: re-skin what is already on screen instead of

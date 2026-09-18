@@ -22,7 +22,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -116,6 +118,13 @@ fun DocumentsScreen(
     val askForCamera = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted = it }
+    // A file the person already has -- an emailed invoice, a saved PDF -- filed as it is
+    // (B89), the way the entry form has offered since B80. The picker needs no permission.
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) capture.onAttachFile(uri)
+    }
+    val attachedFiles by capture.attachedFiles.collectAsState()
+    val hasDocuments = !capture.pages.isEmpty || attachedFiles.isNotEmpty()
 
     Column(
         modifier = modifier
@@ -166,6 +175,26 @@ fun DocumentsScreen(
                 },
             ) { Text(if (capture.pages.isEmpty) "Scan pages" else "Scan more pages") }
         }
+        OutlinedButton(
+            onClick = { pickFile.launch(arrayOf("application/pdf", "image/*")) },
+            modifier = Modifier.semantics { contentDescription = "Attach a file from this phone" },
+        ) { Text("Attach a file") }
+
+        attachedFiles.forEachIndexed { index, name ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.MiddleEllipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = { capture.onRemoveFile(index) },
+                    modifier = Modifier.semantics { contentDescription = "Remove the attached file $name" },
+                ) { Text("Remove") }
+            }
+        }
 
         if (!capture.pages.isEmpty) {
             LedgerHeading("Pages")
@@ -185,7 +214,7 @@ fun DocumentsScreen(
                             contentDescription = "Edit page ${index + 1} of ${capture.pages.size}"
                         },
                     ) {
-                        PageThumbnail(file = capture.fileFor(page.source), label = "Page ${index + 1}")
+                        PageThumbnail(file = capture.fileFor(page.source), label = "Page ${index + 1}", page = page)
                     }
                 }
             }
@@ -194,7 +223,9 @@ fun DocumentsScreen(
                     "Tap one to rotate, crop or change how it is rendered.",
                 style = MaterialTheme.typography.bodySmall,
             )
+        }
 
+        if (hasDocuments) {
             SuggestingField(
                 value = account,
                 onValueChange = { account = it },
@@ -224,9 +255,11 @@ fun DocumentsScreen(
                 onClick = { onSave(account.trim(), label.trim().ifBlank { null }) },
                 enabled = account.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Save as PDF and link") }
+            ) { Text(if (capture.pages.isEmpty) "File under this account" else "Save as PDF and file") }
 
-            TextButton(onClick = onDiscard) { Text("Discard these pages") }
+            TextButton(onClick = onDiscard) {
+                Text(if (attachedFiles.isEmpty()) "Discard these pages" else "Discard")
+            }
         }
         } // end ADD
 

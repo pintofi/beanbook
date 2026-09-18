@@ -42,12 +42,17 @@ fun PageThumbnail(
     label: String,
     modifier: Modifier = Modifier,
     size: androidx.compose.ui.unit.Dp = 56.dp,
+    /**
+     * The page as captured, so the thumbnail shows it cropped, turned and styled the way it
+     * will be filed (B89). Without it the thumbnail is the raw photograph.
+     */
+    page: io.github.pintofi.beanbook.core.domain.CapturedPage? = null,
 ) {
     // Upright, and sampled down to something a 56dp box can use: a camera writes its
     // orientation into EXIF and leaves the pixels sideways (B55). Off the main thread (B83):
     // this decoded a camera JPEG inside composition, once per thumbnail, which is a stutter
     // every time a batch of pages appears.
-    val bitmap = rememberDecodedPage(file)
+    val bitmap = if (page != null) rememberRenderedPage(page, file) else rememberDecodedPage(file)
 
     Box(
         modifier = modifier
@@ -84,6 +89,41 @@ internal fun rememberDecodedPage(file: File, maxEdge: Int = THUMBNAIL_EDGE): and
         }
     }
     return decoded
+}
+
+/**
+ * [page] as it will be filed -- the scanner's crop, the rotation and the style applied -- sampled
+ * down for a thumbnail (B89).
+ *
+ * Thumbnails decoded the photograph, so a page the scanner had cropped showed uncropped until
+ * it was opened full size, which read as the crop having been lost. The same renderer the page
+ * editor uses draws it here.
+ */
+@Composable
+internal fun rememberRenderedPage(
+    page: io.github.pintofi.beanbook.core.domain.CapturedPage,
+    file: File,
+    maxEdge: Int = THUMBNAIL_EDGE,
+): android.graphics.Bitmap? {
+    val render = LocalPageRenderer.current
+    val rendered by androidx.compose.runtime.produceState<android.graphics.Bitmap?>(null, page, file.path, file.length()) {
+        value = runCatching { render(page, file) }.getOrNull()?.let { full ->
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                val scale = maxEdge.toFloat() / maxOf(full.width, full.height)
+                if (scale >= 1f) {
+                    full
+                } else {
+                    android.graphics.Bitmap.createScaledBitmap(
+                        full,
+                        (full.width * scale).toInt().coerceAtLeast(1),
+                        (full.height * scale).toInt().coerceAtLeast(1),
+                        true,
+                    )
+                }
+            }
+        }
+    }
+    return rendered
 }
 
 private const val THUMBNAIL_EDGE = 256

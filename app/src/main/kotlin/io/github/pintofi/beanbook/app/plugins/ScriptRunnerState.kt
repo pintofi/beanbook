@@ -45,6 +45,7 @@ data class ScriptOutcome(
             "Out of time. It ran ${overranByMs / 1000}s past the deadline, inside a " +
                 "call that cannot be interrupted."
         timedOut -> "Out of time."
+        ok && output.isBlank() -> "Finished in ${durationMs}ms. It printed nothing."
         ok -> "Finished in ${durationMs}ms."
         else -> "$errorType: $error"
     }

@@ -84,7 +84,13 @@ object DocumentIndex {
         fun relativise(absolute: String) =
             if (absolute.startsWith(base)) absolute.removePrefix(base) else absolute
 
-        val filed = directives.map { relativise(it.path) to it }
+        // One row per document and account (B89). With `option "documents"`, Beancount finds a
+        // filed PDF in the folder and reports it as a Document entry of its own, beside the
+        // directive that filed it: the same file, the same account, twice -- and every scan
+        // showed up twice in Organize.
+        val filed = directives
+            .map { relativise(it.path) to it }
+            .distinctBy { (path, directive) -> path to directive.account }
         val present = onDisk.toSet()
 
         // Matched on the leaf as well as the whole path: a `document:` key is written

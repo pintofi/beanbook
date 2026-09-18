@@ -430,6 +430,9 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
             val segments = relativePath.split('/')
             if (segments.any { it in EXCLUDED_DIRECTORIES }) return true
             if (segments.last() in EXCLUDED_NAMES) return true
+            // Beancount's load cache (B89): rebuilt on every load, so mirroring or backing it
+            // up produced a new conflict every time and restored nothing worth having.
+            if (segments.last().endsWith(".picklecache")) return true
             // Temporary files from an interrupted write; the real file is beside them.
             return segments.last().endsWith(".tmp") || segments.last().endsWith(".part")
         }

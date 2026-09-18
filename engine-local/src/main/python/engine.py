@@ -84,8 +84,13 @@ def start(
     """
     global _server, _thread
 
+    # A server already running belongs to a caller that has gone: the app's own process can be
+    # ended by Android while this one lives on, and the app that comes back has a new token
+    # and no way to reach the old server. Refusing ("already started") left the app unable to
+    # show anything until it was restarted, so the old server is stopped and this one takes
+    # its place.
     if _server is not None:
-        raise RuntimeError("engine already started; call stop() first")
+        stop()
 
     path = Path(ledger_path)
     if not path.is_file():

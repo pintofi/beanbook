@@ -592,6 +592,40 @@ class LoaderCacheTest(unittest.TestCase):
             _, errors, _ = loader.load_file(str(ledger))
         self.assertEqual([], errors, "the cached failure was served after the plugin arrived")
 
+    def test_the_cache_stays_out_of_the_project_folder(self):
+        """B89: the cache sat in the project, was mirrored, and conflicted on every load."""
+        import os
+
+        root = self.work / "app-cache"
+        os.environ["BEANBOOK_LOADER_CACHE_DIR"] = str(root)
+        self.addCleanup(lambda: os.environ.pop("BEANBOOK_LOADER_CACHE_DIR", None))
+        project = self.work / "project"
+        project.mkdir()
+        ledger = project / "main.beancount"
+        ledger.write_text("2020-01-01 open Assets:Cash\n")
+        (project / ".main.beancount.picklecache").write_text("left over from before")
+
+        from beancount import loader
+
+        threshold = loader.PICKLE_CACHE_THRESHOLD
+        loader.PICKLE_CACHE_THRESHOLD = 0
+        self.addCleanup(lambda: setattr(loader, "PICKLE_CACHE_THRESHOLD", threshold))
+        pattern = plugins.use_loader_cache([])
+        loader.load_file(str(ledger))
+        plugins.discard_other_loader_caches(str(ledger), pattern)
+
+        self.assertEqual([], sorted(p.name for p in project.glob("*picklecache")))
+        self.assertEqual(1, len(list(root.glob("*main.beancount*picklecache"))))
+
+    def test_two_projects_with_the_same_file_name_do_not_share_a_cache(self):
+        import os
+
+        os.environ["BEANBOOK_LOADER_CACHE_DIR"] = str(self.work / "app-cache")
+        self.addCleanup(lambda: os.environ.pop("BEANBOOK_LOADER_CACHE_DIR", None))
+        one = plugins._cache_filename(".{filename}.picklecache", str(self.work / "a" / "main.beancount"))
+        two = plugins._cache_filename(".{filename}.picklecache", str(self.work / "b" / "main.beancount"))
+        self.assertNotEqual(one, two)
+
     def test_caches_for_other_plugin_sets_are_discarded(self):
         ledger = self.work / "main.beancount"
         ledger.write_text("")

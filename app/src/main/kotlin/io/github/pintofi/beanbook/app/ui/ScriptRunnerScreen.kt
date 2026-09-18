@@ -105,6 +105,18 @@ fun ScriptRunnerScreen(
             ) { Text("Choose a script…") }
         }
 
+        // The result directly under the button that produced it (B89). It used to come last,
+        // below every saved script, so after a run it was off the bottom of the screen and
+        // the run looked as if it had printed nothing.
+        message?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        outcome?.let { Outcome(it) }
+
         if (saved.isNotEmpty()) {
             Text("Your scripts", style = MaterialTheme.typography.titleSmall)
             Text(
@@ -115,15 +127,6 @@ fun ScriptRunnerScreen(
             saved.forEach { script -> SavedScriptCard(script, running == null, onRunSaved, onForgetSaved) }
         }
 
-        message?.let {
-            Text(
-                it,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-            )
-        }
-
-        outcome?.let { Outcome(it) }
     }
 }
 

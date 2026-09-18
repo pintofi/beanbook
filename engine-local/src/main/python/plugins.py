@@ -544,27 +544,88 @@ def loader_cache_pattern(directories) -> str:
     return ".{filename}." + digest.hexdigest()[:16] + ".picklecache"
 
 
+def loader_cache_root():
+    """Where the load cache lives, when it must not sit beside the ledger (B89).
+
+    Beancount writes `.main.beancount.picklecache` next to the file it loads. In the app that
+    is the project folder -- the folder the user imported, mirrors to a synced folder, and backs
+    up -- so the cache showed up there, and because it changes on every load the mirror found
+    a new conflict each time. On Android the cache goes to the app's own cache directory
+    instead. Elsewhere (the desktop tests) Beancount's placement is kept, unless
+    BEANBOOK_LOADER_CACHE_DIR says otherwise.
+    """
+    configured = os.environ.get("BEANBOOK_LOADER_CACHE_DIR")
+    if configured:
+        return configured
+    if hasattr(sys, "getandroidapilevel"):
+        import tempfile
+
+        return os.path.join(tempfile.gettempdir(), "loader-cache")
+    return None
+
+
+def _ledger_tag(filename) -> str:
+    """Tells apart two projects whose main files have the same name."""
+    folder = os.path.dirname(os.path.abspath(filename))
+    return hashlib.sha256(folder.encode()).hexdigest()[:12]
+
+
+def _cache_filename(pattern: str, filename: str) -> str:
+    """Beancount's `get_cache_filename`, placed in [loader_cache_root] when there is one."""
+    root = loader_cache_root()
+    if root is None or os.path.isabs(pattern):
+        return _BEANCOUNT_CACHE_FILENAME(pattern, filename)
+    os.makedirs(root, exist_ok=True)
+    name = pattern.format(filename=os.path.basename(filename)).lstrip(".")
+    return os.path.join(root, f"{_ledger_tag(filename)}-{name}")
+
+
+_BEANCOUNT_CACHE_FILENAME = None
+
+
 def use_loader_cache(directories) -> str:
     """Points Beancount's load cache at the file for `directories`, and returns its pattern."""
+    global _BEANCOUNT_CACHE_FILENAME
     from beancount import loader
 
+    # `initialize` binds `get_cache_filename` by name each time it runs, so replacing the
+    # module's function here places every cache it makes from now on.
+    if _BEANCOUNT_CACHE_FILENAME is None:
+        _BEANCOUNT_CACHE_FILENAME = loader.get_cache_filename
+        loader.get_cache_filename = _cache_filename
     pattern = loader_cache_pattern(directories)
     loader.initialize(os.getenv("BEANCOUNT_DISABLE_LOAD_CACHE") is None, pattern)
     return pattern
 
 
 def discard_other_loader_caches(ledger_path, keep_pattern: str) -> list:
-    """Deletes this ledger's pickle caches made for other plugin sets, keeping one."""
+    """Deletes this ledger's pickle caches made for other plugin sets, keeping one.
+
+    Where the cache has moved out of the project, every cache still beside the ledger is left
+    over from before and is deleted too, so an imported or mirrored folder is clean again.
+    """
     ledger = Path(ledger_path)
     keep = keep_pattern.format(filename=ledger.name)
+    root = loader_cache_root()
     removed = []
-    for candidate in ledger.parent.glob(f".{ledger.name}.*.picklecache"):
-        if candidate.name != keep:
+    beside = list(ledger.parent.glob(f".{ledger.name}.*picklecache"))
+    for candidate in beside:
+        if root is not None or candidate.name != keep:
             try:
                 candidate.unlink()
                 removed.append(candidate.name)
             except OSError:
                 pass
+    if root is not None and os.path.isdir(root):
+        tag = _ledger_tag(str(ledger))
+        keep_here = f"{tag}-{keep.lstrip('.')}"
+        for candidate in Path(root).glob(f"{tag}-{ledger.name}.*picklecache"):
+            if candidate.name != keep_here:
+                try:
+                    candidate.unlink()
+                    removed.append(candidate.name)
+                except OSError:
+                    pass
     return removed
 
 

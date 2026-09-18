@@ -40,26 +40,38 @@ internal fun MainActivity.attachDocument(
     label: String? = null,
 ) {
     app.documentCapture.save(projectId, account, label = label) { paths ->
-        val directives = paths.joinToString("") { relativePath ->
-            DirectiveDraft.Document(
-                date = LocalDate.now().toString(),
-                account = account,
-                path = relativePath,
-            ).render()
+        lifecycleScope.launch {
+            // In files/documents.beancount rather than the main file (B89), where a folder of
+            // receipts filed over a year had been piling up between the options and plugins.
+            val ledger = documentsLedger(app, projectId) ?: return@launch
+            val projectDir = app.workspace.projectDir(projectId)
+            val directives = paths.joinToString("") { relativePath ->
+                DirectiveDraft.Document(
+                    date = LocalDate.now().toString(),
+                    account = account,
+                    path = documentPathIn(ledger, projectDir, relativePath),
+                ).render()
+            }
+            saveText(app, projectId, directives, operation = "attach-document", target = ledger) { outcome ->
+                if (outcome.startsWith("Saved")) {
+                    // A toast, and only what happened (B89): the count of ledger errors that
+                    // "Saved, with 3 ledger error(s)" carried is about the ledger, not about
+                    // the document just filed, and it read as if filing had gone wrong.
+                    saveMessage = null
+                    app.documentCapture.clearMessage()
+                    android.widget.Toast.makeText(
+                        this@attachDocument,
+                        "Filed ${paths.joinToString { it.substringAfterLast('/') }} under $account.",
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                } else {
+                    saveMessage = outcome
+                    app.documentCapture.report(outcome)
+                }
+            }
+            app.documentCapture.reset()
+            refreshDocuments(app, projectId)
         }
-        saveText(
-            app,
-            projectId,
-            directives,
-            operation = "attach-document",
-            target = app.workspace.mainFile(projectId),
-        ) { outcome ->
-            saveMessage = outcome
-            // Said where the user is standing, not on a screen they have left.
-            app.documentCapture.report("Filed ${paths.joinToString { it.substringAfterLast('/') }}. $outcome")
-        }
-        app.documentCapture.reset()
-        refreshDocuments(app, projectId)
     }
 }
 
@@ -81,11 +93,64 @@ internal fun MainActivity.attachDocument(
  * split by `include` may have many, and picking a different one for each operation would
  * unlink from one file what had been refiled in another.
  */
-private fun findDocumentDirective(projectDir: File, rewrite: (String) -> String?): Pair<File, String>? =
+private fun findDocumentDirective(
+    projectDir: File,
+    path: String,
+    rewrite: (text: String, path: String) -> String?,
+): Pair<File, String>? =
     projectDir.walkTopDown()
         .filter { it.isFile && (it.extension == "beancount" || it.extension == "bean") }
-        .mapNotNull { file -> rewrite(file.readText())?.let { file to it } }
+        .mapNotNull { file ->
+            val text = file.readText()
+            // A directive names its file relative to the file it is written in (B89), so the
+            // one in files/documents.beancount says "../documents/…" for the same document.
+            (rewrite(text, path) ?: pathAsNamedIn(file, projectDir, path)?.let { rewrite(text, it) })
+                ?.let { file to it }
+        }
         .firstOrNull()
+
+/** [path], relative to the project, as a directive in [file] would write it; null if the same. */
+internal fun pathAsNamedIn(file: File, projectDir: File, path: String): String? {
+    if (File(path).isAbsolute) return null
+    val named = File(projectDir, path).relativeTo(file.parentFile ?: projectDir).path
+        .replace(File.separatorChar, '/')
+    return named.takeIf { it != path }
+}
+
+/**
+ * Where a `document` directive filing a document under an account is written (B89):
+ * files/documents.beancount, created and included from the main file the first time.
+ *
+ * Returns the file and the path the directive must use for [projectPath], which is relative to
+ * the directive's own file -- "../documents/…" -- because that is how Beancount resolves it.
+ */
+internal suspend fun MainActivity.documentsLedger(
+    app: BeancountApplication,
+    projectId: String,
+): File? {
+    val main = app.workspace.mainFile(projectId)
+    val target = File(app.workspace.projectDir(projectId), "files/documents.beancount")
+    val include = target.relativeTo(main.parentFile ?: target.parentFile).path.replace(File.separatorChar, '/')
+    val needsInclude = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        if (!target.isFile) {
+            target.parentFile?.mkdirs()
+            target.writeText("; Documents filed under an account, written by Beanbook.\n")
+        }
+        !Regex("""(?m)^\s*include\s+"${Regex.escape(include)}"""").containsMatchIn(main.readText())
+    }
+    if (needsInclude) {
+        val result = app.writer.append(projectId, main, "include \"$include\"\n", operation = "include-documents")
+        if (result !is io.github.pintofi.beanbook.core.data.WriteResult.Committed) {
+            saveMessage = "Could not add documents.beancount to your ledger. Nothing was filed."
+            return null
+        }
+    }
+    return target
+}
+
+/** [projectPath] as a `document` directive in [ledger] names it. */
+internal fun documentPathIn(ledger: File, projectDir: File, projectPath: String): String =
+    pathAsNamedIn(ledger, projectDir, projectPath) ?: projectPath
 
 internal fun MainActivity.unlinkDocument(
     app: BeancountApplication,
@@ -107,12 +172,12 @@ internal fun MainActivity.unlinkDocument(
         var failure: String? = null
         while (removed < MAX_LINKS_PER_DOCUMENT) {
             val projectDir = app.workspace.projectDir(projectId)
-            val holder = findDocumentDirective(projectDir) {
+            val holder = findDocumentDirective(projectDir, path) { text, named ->
                 io.github.pintofi.beanbook.core.domain.BeancountText
-                    .removeDocumentDirective(it, path, from = from)
-            } ?: findDocumentDirective(projectDir) {
+                    .removeDocumentDirective(text, named, from = from)
+            } ?: findDocumentDirective(projectDir, path) { text, named ->
                 io.github.pintofi.beanbook.core.domain.BeancountText
-                    .removeDocumentMetadata(it, path)
+                    .removeDocumentMetadata(text, named)
             } ?: break
 
             val (file, rewritten) = holder
@@ -175,28 +240,25 @@ internal fun MainActivity.refileDocument(
     // The alternative -- offering "refile" and failing because there is nothing to refile --
     // would leave the unfiled state visible but unresolvable from the screen that shows it.
     if (from == null) {
-        val directive = DirectiveDraft.Document(
-            date = LocalDate.now().toString(),
-            account = newAccount,
-            path = path,
-        )
-        saveText(
-            app,
-            projectId,
-            directive.render(),
-            operation = "file-document",
-            target = app.workspace.mainFile(projectId),
-        ) { outcome ->
-            saveMessage = outcome
-            refreshDocuments(app, projectId)
+        lifecycleScope.launch {
+            val ledger = documentsLedger(app, projectId) ?: return@launch
+            val directive = DirectiveDraft.Document(
+                date = LocalDate.now().toString(),
+                account = newAccount,
+                path = documentPathIn(ledger, app.workspace.projectDir(projectId), path),
+            )
+            saveText(app, projectId, directive.render(), operation = "file-document", target = ledger) { outcome ->
+                saveMessage = outcome
+                refreshDocuments(app, projectId)
+            }
         }
         return
     }
     lifecycleScope.launch {
-        val holder = findDocumentDirective(app.workspace.projectDir(projectId)) {
+        val holder = findDocumentDirective(app.workspace.projectDir(projectId), path) { text, named ->
             runCatching {
                 io.github.pintofi.beanbook.core.domain.BeancountText
-                    .refileDocument(it, path, newAccount, from = from)
+                    .refileDocument(text, named, newAccount, from = from)
             }.getOrNull()
         }
         if (holder == null) {
@@ -260,6 +322,67 @@ internal fun MainActivity.shareDocument(app: BeancountApplication, projectId: St
     runCatching { startActivity(Intent.createChooser(send, "Share document")) }
 }
 
+
+/**
+ * Deletes several entries at once, from the Journal's selection (B89).
+ *
+ * Every entry is found in the files as they are now, then each file is rewritten once with its
+ * entries taken out from the bottom up -- so removing one never moves the lines of the next --
+ * through the same write protocol as a single delete: snapshot, re-parse, then report.
+ */
+internal fun MainActivity.deleteEntries(
+    app: BeancountApplication,
+    projectId: String,
+    entries: List<io.github.pintofi.beanbook.core.domain.JournalEntry>,
+) {
+    if (entries.isEmpty()) return
+    lifecycleScope.launch {
+        val mainFile = app.workspace.mainFile(projectId).absolutePath
+        val slices = entries.mapNotNull { entry ->
+            val file = entry.file ?: return@mapNotNull null
+            val line = entry.line ?: return@mapNotNull null
+            runCatching { app.editor.sliceAt(mainFile, file, line) }.getOrNull()
+        }
+        if (slices.size != entries.size) {
+            saveMessage = "Some of those entries could not be found in the files. Nothing was deleted."
+            return@launch
+        }
+        var deleted = 0
+        var failure: String? = null
+        for ((path, inFile) in slices.groupBy { it.file }) {
+            val target = java.io.File(path)
+            val updated = runCatching {
+                val lines = target.readText().split(Regex("(?<=\n)")).toMutableList()
+                if (lines.lastOrNull()?.isEmpty() == true) lines.removeAt(lines.lastIndex)
+                inFile.sortedByDescending { it.startLine }.forEach { slice ->
+                    repeat(slice.endLine - slice.startLine + 1) { lines.removeAt(slice.startLine - 1) }
+                }
+                lines.joinToString("")
+            }.getOrElse {
+                failure = it.message ?: "the file could not be read"
+                null
+            } ?: break
+            val result = app.writer.replace(
+                projectId = projectId,
+                file = target,
+                expectedSha = io.github.pintofi.beanbook.core.data.WriteJournal.sha256(target),
+                newContent = updated,
+                operation = "delete-entries",
+            )
+            when (result) {
+                is io.github.pintofi.beanbook.core.data.WriteResult.Committed -> deleted += inFile.size
+                is io.github.pintofi.beanbook.core.data.WriteResult.RolledBack -> { failure = result.reason; break }
+                is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> { failure = result.reason; break }
+            }
+        }
+        saveMessage = when {
+            failure == null -> if (deleted == 1) "Deleted 1 entry." else "Deleted $deleted entries."
+            deleted == 0 -> "Nothing was deleted: $failure."
+            else -> "Deleted $deleted of ${entries.size} entries, then stopped: $failure."
+        }
+        app.ledgerState.load(mainFile)
+    }
+}
 
 /**
  * Removes one transaction from the ledger (B11).
@@ -473,14 +596,14 @@ internal fun MainActivity.entryEditSession(
  */
 internal fun MainActivity.restartEngine(app: BeancountApplication, projectId: String?) {
     val id = projectId ?: return
-    saveMessage = "Restarting the engine…"
+    // Quiet (B89): this now follows every plugin install and removal on its own, and the
+    // Plugins screen already says what was installed.
     app.engineManager.restart()
     app.engineRestart.cleared()
     lifecycleScope.launch {
         // The ledger is re-read afterwards because a plugin that has just been turned on
         // changes what a load produces -- errors it raises, directives it inserts.
         app.ledgerState.load(app.workspace.mainFile(id).absolutePath)
-        saveMessage = "The engine restarted with what is installed now."
     }
 }
 
@@ -623,119 +746,49 @@ internal fun MainActivity.captureHandle(
             },
             onRemoveFile = { app.documentCapture.removeFile(it) },
             onFile = { account, label, onFiled ->
-                // The PDF, then the `document` directive, then whoever asked -- in that
-                // order (B66). Filing from the entry form used to write the file and the
-                // transaction's `document:` metadata and no directive at all, which is the
-                // one arrangement `fava.plugins.link_documents` rejects: it looks for a
-                // Document entry to link the metadata to, finds none, and reports "Document
-                // not found". That is a new error, so the write protocol rolled the entry
-                // back and the user was told their ledger was unchanged -- for a receipt
-                // that had been photographed, filed and named.
-                app.documentCapture.save(projectId.orEmpty(), account, label = label) { paths ->
-                    val directives = paths.joinToString("") { path ->
-                        io.github.pintofi.beanbook.core.domain.DirectiveDraft.Document(
-                            date = java.time.LocalDate.now().toString(),
-                            account = account,
-                            path = path,
-                        ).render()
-                    }
-                    saveText(
-                        app,
-                        projectId.orEmpty(),
-                        directives,
-                        operation = "attach-document",
-                        target = app.workspace.mainFile(projectId.orEmpty()),
-                    ) { outcome ->
-                        saveMessage = outcome
-                        // Only when the directive is actually in the ledger. Reporting the
-                        // path back on a rolled-back write would let the caller write an
-                        // entry pointing at a document the file does not declare, which is
-                        // the very pair that fails to load.
-                        if (outcome.startsWith("Saved")) {
+                // The entry carries the link as its `document:` metadata, so no separate
+                // `document` directive is written for it (B89) -- with the documents option,
+                // Beancount finds the PDF in the folder anyway, and the directive only made the
+                // same receipt appear twice. The one exception is a ledger using Fava's
+                // link_documents plugin, which rejects metadata that no Document entry backs
+                // (B66); there the directive still goes to files/documents.beancount.
+                val id = projectId.orEmpty()
+                app.documentCapture.save(id, account, label = label) { paths ->
+                    lifecycleScope.launch {
+                        val main = app.workspace.mainFile(id)
+                        val linksDocuments = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            runCatching { main.readText().contains("link_documents") }.getOrDefault(false)
+                        }
+                        if (!linksDocuments) {
                             onFiled(paths)
                             app.documentCapture.reset()
-                            refreshDocuments(app, projectId.orEmpty())
+                            refreshDocuments(app, id)
+                            return@launch
+                        }
+                        val ledger = documentsLedger(app, id) ?: return@launch
+                        val projectDir = app.workspace.projectDir(id)
+                        val directives = paths.joinToString("") { path ->
+                            io.github.pintofi.beanbook.core.domain.DirectiveDraft.Document(
+                                date = java.time.LocalDate.now().toString(),
+                                account = account,
+                                path = documentPathIn(ledger, projectDir, path),
+                            ).render()
+                        }
+                        saveText(app, id, directives, operation = "attach-document", target = ledger) { outcome ->
+                            saveMessage = outcome
+                            // Only when the directive is actually in the ledger. Reporting the
+                            // path back on a rolled-back write would let the caller write an
+                            // entry pointing at a document the file does not declare.
+                            if (outcome.startsWith("Saved")) {
+                                onFiled(paths)
+                                app.documentCapture.reset()
+                                refreshDocuments(app, id)
+                            }
                         }
                     }
                 }
             },
         )
-
-/**
- * Which of the installed plugins' modules the open ledger actually names (B60).
- *
- * Read from the file every time rather than kept beside it: the ledger is the record of what
- * it loads, and somebody who writes `plugin "x"` in the raw editor must see the switch move.
- */
-internal fun modulesUsedBy(
-    app: BeancountApplication,
-    projectId: String?,
-    rows: List<io.github.pintofi.beanbook.app.plugins.PluginRow>,
-): Set<String> {
-    val id = projectId ?: return emptySet()
-    val text = runCatching { app.workspace.mainFile(id).readText() }.getOrNull() ?: return emptySet()
-    val catalogue = app.catalogueState.catalogue.entries
-        .filter { it.id in app.catalogueState.installed.value }
-        .flatMap { it.install?.modules.orEmpty() }
-    return (rows.flatMap { it.plugin.modules } + catalogue).filter { module ->
-        io.github.pintofi.beanbook.core.domain.BeancountText
-            .hasPluginDirective(text, module, extension = false) ||
-            io.github.pintofi.beanbook.core.domain.BeancountText
-                .hasPluginDirective(text, module, extension = true)
-    }.toSet()
-}
-
-/**
- * Adds or removes the directive that makes the open ledger load [module] (B60).
- *
- * Through the write protocol like every other change to a file: locked, snapshotted,
- * re-parsed and only then reported. A plugin that breaks the load is rolled back with the
- * reason rather than leaving a ledger that will not open.
- */
-internal fun MainActivity.useModule(
-    app: BeancountApplication,
-    projectId: String?,
-    module: String,
-    extension: Boolean,
-    use: Boolean,
-) {
-    val id = projectId ?: return
-    lifecycleScope.launch {
-        val file = app.workspace.mainFile(id)
-        val text = runCatching { file.readText() }.getOrNull() ?: return@launch
-        val rewritten = if (use) {
-            io.github.pintofi.beanbook.core.domain.BeancountText
-                .withPluginDirective(text, module, extension)
-        } else {
-            io.github.pintofi.beanbook.core.domain.BeancountText
-                .withoutPluginDirective(text, module, extension)
-        }
-        if (rewritten == null) {
-            saveMessage = if (use) "$module is already named in this ledger." else "This ledger does not name $module."
-            return@launch
-        }
-        val result = app.writer.replace(
-            projectId = id,
-            file = file,
-            expectedSha = io.github.pintofi.beanbook.core.data.WriteJournal.sha256(file),
-            newContent = rewritten,
-            operation = if (use) "use-plugin" else "stop-using-plugin",
-        )
-        saveMessage = when (result) {
-            is io.github.pintofi.beanbook.core.data.WriteResult.Committed ->
-                if (use) {
-                    "This ledger now loads $module. Restart the engine to run it."
-                } else {
-                    "This ledger no longer loads $module."
-                }
-            is io.github.pintofi.beanbook.core.data.WriteResult.RolledBack ->
-                "Not changed: ${result.reason}. Your ledger is unchanged."
-            is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> "Not changed: ${result.reason}"
-        }
-        app.engineRestart.markNeeded()
-        app.ledgerState.load(file.absolutePath)
-    }
-}
 
 /**
  * The diagnostics screen's data and actions (B62).

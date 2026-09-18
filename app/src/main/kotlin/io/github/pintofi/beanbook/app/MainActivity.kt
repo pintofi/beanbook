@@ -445,9 +445,6 @@ class MainActivity : ComponentActivity() {
                     // is the record of what it loads, and an edit in the raw editor has to
                     // show here too (B60).
                     val catalogue = app.catalogueState.collectUi()
-                    val usedModules = remember(ledger, pluginRows, catalogue.installed) {
-                        modulesUsedBy(app, activeId, pluginRows)
-                    }
                     val packagesInstalled by app.packagesState.installed.collectAsStateWithLifecycle()
                     val packagesStatus by app.packagesState.status.collectAsStateWithLifecycle()
                     val packagesMessage by app.packagesState.message.collectAsStateWithLifecycle()
@@ -456,9 +453,12 @@ class MainActivity : ComponentActivity() {
                         .copy(catalogue = catalogue)
                     val dateRange by app.ledgerState.dateRange.collectAsStateWithLifecycle()
                     val restartNeeded by app.engineRestart.needed.collectAsStateWithLifecycle()
-                    val engineRestart = io.github.pintofi.beanbook.app.engine.EngineRestartUi(
-                        needed = restartNeeded,
-                    ) { restartEngine(app, activeId) }
+                    // Whatever changed under the running engine -- a plugin or package installed
+                    // or removed, safe mode switched -- is picked up by restarting it at once
+                    // (B89). It used to wait behind a "Restart needed" card.
+                    androidx.compose.runtime.LaunchedEffect(restartNeeded, activeId) {
+                        if (restartNeeded && activeId != null) restartEngine(app, activeId)
+                    }
                     val scriptRunning by app.scriptRunner.running.collectAsStateWithLifecycle()
                     val scriptOutcome by app.scriptRunner.outcome.collectAsStateWithLifecycle()
                     val scriptMessage by app.scriptRunner.message.collectAsStateWithLifecycle()
@@ -491,7 +491,6 @@ class MainActivity : ComponentActivity() {
                         },
                         engineStatus = engineStatus,
                         ledger = ledger,
-                        editionName = app.pluginPolicy.name,
                         token = app.engine.sessionToken,
                         debuggingAllowed = BuildConfig.DEBUG,
                         onOpenExternally = ::openInBrowser,
@@ -616,7 +615,6 @@ class MainActivity : ComponentActivity() {
                         dateFrom = dateRange.first,
                         dateTo = dateRange.second,
                         onDateRange = { from, to -> app.ledgerState.setDateRange(from, to) },
-                        engineRestart = engineRestart,
                         onInstallPlugin = { pluginPicker.launch(arrayOf("*/*")) },
                         scriptRunning = scriptRunning,
                         scriptOutcome = scriptOutcome,
@@ -629,10 +627,6 @@ class MainActivity : ComponentActivity() {
                         onSetPluginEnabled = { id, on -> app.pluginsState.setEnabled(id, on) },
                         onRemovePlugin = { app.pluginsState.remove(it) },
                         onSetPluginSafeMode = { app.pluginsState.setSafeMode(it) },
-                        usedModules = usedModules,
-                        onUseModule = { module, extension, use ->
-                            useModule(app, activeId, module, extension, use)
-                        },
                         recoveryNotice = recoveryMessage,
                         onDismissRecovery = { recoveryMessage = null },
                         remoteReports = (remoteStatus as? EngineStatus.Serving)?.let {
@@ -683,6 +677,15 @@ class MainActivity : ComponentActivity() {
                         entryCommits = entryCommits,
                         editSession = entryEditSession(app, activeId),
                         onRestartApp = { restartApp() },
+                        onEngineRetry = { app.engineManager.retry() },
+                        onDeleteEntries = { entries -> activeId?.let { deleteEntries(app, it, entries) } },
+                        // Only from a serving engine: a restart already under way would
+                        // otherwise be ended by the error page it causes.
+                        onEngineUnreachable = {
+                            if (app.engineManager.status.value is EngineStatus.Serving) {
+                                app.engineManager.restart()
+                            }
+                        },
                         saveState = if (remoteStatus is EngineStatus.Serving) {
                             remoteMessage
                         } else {
@@ -717,7 +720,11 @@ class MainActivity : ComponentActivity() {
                         },
                         onDiscardDraft = { app.editorController.discardDraft(activeId!!) },
                         refreshing = ledgerLoading,
-                        onRefresh = { app.ledgerState.reload() },
+                        onRefresh = {
+                            app.ledgerState.reload()
+                            // Documents too (B89): Organize is refreshed by the same pull.
+                            activeId?.let { refreshDocuments(app, it) }
+                        },
                     )
 
                     // Over the app rather than inside a screen: an entry can be opened for

@@ -656,12 +656,6 @@ class AccessibilityTest {
                     message = null,
                     onRequest = {}, onConfirm = {}, onCancel = {}, onRemoveAll = {},
                 ),
-                // Needed, so the restart card renders and its button is checked here too
-                // (B49): it is the control a person reaches for after installing anything.
-                restart = io.github.pintofi.beanbook.app.engine.EngineRestartUi(
-                    needed = true,
-                    onRestart = {},
-                ),
             )
         }
 
@@ -678,7 +672,7 @@ class AccessibilityTest {
             "What running a plugin means",
             "Install a plugin from a file",
             "Safe mode: hold every plugin back",
-            "Run tag_large.py when the ledger loads",
+            "Load tag_large.py",
             "Remove tag_large.py",
         ) + packagesControls).forEach { label ->
             compose.onNodeWithContentDescription(label).performScrollTo().assertExists()

@@ -132,7 +132,6 @@ internal fun SurfaceContent(
     dateFrom: String,
     dateTo: String,
     onDateRange: (String, String) -> Unit,
-    engineRestart: io.github.pintofi.beanbook.app.engine.EngineRestartUi,
     onInstallPlugin: () -> Unit,
     scriptRunning: String?,
     scriptOutcome: io.github.pintofi.beanbook.app.plugins.ScriptOutcome?,
@@ -146,8 +145,6 @@ internal fun SurfaceContent(
     onRemovePlugin: (String) -> Unit,
     onSetPluginSafeMode: (Boolean) -> Unit,
     /** Modules the open ledger names, and the way to add or remove one (B60). */
-    usedModules: Set<String>,
-    onUseModule: (module: String, extension: Boolean, use: Boolean) -> Unit,
     onRemoteConnect: (String, String?, CharArray?) -> Unit,
     onRemoteDisconnect: () -> Unit,
     onRemoteForget: () -> Unit,
@@ -174,7 +171,6 @@ internal fun SurfaceContent(
     onDeleteProject: (String) -> Unit,
     engineStatus: EngineStatus,
     ledger: LedgerSnapshot?,
-    editionName: String,
     token: String?,
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
@@ -189,6 +185,10 @@ internal fun SurfaceContent(
     refreshing: Boolean,
     onRefresh: () -> Unit,
     onRestartApp: () -> Unit = {},
+    onDeleteEntries: (List<JournalEntry>) -> Unit = {},
+    /** Starts the engine again after it failed, or restarts it when it stopped answering (B89). */
+    onEngineRetry: () -> Unit = {},
+    onEngineUnreachable: () -> Unit = {},
     /** The ledger is in balance again: Home stamps it (B87). */
     stamped: Boolean = false,
 ) {
@@ -231,7 +231,7 @@ internal fun SurfaceContent(
                 // Entry is free, always: adding entries is never gated
                 // (docs/distribution.md 4.4).
                 if (ledger == null) {
-                    LoadingOrError(engineStatus, editionName)
+                    LoadingOrError(engineStatus, onRetry = onEngineRetry)
                 } else {
                     var otherDirectives by androidx.compose.runtime.saveable.rememberSaveable {
                         androidx.compose.runtime.mutableStateOf(false)
@@ -395,10 +395,7 @@ internal fun SurfaceContent(
                                 onSetEnabled = onSetPluginEnabled,
                                 onRemove = onRemovePlugin,
                                 onSetSafeMode = onSetPluginSafeMode,
-                                usedModules = usedModules,
-                                onUseModule = onUseModule,
                                 packages = packages,
-                                restart = engineRestart,
                                 message = pluginMessage,
                             )
 
@@ -453,7 +450,9 @@ internal fun SurfaceContent(
                             message = backupMessage,
                         )
 
-                        MoreSection.DOCUMENTS ->
+                        // Pull down to read the folder and the ledger again (B89): a receipt
+                        // saved into the documents folder from elsewhere had no way in.
+                        MoreSection.DOCUMENTS -> Refreshable(refreshing, onRefresh) {
                             DocumentsScreen(
                                 capture = documentCapture,
                                 names = ledger?.accountNames
@@ -476,6 +475,7 @@ internal fun SurfaceContent(
                                 fileForDocument = fileForDocument,
                                 message = documentMessage,
                             )
+                        }
 
                     }
                 }
@@ -483,7 +483,7 @@ internal fun SurfaceContent(
 
             Surface.JOURNAL, Surface.BALANCES -> {
                 if (ledger == null) {
-                    LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
+                    LoadingOrError(engineStatus, Modifier.padding(padding), onRetry = onEngineRetry)
                 } else if (selected == Surface.JOURNAL) {
                     // The open entry lives here rather than in LedgerApp: it means nothing
                     // unless the Journal is showing, and its Back behaviour belongs with it.
@@ -493,7 +493,12 @@ internal fun SurfaceContent(
                     val entry = openEntry
                     if (entry == null) {
                         Refreshable(refreshing, onRefresh) {
-                            JournalScreen(ledger, Modifier.padding(padding)) { openEntry = it }
+                            JournalScreen(
+                                ledger,
+                                Modifier.padding(padding),
+                                onOpenEntry = { openEntry = it },
+                                onDeleteEntries = onDeleteEntries,
+                            )
                         }
                     } else {
                         EntryDetailScreen(
@@ -548,21 +553,32 @@ internal fun SurfaceContent(
                         )
                     }
                 } else if (serving == null) {
-                    LoadingOrError(engineStatus, editionName, Modifier.padding(padding))
+                    LoadingOrError(engineStatus, Modifier.padding(padding), onRetry = onEngineRetry)
                 } else {
                     if (token != null) installSessionToken(serving.origin, token)
                     // Starts at the ledger's own index so Fava serves whatever the file's
                     // default-page option asks for; picking a report from the list overrides
                     // it from then on (B19).
                     var report by remember { mutableStateOf(ReportPath.LEDGER_DEFAULT) }
+                    // Kept by the app, so returning to Reports finds the report that was open
+                    // rather than starting Fava again (B89). Back first returns to the page the
+                    // ledger opens on -- its `default-page` Fava option -- then leaves Reports.
+                    val page = io.github.pintofi.beanbook.app.web.LocalReportsPage.current
+                    BackHandler(enabled = page?.awayFromLanding == true) {
+                        page?.landing?.let { page.load(it) }
+                    }
                     val web: @Composable () -> Unit = {
                         FavaWebView(
+                            retained = page,
                             url = "${serving.origin}/${serving.ledgerSlug}/${report.path}"
                                 .trimEnd('/') + "/",
                             allowlist = OriginAllowlist(setOf(serving.origin)),
                             modifier = Modifier.fillMaxSize(),
                             debuggingAllowed = debuggingAllowed,
                             onExternalLink = onOpenExternally,
+                            // The local server stopped answering: its process is gone. A new
+                            // one is started instead of leaving the browser's error page up.
+                            onLoadProblem = { onEngineUnreachable() },
                         )
                     }
                     if (twoPane) {
@@ -593,7 +609,7 @@ internal fun SurfaceContent(
  * desktop inside a synced folder leaves the screen showing the ledger as it was. Before this
  * the only ways out were to switch project and back, or to restart the app (B26).
  *
- * **Only on the three surfaces that draw ledger data.** Reports is Fava's own page inside a
+ * **Only on the surfaces that draw ledger data, and Documents (B89).** Reports is Fava's own page inside a
  * WebView and has its own reload; the file editor holds an unsaved draft that a reload would
  * be entitled to lose; and the entry detail view is about one entry, which a reload could
  * remove from under it. Adding the gesture there would offer a promise this cannot keep.

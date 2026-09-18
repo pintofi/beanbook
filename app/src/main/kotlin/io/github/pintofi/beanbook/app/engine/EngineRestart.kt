@@ -31,9 +31,3 @@ class EngineRestartState {
         _needed.value = false
     }
 }
-
-/** What the plugins screen needs to offer a restart. */
-data class EngineRestartUi(
-    val needed: Boolean,
-    val onRestart: () -> Unit,
-)

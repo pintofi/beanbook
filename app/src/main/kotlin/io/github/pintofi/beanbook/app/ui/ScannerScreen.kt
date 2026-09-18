@@ -716,8 +716,8 @@ private fun PageStrip(
     ) {
         items(pages.size, key = { pages[it].source }) { index ->
             val page = pages[index]
-            // Decoded off the main thread (B83), like every other thumbnail.
-            val bitmap = rememberDecodedPage(fileFor(page.source))
+            // Rendered as it will be filed, crop included (B89), off the main thread (B83).
+            val bitmap = rememberRenderedPage(page, fileFor(page.source))
             ReorderableItem(reorder, key = page.source) { dragging ->
             Box(
                 modifier = Modifier

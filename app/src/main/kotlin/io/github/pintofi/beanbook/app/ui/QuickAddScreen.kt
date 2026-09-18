@@ -1331,6 +1331,7 @@ private fun AttachDocumentSection(
                             PageThumbnail(
                                 file = capture.fileFor(page.source),
                                 label = "Page ${index + 1}",
+                                page = page,
                             )
                         }
                     }

@@ -236,7 +236,6 @@ internal fun surfaceMove(
 internal fun LedgerApp(
     engineStatus: EngineStatus,
     ledger: LedgerSnapshot?,
-    editionName: String,
     token: String?,
     /** The surface a launching widget asked for, if any (B2). */
     openOn: String? = null,
@@ -304,7 +303,6 @@ internal fun LedgerApp(
     dateFrom: String,
     dateTo: String,
     onDateRange: (String, String) -> Unit,
-    engineRestart: io.github.pintofi.beanbook.app.engine.EngineRestartUi,
     onInstallPlugin: () -> Unit,
     scriptRunning: String?,
     scriptOutcome: io.github.pintofi.beanbook.app.plugins.ScriptOutcome?,
@@ -318,8 +316,6 @@ internal fun LedgerApp(
     onRemovePlugin: (String) -> Unit,
     onSetPluginSafeMode: (Boolean) -> Unit,
     /** Modules the open ledger names, and the way to add or remove one (B60). */
-    usedModules: Set<String>,
-    onUseModule: (module: String, extension: Boolean, use: Boolean) -> Unit,
     recoveryNotice: String?,
     onDismissRecovery: () -> Unit,
     onRemoteConnect: (String, String?, CharArray?) -> Unit,
@@ -335,6 +331,9 @@ internal fun LedgerApp(
     editSession: EntryEditSession? = null,
     /** Ends the engine and the app and opens it again (B77). */
     onRestartApp: () -> Unit = {},
+    onEngineRetry: () -> Unit = {},
+    onDeleteEntries: (List<io.github.pintofi.beanbook.core.domain.JournalEntry>) -> Unit = {},
+    onEngineUnreachable: () -> Unit = {},
     projects: List<ProjectSummary>,
     activeProjectId: String?,
     projectMessage: String?,
@@ -656,6 +655,10 @@ internal fun LedgerApp(
             // direction of travel; the form and a More section rise from the page and sink
             // back into it. The pair being animated between is what decides that, so an
             // interrupted transition is still going the right way.
+            val reportsPage = androidx.compose.runtime.remember { io.github.pintofi.beanbook.app.web.RetainedWebView() }
+            androidx.compose.runtime.CompositionLocalProvider(
+                io.github.pintofi.beanbook.app.web.LocalReportsPage provides reportsPage,
+            ) {
             io.github.pintofi.beanbook.app.ui.LedgerContent(
                 targetState = Triple(selected, adding, moreSection),
                 label = "destination",
@@ -738,7 +741,6 @@ internal fun LedgerApp(
                 dateFrom = dateFrom,
                 dateTo = dateTo,
                 onDateRange = onDateRange,
-                engineRestart = engineRestart,
                 onInstallPlugin = onInstallPlugin,
                 scriptRunning = scriptRunning,
                 scriptOutcome = scriptOutcome,
@@ -751,8 +753,6 @@ internal fun LedgerApp(
                 onSetPluginEnabled = onSetPluginEnabled,
                 onRemovePlugin = onRemovePlugin,
                 onSetPluginSafeMode = onSetPluginSafeMode,
-                usedModules = usedModules,
-                onUseModule = onUseModule,
                 onRemoteConnect = onRemoteConnect,
                 onRemoteDisconnect = onRemoteDisconnect,
                 onRemoteForget = onRemoteForget,
@@ -777,7 +777,6 @@ internal fun LedgerApp(
                 onDeleteProject = onDeleteProject,
                 engineStatus = engineStatus,
                 ledger = ledger,
-                editionName = editionName,
                 token = token,
                 debuggingAllowed = debuggingAllowed,
                 onOpenExternally = onOpenExternally,
@@ -793,7 +792,11 @@ internal fun LedgerApp(
                 onRefresh = onRefresh,
                 onAddDirtyChange = { addDirty = it },
                 onRestartApp = onRestartApp,
+                onEngineRetry = onEngineRetry,
+                onDeleteEntries = onDeleteEntries,
+                onEngineUnreachable = onEngineUnreachable,
             )
+            }
             }
             }
         }

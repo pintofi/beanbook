@@ -307,7 +307,13 @@ class MirrorController(
         path: String,
         apply: suspend (DocumentFile, File) -> Unit,
     ) {
-        val folder = folderUri ?: return
+        val folder = folderUri ?: run {
+            _message.value = "Choose the mirror folder again, then resolve \"$path\"."
+            return
+        }
+        // Said at once (B89): the choice waits for any sync pass already running, and a button
+        // that answers only when that pass ends looked as if it had not been pressed.
+        _message.value = "Resolving \"$path\"…"
         scope.launch {
             pass.withLock {
                 val outcome = withContext(Dispatchers.IO) {

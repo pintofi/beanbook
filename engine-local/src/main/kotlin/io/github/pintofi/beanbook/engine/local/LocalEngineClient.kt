@@ -33,6 +33,28 @@ class LocalEngineClient(
 
     private val lifecycleLock = Mutex()
 
+    /** Set while this client is ending the process itself, so that is not reported as a loss. */
+    @Volatile
+    private var endingProcess = false
+
+    /**
+     * Told when the engine process ended on its own -- Android reclaimed it in the background,
+     * or a plugin crashed it. What it served is gone, so the status goes back to stopped
+     * rather than keeping an address that now refuses connections.
+     */
+    @Volatile
+    var onProcessLost: (() -> Unit)? = null
+
+    init {
+        connection.onProcessLost = {
+            if (!endingProcess) {
+                token = null
+                _status.value = EngineStatus.Stopped
+                onProcessLost?.invoke()
+            }
+        }
+    }
+
     @Volatile
     private var token: String? = null
 
@@ -115,12 +137,18 @@ class LocalEngineClient(
      */
     suspend fun restartProcess() = lifecycleLock.withLock {
         withContext(io) {
-            val before = connection.withEngine { it.processPid() }.getOrNull()
-            // The reply never arrives -- the process is killed inside the call -- so a dead
-            // binder here is success, not a failure worth reporting.
-            connection.withEngine { it.quitProcess() }
-            connection.release()
-            awaitNewProcess(before)
+            endingProcess = true
+            try {
+                val before = connection.withEngine { it.processPid() }.getOrNull()
+                // The reply never arrives -- the process is killed inside the call -- so a dead
+                // binder here is success, not a failure worth reporting, and not a reason to
+                // try again: that would end the new process too.
+                connection.withEngine(retryIfDead = false) { it.quitProcess() }
+                connection.release()
+                awaitNewProcess(before)
+            } finally {
+                endingProcess = false
+            }
         }
         token = null
         _status.value = EngineStatus.Stopped

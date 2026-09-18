@@ -113,4 +113,21 @@ class DocumentIndexTest {
 
         assertEquals(listOf("documents/a.pdf", "documents/b.pdf", "documents/c.pdf"), rows.map { it.path })
     }
+
+    /** B89: the directive and Beancount's own discovery of the same file are one document. */
+    @Test
+    fun `a document found twice under the same account is listed once`() {
+        val path = "/data/project/documents/Expenses/Food/2026-09-13.receipt.pdf"
+        val rows = DocumentIndex.reconcile(
+            root = root,
+            onDisk = listOf("documents/Expenses/Food/2026-09-13.receipt.pdf"),
+            directives = listOf(
+                directive(path, "Expenses:Food", date = "2026-09-13"),
+                directive(path, "Expenses:Food", date = "2026-09-13"),
+            ),
+        )
+
+        assertEquals(1, rows.size)
+    }
 }
+

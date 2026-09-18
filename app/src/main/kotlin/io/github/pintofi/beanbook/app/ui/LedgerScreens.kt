@@ -2,6 +2,9 @@ package io.github.pintofi.beanbook.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.selected
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.getValue
@@ -597,7 +600,16 @@ fun JournalScreen(
     snapshot: LedgerSnapshot,
     modifier: Modifier = Modifier,
     onOpenEntry: (JournalEntry) -> Unit = {},
+    /** Deletes the entries picked by holding one and tapping others (B89). */
+    onDeleteEntries: (List<JournalEntry>) -> Unit = {},
 ) {
+    // Picked by holding a row; then a tap adds or removes rather than opening (B89). Keyed by
+    // file and line, which is what identifies an entry until the ledger is read again.
+    var picked by remember(snapshot) { mutableStateOf(emptySet<String>()) }
+    var confirmingDelete by remember { mutableStateOf(false) }
+    fun keyOf(entry: JournalEntry) = "${entry.file}:${entry.line}"
+    val selecting = picked.isNotEmpty()
+    androidx.activity.compose.BackHandler(enabled = selecting) { picked = emptySet() }
     // How many rows are composed, not how many the engine returned. The engine now sends the
     // whole journal, and drawing 25 000 rows at once is neither necessary nor free -- but the
     // entries are already in memory, so growing this window costs a recomposition rather than
@@ -631,6 +643,28 @@ fun JournalScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
+    if (selecting) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Measure.gutter, vertical = Measure.snug),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = { picked = emptySet() },
+                modifier = Modifier.semantics { contentDescription = "Cancel selection" },
+            ) { Icon(Icons.Filled.Close, contentDescription = null) }
+            Text(
+                "${picked.size} selected",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f).semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+            )
+            androidx.compose.material3.TextButton(
+                onClick = { confirmingDelete = true },
+                modifier = Modifier.semantics { contentDescription = "Delete the selected entries" },
+            ) { Text("Delete") }
+        }
+    } else {
     OutlinedTextField(
         value = query,
         onValueChange = { query = it },
@@ -650,6 +684,31 @@ fun JournalScreen(
             .padding(horizontal = Measure.gutter, vertical = Measure.snug)
             .semantics { contentDescription = "Search entries by date, payee, description or account" },
     )
+    }
+
+    if (confirmingDelete) {
+        val chosen = snapshot.journal.filter { keyOf(it) in picked }
+        val count = chosen.size
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmingDelete = false },
+            title = { Text(if (count == 1) "Delete 1 entry?" else "Delete $count entries?") },
+            text = {
+                Text("They are removed from your ledger files.")
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        confirmingDelete = false
+                        picked = emptySet()
+                        onDeleteEntries(chosen)
+                    },
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmingDelete = false }) { Text("Cancel") }
+            },
+        )
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().readableMeasure(),
@@ -725,10 +784,19 @@ fun JournalScreen(
             // fraction of a second while typing in the search box two entries were drawn on
             // top of one another. A journal is read row by row; a filter that simply shows its
             // result is clearer than one that shows its working.
+            val key = keyOf(entry)
             JournalRow(
                 entry = entry,
                 format = snapshot.format,
-                onClick = { onOpenEntry(entry) },
+                onClick = {
+                    if (selecting) {
+                        picked = if (key in picked) picked - key else picked + key
+                    } else {
+                        onOpenEntry(entry)
+                    }
+                },
+                onLongClick = { picked = picked + key },
+                selected = key in picked,
                 errors = faults[JournalErrors.keyOf(entry)].orEmpty(),
             )
             // Indented to where the entry's own text starts, so the hairlines run down the
@@ -779,6 +847,8 @@ private fun JournalRow(
     modifier: Modifier = Modifier,
     /** What Beancount said about this entry, when it said anything (B64). */
     errors: List<LedgerError> = emptyList(),
+    onLongClick: (() -> Unit)? = null,
+    selected: Boolean = false,
 ) {
     val mark = when {
         errors.isNotEmpty() -> LedgerMark.ATTENTION
@@ -790,15 +860,25 @@ private fun JournalRow(
         modifier = modifier
             .fillMaxWidth()
             .pressResponse(interactions)
-            .clickable(
+            .then(
+                if (selected) {
+                    Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
+                } else {
+                    Modifier
+                },
+            )
+            .combinedClickable(
                 role = Role.Button,
                 onClick = onClick,
+                onLongClick = onLongClick,
+                onLongClickLabel = "Select",
                 interactionSource = interactions,
                 indication = androidx.compose.material3.ripple(),
             )
             // The whole row, not the text inside it: a row that reads as one thing and
             // responds only where the words happen to be is one people tap twice.
             .semantics(mergeDescendants = true) {
+                this.selected = selected
                 contentDescription = buildString {
                     append(entry.date).append(", ").append(entry.description)
                     if (errors.isNotEmpty()) {

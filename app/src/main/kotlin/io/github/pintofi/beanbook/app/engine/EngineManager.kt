@@ -45,6 +45,21 @@ class EngineManager(
      */
     var pluginDirectories: () -> List<String> = { emptyList() }
 
+    /** Whether the app is on screen, so an engine that is lost can be brought back at once. */
+    @Volatile
+    private var inForeground = false
+
+    init {
+        // Android ends the engine process when it wants the memory, most often while the app is
+        // in the background. Coming back used to find the Reports tab pointing at a port nobody
+        // was listening on ("Web page not available ... ERR_CONNECTION_REFUSED"). In front of
+        // the user, a lost engine is started again; behind them, onStart does it on return.
+        (engine as? io.github.pintofi.beanbook.engine.local.LocalEngineClient)?.onProcessLost = {
+            Diagnostics.w(TAG, "the engine process ended on its own")
+            if (inForeground) currentProject?.let { start(it) }
+        }
+    }
+
     /** Starts the engine for [projectPath], or returns the running one. */
     fun start(projectPath: String) {
         shutdownJob?.cancel()
@@ -95,6 +110,11 @@ class EngineManager(
         }
     }
 
+    /** Starts the current project again, after a failure the user asked to retry. */
+    fun retry() {
+        currentProject?.let { start(it) }
+    }
+
     fun stopNow() {
         shutdownJob?.cancel()
         shutdownJob = null
@@ -102,17 +122,21 @@ class EngineManager(
     }
 
     override fun onStart(owner: LifecycleOwner) {
+        inForeground = true
         // Coming back to the foreground: cancel a pending shutdown, or restart if the
         // grace period already elapsed.
         val pending = shutdownJob
         shutdownJob = null
         pending?.cancel()
-        if (status.value is EngineStatus.Stopped) {
+        // A failure is retried too: the engine may have failed only because it was being
+        // reclaimed when it was asked for something.
+        if (status.value is EngineStatus.Stopped || status.value is EngineStatus.Failed) {
             currentProject?.let { start(it) }
         }
     }
 
     override fun onStop(owner: LifecycleOwner) {
+        inForeground = false
         shutdownJob?.cancel()
         shutdownJob = scope.launch {
             delay(gracePeriodMillis)

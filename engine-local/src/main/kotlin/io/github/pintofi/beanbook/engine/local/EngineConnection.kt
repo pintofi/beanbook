@@ -41,13 +41,35 @@ class EngineConnection(private val context: Context) {
             // ledger is unaffected: nothing in that process writes to a project.
             service = null
             Log.w(TAG, "engine process disconnected")
+            onProcessLost?.invoke()
         }
     }
 
-    /** Runs [block] against the engine, binding first if necessary. */
-    suspend fun <T> withEngine(block: (IEngineService) -> T): Result<T> {
+    /**
+     * Told when the engine process ends without being asked to. Android ends it freely while
+     * the app is in the background, and whatever it was serving is gone with it.
+     */
+    @Volatile
+    var onProcessLost: (() -> Unit)? = null
+
+    /**
+     * Runs [block] against the engine, binding first if necessary.
+     *
+     * A call made to a process that has just died fails with a dead binder, before the
+     * disconnect callback has arrived -- which is what switching back to the app after Android
+     * reclaimed the engine did ("Transaction failed on small parcel; remote process probably
+     * died"). With [retryIfDead] the connection is dropped and the call made once more against
+     * a new process. Not for a call whose whole purpose is to end the process.
+     */
+    suspend fun <T> withEngine(retryIfDead: Boolean = true, block: (IEngineService) -> T): Result<T> {
         val engine = connect() ?: return Result.failure(IllegalStateException("engine unavailable"))
-        return runCatching { block(engine) }
+        val first = runCatching { block(engine) }
+        val error = first.exceptionOrNull()
+        if (!retryIfDead || error !is android.os.RemoteException) return first
+        Log.w(TAG, "the engine process had died; binding a new one", error)
+        release()
+        val again = connect() ?: return first
+        return runCatching { block(again) }
     }
 
     private suspend fun connect(): IEngineService? {
