@@ -56,7 +56,8 @@ internal fun MainActivity.saveText(
             when (result) {
                 is io.github.pintofi.beanbook.core.data.WriteResult.Committed ->
                     if (result.warnings.isEmpty()) "Saved."
-                    else "Saved, with ${result.warnings.size} ledger error(s) to review."
+                    else if (result.warnings.size == 1) "Saved. The ledger has 1 error to review."
+                    else "Saved. The ledger has ${result.warnings.size} errors to review."
                 is io.github.pintofi.beanbook.core.data.WriteResult.RolledBack ->
                     "Not saved: ${result.reason}. Your ledger is unchanged."
                 is io.github.pintofi.beanbook.core.data.WriteResult.Refused ->

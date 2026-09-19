@@ -317,7 +317,7 @@ private fun Modifier.androidHeight(): Modifier = this.then(Modifier.height(20.dp
  * the same quiet line as everything else, and never as an error screen (docs/ux.md §2).
  */
 internal fun ledgerHealth(status: EngineStatus, ledger: LedgerSnapshot?): String? = when {
-    ledger == null && status is EngineStatus.Failed -> "Engine unavailable"
+    ledger == null && status is EngineStatus.Failed -> "Couldn't read the ledger"
     ledger == null -> "Loading…"
     ledger.errors.isEmpty() -> "${ledger.entryCount} entries · no errors"
     ledger.errors.size == 1 -> "${ledger.entryCount} entries · 1 error"
@@ -344,7 +344,7 @@ internal fun MoreMenu(
         MoreSection.BACKUP to "Write a backup, restore one, or schedule them",
         MoreSection.MIRROR to "Keep a copy in a folder you choose, kept in step",
         MoreSection.REMOTE to "Use a Fava server you host yourself",
-        MoreSection.PLUGINS to "Extra checks and transformations, from files you supply",
+        MoreSection.PLUGINS to "Add checks, entries and report pages to your ledger",
         MoreSection.APPEARANCE to "Theme, dark mode and colours",
         MoreSection.SCRIPTS to "Run a Python script once against the open ledger",
         MoreSection.LICENCES to "This app's licence, and everything it is built on",
@@ -396,7 +396,7 @@ internal fun MoreMenu(
         // app again (B77).
         androidx.compose.material3.ListItem(
             headlineContent = { Text("Restart the app") },
-            supportingContent = { Text("Stop the engine and open the app again, reading everything fresh") },
+            supportingContent = { Text("Close Beanbook and open it again, reading your files afresh") },
             leadingContent = {
                 Icon(
                     Icons.Filled.RestartAlt,
@@ -411,7 +411,7 @@ internal fun MoreMenu(
                 .clickable(role = Role.Button) { confirmingRestart = true }
                 .padding(horizontal = Measure.tight)
                 .semantics {
-                    contentDescription = "Restart the app. Stops the engine and opens the app again"
+                    contentDescription = "Restart the app. Closes Beanbook and opens it again"
                 },
         )
     }
@@ -422,7 +422,7 @@ internal fun MoreMenu(
             title = { Text("Restart the app?") },
             text = {
                 Text(
-                    "The engine and the app close and open again. Your ledger is unchanged; " +
+                    "Beanbook closes and opens again. Your ledger is unchanged; " +
                         "anything typed into a form and not saved is lost.",
                 )
             },
@@ -464,13 +464,13 @@ internal fun RecoveryBanner(message: String, onDismiss: () -> Unit) {
             message,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.semantics {
-                contentDescription = "Something was put right at startup: $message"
+                contentDescription = "$message"
             },
         )
         TextButton(
             onClick = onDismiss,
             modifier = Modifier.semantics { contentDescription = "Dismiss this notice" },
-        ) { Text("Got it") }
+        ) { Text("Dismiss") }
     }
 }
 

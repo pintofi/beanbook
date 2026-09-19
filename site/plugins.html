@@ -8,7 +8,7 @@
       content="Beancount plugins, Fava extensions and importers people use with Beanbook, and what to expect when running them on a phone."
     />
     <meta name="theme-color" content="#0b5f5b" />
-    <title>Beanbook — Add-ons</title>
+    <title>Plugins | Beanbook</title>
     <script>
       try {
         const t = localStorage.getItem("beancount-site-theme");
@@ -33,7 +33,7 @@
         <nav class="primary-nav" aria-label="Primary navigation">
           <a class="nav-link" href="index.html">Home</a>
           <a class="nav-link" href="features.html">Features</a>
-          <a class="nav-link" href="plugins.html" aria-current="page">Add-ons</a>
+          <a class="nav-link" href="plugins.html" aria-current="page">Plugins</a>
           <a class="nav-link" href="download.html">Download</a>
           <a class="nav-link" href="support.html">Support</a>
           <a class="nav-link" href="help.html">Help</a>
@@ -67,10 +67,10 @@
     <main id="main">
       <section class="shell hero hero-page">
         <div>
-          <p class="folio">Beanbook:Add-ons</p>
+          <p class="folio">Beanbook:Plugins</p>
           <h1 class="display display-sub" data-split>Extra behaviour, written by other people.</h1>
           <p class="lede">
-            An add-on is a small Python program you install yourself. Beancount
+            A plugin is a small Python program you install yourself. Beancount
             plugins check or transform your ledger as it loads; Fava extensions
             add pages to the reports; importers turn a bank's CSV into entries.
             None of them are bundled, and none of them are ours.
@@ -88,24 +88,16 @@
             <h2 class="total">Before you install one</h2>
           </div>
           <div class="callout callout-warning">
-            <strong>An add-on is a program you are trusting.</strong>
+            <strong>A plugin is a program you are trusting.</strong>
             <p>
               It runs with the app's permissions: it can read and change your
-              whole ledger, and use the network. Install add-ons only from a
-              source you trust. The app shows where each one came from and a
-              checksum of the file as installed, and safe mode holds all of them
-              back without deleting anything.
+              whole ledger, and use the network. Install plugins only from a source you trust. Safe mode holds all of them back without deleting anything.
             </p>
           </div>
           <div class="callout callout-pending">
-            <strong>We have not tested these on a phone.</strong>
+            <strong>Not every plugin works on a phone.</strong>
             <p>
-              The projects below are listed because people use them with
-              Beancount, not because this app has verified them. Some need
-              libraries that have no Android build, and some assume a desktop
-              filesystem. The app checks what an add-on imports before enabling
-              it and tells you which part it cannot satisfy, rather than
-              failing with a stack trace.
+              The projects below are listed because people use them with Beancount, not because this app vouches for them. Some need libraries that have no Android build, and some assume a desktop computer. The list inside the app marks the ones known not to work here.
             </p>
           </div>
         </div>
@@ -116,7 +108,7 @@
           <div class="section-header" data-in>
             <h2 class="total">Already included</h2>
             <p>
-              Beancount's own plugins ship with the engine. Nothing to install:
+              Beancount's own plugins come with the app. Nothing to install:
               name one in your ledger and it runs.
             </p>
           </div>
@@ -156,7 +148,7 @@
       <section class="section section-tint torn">
         <div class="shell">
           <div class="section-header" data-in>
-            <h2 class="total">Add-ons people use</h2>
+            <h2 class="total">Plugins people use</h2>
             <p>
               Independent projects, each with its own authors and licence. The
               links go to their own pages.
@@ -223,20 +215,19 @@
           <div data-in><h2 class="total">What to expect on a phone</h2></div>
           <div class="prose">
             <p>
-              An add-on written for a desktop can fail here for ordinary
+              A plugin written for a desktop can fail here for ordinary
               reasons: it needs a library with no Android build, it expects a
               home directory, it wants to run another program, or it takes long
               enough that Android stops it.
             </p>
             <p>
-              The app says which of those happened. A failing add-on does not
+              The app says which of those happened. A failing plugin does not
               take your ledger with it: it is held back, and the ledger loads
               without it.
             </p>
             <p>
               The Play edition adds one limit that is a store rule rather than
-              protection: add-ons there are plain Python only, and never
-              download code.
+              protection: plugins there are plain Python, added from a file, and it never downloads code.
             </p>
           </div>
         </div>
@@ -244,11 +235,11 @@
 
       <section class="section cover">
         <div class="shell split">
-          <div data-in><h2 class="total">Add-ons are optional.</h2></div>
+          <div data-in><h2 class="total">Plugins are optional.</h2></div>
           <div>
             <p>
               Everything the app does with a ledger (entering, editing,
-              balances, reports, documents) works with no add-ons at all.
+              balances, reports, documents) works with no plugins at all.
             </p>
             <div class="actions">
               <a class="button button-filled" href="features.html">See features</a>

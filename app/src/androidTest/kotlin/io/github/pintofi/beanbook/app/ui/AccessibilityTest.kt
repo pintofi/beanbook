@@ -141,7 +141,7 @@ class AccessibilityTest {
             EntryEditDialog(original = original, onSave = { saved = it }, onDismiss = {})
         }
 
-        compose.onNodeWithContentDescription("The source text of this entry").assertExists()
+        compose.onNodeWithContentDescription("The text of this entry, as it is written in your ledger file").assertExists()
         assertNull("nothing should be saved until Save is pressed", saved)
         compose.onNodeWithText("Save").performClick()
         assertEquals("the entry's own text should be what is saved", original, saved)

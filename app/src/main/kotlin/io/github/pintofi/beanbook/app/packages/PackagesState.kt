@@ -133,7 +133,7 @@ class PackagesState(
             _message.value = when (result) {
                 is FetchResult.Installed ->
                     "Installed ${result.wheels.size} packages, ${result.bytes / 1_000_000} MB. " +
-                        "Restart the engine below so a plugin can import them."
+                        "Plugins can use them now."
                 is FetchResult.Refused -> result.reason
                 is FetchResult.Failed -> "Nothing was installed: ${result.reason}"
             }
@@ -155,7 +155,7 @@ class PackagesState(
             Log.i(TAG, "removed fetched packages, freed ${freed / 1_000_000} MB")
             onEngineStale()
             _message.value = "Removed the fetched packages, freeing ${freed / 1_000_000} MB. " +
-                "Anything that needed them will say so once the engine restarts."
+                "Anything that needed them will say so the next time your ledger loads."
             refresh()
         }
     }

@@ -131,7 +131,7 @@ class HomeCardsTest {
     @Test fun attentionSaysNothingWhenThereIsNothing() {
         show()
 
-        compose.onNodeWithText("Nothing. The ledger loads, and every document is accounted for.")
+        compose.onNodeWithText("Nothing. The ledger has no errors, and every document is linked.")
             .performScrollTo()
             .assertIsDisplayed()
     }
@@ -143,8 +143,8 @@ class HomeCardsTest {
         show(broken, unfiled = 2, broken = 1, conflicts = 1)
 
         compose.onNodeWithText("1 error in this ledger").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("1 link with no file").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("2 documents filed under nothing").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("1 document is missing").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("2 documents are not linked").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("1 file needs your decision").performScrollTo().assertIsDisplayed()
     }
 
@@ -153,7 +153,7 @@ class HomeCardsTest {
         show(unfiled = 1, onOpenDocuments = { opened = true })
 
         compose.onNodeWithContentDescription(
-            "1 document filed under nothing. They are in the project; no entry or account claims them.",
+            "1 document is not linked. They are in the project, but no entry or account links to them.",
         ).performScrollTo().performClick()
 
         assertTrue("the documents screen was not opened", opened)

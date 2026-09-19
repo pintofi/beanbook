@@ -408,14 +408,14 @@ private fun WhatThisIs() {
         LedgerHairline()
         Highlight(
             "Beancount and Fava, running here",
-            "The same engine and the same reports you would run on a desktop, on the phone. " +
+            "The same Beancount and the same Fava reports you would run on a computer. " +
                 "No account to make and no server to trust.",
         )
         LedgerHairline()
         Highlight(
             "Works with the network off",
-            "Nothing is uploaded and nothing is tracked. Turn the radio off and the whole app " +
-                "still works.",
+            "Nothing is uploaded and nothing is tracked. Your ledger works with the network off; " +
+                "only connecting to your own Fava server needs it.",
         )
         LedgerHairline()
         Highlight(

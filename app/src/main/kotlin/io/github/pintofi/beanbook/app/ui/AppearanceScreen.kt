@@ -117,7 +117,7 @@ fun AppearanceScreen(
                     onValueChange = onHideWidgetAmounts,
                     role = Role.Switch,
                 )
-                .semantics { contentDescription = "Hide amounts on the home screen" }
+                .semantics { contentDescription = "Hide amounts in widgets" }
                 .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,

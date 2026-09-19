@@ -53,10 +53,10 @@ class ValidatorUnavailableTest {
             is WriteResult.Committed -> ""
         }
         assertTrue(
-            !reason.contains("could not be parsed"),
+            !reason.contains("could not read the ledger"),
             "a missing engine was blamed on the ledger: $reason",
         )
-        assertTrue(reason.contains("engine", ignoreCase = true), "the reason does not say why: $reason")
+        assertTrue(reason.contains("could not check", ignoreCase = true), "the reason does not say why: $reason")
     }
 
     @Test
@@ -82,7 +82,7 @@ class ValidatorUnavailableTest {
 
         assertTrue(result is WriteResult.RolledBack, "unexpected: $result")
         assertTrue(
-            (result as WriteResult.RolledBack).reason.contains("could not be parsed"),
+            (result as WriteResult.RolledBack).reason.contains("could not read the ledger"),
             "the real parse failure lost its diagnosis: ${result.reason}",
         )
         assertEquals(before, file.readText(), "the rollback did not restore the file")

@@ -185,7 +185,7 @@ class ProjectWriter(
         val projectDir = workspace.projectDir(projectId)
         if (!file.canonicalPath.startsWith(projectDir.canonicalPath + File.separator)) {
             // Invariant: a write may never escape the project (docs/threat-model.md §3.1).
-            return WriteResult.Refused("refusing to write outside the project: ${file.name}")
+            return WriteResult.Refused("${file.name} is outside the project")
         }
 
         // Stale-write detection *before* the snapshot: nothing has changed yet, so there
@@ -193,8 +193,8 @@ class ProjectWriter(
         val actualSha = if (file.isFile) WriteJournal.sha256(file) else ""
         if (actualSha != expectedSha) {
             return WriteResult.Refused(
-                "the file changed since it was read (expected ${expectedSha.take(8)}, " +
-                    "found ${actualSha.take(8)})"
+                "the file was changed somewhere else since it was opened. Open it again " +
+                    "and make the change there"
             )
         }
 
@@ -210,8 +210,8 @@ class ProjectWriter(
             before.exceptionOrNull()?.let { failure ->
                 if (failure is LedgerUnavailable) {
                     return WriteResult.Refused(
-                        "the engine is not available, so the ledger could not be checked " +
-                            "before writing. Nothing was changed."
+                        "Beanbook could not check your ledger before changing it. Nothing was " +
+                            "changed; try again in a moment"
                     )
                 }
             }
@@ -253,8 +253,7 @@ class ProjectWriter(
                         journal.restoreSnapshot(record)
                         journal.markRolledBack(record)
                         WriteResult.RolledBack(
-                            reason = "the engine is not available, so the write could not be " +
-                                "checked and was undone. Your ledger is unchanged.",
+                            reason = "Beanbook could not check the change, so it was undone",
                             errors = listOfNotNull(failure.message),
                         )
                     }
@@ -262,7 +261,7 @@ class ProjectWriter(
                 journal.restoreSnapshot(record)
                 journal.markRolledBack(record)
                 return WriteResult.RolledBack(
-                    reason = "the ledger could not be parsed after the write",
+                    reason = "Beancount could not read the ledger with this change",
                     errors = listOfNotNull(failure.message),
                 )
             }
@@ -271,7 +270,9 @@ class ProjectWriter(
                 journal.restoreSnapshot(record)
                 journal.markRolledBack(record)
                 return WriteResult.RolledBack(
-                    reason = "the write introduced ${errors.size - baseline} new error(s)",
+                    reason = (errors.size - baseline).let {
+                        if (it == 1) "it would add 1 error to your ledger" else "it would add $it errors to your ledger"
+                    },
                     errors = errors,
                 )
             }
@@ -283,7 +284,7 @@ class ProjectWriter(
         } catch (io: IOException) {
             journal.restoreSnapshot(record)
             journal.markRolledBack(record)
-            WriteResult.RolledBack("write failed: ${io.message}", emptyList())
+            WriteResult.RolledBack("the file could not be written (${io.message})", emptyList())
         }
     }
 
@@ -311,7 +312,7 @@ class ProjectWriter(
             journal.restoreSnapshot(record)
             journal.markRolledBack(record)
             WriteResult.RolledBack(
-                "undo would have left the ledger unparseable",
+                "undoing it would leave a ledger Beancount cannot read",
                 listOfNotNull(validation.exceptionOrNull()?.message),
             )
         } else {

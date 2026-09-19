@@ -73,7 +73,7 @@ class EntryTemplateTest {
         ).validate()
 
         assertEquals(
-            "\"expenses:rent\" is not a valid account name",
+            "\"expenses:rent\" is not a valid account name; accounts look like Expenses:Food",
             problems.filterIsInstance<DraftProblem.InvalidAccount>().single().describe(),
         )
     }

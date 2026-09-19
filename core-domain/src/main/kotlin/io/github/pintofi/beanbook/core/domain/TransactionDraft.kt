@@ -269,15 +269,15 @@ sealed interface DraftProblem {
         is InvalidDate -> "\"$value\" is not a date in YYYY-MM-DD form"
         is InvalidFlag -> "\"$value\" is not a transaction flag (* or !)"
         is TooFewPostings -> "a transaction needs at least two postings; this has $count"
-        is InvalidAccount -> "\"$account\" is not a valid account name"
+        is InvalidAccount -> "\"$account\" is not a valid account name; accounts look like Expenses:Food"
         is TooManyElidedPostings -> "$count postings have no amount; Beancount can work out only one"
         is DoesNotBalance -> "does not balance: " + residuals.joinToString(", ") { it.format() }
         is InvalidTag -> "\"$tag\" is not a valid tag; tags are letters, digits, - _ / . and no spaces"
         is InvalidLink -> "\"$link\" is not a valid link; links are letters, digits, - _ / . and no spaces"
         is InvalidCurrency -> "\"$currency\" is not a valid commodity"
         is InvalidMetadataKey ->
-            "\"$key\" is not a valid metadata key; they are lower-case and may not start with " +
-                "a digit"
+            "\"$key\" cannot be a detail name; start it with a lower-case letter, then use " +
+                "letters, digits, - or _"
         is MissingText -> "the $what is empty"
         is PathOutsideProject ->
             "\"$path\" points outside the project; document links must stay inside it"

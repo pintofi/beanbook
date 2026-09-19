@@ -18,10 +18,12 @@ class RecoveryOnStart(private val writer: ProjectWriter) {
 
         /** Wording the user sees; deliberately plain about what happened to their data. */
         fun describe(): String = when {
-            isClean -> "No interrupted writes."
-            rolledBack == 0 -> "Recovered $rolledForward interrupted write(s); your changes were kept."
-            rolledForward == 0 -> "Recovered $rolledBack interrupted write(s); the previous version was restored."
-            else -> "Recovered $recovered interrupted write(s): $rolledForward kept, $rolledBack restored."
+            isClean -> "No interrupted saves."
+            rolledBack == 0 -> "A save was interrupted last time. It has been finished, so your change is kept."
+            rolledForward == 0 -> "A save was interrupted last time. It could not be finished, so the file was put " +
+                "back as it was before."
+            else -> "$recovered saves were interrupted last time: $rolledForward finished and kept, " +
+                "$rolledBack put back as they were before."
         }
     }
 

@@ -214,7 +214,7 @@ class ScriptRunnerState(
                             ok = false,
                             output = "",
                             error = problem.message ?: problem.javaClass.simpleName,
-                            errorType = "EngineUnavailable",
+                            errorType = "Not run",
                             cancelled = false,
                             timedOut = false,
                             durationMs = 0,

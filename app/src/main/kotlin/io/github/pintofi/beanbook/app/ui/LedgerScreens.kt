@@ -375,10 +375,10 @@ fun BalancesScreen(
                 item(key = "tagNotice") {
                     Text(
                         text = if (basis == Valuation.VALUE) {
-                            "Totals of the entries tagged or linked as asked. Market value " +
-                                "is shown at cost here: prices are not part of a filtered set."
+                            "Totals of the entries with these tags or links. Market value is " +
+                                "shown at cost here, because prices are not part of a filtered set."
                         } else {
-                            "Totals of the entries tagged or linked as asked."
+                            "Totals of the entries with these tags or links."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -657,7 +657,8 @@ fun JournalScreen(
             Text(
                 "${picked.size} selected",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f).semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+                modifier = Modifier.weight(1f)
+                    .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
             )
             androidx.compose.material3.TextButton(
                 onClick = { confirmingDelete = true },

@@ -33,7 +33,7 @@
         <nav class="primary-nav" aria-label="Primary navigation">
           <a class="nav-link" href="index.html">Home</a>
           <a class="nav-link" href="features.html">Features</a>
-          <a class="nav-link" href="plugins.html">Add-ons</a>
+          <a class="nav-link" href="plugins.html">Plugins</a>
           <a class="nav-link" href="download.html">Download</a>
           <a class="nav-link" href="support.html">Support</a>
           <a class="nav-link" href="help.html" aria-current="page">Help</a>
@@ -70,7 +70,7 @@
           <p class="folio">Beanbook:Help</p>
           <h1 class="display display-sub" data-split>Start with a project, not an account.</h1>
           <p class="lede">
-            Create a ledger or import a complete project tree. The app reads the
+            Create a ledger, or import the folder your existing ledger is in. The app reads the
             same Beancount syntax used on desktop.
           </p>
         </div>
@@ -86,18 +86,13 @@
           <div data-in><h2 class="total">Getting started</h2></div>
           <ol class="steps">
             <li>
-              <strong>Open Projects.</strong>Create a new ledger, select a
-              folder tree, or select an archive.
+              <strong>Open More, then Projects.</strong>Create a new ledger, or import a folder or a .zip.
             </li>
             <li>
-              <strong>Keep the whole tree together.</strong>Import the project
-              rather than only one file so includes and document links remain
-              valid.
+              <strong>Keep the whole folder together.</strong>Import the folder, not only the main file, so included files and linked documents come with it.
             </li>
             <li>
-              <strong>Fix ordinary parse errors.</strong>Import completes even
-              if Beancount reports errors, so you can correct them in the raw
-              editor with file, line, and column information.
+              <strong>Fix errors after importing.</strong>A ledger that Beancount reports errors in still imports. Each error shows its file and line, and you can correct it in More, Files.
             </li>
             <li>
               <strong>Export a copy.</strong>Keep an ordinary folder you can
@@ -137,38 +132,35 @@
           <div class="section-header" data-in>
             <h2 class="total">Where your files live</h2>
             <p>
-              The app-private workspace is canonical. This is required because
-              Python and Fava need real POSIX paths, while Android's folder
-              picker provides content URIs.
+              Your projects live in the app's own storage, because Beancount
+              and Fava need ordinary file paths, which Android's folder picker
+              does not give. Import, export and mirror are how files get in and
+              out.
             </p>
           </div>
           <ul class="rows rows-2">
             <li class="row">
-              <h3>Canonical workspace</h3>
+              <h3>Inside the app</h3>
               <p>
-                Projects live in app-private storage. Modern file managers
-                cannot browse that location.
+                Projects live in the app's private storage, which a file manager cannot open. Export or mirror to get a copy you can.
               </p>
             </li>
             <li class="row">
-              <h3>In-app raw editor</h3>
+              <h3>Edit files in the app</h3>
               <p>
-                Every included file remains directly editable inside the app.
-                This is permanently free.
+                Every file of your ledger can be edited as text in More, Files.
               </p>
             </li>
             <li class="row">
               <h3>Portable copies</h3>
               <p>
-                Import, export, and mirror connect the private workspace to a
-                folder chosen through Android's Storage Access Framework.
+                Import, export and mirror connect the app's storage to a folder you choose with Android's folder picker.
               </p>
             </li>
             <li class="row">
-              <h3>Clean project tree</h3>
+              <h3>Only your files in the project</h3>
               <p>
-                Caches, logs, credentials, and generated state
-                live outside the portable project tree.
+                Caches, logs and passwords are kept outside your project folder, so a copy of it holds only your ledger and documents.
               </p>
             </li>
           </ul>
@@ -182,20 +174,15 @@
           <div class="prose faq">
             <h3>A ledger will not load</h3>
             <p>
-              Open the reported file, line, and column in the raw editor. A file
-              Beancount cannot parse is reported rather than silently
-              interpreted.
+              Tap the error on Home to see it with its file and line, then fix that line in More, Files. The app shows what Beancount could not read rather than guessing.
             </p>
             <h3>A save was refused</h3>
             <p>
-              The file may have changed since the editor opened. Stale-write
-              detection refuses last-write-wins and offers a conflict view.
+              The file changed after you opened it, for example through the mirror. The save is refused rather than overwrite the newer version: copy your change, open the file again and apply it there.
             </p>
             <h3>A plugin stops startup</h3>
             <p>
-              Use safe mode to disable third-party code and open the ledger
-              read-only. Recovery mode remains available after a startup
-              failure.
+              Turn on safe mode in More, Plugins. The ledger then loads with no plugins, and nothing is deleted.
             </p>
             <h3>A remote server will not connect</h3>
             <p>
@@ -203,10 +190,9 @@
               <code>https://</code> are fatal. The app never retries over
               <code>http://</code>.
             </p>
-            <h3>An Expert package will not install</h3>
+            <h3>A plugin will not install</h3>
             <p>
-              Some dependencies have no compatible Android wheel. The package
-              resolver shows what is available before downloading.
+              Some Python libraries have no Android version. The app names the ones it could not get, and the parts of the plugin that need them will not work.
             </p>
           </div>
         </div>
@@ -221,10 +207,24 @@
           </div>
           <div class="tiles tiles-3">
             <article class="tile">
+              <h3>No bank connections</h3>
+              <p>
+                The app does not connect to your bank or download statements.
+                Entries are typed, scanned from receipts, or imported by a
+                script you run.
+              </p>
+            </article>
+            <article class="tile">
+              <h3>No financial advice</h3>
+              <p>
+                It records and reports what you enter. It does not give
+                financial, tax or investment advice.
+              </p>
+            </article>
+            <article class="tile">
               <h3>No Git integration</h3>
               <p>
-                The app can edit a working tree but leaves version control to
-                you.
+                The app edits your files but leaves version control, such as Git, to you.
               </p>
             </article>
             <article class="tile">
@@ -239,9 +239,9 @@
               <p>Only arm64-v8a and x86_64 builds are provided.</p>
             </article>
             <article class="tile">
-              <h3>No OCR in v1</h3>
+              <h3>No reading of receipt text</h3>
               <p>
-                Camera capture and PDF assembly ship first. OCR is deferred.
+                The app keeps photos and PDFs of receipts, but does not read the text on them yet.
               </p>
             </article>
             <article class="tile">
@@ -282,8 +282,7 @@
           <div data-in><h2 class="total">Before relying on it</h2></div>
           <div>
             <p>
-              Review the privacy policy and edition boundaries, especially if
-              you plan to use remote mode or user Python.
+              Read the privacy policy and how the editions differ, especially if you plan to use your own Fava server, plugins or scripts.
             </p>
             <div class="actions">
               <a class="button button-filled" href="privacy.html">Read privacy</a>

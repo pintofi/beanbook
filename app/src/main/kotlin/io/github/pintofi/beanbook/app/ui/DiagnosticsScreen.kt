@@ -62,7 +62,7 @@ fun DiagnosticsScreen(
             modifier = Modifier.semantics { heading() },
         )
         Text(
-            "What the app recorded while it ran. Passwords, keys and the engine's token are " +
+            "What the app recorded while it ran. Passwords, keys and access codes are " +
                 "removed before anything is written, and your ledger's entries are never in " +
                 "here. Nothing is sent anywhere unless you share it yourself.",
             style = MaterialTheme.typography.bodySmall,

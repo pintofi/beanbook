@@ -242,7 +242,7 @@ fun DocumentsScreen(
                 singleLine = true,
                 supportingText = {
                     Text(
-                        "Goes in the filename, between the date and the checksum. " +
+                        "Added to the file name so you can tell documents apart. " +
                             "Letters, numbers and dashes.",
                     )
                 },
@@ -268,7 +268,7 @@ fun DocumentsScreen(
         if (mode == DocumentsMode.ORGANIZE && documents.isEmpty()) {
             EmptyState(
                 title = "No documents yet",
-                detail = "Photograph a receipt on the Add tab and it is filed against an entry.",
+                detail = "Scan a receipt or attach a file on the Add tab to file it under an account.",
                 art = EmptyArt.RECEIPT,
             )
         }

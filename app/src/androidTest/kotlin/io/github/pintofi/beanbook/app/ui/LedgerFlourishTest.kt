@@ -46,7 +46,7 @@ class LedgerFlourishTest {
             MaterialTheme { HomeScreen(ledger = clean, hideAmounts = false, stamped = stamped) }
         }
         val stamp = "In balance. The ledger loads with no errors again."
-        compose.onNodeWithText("Nothing. The ledger loads, and every document is accounted for.")
+        compose.onNodeWithText("Nothing. The ledger has no errors, and every document is linked.")
             .performScrollTo()
             .assertIsDisplayed()
         compose.onAllNodesWithContentDescription(stamp).assertCountEquals(0)

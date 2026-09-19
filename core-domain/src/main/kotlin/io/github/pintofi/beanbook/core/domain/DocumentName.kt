@@ -139,10 +139,10 @@ enum class DocumentRemoval {
 
     fun describe(path: String): String = when (this) {
         UNLINK ->
-            "Unlink this document from the entry. The file stays in the project at $path " +
-                "and can be linked again."
+            "Remove the link between this document and its entry or account. The file stays " +
+                "in the project at $path and can be linked again."
         DELETE_FILE ->
-            "Delete $path from this device. The file itself goes, not just the link, and " +
-                "the entry stops referring to it."
+            "Delete $path from this device. This cannot be undone. Anything in the ledger " +
+                "that links to it will show it as missing until you unlink it."
     }
 }

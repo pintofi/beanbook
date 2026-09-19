@@ -414,7 +414,7 @@ private fun AttentionCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StampMark(LedgerMark.CLEARED)
                 Text(
-                    "Nothing. The ledger loads, and every document is accounted for.",
+                    "Nothing. The ledger has no errors, and every document is linked.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = Measure.gap).weight(1f),

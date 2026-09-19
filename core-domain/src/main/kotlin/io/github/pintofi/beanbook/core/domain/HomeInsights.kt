@@ -228,9 +228,9 @@ object HomeInsights {
             items += AttentionItem(
                 headline = if (errorCount == 1) "1 error in this ledger" else "$errorCount errors in this ledger",
                 detail = if (onEntries.isEmpty()) {
-                    "None of them is on an entry."
+                    "None of them is on a particular entry. Tap to read them in the Journal."
                 } else {
-                    "${onEntries.values.sumOf { it.size }} of them on entries, shown first in the Journal."
+                    "${onEntries.values.sumOf { it.size }} of them are on entries, marked in the Journal."
                 },
                 destination = AttentionItem.Destination.JOURNAL,
             )
@@ -238,22 +238,22 @@ object HomeInsights {
         if (brokenDocumentLinks > 0) {
             items += AttentionItem(
                 headline = if (brokenDocumentLinks == 1) {
-                    "1 link with no file"
+                    "1 document is missing"
                 } else {
-                    "$brokenDocumentLinks links with no file"
+                    "$brokenDocumentLinks documents are missing"
                 },
-                detail = "The ledger names a document that is not there.",
+                detail = "The ledger links to a file that is no longer in the project.",
                 destination = AttentionItem.Destination.DOCUMENTS,
             )
         }
         if (unfiledDocuments > 0) {
             items += AttentionItem(
                 headline = if (unfiledDocuments == 1) {
-                    "1 document filed under nothing"
+                    "1 document is not linked"
                 } else {
-                    "$unfiledDocuments documents filed under nothing"
+                    "$unfiledDocuments documents are not linked"
                 },
-                detail = "They are in the project; no entry or account claims them.",
+                detail = "They are in the project, but no entry or account links to them.",
                 destination = AttentionItem.Destination.DOCUMENTS,
             )
         }

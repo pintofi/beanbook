@@ -511,9 +511,9 @@ fun QuickAddScreen(
                 SmallAction(
                     text = if (metaRows.isEmpty()) "Detail" else "Another detail",
                     describe = if (metaRows.isEmpty()) {
-                        "Add a detail to transaction"
+                        "Add a detail to this transaction"
                     } else {
-                        "Add another detail to transaction"
+                        "Add another detail to this transaction"
                     },
                     onClick = { metaRows.add(MetadataRow()) },
                 )

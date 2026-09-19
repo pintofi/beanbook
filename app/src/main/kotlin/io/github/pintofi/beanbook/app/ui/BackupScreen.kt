@@ -68,7 +68,7 @@ fun BackupScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            "A single .bcaz file. Without a passphrase it is an ordinary zip, openable " +
+            "One .bcaz file holding the whole project. Without a passphrase it is an ordinary zip, openable " +
                 "without this app.",
             style = MaterialTheme.typography.bodySmall,
         )
@@ -269,7 +269,7 @@ private fun RestorePreview(
             }
 
             Text(
-                "Your current project is kept as a rollback point; nothing is deleted.",
+                "Your current project is kept first, so you can go back to it. Nothing is deleted.",
                 style = MaterialTheme.typography.bodySmall,
             )
 

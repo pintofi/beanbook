@@ -155,7 +155,7 @@ private fun UnsandboxedWarning(policy: PluginPolicy) {
         )
         if (!policy.allowsAndroidBridge) {
             Text(
-                "This edition also keeps plugins away from Android APIs. That is a store " +
+                "This edition also keeps plugins away from Android's own features. That is a store " +
                     "rule, not protection for your ledger.",
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -267,8 +267,9 @@ private fun PackagesSection(
 
         Text(
             "Some plugins need libraries the app does not carry, such as numpy or " +
-                "pandas. They download only when you ask, and the size is shown first. " +
-                "This is the only network use while your ledger is on this device.",
+                "pandas. They download only when you ask, and what would be downloaded is " +
+                "listed first. Downloading these, and plugins from the list above, is the " +
+                "only network use while your ledger is on this device.",
             style = MaterialTheme.typography.bodySmall,
         )
 

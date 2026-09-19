@@ -204,7 +204,7 @@ class HomeInsightsTest {
             ),
             items.map { it.destination },
         )
-        assertEquals("1 link with no file", items.first().headline)
+        assertEquals("1 document is missing", items.first().headline)
     }
 
     @Test fun `a clean ledger needs no attention`() {

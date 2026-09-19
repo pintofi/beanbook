@@ -24,7 +24,7 @@ internal object EditionFacts {
         differences = listOf(
             "Plugins, Fava extensions and scripts may use Python packages with native code",
             "Missing Python packages can be fetched when you ask for them",
-            "Plugins and scripts can reach Android through the Java bridge",
+            "Plugins and scripts can use Android's own features",
         ),
         url = EDITIONS_URL,
     )

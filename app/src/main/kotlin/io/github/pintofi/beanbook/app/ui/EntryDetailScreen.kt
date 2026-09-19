@@ -135,7 +135,7 @@ fun EntryDetailScreen(
                     )
                     posting.amount?.let { AmountText(it, signed = true, format = format) }
                         ?: Text(
-                            "(elided)",
+                            "(worked out by Beancount)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -206,7 +206,7 @@ fun EntryDetailScreen(
                 TextButton(
                     onClick = onEdit,
                     modifier = Modifier.semantics {
-                        contentDescription = "Edit the source of this transaction"
+                        contentDescription = "Edit this transaction"
                     },
                 ) { Text("Edit") }
             }

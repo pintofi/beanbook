@@ -56,7 +56,9 @@ fun EntryEditDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 160.dp)
-                        .semantics { contentDescription = "The source text of this entry" },
+                        .semantics {
+                            contentDescription = "The text of this entry, as it is written in your ledger file"
+                        },
                 )
                 Text(
                     "Saved only if Beancount still accepts the file.",

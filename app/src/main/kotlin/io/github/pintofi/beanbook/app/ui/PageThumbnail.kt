@@ -106,7 +106,9 @@ internal fun rememberRenderedPage(
     maxEdge: Int = THUMBNAIL_EDGE,
 ): android.graphics.Bitmap? {
     val render = LocalPageRenderer.current
-    val rendered by androidx.compose.runtime.produceState<android.graphics.Bitmap?>(null, page, file.path, file.length()) {
+    val rendered by androidx.compose.runtime.produceState<android.graphics.Bitmap?>(
+        null, page, file.path, file.length(),
+    ) {
         value = runCatching { render(page, file) }.getOrNull()?.let { full ->
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                 val scale = maxEdge.toFloat() / maxOf(full.width, full.height)

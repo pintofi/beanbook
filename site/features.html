@@ -33,7 +33,7 @@
         <nav class="primary-nav" aria-label="Primary navigation">
           <a class="nav-link" href="index.html">Home</a>
           <a class="nav-link" href="features.html" aria-current="page">Features</a>
-          <a class="nav-link" href="plugins.html">Add-ons</a>
+          <a class="nav-link" href="plugins.html">Plugins</a>
           <a class="nav-link" href="download.html">Download</a>
           <a class="nav-link" href="support.html">Support</a>
           <a class="nav-link" href="help.html">Help</a>
@@ -95,30 +95,25 @@
             <article class="tile tile-key">
               <h3>Guided entry</h3>
               <p>
-                Use guided entry for common directives. Edit, delete, or
-                duplicate existing entries while keeping the ledger as ordinary
-                Beancount text.
+                Use the form for transactions and other entries. Edit, delete or copy existing ones, and the ledger stays ordinary Beancount text.
               </p>
             </article>
             <article class="tile">
               <h3>Raw files</h3>
               <p>
-                Read and edit the ledger files themselves with highlighting,
-                search, validation, and stale-write detection.
+                Read and edit the ledger files themselves, with highlighting and search. If a file changed after you opened it, the save stops rather than overwrite the newer version.
               </p>
             </article>
             <article class="tile">
-              <h3>Durable writes</h3>
+              <h3>Saved means saved</h3>
               <p>
-                Writes are locked, snapshotted, journalled, atomically replaced,
-                and re-parsed before success is shown.
+                A change is written in full and read back by Beancount before the app says it is saved. If something fails halfway, the previous version comes back.
               </p>
             </article>
             <article class="tile tile-ink">
-              <h3>Unknown syntax survives</h3>
+              <h3>Your formatting survives</h3>
               <p>
-                Unknown directives, metadata, comments, whitespace outside an
-                edited region, includes, and relative paths are preserved.
+                Comments, spacing, includes, relative paths and anything the app does not recognise stay exactly as you wrote them, outside the entry you change.
               </p>
             </article>
           </div>
@@ -160,8 +155,7 @@
             <div>
               <h2 class="total">Documents, mirroring, and backup</h2>
               <p class="section-lede">
-                The app keeps the private workspace canonical and provides
-                explicit routes to portable copies.
+                Your projects live inside the app. These are the ways to get a copy out, or keep one in step.
               </p>
             </div>
             <svg class="receipt" viewBox="0 0 320 440" aria-hidden="true" focusable="false">
@@ -194,9 +188,7 @@
             <li class="row">
               <h3>Receipts and statements</h3>
               <p>
-                Capture or attach documents, assemble PDFs, and file them
-                against entries. Documents live inside the portable project
-                tree.
+                Photograph or attach receipts, turn the pages into one PDF, and link it to an entry or an account. Documents are kept in the project folder, so they travel with it.
               </p>
             </li>
             <li class="row">
@@ -232,7 +224,7 @@
           <div data-in><h2 class="total">Remote mode is deliberately narrower</h2></div>
           <div class="prose">
             <p>
-              Remote mode is a hardened client for a Fava server you host. It
+              Remote mode uses a Fava server you host. It
               provides reports and quick-add while the server is reachable.
             </p>
             <p>
@@ -252,51 +244,39 @@
           <div class="section-header" data-in>
             <h2 class="total">Plugins and scripts</h2>
             <p>
-              The app can load add-ons you supply: Beancount plugins,
-              Fava extensions, importers for your bank's exports, and Python
-              scripts. There is a
-              <a href="plugins.html">list of add-ons people use</a>.
+              Plugins add checks, entries or report pages: Beancount plugins, Fava extensions, and importers for your bank's exports. The app also runs Python scripts. See the <a href="plugins.html">plugins people use</a>.
             </p>
           </div>
           <div class="tiles">
             <article class="tile tile-key">
               <h3>Code you choose</h3>
               <p>
-                An add-on runs with the app's permissions and can reach
-                anything the app can: it is a program you are trusting. Add-ons
-                are off until you turn them on, per project, and safe mode holds
-                all of them back.
+                A plugin runs with the app's permissions and can reach anything the app can: it is a program you are trusting. It runs only when your ledger names it, and safe mode holds all of them back.
               </p>
             </article>
             <article class="tile">
               <h3>Play edition</h3>
               <p>
-                Add-ons must be plain Python, cannot use your phone's own
-                features, and this edition never downloads code.
+                Plugins are added from a file, must be plain Python, and cannot use your phone's own features. This edition never downloads code.
               </p>
             </article>
             <article class="tile">
               <h3>Expert edition</h3>
               <p>
-                Add-ons can use your phone's own features, and can fetch extra
-                Python libraries on demand after the app shows what it would
-                download.
+                Plugins install from the in-app list in one tap, with the Python libraries they need, and can use your phone's own features.
               </p>
             </article>
             <article class="tile">
               <h3>Big libraries stay optional</h3>
               <p>
-                Some add-ons need libraries far larger than the app itself, so
-                they are never bundled. You are shown the download and its size
-                before anything is fetched.
+                Some plugins need libraries far larger than the app itself, so they are never bundled. They are downloaded only when you install a plugin that needs them, or ask for one by name.
               </p>
             </article>
           </div>
           <div class="callout callout-warning">
             <strong>Not a safety guarantee.</strong>
             <p>
-              The Play edition's limits on add-ons are store rules, not
-              protection for your ledger. In both editions an add-on runs with
+              The Play edition's limits on plugins are store rules, not protection for your ledger. In both editions a plugin runs with
               the app's permissions.
             </p>
           </div>
