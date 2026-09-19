@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#0b5f5b" />
     <title>Beanbook</title>
     <script>
+      document.documentElement.classList.add("js");
       try {
         const t = localStorage.getItem("beancount-site-theme");
         if (t === "light" || t === "dark")
@@ -196,24 +197,142 @@
         </div>
       </section>
 
-      <!-- Sources: screenshots decision in site brief. No product image is fabricated. -->
-      <section class="section section-tint torn">
+      <!-- Real screenshots from the app, captured from fixtures/site-screenshots (see its README).
+           Each screen has a light and a dark capture of the same state. -->
+      <section class="section section-tint torn" id="screens" aria-labelledby="screens-heading">
         <div class="shell">
-          <div class="section-header" data-in>
-            <h2 class="total">Real screens will go here</h2>
+          <div class="section-header shots-header" data-in>
+            <h2 class="total" id="screens-heading">The app, as it is</h2>
             <p>
-              The app is still being finished. Screenshots of the real app will
-              appear here once it is.
+              Five screens captured from Beanbook on an Android emulator, with an
+              invented household ledger. Open one to see what its parts do.
             </p>
+            <div class="shots-theme" role="group" aria-label="Screenshot theme" hidden>
+              <span class="shots-theme-label" aria-hidden="true">Screens in</span>
+              <button type="button" data-shots-theme="light" aria-pressed="true">Light</button>
+              <button type="button" data-shots-theme="dark" aria-pressed="false">Dark</button>
+            </div>
           </div>
-          <ul class="frames" aria-label="Planned screenshots">
-            <li class="frame"><span class="pending-tag">Not captured yet</span><strong>Home</strong><span>Light theme</span></li>
-            <li class="frame"><span class="pending-tag">Not captured yet</span><strong>Journal</strong><span>Dark theme</span></li>
-            <li class="frame"><span class="pending-tag">Not captured yet</span><strong>Reports</strong><span>Fava on device</span></li>
-            <li class="frame"><span class="pending-tag">Not captured yet</span><strong>Documents</strong><span>Organize view</span></li>
+          <ul class="shots" data-shots>
+            <li class="shot" data-shot="home" style="--i: 0">
+              <a class="shot-open" href="assets/screenshots/home-light-1080.webp" aria-label="Open annotated Home screen">
+                <span class="shot-card">
+                  <picture>
+                    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/home-dark-540.webp" />
+                    <img src="assets/screenshots/home-light-540.webp" width="540" height="960" alt="Beanbook's Home screen for the Household ledger: net worth, income and expenses, and this month's spending by category." loading="lazy" decoding="async" />
+                  </picture>
+                </span>
+                <span class="shot-text">
+                  <strong>Home</strong>
+                  <span>Where the month stands, and anything that needs attention.</span>
+                  <span class="shot-cue" aria-hidden="true">Open with notes</span>
+                </span>
+              </a>
+            </li>
+            <li class="shot" data-shot="entry" style="--i: 1">
+              <a class="shot-open" href="assets/screenshots/entry-light-1080.webp" aria-label="Open annotated New entry screen">
+                <span class="shot-card">
+                  <picture>
+                    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/entry-dark-540.webp" />
+                    <img src="assets/screenshots/entry-light-540.webp" width="540" height="960" alt="The New entry form, copied from a grocery transaction: date, payee, description, and the first posting's account." loading="lazy" decoding="async" />
+                  </picture>
+                </span>
+                <span class="shot-text">
+                  <strong>New entry</strong>
+                  <span>A transaction written with a form and checked before it is saved.</span>
+                  <span class="shot-cue" aria-hidden="true">Open with notes</span>
+                </span>
+              </a>
+            </li>
+            <li class="shot" data-shot="journal" style="--i: 2">
+              <a class="shot-open" href="assets/screenshots/journal-light-1080.webp" aria-label="Open annotated Journal screen">
+                <span class="shot-card">
+                  <picture>
+                    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/journal-dark-540.webp" />
+                    <img src="assets/screenshots/journal-light-540.webp" width="540" height="960" alt="The Journal: recent transactions with their accounts and amounts, one flagged as pending and one with a linked receipt." loading="lazy" decoding="async" />
+                  </picture>
+                </span>
+                <span class="shot-text">
+                  <strong>Journal</strong>
+                  <span>Every entry in the ledger, newest first, with its postings.</span>
+                  <span class="shot-cue" aria-hidden="true">Open with notes</span>
+                </span>
+              </a>
+            </li>
+            <li class="shot" data-shot="reports" style="--i: 3">
+              <a class="shot-open" href="assets/screenshots/reports-light-1080.webp" aria-label="Open annotated Reports screen">
+                <span class="shot-card">
+                  <picture>
+                    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/reports-dark-540.webp" />
+                    <img src="assets/screenshots/reports-light-540.webp" width="540" height="960" alt="Fava's Income Statement inside the app: monthly income and expenses as stacked bars." loading="lazy" decoding="async" />
+                  </picture>
+                </span>
+                <span class="shot-text">
+                  <strong>Reports</strong>
+                  <span>Fava's reports, running on the phone from the same files.</span>
+                  <span class="shot-cue" aria-hidden="true">Open with notes</span>
+                </span>
+              </a>
+            </li>
+            <li class="shot" data-shot="documents" style="--i: 4">
+              <a class="shot-open" href="assets/screenshots/documents-light-1080.webp" aria-label="Open annotated Documents screen">
+                <span class="shot-card">
+                  <picture>
+                    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/documents-dark-540.webp" />
+                    <img src="assets/screenshots/documents-light-540.webp" width="540" height="960" alt="The Documents screen's Organize tab: two receipts, each with the account it is filed under and actions to view, share, refile, unlink or delete." loading="lazy" decoding="async" />
+                  </picture>
+                </span>
+                <span class="shot-text">
+                  <strong>Documents</strong>
+                  <span>Receipts and statements, filed under an account or an entry.</span>
+                  <span class="shot-cue" aria-hidden="true">Open with notes</span>
+                </span>
+              </a>
+            </li>
           </ul>
         </div>
       </section>
+      <script>
+        // Before the first paint of the gallery: show the screenshots in the theme the page
+        // itself is in, so an explicit site theme never flashes the other set first.
+        (function () {
+          var root = document.documentElement;
+          var t = root.dataset.theme ||
+            (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          var list = document.querySelector("[data-shots]");
+          if (!list) return;
+          list.dataset.theme = t;
+          list.querySelectorAll(".shot").forEach(function (li) {
+            var img = li.querySelector("img");
+            var source = li.querySelector("source");
+            if (source) source.remove();
+            img.src = "assets/screenshots/" + li.dataset.shot + "-" + t + "-540.webp";
+          });
+        })();
+      </script>
+
+      <dialog class="shot-dialog" aria-labelledby="shot-dialog-title" data-shot-dialog>
+        <div class="shot-dialog-inner">
+          <header class="shot-dialog-head">
+            <p class="shot-dialog-count" data-shot-count></p>
+            <h2 id="shot-dialog-title" data-shot-title></h2>
+            <p data-shot-overview></p>
+            <button type="button" class="shot-close" data-shot-close aria-label="Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+          </header>
+          <div class="shot-dialog-body">
+            <figure class="shot-figure" data-shot-figure>
+              <img data-shot-image alt="" width="1080" height="1920" />
+            </figure>
+            <ol class="shot-notes" data-shot-notes></ol>
+          </div>
+          <nav class="shot-dialog-nav" aria-label="Other screens">
+            <button type="button" class="button button-outlined" data-shot-prev></button>
+            <button type="button" class="button button-outlined" data-shot-next></button>
+          </nav>
+        </div>
+      </dialog>
 
       <!-- Sources: distribution.md sections 2 and 4. -->
       <section class="section cover">

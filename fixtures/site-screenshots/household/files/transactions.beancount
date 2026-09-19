@@ -1,0 +1,73 @@
+2026-07-31 * "Opening balances"
+  Assets:Bank:Checking       3200.00 EUR
+  Assets:Cash                 150.00 EUR
+  Equity:Opening-Balances
+
+2026-08-01 * "Employer" "Salary for July"
+  Assets:Bank:Checking       2850.00 EUR
+  Income:Salary
+
+2026-08-01 * "Landlord" "Rent for August"
+  Expenses:Home:Rent          980.00 EUR
+  Assets:Bank:Checking
+
+2026-08-05 * "Corner grocer" "Weekly shop"
+  Expenses:Food:Groceries      64.20 EUR
+  Assets:Bank:Checking
+
+2026-08-09 * "City transit" "Monthly pass"
+  Expenses:Transport           49.00 EUR
+  Assets:Bank:Checking
+
+2026-08-12 * "Corner grocer" "Weekly shop"
+  Expenses:Food:Groceries      58.75 EUR
+  Assets:Cash
+
+2026-08-16 * "Harbour bistro" "Dinner with friends"
+  Expenses:Food:Restaurants    42.00 EUR
+  Liabilities:CreditCard
+
+2026-08-19 * "Market" "Fruit and vegetables"
+  Expenses:Food:Groceries      23.40 EUR
+  Assets:Cash
+
+2026-08-24 * "Power company" "Electricity, August"
+  Expenses:Home:Utilities      71.30 EUR
+  Assets:Bank:Checking
+
+2026-08-27 * "Cinema" "Two tickets"
+  Expenses:Leisure             24.00 EUR
+  Liabilities:CreditCard
+
+2026-09-01 * "Employer" "Salary for August"
+  Assets:Bank:Checking       2850.00 EUR
+  Income:Salary
+
+2026-09-01 * "Landlord" "Rent for September"
+  Expenses:Home:Rent          980.00 EUR
+  Assets:Bank:Checking
+
+2026-09-03 * "Bank" "Credit card payment"
+  Liabilities:CreditCard       66.00 EUR
+  Assets:Bank:Checking
+
+2026-09-06 * "City transit" "Monthly pass"
+  Expenses:Transport           49.00 EUR
+  Assets:Bank:Checking
+
+2026-09-09 * "Harbour bistro" "Lunch"
+  Expenses:Food:Restaurants    18.50 EUR
+  Liabilities:CreditCard
+
+2026-09-12 * "Corner grocer" "Weekly shop"
+  document: "2026-09-12.corner-grocer.pdf"
+  Expenses:Food:Groceries      71.85 EUR
+  Assets:Bank:Checking
+
+2026-09-15 ! "Bike shop" "Repair, invoice to come"
+  Expenses:Transport           35.00 EUR
+  Assets:Cash
+
+2026-09-17 * "Market" "Fruit and vegetables"
+  Expenses:Food:Groceries      19.60 EUR
+  Assets:Cash

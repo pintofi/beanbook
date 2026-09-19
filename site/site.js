@@ -32,6 +32,7 @@
     button.setAttribute("aria-label", `${described[mode]}. Activate to change.`);
     const text = button.querySelector("[data-theme-text]");
     if (text) text.textContent = described[mode];
+    document.dispatchEvent(new CustomEvent("sitetheme"));
   };
   applyTheme(mode);
 
@@ -42,6 +43,327 @@
       try { localStorage.setItem("beancount-site-theme", next); } catch (_) {}
     });
   }
+
+  /* ----------------------------------------------------------- screenshots */
+
+  // The screenshot gallery on the home page: real captures of the app, each in a light and a
+  // dark version of the same state. It opens in the page's own theme (the inline script after
+  // the gallery already set that before first paint), turns over once to show the other theme,
+  // and opens each screen in a dialog with notes. Everything here enhances plain links to
+  // full-size images, which is what a visitor without JavaScript gets.
+  (() => {
+    const list = document.querySelector("[data-shots]");
+    const dialog = document.querySelector("[data-shot-dialog]");
+    if (!list) return;
+
+    const items = [...list.querySelectorAll(".shot")];
+    const imgs = items.map((li) => li.querySelector("img"));
+    const links = items.map((li) => li.querySelector(".shot-open"));
+    const control = document.querySelector(".shots-theme");
+    const buttons = control ? [...control.querySelectorAll("[data-shots-theme]")] : [];
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+    const src = (key, t, size) => `assets/screenshots/${key}-${t}-${size}.webp`;
+    const siteTheme = () => root.dataset.theme || (darkScheme.matches ? "dark" : "light");
+
+    const WAIT = 4700;     // how long the first set is shown before it turns over
+    const STAGGER = 140;   // between one screenshot turning and the next
+    const SESSION = "beanbook-shots-turned";
+
+    let theme = list.dataset.theme || siteTheme();
+    let manual = false;
+    let flipping = false;
+    let done = false;
+    try { done = sessionStorage.getItem(SESSION) === "1"; } catch (_) { /* no storage: may run */ }
+
+    const reflect = () => {
+      list.dataset.theme = theme;
+      buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.shotsTheme === theme)));
+    };
+    const show = (t) => {
+      theme = t;
+      items.forEach((li, i) => { imgs[i].src = src(li.dataset.shot, t, 540); });
+      reflect();
+    };
+    if (control) control.hidden = false;
+    reflect();
+
+    /* -- the one turn-over ------------------------------------------------ */
+
+    let timer = 0;
+    let armed = false;
+    let observer = null;
+    const remember = () => { try { sessionStorage.setItem(SESSION, "1"); } catch (_) { /* fine */ } };
+    const cancel = () => {
+      if (done) return;
+      done = true;
+      armed = false;
+      clearTimeout(timer);
+      if (observer) observer.disconnect();
+      remember();
+    };
+
+    const turnOver = () => {
+      if (done || document.hidden || reduce.matches) return;
+      const next = theme === "light" ? "dark" : "light";
+      // The other set is decoded first, so no card turns to a blank face.
+      Promise.all(items.map((li) => {
+        const image = new Image();
+        image.src = src(li.dataset.shot, next, 540);
+        return image.decode();
+      })).then(() => {
+        if (done || document.hidden || reduce.matches) return;
+        done = true;
+        armed = false;
+        remember();
+        flipping = true;
+        theme = next;
+        items.forEach((li, i) => {
+          const card = li.querySelector(".shot-card");
+          window.setTimeout(() => {
+            card.addEventListener("animationend", () => {
+              // The face changes at the edge-on midpoint, never while it is visible.
+              imgs[i].src = src(li.dataset.shot, theme, 540);
+              card.classList.remove("is-turning-out");
+              card.classList.add("is-turning-in");
+              card.addEventListener("animationend", () => {
+                card.classList.remove("is-turning-in");
+                // The control changes with the last card, so it never names a set not yet shown.
+                if (i === items.length - 1) { flipping = false; reflect(); }
+              }, { once: true });
+            }, { once: true });
+            card.classList.add("is-turning-out");
+          }, i * STAGGER);
+        });
+      }, () => { /* the other set did not load: leave the gallery as it is */ });
+    };
+
+    const arm = () => {
+      armed = true;
+      clearTimeout(timer);
+      timer = window.setTimeout(turnOver, WAIT);
+    };
+
+    if (!done && !reduce.matches && "IntersectionObserver" in window) {
+      observer = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        observer = null;
+        // Only once the screenshots on show have actually loaded.
+        Promise.all(imgs.map((image) => image.decode())).then(arm, () => {});
+      }, { threshold: 0.35 });
+      observer.observe(list);
+      document.addEventListener("visibilitychange", () => {
+        if (!armed || done) return;
+        if (document.hidden) clearTimeout(timer);
+        else arm();
+      });
+    }
+
+    // Any attention paid to the gallery ends the surprise for the rest of the visit.
+    items.forEach((li) => {
+      li.addEventListener("pointerenter", (event) => { if (event.pointerType === "mouse") cancel(); });
+    });
+    list.addEventListener("focusin", cancel);
+    list.addEventListener("keydown", cancel);
+    reduce.addEventListener("change", () => { if (reduce.matches) cancel(); });
+
+    buttons.forEach((b) => {
+      b.addEventListener("click", () => {
+        cancel();
+        manual = true;
+        show(b.dataset.shotsTheme);
+      });
+    });
+
+    // Follow the page's theme when it changes, unless the visitor chose a set themselves.
+    const follow = () => { if (!manual && !flipping) show(siteTheme()); };
+    document.addEventListener("sitetheme", follow);
+    darkScheme.addEventListener("change", () => { if (!root.dataset.theme) follow(); });
+
+    /* -- the annotated dialog -------------------------------------------- */
+
+    if (!dialog || typeof dialog.showModal !== "function") return;
+
+    // x and y are where each note points, as percentages of the screenshot.
+    const NOTES = {
+      home: {
+        title: "Home",
+        overview: "The first screen: where the open ledger stands this month, and anything that needs attention.",
+        notes: [
+          { x: 46, y: 8, label: "Switch projects", text: "The ledger you are in, its number of entries and whether Beancount found errors. Tap to open another." },
+          { x: 20, y: 16, label: "Totals from your entries", text: "Net worth, income and expenses, worked out by Beancount and double-ruled like a closed column." },
+          { x: 20, y: 38, label: "Where the money went", text: "This month's spending by category, compared with the month before." },
+          { x: 90, y: 80, label: "Add an entry", text: "Opens the entry form from any main screen." },
+        ],
+      },
+      entry: {
+        title: "New entry",
+        overview: "Recording a transaction with a form. This one was copied from an earlier grocery shop.",
+        notes: [
+          { x: 63, y: 16, label: "Transactions and more", text: "Switch to other Beancount entries: balance checks, prices, notes, documents." },
+          { x: 14, y: 45, label: "Reuse the last entry", text: "Fills in the accounts used the last time for this payee." },
+          { x: 11, y: 63, label: "Tags, details and receipts", text: "Everything that belongs to the whole transaction, including a receipt to scan or attach." },
+          { x: 12, y: 79, label: "Postings", text: "Each posting is an account and an amount. The form says what does not balance before you save." },
+        ],
+      },
+      journal: {
+        title: "Journal",
+        overview: "Every entry in the ledger, newest first, with the accounts and amounts it moves.",
+        notes: [
+          { x: 15, y: 19, label: "Search", text: "Find entries by date, payee, description or account." },
+          { x: 15, y: 27, label: "Open an entry", text: "Tap to see an entry and copy, edit or delete it. Hold to select several." },
+          { x: 7, y: 44, label: "Cleared or pending", text: "Two equal rules mean cleared; a half-drawn rule marks an entry flagged for another look." },
+          { x: 50, y: 64, label: "Linked receipts", text: "An entry with a document says so, and its page opens the file." },
+        ],
+      },
+      reports: {
+        title: "Reports",
+        overview: "Fava, the web interface for Beancount, running on the phone and reading the same files.",
+        notes: [
+          { x: 12, y: 16, label: "Fava on your device", text: "The balance sheet, income statement, journal and queries people use with Beancount on a computer." },
+          { x: 25, y: 23, label: "Filters", text: "Narrow any report by time, account, tag or payee." },
+          { x: 70, y: 65, label: "Charts from your entries", text: "Income and expenses by month, drawn from the ledger itself." },
+        ],
+      },
+      documents: {
+        title: "Documents",
+        overview: "Receipts and statements in the project, each filed under an account or linked from an entry.",
+        notes: [
+          { x: 72, y: 17, label: "Add and organize", text: "Scan or attach on Add; Organize lists every document in the project." },
+          { x: 10, y: 33, label: "Filed where it belongs", text: "Each document with the account it is filed under." },
+          { x: 10, y: 39.5, label: "Actions on the file", text: "View it, share it, move it to another account, unlink it, or delete the file." },
+        ],
+      },
+    };
+
+    const title = dialog.querySelector("[data-shot-title]");
+    const overview = dialog.querySelector("[data-shot-overview]");
+    const count = dialog.querySelector("[data-shot-count]");
+    const figure = dialog.querySelector("[data-shot-figure]");
+    const bigImage = dialog.querySelector("[data-shot-image]");
+    const notesList = dialog.querySelector("[data-shot-notes]");
+    const prev = dialog.querySelector("[data-shot-prev]");
+    const next = dialog.querySelector("[data-shot-next]");
+    const wide = window.matchMedia("(min-width: 56rem)");
+    let current = 0;
+    let opener = null;
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    let leaders = null;
+
+    // On a wide screen each note sits beside the screenshot at the height it points to, joined
+    // by a thin rule; notes that would collide are nudged apart. On a narrow one the notes are
+    // an ordered list under the image and only the numbered markers remain on it.
+    const layout = () => {
+      const notes = [...notesList.children];
+      if (leaders) { leaders.remove(); leaders = null; }
+      notes.forEach((li) => { li.style.top = ""; });
+      if (!wide.matches || !bigImage.complete) return;
+      const body = figure.parentElement;
+      const box = body.getBoundingClientRect();
+      const img = bigImage.getBoundingClientRect();
+      const listBox = notesList.getBoundingClientRect();
+      let floor = 0;
+      const placed = notes.map((li) => {
+        const y = img.top - listBox.top + (Number(li.dataset.y) / 100) * img.height;
+        const top = Math.max(y - 14, floor);
+        li.style.top = `${top}px`;
+        floor = top + li.offsetHeight + 12;
+        return { li, y };
+      });
+      leaders = document.createElementNS(svgNS, "svg");
+      leaders.setAttribute("class", "shot-leaders");
+      leaders.setAttribute("aria-hidden", "true");
+      leaders.setAttribute("width", box.width);
+      leaders.setAttribute("height", box.height);
+      placed.forEach(({ li, y }) => {
+        const my = listBox.top - box.top + y;
+        const ex = img.right - box.left + 8;
+        const lx = listBox.left - box.left - 6;
+        const ly = listBox.top - box.top + li.offsetTop + 14;
+        const line = document.createElementNS(svgNS, "polyline");
+        // From the screenshot's edge, not across it: a line over the screen would hide it.
+        line.setAttribute("points", `${ex},${my} ${ex + 14},${my} ${lx},${ly}`);
+        leaders.appendChild(line);
+      });
+      body.appendChild(leaders);
+    };
+
+    const fill = (i) => {
+      current = i;
+      const key = items[i].dataset.shot;
+      const data = NOTES[key];
+      title.textContent = data.title;
+      overview.textContent = data.overview;
+      count.textContent = `Screen ${i + 1} of ${items.length}, ${theme} theme`;
+      bigImage.alt = imgs[i].alt;
+      bigImage.src = src(key, theme, 1080);
+      figure.querySelectorAll(".shot-marker").forEach((m) => m.remove());
+      notesList.replaceChildren();
+      data.notes.forEach((note, n) => {
+        const marker = document.createElement("span");
+        marker.className = "shot-marker";
+        marker.setAttribute("aria-hidden", "true");
+        const badge = document.createElement("span");
+        badge.textContent = String(n + 1);
+        marker.appendChild(badge);
+        marker.style.left = `${note.x}%`;
+        marker.style.top = `${note.y}%`;
+        figure.appendChild(marker);
+        const li = document.createElement("li");
+        li.dataset.x = note.x;
+        li.dataset.y = note.y;
+        const label = document.createElement("strong");
+        label.textContent = note.label;
+        const text = document.createElement("span");
+        text.textContent = note.text;
+        li.append(label, text);
+        notesList.appendChild(li);
+      });
+      const before = items[i - 1] && NOTES[items[i - 1].dataset.shot];
+      const after = items[i + 1] && NOTES[items[i + 1].dataset.shot];
+      prev.disabled = !before;
+      next.disabled = !after;
+      prev.textContent = before ? `Previous: ${before.title}` : "Previous";
+      next.textContent = after ? `Next: ${after.title}` : "Next";
+      if (bigImage.complete) layout();
+      else bigImage.addEventListener("load", layout, { once: true });
+    };
+
+    const open = (i) => {
+      cancel();
+      opener = links[i];
+      fill(i);
+      root.classList.add("dialog-open");
+      dialog.showModal();
+      dialog.querySelector("[data-shot-close]").focus();
+    };
+
+    links.forEach((link, i) => {
+      link.addEventListener("click", (event) => { event.preventDefault(); open(i); });
+      // A link opens with Enter; Space should too, as for any control that opens something.
+      link.addEventListener("keydown", (event) => {
+        if (event.key === " ") { event.preventDefault(); open(i); }
+      });
+    });
+    prev.addEventListener("click", () => { if (current > 0) { fill(current - 1); opener = links[current]; } });
+    next.addEventListener("click", () => { if (current < items.length - 1) { fill(current + 1); opener = links[current]; } });
+    dialog.querySelector("[data-shot-close]").addEventListener("click", () => dialog.close());
+    // A click on the dim surround, outside the panel, closes it too.
+    dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowRight" && !next.disabled) next.click();
+      if (event.key === "ArrowLeft" && !prev.disabled) prev.click();
+    });
+    dialog.addEventListener("close", () => {
+      root.classList.remove("dialog-open");
+      if (leaders) { leaders.remove(); leaders = null; }
+      if (opener) opener.focus();
+    });
+    window.addEventListener("resize", () => { if (dialog.open) layout(); });
+    wide.addEventListener("change", () => { if (dialog.open) layout(); });
+  })();
 
   /* ---------------------------------------------------------------- motion */
 

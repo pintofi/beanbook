@@ -641,43 +641,134 @@ h2 {
 .reel-col { display: flex; flex-direction: column; }
 .reel-col > span { display: block; height: .9em; line-height: .9; }
 
-/* ---------------------------------------------------------------- screenshot frames */
+/* ---------------------------------------------------------------- screenshots */
 
-.frames { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.5rem; margin: 0; padding: 0; list-style: none; }
-.frame {
-  position: relative;
-  aspect-ratio: 9 / 16;
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 1rem;
-  border: 2px dashed var(--hair);
-  border-radius: 22px;
-  background: repeating-linear-gradient(-45deg, transparent 0 12px, var(--rule-soft) 12px 13px);
+/* Real captures of the app. Portrait screens stepped down the page like entries in a column,
+   each on a sheet with the photo-album corners the page used for its placeholders. */
+.shots-header { max-width: none; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem 2rem; }
+.shots-header > h2, .shots-header > p { flex: 1 1 100%; max-width: 46rem; }
+.shots-theme {
+  display: inline-flex; align-items: center; gap: .25rem;
+  padding: .25rem; border: 2px solid var(--ink); border-radius: 999px; background: var(--sheet);
 }
-.frame::before, .frame::after {
-  /* photo-album corners */
-  content: "";
-  position: absolute;
-  width: 1.6rem; height: 1.6rem;
-  border: 4px solid var(--rule);
+.shots-theme[hidden] { display: none; }
+.shots-theme-label { padding: 0 .5rem 0 .6rem; color: var(--ink-2); font-size: .95rem; }
+.shots-theme button {
+  min-height: 44px; min-width: 4.5rem; padding: 0 1rem;
+  border: 0; border-radius: 999px; background: transparent; color: var(--ink);
+  font: inherit; font-weight: 700; cursor: pointer;
 }
-.frame::before { top: -6px; left: -6px; border-right: 0; border-bottom: 0; border-radius: 14px 0 0 0; }
-.frame::after { bottom: -6px; right: -6px; border-left: 0; border-top: 0; border-radius: 0 0 14px 0; }
-.frame strong { font-family: var(--display); font-weight: 800; font-stretch: 112%; font-size: 1.3rem; line-height: 1.1; }
-.frame span { color: var(--ink-2); font-size: .95rem; }
-.pending-tag {
-  display: inline-block;
-  margin-bottom: 1rem;
-  padding: .25rem .7rem;
-  border: 2px solid var(--pending);
-  border-radius: 999px;
-  color: var(--pending);
-  font-weight: 700;
-  font-size: .9rem;
-  transform: rotate(-3deg);
+.shots-theme button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.shots-theme button:focus-visible { border-radius: 999px; }
+
+.shots {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(1rem, 2vw, 1.75rem);
+  margin: 0; padding: 0 0 3rem; list-style: none; align-items: start;
 }
+.shot { margin-top: calc(var(--i) * 1.4rem); perspective: 1400px; }
+.shot-open { display: block; color: inherit; text-decoration: none; border-radius: 18px; }
+.shot-open:hover { text-decoration: none; }
+.shot-card {
+  position: relative; display: block;
+  padding: 6px; border: 1px solid var(--hair); border-radius: 18px;
+  background: var(--sheet);
+  box-shadow: 8px 8px 0 var(--rule-soft);
+  transform-style: preserve-3d;
+  transition: transform .25s var(--ease-out), box-shadow .25s var(--ease-out);
+}
+.shot-card::before, .shot-card::after {
+  content: ""; position: absolute; width: 1.5rem; height: 1.5rem; border: 4px solid var(--rule); pointer-events: none;
+}
+.shot-card::before { top: -7px; left: -7px; border-right: 0; border-bottom: 0; border-radius: 12px 0 0 0; }
+.shot-card::after { bottom: -7px; right: -7px; border-left: 0; border-top: 0; border-radius: 0 0 12px 0; }
+.shot-card img {
+  display: block; width: 100%; height: auto; aspect-ratio: 9 / 16;
+  border-radius: 12px; background: var(--paper); backface-visibility: hidden;
+}
+.shot-text { display: grid; gap: .2rem; padding: 1rem .25rem 0; }
+.shot-text strong { font-family: var(--display); font-weight: 800; font-stretch: 112%; font-size: 1.2rem; line-height: 1.15; }
+.shot-text > span:not(.shot-cue) { color: var(--ink-2); font-size: .95rem; line-height: 1.4; }
+.shot-cue {
+  display: inline-flex; align-items: center; gap: .35rem; margin-top: .35rem;
+  color: var(--rule); font-weight: 700; font-size: .9rem;
+}
+html:not(.js) .shot-cue { display: none; }
+.shot-cue::before { content: "+"; display: inline-grid; place-items: center; width: 1.2rem; height: 1.2rem; border: 2px solid currentColor; border-radius: 50%; font-size: .85rem; line-height: 1; }
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .shot-open:hover .shot-card { transform: translateY(-5px); box-shadow: 11px 13px 0 var(--shadow); }
+  .shot-open:hover .shot-cue { text-decoration: underline; text-underline-offset: 3px; }
+}
+.shot-open:focus-visible { outline: none; }
+.shot-open:focus-visible .shot-card { outline: 3px solid var(--rule); outline-offset: 5px; }
+
+/* The one turn-over: out to edge-on, the face changes, back in. Transform and opacity only. */
+.shot-card.is-turning-out { animation: shot-out .18s cubic-bezier(.4, 0, 1, 1) both; }
+.shot-card.is-turning-in { animation: shot-in .22s cubic-bezier(0, 0, .2, 1) both; }
+@keyframes shot-out { from { transform: rotateY(0); } to { transform: rotateY(90deg); } }
+@keyframes shot-in { from { transform: rotateY(-90deg); } to { transform: rotateY(0); } }
+
+/* ---------------------------------------------------------------- screenshot dialog */
+
+.dialog-open, .dialog-open body { overflow: hidden; }
+.shot-dialog {
+  width: min(64rem, calc(100vw - 2rem)); max-width: none; max-height: calc(100dvh - 2rem);
+  margin: auto; padding: 0; border: 0; border-top: 8px solid var(--rule); border-radius: 6px;
+  background: var(--sheet); color: var(--ink);
+  box-shadow: 14px 14px 0 rgba(0, 0, 0, .35);
+}
+.shot-dialog::backdrop { background: rgba(10, 18, 17, .78); }
+.shot-dialog-inner { display: grid; gap: 1.25rem; padding: clamp(1rem, 3vw, 2rem); }
+.shot-dialog-head { position: relative; padding-right: 3.5rem; }
+.shot-dialog-head h2 { margin: .1rem 0 .4rem; font-family: var(--display); font-weight: 800; font-stretch: 112%; font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.1; }
+.shot-dialog-head p { margin: 0; color: var(--ink-2); max-width: 44rem; }
+.shot-dialog-count { font-family: var(--mono); font-size: .85rem; }
+.shot-close {
+  position: absolute; top: 0; right: 0; display: grid; place-items: center;
+  width: 44px; height: 44px; border: 2px solid var(--ink); border-radius: 50%;
+  background: var(--sheet); color: var(--ink); cursor: pointer;
+}
+.shot-close svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2.5; fill: none; stroke-linecap: round; }
+.shot-close:focus-visible { border-radius: 50%; }
+
+.shot-dialog-body { position: relative; display: grid; grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); gap: 4rem; align-items: start; }
+.shot-figure { position: relative; margin: 0; padding: 8px; border-radius: 16px; background: var(--paper); border: 1px solid var(--hair); }
+.shot-figure img { display: block; width: 100%; height: auto; aspect-ratio: 9 / 16; border-radius: 10px; max-height: calc(100dvh - 16rem); object-fit: contain; }
+.shot-marker {
+  /* A ring around what the note is about, so the screen under it stays readable; the
+     number sits on the ring's edge. */
+  position: absolute; z-index: 1;
+  width: 2rem; height: 2rem; margin: -1rem 0 0 -1rem;
+  border: 2px solid var(--pending); border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .55);
+}
+.shot-marker span {
+  position: absolute; top: -.65rem; right: -.65rem; display: grid; place-items: center;
+  width: 1.15rem; height: 1.15rem; border-radius: 50%;
+  background: var(--pending); color: #fff; font: 700 .68rem/1 var(--mono);
+}
+.shot-notes { position: relative; margin: 0; padding: 0; list-style: none; counter-reset: note; display: grid; gap: 1rem; }
+.shot-notes li { counter-increment: note; display: grid; grid-template-columns: 1.6rem 1fr; column-gap: .75rem; row-gap: .15rem; }
+.shot-notes li::before {
+  content: counter(note); grid-row: span 2; display: grid; place-items: center;
+  width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--pending); color: #fff; font: 700 .8rem/1 var(--mono);
+}
+.shot-notes strong { font-weight: 700; }
+.shot-notes span { color: var(--ink-2); line-height: 1.45; }
+.shot-leaders { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.shot-leaders polyline { fill: none; stroke: var(--pending); stroke-width: 1.5; }
+
+@media (min-width: 56rem) {
+  /* Beside the screenshot, each note at the height of what it points to. */
+  .shot-notes { display: block; align-self: stretch; }
+  .shot-notes li { position: absolute; left: 0; right: 0; }
+}
+@media (max-width: 55.99rem) {
+  .shot-dialog-body { grid-template-columns: 1fr; gap: 1.5rem; }
+  .shot-figure { width: min(20rem, 100%); justify-self: center; }
+}
+.shot-dialog-nav { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.shot-dialog-nav button:disabled { opacity: .45; cursor: default; transform: none; box-shadow: none; }
 
 /* ---------------------------------------------------------------- report tree */
 
@@ -907,11 +998,21 @@ tbody tr:last-child > * { border-bottom: 0; }
   .versions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .versions div:nth-child(4) { border-left: 0; padding-left: 0; }
   .versions div:nth-child(n+4) { border-top: 1px solid var(--hair); }
-  .frames { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shots { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .shot { margin-top: 0; }
+  .shot:nth-child(3n + 2) { margin-top: 1.4rem; }
+  .shot:nth-child(3n) { margin-top: 2.8rem; }
   .tiles-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 48rem) {
+  /* One row to swipe through, each screen large enough to read. */
+  .shots {
+    grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: min(68vw, 17rem);
+    overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory;
+    padding: 12px 12px 1.5rem; margin: 0 -12px;
+  }
+  .shot, .shot:nth-child(3n + 2), .shot:nth-child(3n) { margin-top: 0; scroll-snap-align: start; }
   .site-header { position: static; }
   body { font-size: 1rem; }
   .nav-link { padding: .45rem .55rem; font-size: .92rem; }
@@ -939,9 +1040,6 @@ tbody tr:last-child > * { border-bottom: 0; }
   .versions div:nth-child(4) { border-left: 1px solid var(--hair); padding-left: .75rem; }
   .versions div:nth-child(odd) { border-left: 0; padding-left: 0; }
   .versions div:nth-child(n+3) { border-top: 1px solid var(--hair); }
-  .frames { gap: 1rem; }
-  .frame { padding: .75rem; border-radius: 16px; }
-  .frame strong { font-size: 1.1rem; }
   .actions { flex-direction: column; align-items: stretch; }
   .button { width: 100%; }
   .slip-head span:last-child { display: none; }
@@ -952,6 +1050,7 @@ tbody tr:last-child > * { border-bottom: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .shot-card { transition: none; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

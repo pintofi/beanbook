@@ -1,0 +1,11 @@
+; Household -- an invented ledger for the website's screenshots.
+; Every name and amount here is made up. See ../README.md.
+
+option "title" "Household"
+option "operating_currency" "EUR"
+option "documents" "documents"
+
+include "files/commodities.beancount"
+include "files/accounts.beancount"
+include "files/transactions.beancount"
+include "files/documents.beancount"

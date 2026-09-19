@@ -1,0 +1,13 @@
+; Accounts must be opened before they are used.
+
+2026-01-01 open Assets:Bank:Checking        EUR
+2026-01-01 open Assets:Cash                 EUR
+2026-01-01 open Liabilities:CreditCard      EUR
+2026-01-01 open Income:Salary               EUR
+2026-01-01 open Expenses:Food:Groceries     EUR
+2026-01-01 open Expenses:Food:Restaurants   EUR
+2026-01-01 open Expenses:Home:Rent          EUR
+2026-01-01 open Expenses:Home:Utilities     EUR
+2026-01-01 open Expenses:Transport          EUR
+2026-01-01 open Expenses:Leisure            EUR
+2026-01-01 open Equity:Opening-Balances     EUR
