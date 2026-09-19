@@ -149,7 +149,9 @@
         if (!entries.some((entry) => entry.isIntersecting)) return;
         observer.disconnect();
         observer = null;
-        // Only once the screenshots on show have actually loaded.
+        // Lazy images outside the viewport (the swipeable row on a phone) never load on their
+        // own, and waiting for them held the turn-over back forever. Load them all now.
+        imgs.forEach((image) => { image.loading = "eager"; });
         Promise.all(imgs.map((image) => image.decode())).then(arm, () => {});
       }, { threshold: 0.35 });
       observer.observe(list);
@@ -161,8 +163,12 @@
     }
 
     // Any attention paid to the gallery ends the surprise for the rest of the visit.
+    // A real hover, not a screenshot scrolling under a cursor that has not moved: scrolling
+    // past the gallery with the mouse resting on the page used to cancel it every time.
     items.forEach((li) => {
-      li.addEventListener("pointerenter", (event) => { if (event.pointerType === "mouse") cancel(); });
+      li.addEventListener("pointermove", (event) => {
+        if (event.pointerType === "mouse" && (event.movementX || event.movementY)) cancel();
+      });
     });
     list.addEventListener("focusin", cancel);
     list.addEventListener("keydown", cancel);
@@ -191,48 +197,49 @@
         title: "Home",
         overview: "The first screen: where the open ledger stands this month, and anything that needs attention.",
         notes: [
-          { x: 46, y: 8, label: "Switch projects", text: "The ledger you are in, its number of entries and whether Beancount found errors. Tap to open another." },
-          { x: 20, y: 16, label: "Totals from your entries", text: "Net worth, income and expenses, worked out by Beancount and double-ruled like a closed column." },
-          { x: 20, y: 38, label: "Where the money went", text: "This month's spending by category, compared with the month before." },
-          { x: 90, y: 80, label: "Add an entry", text: "Opens the entry form from any main screen." },
+          { x: 51.3, y: 7.66, label: "Switch projects", text: "The ledger you are in, its number of entries and whether Beancount found errors. Tap to open another." },
+          { x: 63.8, y: 16.41, label: "Totals from your entries", text: "Net worth, income and expenses, worked out by Beancount and double-ruled like a closed column." },
+          { x: 46.3, y: 38.33, via: 35.42, label: "Where the money went", text: "This month's spending by category, compared with the month before." },
+          { x: 92.22, y: 79.58, label: "Add an entry", text: "Opens the entry form from any main screen." },
         ],
       },
       entry: {
         title: "New entry",
         overview: "Recording a transaction with a form. This one was copied from an earlier grocery shop.",
         notes: [
-          { x: 63, y: 16, label: "Transactions and more", text: "Switch to other Beancount entries: balance checks, prices, notes, documents." },
-          { x: 14, y: 45, label: "Reuse the last entry", text: "Fills in the accounts used the last time for this payee." },
-          { x: 11, y: 63, label: "Tags, details and receipts", text: "Everything that belongs to the whole transaction, including a receipt to scan or attach." },
-          { x: 12, y: 79, label: "Postings", text: "Each posting is an account and an amount. The form says what does not balance before you save." },
+          { x: 85.83, y: 15.89, label: "Transactions and more", text: "Switch to other Beancount entries: balance checks, prices, notes, documents." },
+          { x: 39.35, y: 44.22, label: "Reuse the last entry", text: "Fills in the accounts used the last time for this payee." },
+          { x: 87.31, y: 61.93, label: "Tags, details and receipts", text: "Everything that belongs to the whole transaction, including a receipt to scan or attach." },
+          { x: 92.59, y: 81.98, label: "Postings", text: "Each posting is an account and an amount. The form says what does not balance before you save." },
         ],
       },
       journal: {
         title: "Journal",
         overview: "Every entry in the ledger, newest first, with the accounts and amounts it moves.",
         notes: [
-          { x: 15, y: 19, label: "Search", text: "Find entries by date, payee, description or account." },
-          { x: 15, y: 27, label: "Open an entry", text: "Tap to see an entry and copy, edit or delete it. Hold to select several." },
-          { x: 7, y: 44, label: "Cleared or pending", text: "Two equal rules mean cleared; a half-drawn rule marks an entry flagged for another look." },
-          { x: 50, y: 64, label: "Linked receipts", text: "An entry with a document says so, and its page opens the file." },
+          { x: 91.67, y: 17.6, label: "Search", text: "Find entries by date, payee, description or account." },
+          { x: 62.96, y: 25.52, label: "Open an entry", text: "Tap to see an entry and copy, edit or delete it. Hold to select several." },
+          { x: 9.26, y: 43.59, via: 40.21, label: "Cleared or pending", text: "Two equal rules mean cleared; a half-drawn rule marks an entry flagged for another look." },
+          { x: 55.46, y: 63.02, label: "Linked receipts", text: "An entry with a document says so, and its page opens the file." },
         ],
       },
       reports: {
         title: "Reports",
         overview: "Fava, the web interface for Beancount, running on the phone and reading the same files.",
         notes: [
-          { x: 12, y: 16, label: "Fava on your device", text: "The balance sheet, income statement, journal and queries people use with Beancount on a computer." },
-          { x: 25, y: 23, label: "Filters", text: "Narrow any report by time, account, tag or payee." },
-          { x: 70, y: 65, label: "Charts from your entries", text: "Income and expenses by month, drawn from the ledger itself." },
+          { x: 80.56, y: 15.62, label: "Fava on your device", text: "The balance sheet, income statement, journal and queries people use with Beancount on a computer." },
+          { x: 69.44, y: 22.08, label: "Filters", text: "Narrow any report by time, account, tag or payee." },
+          { x: 96.3, y: 37.19, label: "Chart options", text: "Stacked or single bars, at cost or at market value, by month or by year." },
+          { x: 70.37, y: 51.56, label: "Charts from your entries", text: "Income and expenses by month, drawn from the ledger itself." },
         ],
       },
       documents: {
         title: "Documents",
         overview: "Receipts and statements in the project, each filed under an account or linked from an entry.",
         notes: [
-          { x: 72, y: 17, label: "Add and organize", text: "Scan or attach on Add; Organize lists every document in the project." },
-          { x: 10, y: 33, label: "Filed where it belongs", text: "Each document with the account it is filed under." },
-          { x: 10, y: 39.5, label: "Actions on the file", text: "View it, share it, move it to another account, unlink it, or delete the file." },
+          { x: 79.26, y: 16.93, label: "Add and organize", text: "Scan or attach on Add; Organize lists every document in the project." },
+          { x: 57.13, y: 32.92, label: "Filed where it belongs", text: "Each document with the account it is filed under." },
+          { x: 91.85, y: 37.81, label: "Actions on the file", text: "View it, share it, move it to another account, unlink it, or delete the file." },
         ],
       },
     };
@@ -266,7 +273,7 @@
       const listBox = notesList.getBoundingClientRect();
       let floor = 0;
       const placed = notes.map((li) => {
-        const y = img.top - listBox.top + (Number(li.dataset.y) / 100) * img.height;
+        const y = img.top - listBox.top + (Number(li.dataset.via) / 100) * img.height;
         const top = Math.max(y - 14, floor);
         li.style.top = `${top}px`;
         floor = top + li.offsetHeight + 12;
@@ -278,14 +285,21 @@
       leaders.setAttribute("width", box.width);
       leaders.setAttribute("height", box.height);
       placed.forEach(({ li, y }) => {
-        const my = listBox.top - box.top + y;
+        const mx = img.left - box.left + (Number(li.dataset.x) / 100) * img.width;
+        const my = img.top - box.top + (Number(li.dataset.y) / 100) * img.height;
         const ex = img.right - box.left + 8;
         const lx = listBox.left - box.left - 6;
         const ly = listBox.top - box.top + li.offsetTop + 14;
         const line = document.createElementNS(svgNS, "polyline");
-        // From the screenshot's edge, not across it: a line over the screen would hide it.
-        line.setAttribute("points", `${ex},${my} ${ex + 14},${my} ${lx},${ly}`);
-        leaders.appendChild(line);
+        // From the component itself, out past the screenshot's edge, to its note. A thin line
+        // hides nothing on the screen; it is drawn twice so it reads on light and dark screens.
+        const vy = listBox.top - box.top + y;
+        const points = `${mx},${my} ${mx},${vy} ${ex},${vy} ${ex + 14},${vy} ${lx},${ly}`;
+        const halo = document.createElementNS(svgNS, "polyline");
+        halo.setAttribute("class", "halo");
+        halo.setAttribute("points", points);
+        line.setAttribute("points", points);
+        leaders.append(halo, line);
       });
       body.appendChild(leaders);
     };
@@ -314,6 +328,9 @@
         const li = document.createElement("li");
         li.dataset.x = note.x;
         li.dataset.y = note.y;
+        // Where the line leaves the component, when going straight across would strike through
+        // text: first to the blank gap at this height, then out to the edge.
+        li.dataset.via = note.via ?? note.y;
         const label = document.createElement("strong");
         label.textContent = note.label;
         const text = document.createElement("span");
