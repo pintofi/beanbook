@@ -742,6 +742,9 @@ html:not(.js) .shot-cue { display: none; }
   box-shadow: 0 0 0 2px rgba(255, 255, 255, .85);
 }
 .shot-marker span { display: none; }
+/* Beside the screenshot the line alone points at the component; the dot is only for a narrow
+   screen, where there are no lines. */
+@media (min-width: 56rem) { .shot-marker { display: none; } }
 .shot-notes { position: relative; margin: 0; padding: 0; list-style: none; counter-reset: note; display: grid; gap: 1rem; }
 .shot-notes li { counter-increment: note; display: grid; grid-template-columns: 1.6rem 1fr; column-gap: .75rem; row-gap: .15rem; }
 .shot-notes li::before {

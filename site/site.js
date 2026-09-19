@@ -71,7 +71,6 @@
     const SESSION = "beanbook-shots-turned";
 
     let theme = list.dataset.theme || siteTheme();
-    let manual = false;
     let flipping = false;
     let done = false;
     try { done = sessionStorage.getItem(SESSION) === "1"; } catch (_) { /* no storage: may run */ }
@@ -103,39 +102,54 @@
       remember();
     };
 
-    const turnOver = () => {
-      if (done || document.hidden || reduce.matches) return;
-      const next = theme === "light" ? "dark" : "light";
+    // Turns every card over to [next], one after another: out to edge-on, the face changes,
+    // back in. The same motion answers the automatic first reveal, the gallery's own switch and
+    // the site's theme button. A newer turn takes over from one still under way.
+    let generation = 0;
+    const turnTo = (next, { quietControl = false } = {}) => {
+      if (next === theme && !flipping) { reflect(); return; }
+      const mine = ++generation;
+      theme = next;
+      if (!quietControl) reflect();
+      if (reduce.matches) { show(next); return; }
       // The other set is decoded first, so no card turns to a blank face.
       Promise.all(items.map((li) => {
         const image = new Image();
         image.src = src(li.dataset.shot, next, 540);
         return image.decode();
       })).then(() => {
-        if (done || document.hidden || reduce.matches) return;
-        done = true;
-        armed = false;
-        remember();
+        if (mine !== generation) return;
         flipping = true;
-        theme = next;
         items.forEach((li, i) => {
           const card = li.querySelector(".shot-card");
           window.setTimeout(() => {
+            if (mine !== generation) return;
+            card.classList.remove("is-turning-out", "is-turning-in");
             card.addEventListener("animationend", () => {
-              // The face changes at the edge-on midpoint, never while it is visible.
+              // The face changes at the edge-on midpoint, never while it is visible, and to the
+              // latest set asked for.
               imgs[i].src = src(li.dataset.shot, theme, 540);
               card.classList.remove("is-turning-out");
               card.classList.add("is-turning-in");
               card.addEventListener("animationend", () => {
                 card.classList.remove("is-turning-in");
-                // The control changes with the last card, so it never names a set not yet shown.
-                if (i === items.length - 1) { flipping = false; reflect(); }
+                if (i === items.length - 1 && mine === generation) { flipping = false; reflect(); }
               }, { once: true });
             }, { once: true });
             card.classList.add("is-turning-out");
           }, i * STAGGER);
         });
-      }, () => { /* the other set did not load: leave the gallery as it is */ });
+      }, () => show(next));
+    };
+
+    // The one automatic turn-over, the first time the gallery is seen.
+    const turnOver = () => {
+      if (done || document.hidden || reduce.matches) return;
+      done = true;
+      armed = false;
+      remember();
+      // The control changes with the last card, so it never names a set not yet shown.
+      turnTo(theme === "light" ? "dark" : "light", { quietControl: true });
     };
 
     const arm = () => {
@@ -177,13 +191,13 @@
     buttons.forEach((b) => {
       b.addEventListener("click", () => {
         cancel();
-        manual = true;
-        show(b.dataset.shotsTheme);
+        turnTo(b.dataset.shotsTheme);
       });
     });
 
-    // Follow the page's theme when it changes, unless the visitor chose a set themselves.
-    const follow = () => { if (!manual && !flipping) show(siteTheme()); };
+    // The site's theme button sets the screenshots too: a light page shows light screens and a
+    // dark one dark. The gallery's own switch can still show the other set afterwards.
+    const follow = () => { cancel(); turnTo(siteTheme()); };
     document.addEventListener("sitetheme", follow);
     darkScheme.addEventListener("change", () => { if (!root.dataset.theme) follow(); });
 
