@@ -110,6 +110,14 @@ fun AboutSection(onOpenLicences: () -> Unit, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
             )
+            // Said plainly rather than left to the licence text (GPL-2.0, sections 11-12).
+            Text(
+                "Beanbook comes with no warranty, as its GPL-2.0 licence states. Keep backups " +
+                    "of your ledger.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
         }
 
         Row(
