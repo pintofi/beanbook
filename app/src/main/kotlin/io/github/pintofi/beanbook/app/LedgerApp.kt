@@ -422,9 +422,27 @@ internal fun LedgerApp(
     // the Add surface, which this composable owns; cleared once the form has taken it.
     var pendingClone by remember { mutableStateOf<TransactionDraft?>(null) }
 
-    // null means "show the list of sections". Hoisted out of the More branch so the app bar
-    // can send the user straight to Projects.
-    var moreSection by remember { mutableStateOf<MoreSection?>(null) }
+    // Where the user stands inside More: empty is the list of sections, and each further
+    // entry is a section opened from the one before it -- About, then Licences from About.
+    // A stack rather than one section, so Back goes up one page instead of all the way out,
+    // and so tapping the More tab can put the user back at its list.
+    var moreStack by remember { mutableStateOf<List<MoreSection>>(emptyList()) }
+    val moreSection = moreStack.lastOrNull()
+    // Opening the section already open would stack it twice; `null` closes the top one.
+    fun openSection(section: MoreSection?) {
+        moreStack = when {
+            section == null -> moreStack.dropLast(1)
+            moreStack.lastOrNull() == section -> moreStack
+            else -> moreStack + section
+        }
+    }
+    // A destination tap goes to that destination's own root. Leaving More and coming back to
+    // a section opened minutes ago is not where anybody means to arrive (B92).
+    fun goTo(surface: Surface) {
+        adding = false
+        moreStack = emptyList()
+        selected = surface
+    }
 
     // Back walks out the way the user came in, rather than leaving the app from wherever
     // they happen to be standing (B8). One handler over one stack: this was four handlers
@@ -438,7 +456,7 @@ internal fun LedgerApp(
     val stack = Backstack(
         tab = selected,
         overlays = buildList {
-            moreSection?.let { add(Overlay.Section(it)) }
+            moreStack.forEach { add(Overlay.Section(it)) }
             if (adding) add(Overlay.AddEntry)
         },
     )
@@ -446,7 +464,7 @@ internal fun LedgerApp(
         leavingAdd {
             stack.back()?.let { previous ->
                 adding = previous.isAdding
-                moreSection = previous.openSection
+                moreStack = previous.overlays.filterIsInstance<Overlay.Section>().map { it.section }
                 selected = previous.tab
             }
         }
@@ -544,10 +562,10 @@ internal fun LedgerApp(
                 sectionTitle = if (selected == Surface.MORE) moreSection?.label else null,
                 adding = adding,
                 editing = adding && editSession != null,
-                onBack = { if (adding) leavingAdd { adding = false } else moreSection = null },
+                onBack = { if (adding) leavingAdd { adding = false } else openSection(null) },
                 onSwitchProject = {
-                    selected = Surface.MORE
-                    moreSection = MoreSection.PROJECTS
+                    goTo(Surface.MORE)
+                    openSection(MoreSection.PROJECTS)
                 },
             )
         },
@@ -592,7 +610,7 @@ internal fun LedgerApp(
                     Surface.entries.forEach { surface ->
                         Tab(
                             selected = !adding && selected == surface,
-                            onClick = { leavingAdd { adding = false; selected = surface } },
+                            onClick = { leavingAdd { goTo(surface) } },
                             text = { Text(surface.label, softWrap = false) },
                             modifier = Modifier.semantics { contentDescription = surface.label },
                         )
@@ -617,7 +635,7 @@ internal fun LedgerApp(
                             val chosen = !adding && selected == surface
                             NavigationBarItem(
                                 selected = chosen,
-                                onClick = { leavingAdd { adding = false; selected = surface } },
+                                onClick = { leavingAdd { goTo(surface) } },
                                 label = { Text(surface.label) },
                                 icon = { DestinationMark(surface.icon, chosen) },
                                 colors = NavigationBarItemDefaults.colors(
@@ -656,6 +674,16 @@ internal fun LedgerApp(
             // back into it. The pair being animated between is what decides that, so an
             // interrupted transition is still going the right way.
             val reportsPage = androidx.compose.runtime.remember { io.github.pintofi.beanbook.app.web.RetainedWebView() }
+            // Reports draws the same ledger as the screens around it, so a file changed on
+            // disk redraws the page too rather than leaving two answers on one device (B92).
+            val application = androidx.compose.ui.platform.LocalContext.current.applicationContext
+            (application as? BeancountApplication)?.let { owner ->
+                androidx.compose.runtime.LaunchedEffect(owner) {
+                    owner.ledgerChangedOnDisk.collect { change ->
+                        if (change > 0L) reportsPage.reload()
+                    }
+                }
+            }
             androidx.compose.runtime.CompositionLocalProvider(
                 io.github.pintofi.beanbook.app.web.LocalReportsPage provides reportsPage,
             ) {
@@ -675,8 +703,8 @@ internal fun LedgerApp(
                 selected = shownSurface,
                 adding = shownAdding,
                 moreSection = shownSection,
-                onMoreSection = { moreSection = it },
-                onSelectSurface = { leavingAdd { adding = false; selected = it } },
+                onMoreSection = { openSection(it) },
+                onSelectSurface = { leavingAdd { goTo(it) } },
                 twoPane = layout == PaneLayout.EXPANDED,
                 documentCapture = documentCapture,
                 documents = documents,

@@ -349,6 +349,13 @@ def inspect(
                 "date": str(entry.date),
                 "file": entry.meta.get("filename"),
                 "line": entry.meta.get("lineno"),
+                # True when Beancount made this entry itself, from a dated file sitting in an
+                # account folder under `option "documents"`, rather than from a line somebody
+                # wrote. `find_documents` stamps those with line 0, and the parser numbers
+                # real directives from 1, so the two can be told apart -- which the Organize
+                # screen needs: unlinking removes the written directive, and the automatic
+                # one comes straight back on the next load (B92).
+                "auto": entry.meta.get("lineno") == 0,
                 "tags": sorted(entry.tags or []),
                 "links": sorted(entry.links or []),
             }

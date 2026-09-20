@@ -10,6 +10,7 @@ reachable without it. The device half of that lives in `PluginBridgeTest`.
 """
 
 import importlib
+import os
 import sys
 import types
 import unittest
@@ -455,6 +456,27 @@ class ScriptRunnerTest(unittest.TestCase):
         result = plugins.run_script(path, ledger_path="/tmp/main.beancount", timeout_seconds=5)
 
         self.assertIn("/tmp/main.beancount", result["output"])
+
+    def test_a_script_runs_in_the_folder_of_its_ledger(self):
+        """B92: a relative path in a script names a file beside the ledger, not the app."""
+        ledger = Path(self.dir, "main.beancount")
+        ledger.write_text("")
+        Path(self.dir, "statements.csv").write_text("date,amount\n")
+        path = self.script(
+            "import os\n"
+            "print('here:', os.getcwd())\n"
+            "print('read:', open('statements.csv').read().strip())\n"
+        )
+
+        before = os.getcwd()
+        result = plugins.run_script(path, ledger_path=str(ledger), timeout_seconds=5)
+
+        self.assertTrue(result["ok"], result["error"])
+        self.assertIn("date,amount", result["output"])
+        self.assertIn(os.path.realpath(self.dir), os.path.realpath(
+            result["output"].split("here:")[1].splitlines()[0].strip()
+        ))
+        self.assertEqual(before, os.getcwd())
 
     def test_an_endless_loop_is_stopped_by_the_deadline(self):
         path = self.script("while True:\n    pass\n")

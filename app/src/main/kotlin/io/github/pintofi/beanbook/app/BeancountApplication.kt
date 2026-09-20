@@ -167,6 +167,22 @@ class BeancountApplication : Application() {
     }
 
     /**
+     * Bumped whenever a ledger file changes on disk under the open project (B92).
+     *
+     * A counter rather than an event, so anything showing the ledger -- the native screens,
+     * the document list, Fava's page in Reports -- can follow it without the watcher needing
+     * to know they exist.
+     */
+    val ledgerChangedOnDisk = kotlinx.coroutines.flow.MutableStateFlow(0L)
+
+    /** Watches the open project for edits made by anything other than this app. */
+    val ledgerWatcher: io.github.pintofi.beanbook.app.engine.LedgerWatcher by lazy {
+        io.github.pintofi.beanbook.app.engine.LedgerWatcher(appScope) {
+            ledgerChangedOnDisk.value += 1
+        }
+    }
+
+    /**
      * Installed plugins for the open project.
      *
      * Takes the edition's policy from [currentPluginPolicy] once, here, so there is exactly

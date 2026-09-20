@@ -113,14 +113,23 @@ fetched is shown, and anything that does reach for it fails at import with its n
 applied **only when the installed version matches exactly**. A newer release is left alone —
 an overlay that applies to whatever happens to be there is a way to break a package quietly.
 
-One exists today. beangrow imports SciPy for a single call, a one-dimensional root find for
-the internal rate of return, and SciPy has no CPython 3.13 build for Android. The overlay
-replaces that file with one whose solver agrees with `scipy.optimize.fsolve` to 3.2e-13. The
-same change is in `patches/` as a diff, for sending upstream.
+Two exist today, and both are the same change. beangrow imports SciPy for a single call, a
+one-dimensional root find for the internal rate of return, and SciPy has no CPython 3.13 build
+for Android. The overlay replaces that file with one whose solver agrees with
+`scipy.optimize.fsolve` to 3.2e-13. The same change is in `patches/` as a diff, for sending
+upstream. `fava-portfolio-returns` vendors its own copy of beangrow, so it carries the same
+replacement for the vendored file.
 
 Dependencies an overlay makes unnecessary are declared in its own `REMOVES.txt`, beside the
 file that justifies them, rather than as a list inside the resolver — an exclusion that lives
 away from its reason is one nobody can check.
+
+**Both install routes apply them (B92).** A package fetched as a dependency is overlaid by
+`WheelFetcher`; a plugin installed from the catalogue brings its own archive, and
+`CatalogueOverlay` overlays that after the code is unpacked and drops the removed requirements
+before anything is fetched. Until this was added, installing `fava-portfolio-returns` ended
+with "Parts that need scipy could not be installed" and a vendored file that still imported
+SciPy — for a file the APK already carried a replacement for.
 
 ## Why the Play edition cannot
 

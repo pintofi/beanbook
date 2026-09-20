@@ -129,5 +129,47 @@ class DocumentIndexTest {
 
         assertEquals(1, rows.size)
     }
+
+    /** B92: unlinking removes the written directive; the folder keeps making one of its own. */
+    @Test
+    fun `a document filed only by its folder is shown as not linked`() {
+        val rows = DocumentIndex.reconcile(
+            root = root,
+            onDisk = listOf("documents/Expenses/Food/2026-09-13.receipt.pdf"),
+            directives = listOf(
+                DocumentDirective(
+                    path = "/data/project/documents/Expenses/Food/2026-09-13.receipt.pdf",
+                    account = "Expenses:Food",
+                    date = "2026-09-13",
+                    auto = true,
+                ),
+            ),
+        )
+
+        val row = rows.single()
+        assertEquals(false, row.linked)
+        assertEquals(
+            "Not linked. It counts under Expenses:Food because of the folder it is in",
+            row.summary,
+        )
+    }
+
+    /** A line somebody wrote wins over the one the folder produced, so Unlink still works. */
+    @Test
+    fun `a written directive is preferred to the folder's own`() {
+        val path = "/data/project/documents/Expenses/Food/2026-09-13.receipt.pdf"
+        val rows = DocumentIndex.reconcile(
+            root = root,
+            onDisk = listOf("documents/Expenses/Food/2026-09-13.receipt.pdf"),
+            directives = listOf(
+                DocumentDirective(path, "Expenses:Food", "2026-09-13", auto = true),
+                DocumentDirective(path, "Expenses:Food", "2026-09-13", auto = false),
+            ),
+        )
+
+        val row = rows.single()
+        assertEquals(true, row.linked)
+        assertEquals("Filed under Expenses:Food", row.summary)
+    }
 }
 

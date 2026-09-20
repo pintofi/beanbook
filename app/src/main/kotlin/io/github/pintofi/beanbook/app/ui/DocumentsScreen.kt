@@ -309,9 +309,11 @@ fun DocumentsScreen(
                             // an entry: filed and found, filed under nothing yet, or named by
                             // the ledger with no file behind it.
                             StampMark(
-                                when (row.status) {
-                                    DocumentStatus.MISSING -> LedgerMark.ATTENTION
-                                    DocumentStatus.UNFILED -> LedgerMark.PENDING
+                                when {
+                                    row.status == DocumentStatus.MISSING -> LedgerMark.ATTENTION
+                                    // Not linked is not filed, however the folder makes it
+                                    // count: the mark has to agree with the line under it.
+                                    !row.linked -> LedgerMark.PENDING
                                     else -> LedgerMark.CLEARED
                                 },
                                 modifier = Modifier.padding(end = Measure.gap),
@@ -373,7 +375,7 @@ fun DocumentsScreen(
                             // removes the reference, the other removes the file.
                             // "File" and "Refile" are different acts: one gives a document
                             // its first directive, the other moves the one it has.
-                            val unfiled = row.status == DocumentStatus.UNFILED
+                            val unfiled = !row.linked
                             TextButton(
                                 onClick = { refiling = row },
                                 modifier = Modifier.semantics {
@@ -392,7 +394,7 @@ fun DocumentsScreen(
                             // just a `document` directive (B69): an entry that attaches it as
                             // `document:` metadata is a link too, and hiding Unlink for those
                             // left a document listed as attached with no way to detach it.
-                            if (row.status != DocumentStatus.UNFILED || row.attachedTo.isNotEmpty()) {
+                            if (row.linked) {
                                 TextButton(
                                     onClick = { pendingRemoval = row to DocumentRemoval.UNLINK },
                                     modifier = Modifier.semantics {
@@ -484,11 +486,7 @@ fun DocumentsScreen(
             onDismissRequest = { refiling = null },
             title = {
                 Text(
-                    if (row.status == DocumentStatus.UNFILED) {
-                        "File document"
-                    } else {
-                        "Refile document"
-                    },
+                    if (row.linked) "Refile document" else "File document",
                 )
             },
             text = {
@@ -506,13 +504,15 @@ fun DocumentsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onRefile(path, target.trim(), row.account)
+                        // A directive Beancount made from the folder is not one that can be
+                        // rewritten, so this writes the first one instead of moving it.
+                        onRefile(path, target.trim(), row.account.takeIf { row.linked })
                         refiling = null
                     },
                     // An account it is not would be written, fail the re-parse and roll back.
                     // Refusing it here says so before the user waits for that.
                     enabled = BeancountText.ACCOUNT.matches(target.trim()),
-                ) { Text(if (row.status == DocumentStatus.UNFILED) "File" else "Refile") }
+                ) { Text(if (row.linked) "Refile" else "File") }
             },
             dismissButton = { TextButton(onClick = { refiling = null }) { Text("Cancel") } },
         )
@@ -530,7 +530,20 @@ fun DocumentsScreen(
                     },
                 )
             },
-            text = { Text(removal.describe(path)) },
+            text = {
+                // Unlinking cannot undo the folder. A dated file in an account folder is read
+                // back as filed there on the next load, so the dialog says so before the act
+                // rather than leaving the row looking unchanged (B92).
+                val folderNote = if (
+                    removal == DocumentRemoval.UNLINK && inAccountFolder(path)
+                ) {
+                    " This file is in an account folder, so Beancount goes on counting it " +
+                        "under that account until you move it."
+                } else {
+                    ""
+                }
+                Text(removal.describe(path) + folderNote)
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -566,3 +579,15 @@ fun rememberCameraPermission(): Boolean {
     }
 }
 
+/**
+ * Whether [path] sits in one of the account folders Beancount reads documents from.
+ *
+ * `documents/Expenses/Food/2026-01-02.pdf` is filed under `Expenses:Food` by where it is, with
+ * nothing written in the ledger -- so an unlink there removes a link the file does not need.
+ */
+private fun inAccountFolder(path: String): Boolean {
+    val parts = path.split('/')
+    return parts.size > 2 &&
+        parts[0] == io.github.pintofi.beanbook.core.domain.DocumentName.ROOT &&
+        parts[1] in setOf("Assets", "Liabilities", "Equity", "Income", "Expenses")
+}

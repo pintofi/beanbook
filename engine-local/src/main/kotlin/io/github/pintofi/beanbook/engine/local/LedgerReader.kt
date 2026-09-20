@@ -207,6 +207,7 @@ class LedgerReader(
         date = optStringOrNull("date").orEmpty(),
         file = optStringOrNull("file"),
         line = if (has("line") && !isNull("line")) optInt("line") else null,
+        auto = optBoolean("auto", false),
         tags = optJSONArray("tags").toStringList(),
         links = optJSONArray("links").toStringList(),
     )

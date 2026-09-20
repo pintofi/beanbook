@@ -38,6 +38,7 @@ class CatalogueState(
     private val onEngineStale: () -> Unit = {},
 ) {
     private val installer = CatalogueInstaller(root)
+    private val overlay = CatalogueOverlay(context.assets)
 
     /** The catalogue shipped in the APK; empty if the asset cannot be read. */
     val catalogue: PluginCatalogue by lazy {
@@ -101,14 +102,19 @@ class CatalogueState(
     private fun resolve(entry: PluginCatalogue.Entry): Resolution {
         val wheels = LinkedHashMap<String, io.github.pintofi.beanbook.app.packages.Wheel>()
         val unavailable = mutableListOf<String>()
-        entry.install?.requires.orEmpty().forEach { requirement ->
-            fetcher(entry.id).resolve(listOf(requirement))
-                .onSuccess { result ->
-                    result.wheels.forEach { wheels.putIfAbsent(it.name, it) }
-                    unavailable += result.unavailable
-                }
-                .onFailure { unavailable += requirement }
-        }
+        // What the overlay has already removed from the code is not fetched and not reported
+        // as missing: the file that imported it is replaced during this same install (B92).
+        val removed = overlay.removes(entry)
+        entry.install?.requires.orEmpty()
+            .filterNot { it.lowercase().replace('_', '-') in removed }
+            .forEach { requirement ->
+                fetcher(entry.id).resolve(listOf(requirement))
+                    .onSuccess { result ->
+                        result.wheels.forEach { wheels.putIfAbsent(it.name, it) }
+                        unavailable += result.unavailable
+                    }
+                    .onFailure { unavailable += requirement }
+            }
         return Resolution(wheels.values.toList(), unavailable.distinct().sorted())
     }
 
@@ -118,7 +124,8 @@ class CatalogueState(
             runCatching {
                 val install = checkNotNull(entry.install)
                 val archive = ArchiveFetcher().fetch(install.archive).getOrThrow()
-                installer.installCode(entry, archive).getOrThrow()
+                val site = installer.installCode(entry, archive).getOrThrow()
+                overlay.apply(entry, site)
                 if (resolution.wheels.isNotEmpty()) {
                     when (val result = fetcher(entry.id).install(resolution.wheels)) {
                         is FetchResult.Installed -> Unit

@@ -236,6 +236,10 @@ fun QuickAddScreen(
     )
     val problems = draft.validate(format)
 
+    // What the session had saved when this form opened, so the sweep answers this form's own
+    // save rather than running as soon as a second entry is started (B92).
+    val committedBefore = remember { committed }
+
     // Files attached as they are (B80), beside the photographed pages.
     val attachedFiles by (capture?.attachedFiles ?: remember { kotlinx.coroutines.flow.MutableStateFlow(emptyList()) })
         .collectAsState()
@@ -562,10 +566,6 @@ fun QuickAddScreen(
             if (capture != null && hasDocuments) {
                 AttachDocumentSection(
                     capture = capture,
-                    // Filed under the account the document is evidence for. Blank until the
-                    // first posting has one, because the account decides where the file lands
-                    // and guessing it would put receipts somewhere nobody looks.
-                    account = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty(),
                     attached = metaRows.filter { it.key.startsWith("document") }.map { it.value },
                     onNameChange = { documentName = it },
                 )
@@ -629,7 +629,7 @@ fun QuickAddScreen(
             pendingAccount,
             documentName,
         ) {
-            value = if (capture == null || !hasDocuments || pendingAccount.isBlank()) {
+            value = if (capture == null || !hasDocuments) {
                 emptyList()
             } else {
                 kotlinx.coroutines.delay(PLANNED_NAME_DEBOUNCE_MS)
@@ -643,15 +643,9 @@ fun QuickAddScreen(
         RuledColumn {
             LedgerHeading("Will be written as")
             Text(
-                text = previewDraft.render() + plannedPaths.takeIf { it.isNotEmpty() }?.let { paths ->
-                    "\n" + paths.joinToString("") { path ->
-                        io.github.pintofi.beanbook.core.domain.DirectiveDraft.Document(
-                            date = today.toString(),
-                            account = pendingAccount,
-                            path = path,
-                        ).render()
-                    }
-                }.orEmpty(),
+                // The entry, with the `document:` line its attachments will carry. No separate
+                // `document` directive: an attachment belongs to this entry (B92).
+                text = previewDraft.render(),
                 style = LedgerType.source,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -661,7 +655,7 @@ fun QuickAddScreen(
                     // message (B77): the message changes to "Saving…" first and again to the
                     // result, and keying on it swept twice and swept refusals too.
                     .filedSweep(
-                        key = committed.takeIf { it > 0 },
+                        key = committed.takeIf { it > committedBefore },
                         colour = BeancountTheme.ledger.rule,
                     )
                     .padding(Measure.indent)
@@ -694,23 +688,6 @@ fun QuickAddScreen(
         val documentAccount = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty()
         val documentsWord = documentsLabel(pageCount, attachedFiles.size)
 
-        if (hasDocuments && documentAccount.isBlank()) {
-            Notice(
-                NoticeTone.ATTENTION,
-                modifier = Modifier
-                    .padding(top = Measure.gap)
-                    .semantics {
-                        contentDescription = "$documentsWord cannot be filed without an account"
-                    },
-            ) {
-                Text(
-                    "${documentsWord.replaceFirstChar { it.uppercase() }} waiting. " +
-                        "Give the first posting an account so they can be filed under it.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        }
-
         FormGap()
 
         Button(
@@ -719,7 +696,7 @@ fun QuickAddScreen(
                 // Pages first, then the entry that names them: `fava.plugins.link_documents`
                 // reports "Document not found" for an entry whose `document:` metadata has no
                 // `document` directive to link to, and a new error rolls the save back.
-                if (capture != null && hasDocuments && documentAccount.isNotBlank()) {
+                if (capture != null && hasDocuments) {
                     capture.onFile(documentAccount, documentName.trim().ifBlank { null }) { paths ->
                         onSave(withDocuments(draft, paths))
                     }
@@ -727,8 +704,7 @@ fun QuickAddScreen(
                     onSave(draft)
                 }
             },
-            enabled = problems.isEmpty() && draft != submitted &&
-                (!hasDocuments || documentAccount.isNotBlank()),
+            enabled = problems.isEmpty() && draft != submitted,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         ) {
             val what = if (editing != null) "Save changes" else "Save entry"
@@ -1236,7 +1212,6 @@ private fun MetadataEditor(
 @Composable
 private fun AttachDocumentSection(
     capture: DocumentCaptureHandle,
-    account: String,
     attached: List<String>,
     onNameChange: (String) -> Unit,
 ) {
@@ -1303,15 +1278,7 @@ private fun AttachDocumentSection(
         }
 
         if (!capture.pages.isEmpty || files.isNotEmpty()) {
-            if (account.isBlank()) {
-                // Said rather than silently disabled: the reason is not guessable from a
-                // greyed-out button, and the fix is one field away.
-                Text(
-                    "Give the first posting an account first — it decides where the " +
-                        "document is filed.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            } else {
+            run {
                 // One row of thumbnails and one way in, rather than four text buttons under
                 // every page (B58): tapping a page opens the editor at it, where rotating,
                 // cropping and re-rendering are done on the page itself.
@@ -1359,8 +1326,7 @@ private fun AttachDocumentSection(
                 // missed it, was a page filed under nothing.
                 Text(
                     "${documentsLabel(capture.pages.size, files.size).replaceFirstChar { it.uppercase() }} " +
-                        "will be filed under $account and linked to this entry when you " +
-                        "save it.",
+                        "will be saved with this entry and linked from it when you save.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

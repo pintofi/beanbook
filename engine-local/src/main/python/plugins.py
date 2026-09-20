@@ -26,7 +26,7 @@ import os
 import sys
 import time
 import traceback
-from contextlib import contextmanager, redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout, suppress
 from pathlib import Path
 
 # Top-level packages that are the bridge, or a way to it.
@@ -417,7 +417,17 @@ def run_script(
         "ledger_path": ledger_path,
     }
 
+    # A script runs in the folder its ledger is in (B92). Without this the working directory
+    # was the app's, so `open("statements.csv")` in a script written beside the ledger, and
+    # every other relative path in it, named a file that was not there. Restored afterwards:
+    # the working directory belongs to the whole process, not to the script.
+    previous_dir = None
+    work_dir = str(Path(ledger_path).resolve().parent) if ledger_path else ""
+
     try:
+        if work_dir and os.path.isdir(work_dir):
+            previous_dir = os.getcwd()
+            os.chdir(work_dir)
         source = Path(script_path).read_text()
         code = compile(source, script_path, "exec")
         # The same directories a ledger load gets (B60): the plugins the user turned on and
@@ -448,6 +458,11 @@ def run_script(
     finally:
         sys.settrace(None)
         _CANCELLED.discard(handle)
+        if previous_dir is not None:
+            # A script that removed the folder it ran in leaves nothing to go back to, and
+            # failing here would replace the script's own result with an unrelated error.
+            with suppress(OSError):
+                os.chdir(previous_dir)
         if guard is not None:
             guard.remove()
         elapsed = (time.monotonic() - started) * 1000

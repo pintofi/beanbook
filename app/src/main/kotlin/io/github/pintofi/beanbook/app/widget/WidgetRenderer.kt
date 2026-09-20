@@ -48,6 +48,12 @@ object WidgetRenderer {
         }
         val chosenAccount = chosenAccounts.firstOrNull()
         val views = RemoteViews(context.packageName, R.layout.widget_metric)
+        // The figure is coloured here rather than in `paint`, because the multi-account
+        // layout has rows instead of one figure and an action naming a view it does not have
+        // fails when the launcher applies it.
+        val palette = WidgetPalette.of(context)
+        views.paint(palette)
+        views.setTextColor(R.id.widget_value, palette.value)
 
         // The balance widget says *which* account, because an unlabelled figure on a home
         // screen is not information (B1). Only the leaf: "Checking" fits where
@@ -128,6 +134,8 @@ object WidgetRenderer {
         nowEpochMs: Long,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_balances)
+        val palette = WidgetPalette.of(context)
+        views.paint(palette)
         views.setTextViewText(R.id.widget_label, WidgetMetric.BALANCE.label)
         views.setOnClickPendingIntent(
             R.id.widget_root,
@@ -143,6 +151,8 @@ object WidgetRenderer {
         val shown = accounts.take(MAX_ROWS)
         shown.forEach { account ->
             val row = RemoteViews(context.packageName, R.layout.widget_balance_row)
+            row.setTextColor(R.id.row_account, palette.label)
+            row.setTextColor(R.id.row_amount, palette.value)
             row.setTextViewText(R.id.row_account, account.substringAfterLast(':'))
             val value = snapshot.balances[account]
             row.setTextViewText(
@@ -168,6 +178,20 @@ object WidgetRenderer {
             },
         )
         return views
+    }
+
+    /**
+     * Colours one widget from the app's appearance settings (B92).
+     *
+     * The paper and the rule are tinted rather than set as background colours: a tint works on
+     * every supported API, where `setBackgroundTintList` needs 31, and it keeps the rounded
+     * corners a flat background colour would lose.
+     */
+    private fun RemoteViews.paint(palette: WidgetPalette) {
+        setInt(R.id.widget_paper, "setColorFilter", palette.paper)
+        setInt(R.id.widget_rule, "setColorFilter", palette.rule)
+        setTextColor(R.id.widget_label, palette.label)
+        setTextColor(R.id.widget_footnote, palette.footnote)
     }
 
     /** As many rows as stay legible on a widget somebody has actually resized. */

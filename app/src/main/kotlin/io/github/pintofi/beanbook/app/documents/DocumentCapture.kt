@@ -185,14 +185,19 @@ class DocumentCapture(
      * the order [save] files them. Empty when there is nothing. The same names [save] uses
      * unless a *different* file already has one, which is what an ordinal is for.
      */
-    suspend fun plannedPaths(account: String, label: String?, date: LocalDate = LocalDate.now()): List<String> {
+    suspend fun plannedPaths(
+        account: String,
+        label: String?,
+        date: LocalDate = LocalDate.now(),
+        attached: Boolean = false,
+    ): List<String> {
         val documents = runCatching { documents() }
             .onFailure { Log.w(TAG, "could not prepare the documents for the preview", it) }
             .getOrNull() ?: return emptyList()
         return runCatching {
             documents.map { (bytes, extension) ->
                 io.github.pintofi.beanbook.core.domain.DocumentName
-                    .forContent(account, date, bytes, extension, label).relativePath
+                    .forContent(account, date, bytes, extension, label, attached).relativePath
             }
         }.getOrDefault(emptyList())
     }
@@ -210,6 +215,8 @@ class DocumentCapture(
         date: LocalDate = LocalDate.now(),
         /** What to call it, if the user typed something (B57). */
         label: String? = null,
+        /** Attached to an entry rather than filed under [account] (B92). */
+        attached: Boolean = false,
         onFiled: (List<String>) -> Unit,
     ) {
         val pages = _pages.value
@@ -222,7 +229,10 @@ class DocumentCapture(
             val result = withContext(Dispatchers.IO) {
                 runCatching {
                     documents().map { (bytes, extension) ->
-                        store.store(projectId, account, date, bytes, extension = extension, label = label)
+                        store.store(
+                            projectId, account, date, bytes,
+                            extension = extension, label = label, attached = attached,
+                        )
                     }
                 }
             }

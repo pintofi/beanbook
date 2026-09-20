@@ -34,6 +34,14 @@ data class DocumentRow(
      * much linked.
      */
     val attachedTo: List<String> = emptyList(),
+    /**
+     * True when the only thing filing this document under [account] is where it sits on disk.
+     *
+     * Beancount turns a dated file in an account folder into a `document` directive of its
+     * own. Nothing in the ledger says so, so unlinking cannot remove it, and saying "Filed
+     * under ..." promised a link the file did not have (B92).
+     */
+    val filedByFolder: Boolean = false,
 ) {
     /**
      * One line saying where this document stands, for the row under its name.
@@ -42,12 +50,23 @@ data class DocumentRow(
      * unfiled document is work left to do, and a missing one is a link that no longer
      * resolves, which is what invariant 5 exists to surface.
      */
+    /**
+     * Whether anything written in the ledger refers to this file.
+     *
+     * A directive Beancount made from the folder is not a reference somebody wrote, so there
+     * is nothing to unlink and nothing that unlinking could remove.
+     */
+    val linked: Boolean
+        get() = attachedTo.isNotEmpty() || (status != DocumentStatus.UNFILED && !filedByFolder)
+
     val summary: String
         get() = when {
-            status == DocumentStatus.FILED -> "Filed under ${account.orEmpty()}"
             status == DocumentStatus.MISSING ->
                 "Linked to ${account.orEmpty()}, but the file is missing"
+            status == DocumentStatus.FILED && !filedByFolder -> "Filed under ${account.orEmpty()}"
             attachedTo.isNotEmpty() -> "Attached to " + attachedTo.joinToString("; ")
+            status == DocumentStatus.FILED ->
+                "Not linked. It counts under ${account.orEmpty()} because of the folder it is in"
             else -> "Not linked to any account yet"
         }
 }
@@ -88,8 +107,11 @@ object DocumentIndex {
         // filed PDF in the folder and reports it as a Document entry of its own, beside the
         // directive that filed it: the same file, the same account, twice -- and every scan
         // showed up twice in Organize.
+        // Written directives first, so that when a file is both written into the ledger and
+        // found in its account folder, the row that survives is the one the user can act on.
         val filed = directives
             .map { relativise(it.path) to it }
+            .sortedBy { (_, directive) -> directive.auto }
             .distinctBy { (path, directive) -> path to directive.account }
         val present = onDisk.toSet()
 
@@ -105,6 +127,7 @@ object DocumentIndex {
                 account = directive.account,
                 date = directive.date,
                 attachedTo = attachedTo(path),
+                filedByFolder = directive.auto,
             )
         }
         // A file may carry several directives -- Beancount allows one document under two

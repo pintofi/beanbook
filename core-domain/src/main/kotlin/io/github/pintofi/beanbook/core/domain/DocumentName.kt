@@ -35,13 +35,20 @@ data class DocumentName(
      * still holds -- naming a document changes how it reads, not how it is found.
      */
     val label: String? = null,
+    /** Attached to an entry rather than filed under an account (B92). */
+    val attached: Boolean = false,
 ) {
 
     /** The path relative to the project root, which is exactly what goes in the ledger. */
     val relativePath: String
         get() = buildString {
             append(ROOT).append('/')
-            append(account.replace(':', '/')).append('/')
+            // A document attached to an entry is named by that entry, not by an account, so it
+            // goes in one folder of its own (B92). Beancount only turns a file into a document
+            // of its own when it sits in a folder named after an account, so keeping these out
+            // of those folders is what stops the same receipt appearing twice: once as the
+            // entry's attachment and again as a document filed under the account.
+            append(if (attached) ATTACHED else account.replace(':', '/')).append('/')
             append(date).append('.')
             label?.takeIf { it.isNotBlank() }?.let { append(it).append('.') }
             append(contentHash)
@@ -54,6 +61,9 @@ data class DocumentName(
 
     companion object {
         const val ROOT = "documents"
+
+        /** Where a document attached to an entry lives, inside [ROOT]. */
+        const val ATTACHED = "attached"
 
         /** Characters of the content hash kept in the filename. */
         const val HASH_LENGTH = 12
@@ -96,8 +106,9 @@ data class DocumentName(
             content: ByteArray,
             extension: String = "pdf",
             label: String? = null,
+            attached: Boolean = false,
         ): DocumentName {
-            require(BeancountText.ACCOUNT.matches(account)) {
+            require(attached || BeancountText.ACCOUNT.matches(account)) {
                 "\"$account\" is not a valid account name"
             }
             require(EXTENSION.matches(extension)) {
@@ -109,6 +120,7 @@ data class DocumentName(
                 contentHash = hash(content),
                 extension = extension,
                 label = label(label),
+                attached = attached,
             )
         }
 

@@ -1,6 +1,7 @@
 package io.github.pintofi.beanbook.app
 
 import android.content.Intent
+import androidx.compose.ui.unit.dp
 import java.io.File
 import android.net.Uri
 import io.github.pintofi.beanbook.core.domain.DirectiveDraft
@@ -139,11 +140,29 @@ internal suspend fun MainActivity.documentsLedger(
         !Regex("""(?m)^\s*include\s+"${Regex.escape(include)}"""").containsMatchIn(main.readText())
     }
     if (needsInclude) {
-        val result = app.writer.append(projectId, main, "include \"$include\"\n", operation = "include-documents")
-        if (result !is io.github.pintofi.beanbook.core.data.WriteResult.Committed) {
-            saveMessage = "Could not add documents.beancount to your ledger. Nothing was filed."
-            return null
-        }
+        // Never silently (B92): this changes which files the ledger is made of, so it is shown
+        // and approved before it happens. Filing continues on the next attempt, after the line
+        // is in place.
+        val line = "include \"$include\""
+        pendingLedgerEdit = MainActivity.LedgerEdit(
+            file = main.name,
+            line = line,
+            why = "Documents filed under an account are written to $include. Your ledger does " +
+                "not include that file yet, so nothing would read them. Beanbook can add this " +
+                "line at the end of ${main.name}; you can also add it yourself.",
+            apply = {
+                lifecycleScope.launch {
+                    val result = app.writer.append(projectId, main, "$line\n", operation = "include-documents")
+                    saveMessage = if (result is io.github.pintofi.beanbook.core.data.WriteResult.Committed) {
+                        "Added the include line. File the document again to write it."
+                    } else {
+                        "The line could not be added, so nothing was filed."
+                    }
+                    app.ledgerState.load(main.absolutePath)
+                }
+            },
+        )
+        return null
     }
     return target
 }
@@ -739,7 +758,9 @@ internal fun MainActivity.captureHandle(
             onRemovePage = { app.documentCapture.remove(it) },
             onCrop = { index, quad -> app.documentCapture.crop(index, quad) },
             fileFor = { name -> app.documentCapture.fileFor(name) },
-            plannedPaths = { account, label -> app.documentCapture.plannedPaths(account, label) },
+            plannedPaths = { account, label ->
+                app.documentCapture.plannedPaths(account, label, attached = true)
+            },
             attachedFiles = app.documentFileNames,
             onAttachFile = { uri ->
                 lifecycleScope.launch { app.documentCapture.attach(contentResolver, uri) }
@@ -753,7 +774,7 @@ internal fun MainActivity.captureHandle(
                 // link_documents plugin, which rejects metadata that no Document entry backs
                 // (B66); there the directive still goes to files/documents.beancount.
                 val id = projectId.orEmpty()
-                app.documentCapture.save(id, account, label = label) { paths ->
+                app.documentCapture.save(id, account, label = label, attached = true) { paths ->
                     lifecycleScope.launch {
                         val main = app.workspace.mainFile(id)
                         val linksDocuments = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -844,4 +865,88 @@ internal fun MainActivity.shareDiagnostics() {
     }
     runCatching { startActivity(android.content.Intent.createChooser(intent, "Share the report")) }
         .onFailure { saveMessage = "Nothing on this device could take the report." }
+}
+
+/**
+ * Reads the ledger again when a file under the open project changes on disk (B92).
+ *
+ * The watcher reports the change; this decides what follows from it. The document list is
+ * rebuilt with the ledger because half of it comes from the folder, and the folders being
+ * watched are collected again because the change may have been a new included file.
+ *
+ * Fava's page in Reports follows the same signal, in `LedgerApp`, where the retained page is.
+ */
+@androidx.compose.runtime.Composable
+internal fun MainActivity.FollowDiskChanges(app: BeancountApplication, activeId: String?) {
+    // Watching starts when the app is in front and stops when it leaves: a watcher running in
+    // the background would reload a ledger nobody is looking at, and an app that is not running
+    // reads the files again when it next opens anyway.
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(owner, activeId) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME ->
+                    activeId?.let { app.ledgerWatcher.watch(app.workspace.projectDir(it)) }
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> app.ledgerWatcher.stop()
+                else -> Unit
+            }
+        }
+        owner.lifecycle.addObserver(observer)
+        onDispose {
+            owner.lifecycle.removeObserver(observer)
+            app.ledgerWatcher.stop()
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(activeId) {
+        if (activeId == null) return@LaunchedEffect
+        app.ledgerChangedOnDisk.collect { change ->
+            if (change > 0L) {
+                app.ledgerWatcher.watch(app.workspace.projectDir(activeId))
+                app.ledgerState.reload()
+                refreshDocuments(app, activeId)
+            }
+        }
+    }
+}
+
+/**
+ * What the app is about to add to a ledger file, and the chance to say no (B92).
+ *
+ * The app does not edit a person's Beancount files behind their back. The one line it ever
+ * needs to add by itself -- an `include` that makes a new file part of the ledger -- is shown
+ * as it will be written, in the file it will be written to, before anything is written.
+ */
+@androidx.compose.runtime.Composable
+internal fun MainActivity.LedgerEditDialog() {
+    val edit = pendingLedgerEdit ?: return
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { pendingLedgerEdit = null },
+        title = { androidx.compose.material3.Text("Add a line to ${edit.file}?") },
+        text = {
+            androidx.compose.foundation.layout.Column(
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement
+                    .spacedBy(8.dp),
+            ) {
+                androidx.compose.material3.Text(edit.why)
+                androidx.compose.material3.Text(
+                    edit.line,
+                    style = io.github.pintofi.beanbook.app.ui.theme.LedgerType.source,
+                )
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                onClick = {
+                    val run = edit.apply
+                    pendingLedgerEdit = null
+                    run()
+                },
+            ) { androidx.compose.material3.Text("Add the line") }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(
+                onClick = { pendingLedgerEdit = null },
+            ) { androidx.compose.material3.Text("Cancel") }
+        },
+    )
 }

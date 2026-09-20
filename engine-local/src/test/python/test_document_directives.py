@@ -92,6 +92,34 @@ class DocumentDirectiveTest(unittest.TestCase):
         )
         self.assertEqual(["scanned"], receipt["tags"])
 
+    def test_a_written_directive_is_not_marked_automatic(self):
+        for document in self.payload["documents"]:
+            self.assertFalse(document["auto"], document["path"])
+
+    def test_a_document_found_by_the_documents_option_is_marked_automatic(self):
+        """B92: the app has to tell a line somebody wrote from one the folder produced.
+
+        Unlinking removes the written line. The automatic one comes back on the next load, so
+        a screen that could not tell them apart went on saying "Filed under ..." about a
+        document nothing in the ledger referred to any more.
+        """
+        with tempfile.TemporaryDirectory() as found:
+            root = Path(found)
+            folder = root / "documents" / "Expenses" / "Food"
+            folder.mkdir(parents=True)
+            (folder / "2026-02-04.receipt.pdf").write_bytes(b"%PDF-1.4\n")
+            path = root / "main.beancount"
+            path.write_text(
+                'option "documents" "documents"\n'
+                "2026-01-01 open Expenses:Food\n"
+            )
+
+            documents = json.loads(ledger.inspect(str(path)))["documents"]
+
+            self.assertEqual(1, len(documents))
+            self.assertTrue(documents[0]["auto"])
+            self.assertEqual("Expenses:Food", documents[0]["account"])
+
     def test_a_ledger_with_no_documents_reports_an_empty_list(self):
         with tempfile.TemporaryDirectory() as empty:
             path = Path(empty) / "main.beancount"

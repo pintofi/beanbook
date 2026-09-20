@@ -1,56 +1,82 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   One layout for all four widgets. They differ in what they are given, not in how they look,
-  and a widget that is a label, a figure and a footnote does not need four descriptions of
-  that.
+  and a widget that is a label, a figure and a footnote does not need four descriptions of that.
 
-  The 2dp rule down the left is the app's own mark (B74): the same rule a ledger page in the
-  app hangs its figures from, so the widget is recognisable as this app's before a word of it
-  is read.
+  The paper and the rule are ImageViews rather than a background drawable so the renderer can
+  colour them from the app's appearance settings: wallpaper accent, dark, AMOLED (B92).
+  RemoteViews can tint an ImageView on every supported API; a background tint needs API 31.
 
   RemoteViews rather than Glance: a widget is text and a number, and Glance would be another
   dependency and another rendering model to reason about for no gain here.
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:paddingTop="12dp"
-    android:paddingBottom="12dp"
-    android:paddingEnd="12dp"
-    android:paddingRight="12dp"
-    android:paddingStart="22dp"
-    android:paddingLeft="22dp"
-    android:background="@drawable/widget_background">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/widget_label"
+    <ImageView
+        android:id="@+id/widget_paper"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:textSize="12sp"
-        android:textColor="@color/widget_label" />
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:contentDescription="@null"
+        android:src="@drawable/widget_paper" />
 
-    <TextView
-        android:id="@+id/widget_value"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:textSize="22sp"
-        android:fontFamily="monospace"
-        android:textColor="@color/widget_value" />
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
 
-    <TextView
-        android:id="@+id/widget_footnote"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:textSize="11sp"
-        android:textColor="@color/widget_footnote" />
-</LinearLayout>
+        <ImageView
+            android:id="@+id/widget_rule"
+            android:layout_width="2dp"
+            android:layout_height="match_parent"
+            android:scaleType="fitXY"
+            android:contentDescription="@null"
+            android:src="@drawable/widget_rule" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:paddingEnd="12dp"
+            android:paddingRight="12dp"
+            android:paddingStart="20dp"
+            android:paddingLeft="20dp">
+
+            <TextView
+                android:id="@+id/widget_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textSize="12sp"
+                android:textColor="@color/widget_label" />
+
+            <TextView
+                android:id="@+id/widget_value"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:textSize="22sp"
+                android:fontFamily="monospace"
+                android:textColor="@color/widget_value" />
+
+            <TextView
+                android:id="@+id/widget_footnote"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:textSize="11sp"
+                android:textColor="@color/widget_footnote" />
+
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

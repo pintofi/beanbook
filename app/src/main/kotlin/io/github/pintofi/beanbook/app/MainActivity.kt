@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,6 +73,23 @@ class MainActivity : ComponentActivity() {
 
     private var recoveryMessage: String? by mutableStateOf(null)
     internal var saveMessage: String? by mutableStateOf(null)
+
+    /**
+     * A change the app wants to make to one of the ledger's own files, waiting to be shown to
+     * the person and approved (B92).
+     *
+     * The app writes entries and document links because the person asked for those. Anything
+     * else -- an `include` line that makes a new file part of the ledger -- is a change to how
+     * their ledger is put together, and they are told what it is before it happens.
+     */
+    internal data class LedgerEdit(
+        val file: String,
+        val line: String,
+        val why: String,
+        val apply: () -> Unit,
+    )
+
+    internal var pendingLedgerEdit: LedgerEdit? by mutableStateOf(null)
 
     /**
      * How many entries this session has written and committed from the entry form (B77).
@@ -459,6 +477,7 @@ class MainActivity : ComponentActivity() {
                     androidx.compose.runtime.LaunchedEffect(restartNeeded, activeId) {
                         if (restartNeeded && activeId != null) restartEngine(app, activeId)
                     }
+                    FollowDiskChanges(app, activeId)
                     val scriptRunning by app.scriptRunner.running.collectAsStateWithLifecycle()
                     val scriptOutcome by app.scriptRunner.outcome.collectAsStateWithLifecycle()
                     val scriptMessage by app.scriptRunner.message.collectAsStateWithLifecycle()
@@ -599,8 +618,18 @@ class MainActivity : ComponentActivity() {
                         remoteMessage = remoteMessage,
                         themeChoice = themeChoice,
                         dynamicColour = dynamicColour,
-                        onThemeChoice = { app.themeSettings.setChoice(it) },
-                        onDynamicColour = { app.themeSettings.setDynamicColour(it) },
+                        // The widgets are drawn in these colours too (B92), and nothing else
+                        // would tell them the setting had changed.
+                        onThemeChoice = {
+                            app.themeSettings.setChoice(it)
+                            io.github.pintofi.beanbook.app.widget.WidgetRefresh
+                                .refreshAll(this@MainActivity)
+                        },
+                        onDynamicColour = {
+                            app.themeSettings.setDynamicColour(it)
+                            io.github.pintofi.beanbook.app.widget.WidgetRefresh
+                                .refreshAll(this@MainActivity)
+                        },
                         hideWidgetAmounts = hideWidgetAmounts,
                         onHideWidgetAmounts = { hide ->
                             io.github.pintofi.beanbook.app.widget.WidgetPreferences(this@MainActivity)
@@ -731,6 +760,8 @@ class MainActivity : ComponentActivity() {
                     // editing from the journal or from its detail view, and the dialog
                     // should not belong to whichever one happened to open it (B11).
                     EntryEditor(app, activeId)
+
+                    LedgerEditDialog()
                 }
             }
             }

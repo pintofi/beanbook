@@ -430,6 +430,10 @@ internal fun CatalogueSection(catalogue: io.github.pintofi.beanbook.app.plugins.
     if (catalogue.entries.isEmpty()) return
     var query by remember { mutableStateOf("") }
     var kind by remember { mutableStateOf(PluginKind.ALL) }
+    // The whole catalogue is longer than anybody scrolls through to reach the settings under
+    // it, so it opens at five and the rest is one tap away (B92). Searching or filtering is
+    // already a narrowing, so the list starts short again whenever either changes.
+    var expanded by remember(query, kind) { mutableStateOf(false) }
 
     Text(
         if (catalogue.canInstall) "Plugins you can install" else "Plugins people use",
@@ -477,8 +481,26 @@ internal fun CatalogueSection(catalogue: io.github.pintofi.beanbook.app.plugins.
     if (shown.isEmpty()) {
         Text("No plugin matches.", style = MaterialTheme.typography.bodyMedium)
     }
-    shown.forEach { entry -> CatalogueRow(entry, catalogue) }
+    val visible = if (expanded) shown else shown.take(CATALOGUE_PREVIEW)
+    visible.forEach { entry -> CatalogueRow(entry, catalogue) }
+    val hidden = shown.size - visible.size
+    if (hidden > 0) {
+        androidx.compose.material3.TextButton(
+            onClick = { expanded = true },
+            modifier = Modifier.semantics {
+                contentDescription = "Show the other $hidden plugins"
+            },
+        ) { Text("Show more ($hidden)") }
+    } else if (expanded && shown.size > CATALOGUE_PREVIEW) {
+        androidx.compose.material3.TextButton(
+            onClick = { expanded = false },
+            modifier = Modifier.semantics { contentDescription = "Show fewer plugins" },
+        ) { Text("Show fewer") }
+    }
 }
+
+/** How many plugins the list shows before "Show more". */
+private const val CATALOGUE_PREVIEW = 5
 
 /** The three ways to narrow the plugin list (B89). */
 internal enum class PluginKind(val label: String, val described: String) {

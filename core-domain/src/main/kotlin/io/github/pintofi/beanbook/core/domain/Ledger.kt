@@ -194,6 +194,14 @@ data class DocumentDirective(
     val date: String,
     val file: String? = null,
     val line: Int? = null,
+    /**
+     * True when Beancount created this directive itself, from a dated file in an account
+     * folder, instead of reading it from a line in the ledger.
+     *
+     * Nothing can remove such a directive but moving or renaming the file, which is why the
+     * Organize screen has to say so rather than promise an unlink that will not hold.
+     */
+    val auto: Boolean = false,
     val tags: List<String> = emptyList(),
     val links: List<String> = emptyList(),
 ) {

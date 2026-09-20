@@ -39,8 +39,10 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
         extension: String = "pdf",
         /** What the user called it, if anything (B57). Sanitised by `DocumentName`. */
         label: String? = null,
+        /** Attached to an entry, so kept out of the account folders (B92). */
+        attached: Boolean = false,
     ): Stored {
-        var name = DocumentName.forContent(account, date, content, extension, label)
+        var name = DocumentName.forContent(account, date, content, extension, label, attached)
         val root = workspace.projectDir(projectId)
 
         while (true) {
