@@ -227,9 +227,7 @@ private fun Editor(
             TextButton(onClick = onDiscardDraft) { Text("Discard restored changes") }
         }
 
-        message?.let {
-            Text(it, Modifier.padding(horizontal = 12.dp), style = MaterialTheme.typography.bodySmall)
-        }
+        message?.let { StatusLine(it, Modifier.padding(horizontal = 12.dp)) }
 
         if (errors.isNotEmpty()) ErrorBanner(errors)
 

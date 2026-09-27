@@ -90,6 +90,15 @@ class ProjectWriter(
      * behaved differently when observed would be a worse writer.
      */
     private val observer: (String) -> Unit = {},
+    /**
+     * Told when a write starts (`true`) and when it has finished (`false`), whatever its
+     * outcome (B93).
+     *
+     * For the app's file watcher, which reloads the ledger when something *else* changes a
+     * file. Without this every save also looked like an outside edit, and the engine parsed
+     * the ledger again for each one on top of the write's own re-parse.
+     */
+    private val onWriting: (Boolean) -> Unit = {},
 ) {
     // Single writer per process. Concurrent writes to one ledger are a correctness
     // problem, not a throughput opportunity.
@@ -182,6 +191,22 @@ class ProjectWriter(
         operation: String,
         policy: ErrorPolicy,
     ): WriteResult = lock.withLock {
+        runCatching { onWriting(true) }
+        try {
+            writeLocked(projectId, file, newContent, expectedSha, operation, policy)
+        } finally {
+            runCatching { onWriting(false) }
+        }
+    }
+
+    private suspend fun writeLocked(
+        projectId: String,
+        file: File,
+        newContent: ByteArray,
+        expectedSha: String,
+        operation: String,
+        policy: ErrorPolicy,
+    ): WriteResult {
         val projectDir = workspace.projectDir(projectId)
         if (!file.canonicalPath.startsWith(projectDir.canonicalPath + File.separator)) {
             // Invariant: a write may never escape the project (docs/threat-model.md §3.1).

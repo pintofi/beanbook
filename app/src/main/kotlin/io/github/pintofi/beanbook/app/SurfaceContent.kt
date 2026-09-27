@@ -416,6 +416,9 @@ internal fun SurfaceContent(
                             )
 
 
+                        MoreSection.SHARING ->
+                            io.github.pintofi.beanbook.app.ui.SharingScreen()
+
                         MoreSection.MIRROR ->
                             MirrorScreen(
                                 enabled = mirrorEnabled,

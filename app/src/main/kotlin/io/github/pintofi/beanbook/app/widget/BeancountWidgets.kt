@@ -3,6 +3,7 @@ package io.github.pintofi.beanbook.app.widget
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
+import io.github.pintofi.beanbook.app.R
 import io.github.pintofi.beanbook.core.data.WidgetCache
 
 /**
@@ -40,9 +41,14 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
                     snapshot = snapshot,
                     redacted = WidgetRenderer.shouldRedact(context, id, hideAmounts),
                     chosenAccounts = accounts.accountsFor(id),
+                    widgetId = id,
                 ),
             )
         }
+        // The multi-account list is filled by a service the launcher binds, and it keeps what
+        // it was given until told the data changed.
+        @Suppress("DEPRECATION") // Its replacement, RemoteCollectionItems, is API 31.
+        manager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list)
     }
 
     /** A removed widget's account choice goes with it -- ids are reused. */
@@ -65,8 +71,6 @@ class BalanceWidget : MetricWidget(WidgetMetric.BALANCE)
 
 class NetWorthWidget : MetricWidget(WidgetMetric.NET_WORTH)
 
-class QuickAddWidget : MetricWidget(WidgetMetric.QUICK_ADD)
-
 /**
  * Asks every widget to redraw.
  *
@@ -78,7 +82,6 @@ object WidgetRefresh {
     private val PROVIDERS = listOf(
         BalanceWidget::class.java,
         NetWorthWidget::class.java,
-        QuickAddWidget::class.java,
     )
 
     fun refreshAll(context: Context) {

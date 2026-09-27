@@ -18,7 +18,6 @@ import java.util.Locale
 enum class WidgetMetric(val label: String) {
     BALANCE("Balance"),
     NET_WORTH("Net worth"),
-    QUICK_ADD("Add an entry"),
 }
 
 /**
@@ -39,12 +38,13 @@ object WidgetRenderer {
         redacted: Boolean,
         nowEpochMs: Long = System.currentTimeMillis(),
         chosenAccounts: List<String> = emptyList(),
+        widgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID,
     ): RemoteViews {
         // Several accounts on one widget is its own layout: a row each, rather than one
         // figure with a label (B48). One account keeps the original single-figure shape,
         // which reads better at the size most people place a balance widget at.
         if (metric == WidgetMetric.BALANCE && chosenAccounts.size > 1) {
-            return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs)
+            return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs, widgetId)
         }
         val chosenAccount = chosenAccounts.firstOrNull()
         val views = RemoteViews(context.packageName, R.layout.widget_metric)
@@ -73,6 +73,7 @@ object WidgetRenderer {
         // that lands on the label or the footnote and does nothing reads as a broken widget
         // (B54).
         views.setOnClickPendingIntent(R.id.widget_root, launchIntent(context, snapshot, metric))
+        views.setOnClickPendingIntent(R.id.widget_add, addIntent(context, snapshot))
 
         if (snapshot == null) {
             views.setTextViewText(R.id.widget_value, "—")
@@ -80,16 +81,9 @@ object WidgetRenderer {
             return views
         }
 
-        if (metric == WidgetMetric.QUICK_ADD) {
-            views.setTextViewText(R.id.widget_value, "+")
-            views.setTextViewText(R.id.widget_footnote, snapshot.projectTitle)
-            return views
-        }
-
         val value = when (metric) {
             WidgetMetric.NET_WORTH -> snapshot.netWorth
             WidgetMetric.BALANCE -> account?.let { snapshot.balances[it] }
-            WidgetMetric.QUICK_ADD -> null
         }
 
         views.setTextViewText(
@@ -116,15 +110,10 @@ object WidgetRenderer {
     }
 
     /**
-     * Several balances, one row each (B48).
+     * Several balances, one row each (B48), in a list that scrolls (B93).
      *
-     * Capped at [MAX_ROWS], and the widget **says** when it is showing fewer than were
-     * chosen rather than silently dropping the rest -- a home-screen widget quietly omitting
-     * an account is the same class of error as showing an outdated figure.
-     *
-     * An account the ledger no longer has keeps its row and shows an em dash, for the reason
-     * the single-account path never substitutes: the row names an account, so putting some
-     * other account's money beside that name would be worse than showing nothing.
+     * Every chosen account has a row. The list used to stop at six and say how many it had
+     * left out; a list the launcher scrolls has no reason to leave any out.
      */
     private fun renderRows(
         context: Context,
@@ -132,52 +121,79 @@ object WidgetRenderer {
         accounts: List<String>,
         redacted: Boolean,
         nowEpochMs: Long,
+        widgetId: Int,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_balances)
-        val palette = WidgetPalette.of(context)
-        views.paint(palette)
+        views.paint(WidgetPalette.of(context))
         views.setTextViewText(R.id.widget_label, WidgetMetric.BALANCE.label)
         views.setOnClickPendingIntent(
             R.id.widget_root,
             launchIntent(context, snapshot, WidgetMetric.BALANCE),
         )
-        views.removeAllViews(R.id.widget_rows)
+        views.setOnClickPendingIntent(R.id.widget_add, addIntent(context, snapshot))
+
+        // The rows are a list the launcher scrolls (B93), filled by [WidgetRowsService] from
+        // the same cache. It used to be six rows and "N more not shown". The widget id is in
+        // the intent's data, not only its extras, because the launcher keeps one adapter per
+        // distinct intent and two widgets must not share one.
+        val rows = Intent(context, WidgetRowsService::class.java)
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+        rows.data = android.net.Uri.parse(rows.toUri(Intent.URI_INTENT_SCHEME))
+        @Suppress("DEPRECATION") // The collection API that replaces it is API 31; minSdk is 29.
+        views.setRemoteAdapter(R.id.widget_list, rows)
+        views.setEmptyView(R.id.widget_list, R.id.widget_list_empty)
+        // A row is part of the widget, so tapping one opens the journal like the rest of it.
+        views.setPendingIntentTemplate(
+            R.id.widget_list,
+            launchIntent(context, snapshot, WidgetMetric.BALANCE),
+        )
 
         if (snapshot == null) {
             views.setTextViewText(R.id.widget_footnote, "Open the app once to set this up.")
             return views
         }
 
-        val shown = accounts.take(MAX_ROWS)
-        shown.forEach { account ->
-            val row = RemoteViews(context.packageName, R.layout.widget_balance_row)
-            row.setTextColor(R.id.row_account, palette.label)
-            row.setTextColor(R.id.row_amount, palette.value)
-            row.setTextViewText(R.id.row_account, account.substringAfterLast(':'))
-            val value = snapshot.balances[account]
-            row.setTextViewText(
-                R.id.row_amount,
-                when {
-                    value == null -> "—"
-                    redacted -> "•••"
-                    else -> value
-                },
-            )
-            views.addView(R.id.widget_rows, row)
-        }
-
-        val missing = shown.filter { snapshot.balances[it] == null }
-        val hidden = accounts.size - shown.size
+        val missing = accounts.filter { snapshot.balances[it] == null }
         views.setTextViewText(
             R.id.widget_footnote,
-            when {
-                missing.isNotEmpty() ->
-                    missing.joinToString(", ") + " is not in this ledger any more."
-                hidden > 0 -> "$hidden more not shown · " + footnote(snapshot, nowEpochMs, redacted)
-                else -> footnote(snapshot, nowEpochMs, redacted)
+            if (missing.isNotEmpty()) {
+                missing.joinToString(", ") + " is not in this ledger any more."
+            } else {
+                footnote(snapshot, nowEpochMs, redacted)
             },
         )
         return views
+    }
+
+    /**
+     * One row of the multi-account widget, for [WidgetRowsService].
+     *
+     * An account the ledger no longer has keeps its row and shows an em dash: the row names
+     * an account, so putting some other account's money beside that name would be worse than
+     * showing nothing.
+     */
+    internal fun row(
+        context: Context,
+        account: String,
+        snapshot: WidgetSnapshot?,
+        redacted: Boolean,
+        palette: WidgetPalette,
+    ): RemoteViews {
+        val row = RemoteViews(context.packageName, R.layout.widget_balance_row)
+        row.setTextColor(R.id.row_account, palette.label)
+        row.setTextColor(R.id.row_amount, palette.value)
+        row.setTextViewText(R.id.row_account, account.substringAfterLast(':'))
+        val value = snapshot?.balances?.get(account)
+        row.setTextViewText(
+            R.id.row_amount,
+            when {
+                value == null -> "—"
+                redacted -> "•••"
+                else -> value
+            },
+        )
+        row.setOnClickFillInIntent(R.id.row_root, Intent())
+        return row
     }
 
     /**
@@ -192,10 +208,8 @@ object WidgetRenderer {
         setInt(R.id.widget_rule, "setColorFilter", palette.rule)
         setTextColor(R.id.widget_label, palette.label)
         setTextColor(R.id.widget_footnote, palette.footnote)
+        setTextColor(R.id.widget_add, palette.rule)
     }
-
-    /** As many rows as stay legible on a widget somebody has actually resized. */
-    private const val MAX_ROWS = 6
 
     /**
      * The line under the figure, which is doing more work than it looks.
@@ -256,7 +270,6 @@ object WidgetRenderer {
             putExtra(
                 EXTRA_SURFACE,
                 when (metric) {
-                    WidgetMetric.QUICK_ADD -> SURFACE_ADD
                     WidgetMetric.BALANCE -> SURFACE_JOURNAL
                     WidgetMetric.NET_WORTH -> SURFACE_HOME
                 },
@@ -269,6 +282,27 @@ object WidgetRenderer {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
+
+    /**
+     * The + on every widget: straight to the entry form (B93). It replaced a widget that did
+     * only this. Its own request code, so it does not replace the intent that opens the
+     * widget's figure.
+     */
+    private fun addIntent(context: Context, snapshot: WidgetSnapshot?): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_PROJECT, snapshot?.projectId)
+            putExtra(EXTRA_SURFACE, SURFACE_ADD)
+        }
+        return PendingIntent.getActivity(
+            context,
+            ADD_REQUEST,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private const val ADD_REQUEST = 100
 
     const val EXTRA_PROJECT = "bca_widget_project"
     const val EXTRA_SURFACE = "bca_widget_surface"

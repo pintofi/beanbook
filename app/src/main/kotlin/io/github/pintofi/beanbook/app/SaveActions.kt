@@ -40,13 +40,28 @@ internal fun MainActivity.saveText(
     // `document` directive goes to the main file, because its path is relative to the
     // file that holds it and the documents directory sits beside the main file.
     target: java.io.File = app.workspace.projectDir(projectId).resolve("files/transactions.beancount"),
+    /**
+     * Whether to read the ledger again afterwards. False only for a write that another write
+     * follows at once (B93): the document directive written just before its entry. Reading
+     * the whole ledger between the two made a save with a receipt wait for a parse whose
+     * result was out of date the moment the entry landed.
+     */
+    reload: Boolean = true,
     onResult: (String) -> Unit = { saveMessage = it },
 ) {
     val ledgerPath = app.workspace.mainFile(projectId).absolutePath
-    lifecycleScope.launch {
+    // In the application's scope and kept alive until written (B93): tapping Save and then
+    // leaving the app, or turning the screen off, must still save the entry.
+    app.workScope.launch {
         saveMessage = "Saving…"
         val file = target
-        val result = app.writer.append(projectId, file, text, operation = operation)
+        val result = io.github.pintofi.beanbook.app.work.KeepWorking.around(
+            this@saveText,
+            "Saving to ${file.name}",
+            onUnprotected = { saveMessage = io.github.pintofi.beanbook.app.work.KeepWorking.KEEP_OPEN },
+        ) {
+            app.writer.append(projectId, file, text, operation = operation)
+        }
         if (result is io.github.pintofi.beanbook.core.data.WriteResult.Committed &&
             operation in ENTRY_OPERATIONS
         ) {
@@ -66,7 +81,7 @@ internal fun MainActivity.saveText(
         )
         // Re-read so the journal and balances show the new entry, then mirror: a pass
         // only ever runs after a commit has landed (docs/storage-and-backup.md 6).
-        app.ledgerState.load(ledgerPath)
+        if (reload) app.ledgerState.load(ledgerPath)
         app.mirror.syncAfterCommit(projectId)
     }
 }

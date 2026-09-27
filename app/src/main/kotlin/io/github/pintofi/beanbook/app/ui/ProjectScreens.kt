@@ -222,7 +222,7 @@ private fun WaysInPage(
                 }
             }
 
-            busyMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            busyMessage?.let { StatusLine(it) }
         }
     }
 }
@@ -312,7 +312,7 @@ fun ProjectPickerScreen(
                     onClick = { onCreateNew(newTitle); newTitle = "" },
                     enabled = newTitle.isNotBlank(),
                 ) { Text("Create") }
-                busyMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                busyMessage?.let { StatusLine(it) }
             }
         }
     }

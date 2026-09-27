@@ -125,7 +125,7 @@ private fun DocumentPages(file: File) {
     }
 
     when (current) {
-        Opened.Opening -> Text("Opening…", modifier = Modifier.padding(24.dp))
+        Opened.Opening -> StatusLine("Opening…", modifier = Modifier.padding(24.dp))
         is Opened.Failed -> Text(
             "This file could not be shown here. ${current.reason} Share it to open it in another app.",
             style = MaterialTheme.typography.bodyMedium,

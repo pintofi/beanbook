@@ -76,6 +76,7 @@ internal enum class MoreSection(val label: String) {
     BACKUP("Backup"),
     MIRROR("Mirror"),
     REMOTE("Remote"),
+    SHARING("Share on Wi-Fi"),
     PLUGINS("Plugins"),
     APPEARANCE("Appearance"),
     SCRIPTS("Scripts"),
@@ -674,16 +675,10 @@ internal fun LedgerApp(
             // back into it. The pair being animated between is what decides that, so an
             // interrupted transition is still going the right way.
             val reportsPage = androidx.compose.runtime.remember { io.github.pintofi.beanbook.app.web.RetainedWebView() }
-            // Reports draws the same ledger as the screens around it, so a file changed on
-            // disk redraws the page too rather than leaving two answers on one device (B92).
-            val application = androidx.compose.ui.platform.LocalContext.current.applicationContext
-            (application as? BeancountApplication)?.let { owner ->
-                androidx.compose.runtime.LaunchedEffect(owner) {
-                    owner.ledgerChangedOnDisk.collect { change ->
-                        if (change > 0L) reportsPage.reload()
-                    }
-                }
-            }
+            // Reports is not reloaded when a file changes on disk (B93). Fava watches the
+            // ledger itself and redraws the open report when it changes; reloading the page
+            // from here as well threw the editor's "Leave this page?" guard every time its own
+            // Save wrote the file, because the save is itself a change on disk.
             androidx.compose.runtime.CompositionLocalProvider(
                 io.github.pintofi.beanbook.app.web.LocalReportsPage provides reportsPage,
             ) {

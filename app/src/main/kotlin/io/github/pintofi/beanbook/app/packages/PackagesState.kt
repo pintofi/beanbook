@@ -121,10 +121,17 @@ class PackagesState(
         val pending = _status.value as? PackagesStatus.Confirming ?: return
         _status.value = PackagesStatus.Fetching(pending.request)
         scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                val fetcher = fetcher()
-                fetcher.install(pending.resolution.wheels).also {
-                    if (it is FetchResult.Installed) fetcher.preloadNativeLibraries()
+            // Held until the download ends, even if the user leaves the app (B93).
+            val result = io.github.pintofi.beanbook.app.work.KeepWorking.around(
+                context,
+                "Installing ${pending.request}",
+                onUnprotected = { _message.value = io.github.pintofi.beanbook.app.work.KeepWorking.KEEP_OPEN },
+            ) {
+                withContext(Dispatchers.IO) {
+                    val fetcher = fetcher()
+                    fetcher.install(pending.resolution.wheels).also {
+                        if (it is FetchResult.Installed) fetcher.preloadNativeLibraries()
+                    }
                 }
             }
             _status.value = PackagesStatus.Idle

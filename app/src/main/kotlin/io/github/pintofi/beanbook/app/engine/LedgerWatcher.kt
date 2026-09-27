@@ -33,6 +33,22 @@ class LedgerWatcher(
     private var observer: FileObserver? = null
     private var pending: Job? = null
 
+    // The app's own writes are not outside edits (B93). `ProjectWriter` re-parses the ledger
+    // as part of every write and the app reloads it afterwards; the watcher reloading a third
+    // time put two more full parses in the engine's queue for each save, and a save with a
+    // document -- two writes -- waited behind four.
+    @Volatile private var writing = false
+    @Volatile private var quietUntil = 0L
+
+    /** Told by the app's writer when one of its own writes starts and ends. */
+    fun ownWrite(active: Boolean) {
+        writing = active
+        // The rename that ends a write is reported a moment after it happens, so the quiet
+        // lasts a little past the end of the write as well.
+        if (!active) quietUntil = android.os.SystemClock.uptimeMillis() + OWN_WRITE_GRACE_MS
+        pending?.cancel()
+    }
+
     /** Watches every folder of [projectDir] holding ledger files, replacing the last watch. */
     fun watch(projectDir: File) {
         stop()
@@ -78,6 +94,7 @@ class LedgerWatcher(
     }
 
     private fun schedule() {
+        if (writing || android.os.SystemClock.uptimeMillis() < quietUntil) return
         pending?.cancel()
         pending = scope.launch {
             delay(QUIET_MS)
@@ -97,6 +114,9 @@ class LedgerWatcher(
          * person who saved a file on their desktop sees it by the time they look at the phone.
          */
         const val QUIET_MS = 700L
+
+        /** How long after one of the app's own writes its file events are still its own. */
+        const val OWN_WRITE_GRACE_MS = 1500L
 
         /** Far past any real project, and a bound on walking a folder somebody has filled. */
         const val WALK_DEPTH = 4

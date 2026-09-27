@@ -8,6 +8,8 @@
     android:minHeight="40dp"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_metric"
+    android:previewLayout="@layout/widget_preview_balance"
+    android:description="@string/widget_preview_balance_description"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen|keyguard"
     android:configure="io.github.pintofi.beanbook.app.widget.BalanceWidgetConfigureActivity" />

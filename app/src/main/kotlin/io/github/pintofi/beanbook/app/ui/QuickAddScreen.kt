@@ -604,8 +604,11 @@ fun QuickAddScreen(
                 modifier = Modifier.padding(top = Measure.gap),
             ) {
                 Text(
+                    // The residual is what the written postings add up to; the posting left
+                    // blank receives its opposite, which is the figure the sentence names
+                    // (B93: -300.00 on one side put 300.00 on the other, not -300.00).
                     text = if (elided == 1) {
-                        "Beancount will put ${shownResiduals.joinToString(", ") { format.format(it) }} " +
+                        "Beancount will put ${shownResiduals.joinToString(", ") { format.format(-it) }} " +
                             "on the posting with no amount."
                     } else {
                         "Does not balance: ${shownResiduals.joinToString(", ") { format.format(it) }}"
@@ -638,6 +641,21 @@ fun QuickAddScreen(
         }
         val previewDraft = withDocuments(draft, plannedPaths)
 
+        // What the form showed at the moment Save was tapped, held until the save is over
+        // (B93). Saving files the pages first, and filing empties the capture, so the form
+        // recomputed itself with no pages mid-save: the `document:` line left the preview and
+        // "Save entry with 1 page" became a greyed "Save entry", as if the pages had been lost.
+        var saving by remember { mutableStateOf<SavingForm?>(null) }
+        var retryable by remember { mutableStateOf(false) }
+        LaunchedEffect(saveState) {
+            if (saving != null && saveState != null && !saveState.startsWith("Saving")) {
+                saving = null
+                // A save that did not happen can be tried again as it stands. The duplicate
+                // guard below is for a save that *did* (invariant 6).
+                retryable = !saveState.startsWith("Saved")
+            }
+        }
+
         // The promise the form makes, and the one moment in it that looks like the file: the
         // lines about to be written, in the source face, hung from the app's rule.
         RuledColumn {
@@ -645,7 +663,7 @@ fun QuickAddScreen(
             Text(
                 // The entry, with the `document:` line its attachments will carry. No separate
                 // `document` directive: an attachment belongs to this entry (B92).
-                text = previewDraft.render(),
+                text = saving?.preview ?: previewDraft.render(),
                 style = LedgerType.source,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -682,6 +700,12 @@ fun QuickAddScreen(
         // draft has been submitted the button is disabled, and it comes back the moment any
         // field changes.
         var submitted by remember { mutableStateOf<TransactionDraft?>(null) }
+        LaunchedEffect(retryable) {
+            if (retryable) {
+                submitted = null
+                retryable = false
+            }
+        }
 
         // Pages photographed, or files attached, and not yet filed (B57, B66, B80): filed by
         // saving the entry.
@@ -693,6 +717,11 @@ fun QuickAddScreen(
         Button(
             onClick = {
                 submitted = draft
+                val what = if (editing != null) "Saving changes" else "Saving entry"
+                saving = SavingForm(
+                    preview = previewDraft.render(),
+                    label = (if (hasDocuments) "$what with $documentsWord" else what) + "…",
+                )
                 // Pages first, then the entry that names them: `fava.plugins.link_documents`
                 // reports "Document not found" for an entry whose `document:` metadata has no
                 // `document` directive to link to, and a new error rolls the save back.
@@ -704,17 +733,23 @@ fun QuickAddScreen(
                     onSave(draft)
                 }
             },
-            enabled = problems.isEmpty() && draft != submitted,
+            enabled = saving == null && problems.isEmpty() && draft != submitted,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         ) {
-            val what = if (editing != null) "Save changes" else "Save entry"
-            Text(
-                if (hasDocuments) {
-                    "$what with $documentsWord"
-                } else {
-                    what
-                },
-            )
+            val inFlight = saving
+            if (inFlight != null) {
+                // Working, and saying so with more than a word (B93): a save that files pages
+                // and re-reads a large ledger takes seconds.
+                androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.padding(end = Measure.snug).size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+                Text(inFlight.label)
+            } else {
+                val what = if (editing != null) "Save changes" else "Save entry"
+                Text(if (hasDocuments) "$what with $documentsWord" else what)
+            }
         }
 
         // What the write did, arriving under the button that did it.
@@ -1339,4 +1374,5 @@ private fun AttachDocumentSection(
     }
 }
 
-
+/** The preview and button label the form showed when Save was tapped (B93). */
+private data class SavingForm(val preview: String, val label: String)

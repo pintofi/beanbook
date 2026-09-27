@@ -12,6 +12,7 @@ reachable without it. The device half of that lives in `PluginBridgeTest`.
 import importlib
 import os
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -457,6 +458,40 @@ class ScriptRunnerTest(unittest.TestCase):
 
         self.assertIn("/tmp/main.beancount", result["output"])
 
+    def test_a_script_written_as_a_program_runs_as_one(self):
+        """B93: `if __name__ == "__main__"` and `sys.argv[1]`, as on the desktop."""
+        path = self.script(
+            "import sys\n"
+            "def main(ledger):\n"
+            "    print('ledger:', ledger)\n"
+            "if __name__ == '__main__':\n"
+            "    main(sys.argv[1])\n"
+            "    sys.exit(0)\n"
+        )
+        before = sys.argv
+
+        result = plugins.run_script(path, ledger_path="/tmp/main.beancount", timeout_seconds=5)
+
+        self.assertTrue(result["ok"], result["error"])
+        self.assertIn("ledger: /tmp/main.beancount", result["output"])
+        self.assertIs(before, sys.argv)
+
+    def test_a_non_zero_exit_is_a_failure(self):
+        path = self.script("import sys\nsys.exit(3)\n")
+
+        result = plugins.run_script(path, timeout_seconds=5)
+
+        self.assertFalse(result["ok"])
+        self.assertEqual("SystemExit", result["error_type"])
+
+    def test_long_output_is_kept_and_a_cut_is_said(self):
+        path = self.script("print('x' * 250000)\n")
+
+        result = plugins.run_script(path, timeout_seconds=5)
+
+        self.assertTrue(result["output"].startswith("x" * 100000))
+        self.assertIn("[output cut at", result["output"])
+
     def test_a_script_runs_in_the_folder_of_its_ledger(self):
         """B92: a relative path in a script names a file beside the ledger, not the app."""
         ledger = Path(self.dir, "main.beancount")
@@ -560,6 +595,49 @@ class ScriptRunnerTest(unittest.TestCase):
         plugins.run_script(self.script("value = 1\n"), timeout_seconds=5)
 
         self.assertIsNone(sys.gettrace())
+
+
+
+class CompanionLibraryTest(unittest.TestCase):
+    """B93: numpy's libopenblas has to be loaded in the engine process, not the app's."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp(prefix="companions-")
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.dir, ignore_errors=True))
+        self.lib = Path(self.dir, "chaquopy", "lib")
+        self.lib.mkdir(parents=True)
+
+    def test_a_real_library_is_loaded(self):
+        import glob
+        import shutil
+
+        import ctypes
+
+        # One this interpreter can load: /usr/lib32 holds a 32-bit copy on multilib systems.
+        def loads(path):
+            try:
+                ctypes.CDLL(path)
+                return True
+            except OSError:
+                return False
+
+        found = [
+            p for p in glob.glob("/usr/lib*/libz.so.1") + glob.glob("/lib*/libz.so.1")
+            if loads(p)
+        ]
+        if not found:
+            self.fail("this test needs a libz.so.1 on the machine to stand in for libopenblas")
+        shutil.copy(found[0], self.lib / "libz.so.1")
+
+        self.assertEqual(["libz.so.1"], plugins.preload_companion_libraries(self.dir))
+
+    def test_something_that_is_not_a_library_is_left_for_the_import_to_report(self):
+        (self.lib / "libbroken.so").write_bytes(b"not an ELF file")
+
+        self.assertEqual([], plugins.preload_companion_libraries(self.dir))
+
+    def test_a_directory_without_companions_does_nothing(self):
+        self.assertEqual([], plugins.preload_companion_libraries(tempfile.gettempdir()))
 
 
 if __name__ == "__main__":

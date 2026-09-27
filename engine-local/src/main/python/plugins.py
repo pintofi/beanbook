@@ -212,6 +212,53 @@ def redact(text: str, secrets=()) -> str:
     return cleaned
 
 
+_PRELOADED: set = set()
+
+
+def preload_companion_libraries(directories) -> list:
+    """Loads the shared libraries fetched native packages link against, in this process.
+
+    Chaquopy splits a native package in two: numpy's `_multiarray_umath.so` has a
+    `DT_NEEDED` on `libopenblas.so`, which arrives in a separate `chaquopy-openblas` wheel and
+    unpacks to `chaquopy/lib/` beside the package. Nothing puts that directory on the dynamic
+    linker's search path, so numpy installed perfectly and then failed to import with
+    `library "libopenblas.so" not found` (B93, `fava_portfolio_returns`).
+
+    The app used to preload these from the *app* process, with `System.load`. Ledgers are read
+    and Fava is served in the `:engine` process, which has its own linker namespace, so that
+    preload never reached the import that needed it. Loading each library here, by absolute
+    path, puts it in this process by soname, and the linker then satisfies the extension
+    module's `DT_NEEDED` from what is already loaded.
+
+    The libraries depend on one another (openblas needs libgfortran, which needs libc++), and
+    a directory listing comes back in no particular order, so this repeats until nothing more
+    will load rather than guessing an order. A library that still will not load is left for
+    the import that needs it to report by name.
+    """
+    import ctypes
+
+    candidates = []
+    for directory in _module_names(directories):
+        lib = Path(directory) / "chaquopy" / "lib"
+        if lib.is_dir():
+            candidates += sorted(p for p in lib.iterdir() if p.is_file() and ".so" in p.name)
+    pending = [p for p in candidates if str(p) not in _PRELOADED]
+    loaded = []
+    progress = True
+    while pending and progress:
+        progress = False
+        for library in list(pending):
+            try:
+                ctypes.CDLL(str(library), mode=ctypes.RTLD_GLOBAL)
+            except OSError:
+                continue
+            _PRELOADED.add(str(library))
+            loaded.append(library.name)
+            pending.remove(library)
+            progress = True
+    return loaded
+
+
 def _module_names(modules) -> list:
     """Accepts either a Python iterable or a comma-separated string.
 
@@ -357,6 +404,11 @@ class ScriptTimedOut(ScriptStopped):
 _CANCELLED: set = set()
 
 
+# What a script's output may be before it is cut. It crosses the Binder boundary to the app,
+# which caps a transaction at about 1 MB, so this stays well inside that.
+MAX_SCRIPT_OUTPUT = 200_000
+
+
 def cancel_script(handle: str) -> None:
     """Asks a running script to stop. Safe to call from another thread."""
     _CANCELLED.add(str(handle))
@@ -411,11 +463,16 @@ def run_script(
             raise ScriptTimedOut(f"stopped after {timeout_seconds:g} seconds")
         return tracer
 
+    # Run as a program, the way `python3 script.py main.beancount` would (B93). Scripts
+    # written for the desktop keep their work under `if __name__ == "__main__":` and read the
+    # ledger from `sys.argv[1]`; run under another name with no arguments, a script like that
+    # defined its functions, did nothing, and the app reported "it printed nothing".
     scope = {
-        "__name__": "__beancount_script__",
+        "__name__": "__main__",
         "__file__": script_path,
         "ledger_path": ledger_path,
     }
+    previous_argv = sys.argv
 
     # A script runs in the folder its ledger is in (B92). Without this the working directory
     # was the app's, so `open("statements.csv")` in a script written beside the ledger, and
@@ -434,11 +491,17 @@ def run_script(
         # the packages they fetched. Without this a script could only import what the app
         # bundles, so fetching the module it asked for changed nothing and the install looked
         # broken.
+        sys.argv = [script_path] + ([ledger_path] if ledger_path else [])
         with activated(plugin_dirs, allow_bridge):
             with redirect_stdout(captured), redirect_stderr(captured):
                 sys.settrace(tracer)
                 try:
                     exec(code, scope)
+                except SystemExit as leaving:
+                    # `sys.exit()` is how a program says it is done. Zero or nothing is a
+                    # success; anything else is the script's own failure, reported as such.
+                    if leaving.code not in (None, 0):
+                        raise
                 finally:
                     sys.settrace(None)
         result["ok"] = True
@@ -457,6 +520,7 @@ def run_script(
         )
     finally:
         sys.settrace(None)
+        sys.argv = previous_argv
         _CANCELLED.discard(handle)
         if previous_dir is not None:
             # A script that removed the folder it ran in leaves nothing to go back to, and
@@ -468,7 +532,16 @@ def run_script(
         elapsed = (time.monotonic() - started) * 1000
         result["duration_ms"] = round(elapsed, 1)
         result["overran_by_ms"] = round(max(0.0, elapsed - timeout_seconds * 1000), 1)
-        result["output"] = redact(captured.getvalue(), secrets)[:4000]
+        # Enough for a generated config file or a report, which is what scripts print; the
+        # old 4000 characters cut a beangrow configuration off a tenth of the way through.
+        # Said when it happens, rather than ending mid-line as if the script had.
+        output = redact(captured.getvalue(), secrets)
+        if len(output) > MAX_SCRIPT_OUTPUT:
+            output = (
+                output[:MAX_SCRIPT_OUTPUT]
+                + f"\n[output cut at {MAX_SCRIPT_OUTPUT} characters of {len(output)}]"
+            )
+        result["output"] = output
 
     return result
 
@@ -507,6 +580,7 @@ def activated(plugin_dirs, allow_bridge: bool):
     # FileFinder caches what is in a directory. A plugin installed since the last load would
     # not be found without this.
     importlib.invalidate_caches()
+    preload_companion_libraries(directories)
 
     try:
         yield

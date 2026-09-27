@@ -1,7 +1,10 @@
 """The embedded Fava engine: in-process, loopback-only, token-gated.
 
 Security properties (docs/architecture.md 4, docs/threat-model.md 3.3):
-  * binds 127.0.0.1 on an ephemeral port, never 0.0.0.0 and never a LAN interface
+  * binds 127.0.0.1 on an ephemeral port, never 0.0.0.0 and never a LAN interface. The one
+    exception is sharing on Wi-Fi (B93), a separate server in `sharing.py` that exists only
+    while the user has turned it on, and answers only a signed-in browser on a private
+    network
   * a 256-bit per-process token, supplied by the Kotlin side, is required on every request
   * the Host header must match the address we actually bound
   * requests failing either check get 403, whatever they ask for
@@ -118,6 +121,9 @@ def start(
     import plugins
 
     plugins.use_loader_cache(list(filter(None, plugin_dirs.split(","))))
+    # numpy and friends link against libraries fetched beside them; this process has to load
+    # those itself before Fava imports an extension that needs them (B93).
+    plugins.preload_companion_libraries(plugin_dirs)
 
     from fava.application import create_app
 
@@ -168,6 +174,10 @@ def stop() -> str:
     """
     global _server, _thread
 
+    # Sharing serves the same Fava application, so it cannot outlive it.
+    import sharing
+
+    sharing.stop()
     if _server is None:
         return "stop=noop"
     started = time.monotonic()
@@ -178,6 +188,22 @@ def stop() -> str:
     _server, _thread = None, None
     _state.clear()
     return f"stop=ok ms={(time.monotonic() - started) * 1000:.0f} thread_alive={alive}"
+
+
+def share_start(host: str, port: int, username: str, password_hash: str) -> str:
+    """Serves the running Fava on [host] for other devices, behind a sign-in (B93)."""
+    import sharing
+
+    gate = _state.get("gate")
+    if gate is None:
+        raise RuntimeError("Reports are not running, so there is nothing to share")
+    return sharing.start(gate._app, host, int(port), username, password_hash)
+
+
+def share_stop() -> str:
+    import sharing
+
+    return sharing.stop()
 
 
 def versions() -> str:

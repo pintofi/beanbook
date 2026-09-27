@@ -21,8 +21,21 @@ interface IEngineService {
      */
     String startEngine(String ledgerPath, String token, String pluginDirs);
 
-    /** Stops the server and joins its non-daemon threads. */
+    /** Stops the server and joins its non-daemon threads. Stops sharing too. */
     String stopEngine();
+
+    /**
+     * Serves the running Fava to other devices on the network, behind a sign-in (B93).
+     *
+     * @param host the device's own address on the Wi-Fi network; refused unless private.
+     * @param passwordHash "pbkdf2_sha256$<iterations>$<salt hex>$<hash hex>". The password
+     *   itself never crosses into the engine process.
+     * @return "host=<h> port=<n>", or "error: …".
+     */
+    String startSharing(String host, int port, String username, String passwordHash);
+
+    /** Stops sharing and signs every device out. */
+    String stopSharing();
 
     /**
      * Stops the server and ends the engine process.

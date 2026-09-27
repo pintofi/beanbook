@@ -45,6 +45,21 @@ class EngineService : Service() {
             python().getModule("engine").callAttr("stop").toString()
         }
 
+        override fun startSharing(
+            host: String,
+            port: Int,
+            username: String,
+            passwordHash: String,
+        ): String = guarded {
+            python().getModule("engine")
+                .callAttr("share_start", host, port, username, passwordHash)
+                .toString()
+        }
+
+        override fun stopSharing(): String = guarded {
+            python().getModule("engine").callAttr("share_stop").toString()
+        }
+
         /**
          * Ends this process, after asking the server to stop.
          *

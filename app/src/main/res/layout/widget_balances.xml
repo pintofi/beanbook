@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The balance widget when it has been told to show several accounts (B48): a container the
-  renderer fills with one row per account, rather than a collection view, which would need a
-  service: the one thing these widgets are arranged not to have.
+  The balance widget told to show several accounts (B48). The rows are a list that scrolls
+  (B93): a widget holding a dozen accounts showed six and said how many it had left out.
+  The rows come from WidgetRowsService, which reads the same cache as every other widget.
 
   The paper and the rule are ImageViews rather than a background drawable so the renderer can
   colour them from the app's appearance settings: wallpaper accent, dark, AMOLED (B92).
   RemoteViews can tint an ImageView on every supported API; a background tint needs API 31.
 
-  RemoteViews rather than Glance: a widget is text and a number, and Glance would be another
-  dependency and another rendering model to reason about for no gain here.
+  The + in the corner adds an entry (B93). It replaced a widget of its own that did nothing
+  else, so adding an entry is one tap from the figures a person already keeps on the screen.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
@@ -21,7 +21,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="fitXY"
-        android:contentDescription="@null"
+        android:importantForAccessibility="no"
         android:src="@drawable/widget_paper" />
 
     <LinearLayout
@@ -34,43 +34,77 @@
             android:layout_width="2dp"
             android:layout_height="match_parent"
             android:scaleType="fitXY"
-            android:contentDescription="@null"
+            android:importantForAccessibility="no"
             android:src="@drawable/widget_rule" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:paddingTop="12dp"
+            android:paddingTop="4dp"
             android:paddingBottom="12dp"
-            android:paddingEnd="12dp"
-            android:paddingRight="12dp"
             android:paddingStart="20dp"
             android:paddingLeft="20dp">
 
-            <TextView
-                android:id="@+id/widget_label"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:textSize="12sp"
-                android:textColor="@color/widget_label" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <LinearLayout
-                android:id="@+id/widget_rows"
+                <TextView
+                    android:id="@+id/widget_label"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:textSize="12sp"
+                    android:text="Balances"
+                    android:textColor="@color/widget_label" />
+
+                <TextView
+                    android:id="@+id/widget_add"
+                    android:layout_width="44dp"
+                    android:layout_height="40dp"
+                    android:gravity="center"
+                    android:text="+"
+                    android:textSize="22sp"
+                    android:contentDescription="Add an entry"
+                    android:textColor="@color/widget_rule" />
+            </LinearLayout>
+
+            <ListView
+                android:id="@+id/widget_list"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:orientation="vertical" />
+                android:paddingEnd="12dp"
+                android:paddingRight="12dp"
+                android:divider="@null"
+                android:scrollbars="vertical" />
+
+            <TextView
+                android:id="@+id/widget_list_empty"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="—"
+                android:textSize="22sp"
+                android:fontFamily="monospace"
+                android:textColor="@color/widget_value" />
 
             <TextView
                 android:id="@+id/widget_footnote"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:paddingEnd="12dp"
+                android:paddingRight="12dp"
                 android:maxLines="2"
                 android:ellipsize="end"
                 android:textSize="11sp"
+                android:text=""
                 android:textColor="@color/widget_footnote" />
 
         </LinearLayout>

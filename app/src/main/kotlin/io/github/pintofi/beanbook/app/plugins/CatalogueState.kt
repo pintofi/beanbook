@@ -89,8 +89,18 @@ class CatalogueState(
         _status.value = CatalogueStatus.Installing(id)
         _message.value = null
         scope.launch {
-            val resolution = withContext(Dispatchers.IO) { resolve(entry) }
-            install(entry, resolution)
+            // Resolving and installing both use the network and take a while; both are held
+            // until they end, even if the user leaves the app or the screen goes off (B93).
+            io.github.pintofi.beanbook.app.work.KeepWorking.around(
+                context,
+                "Installing ${entry.name}",
+                onUnprotected = {
+                    _message.value = io.github.pintofi.beanbook.app.work.KeepWorking.KEEP_OPEN
+                },
+            ) {
+                val resolution = withContext(Dispatchers.IO) { resolve(entry) }
+                install(entry, resolution)
+            }
         }
     }
 

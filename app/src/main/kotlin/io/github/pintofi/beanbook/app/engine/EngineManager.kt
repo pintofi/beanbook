@@ -49,6 +49,13 @@ class EngineManager(
     @Volatile
     private var inForeground = false
 
+    /**
+     * Whether something needs Reports running while the app is out of sight (B93): sharing
+     * on Wi-Fi, which other devices are reading from. While it holds, leaving the app does
+     * not stop the engine, and an engine Android ends is started again.
+     */
+    var heldInBackground: () -> Boolean = { false }
+
     init {
         // Android ends the engine process when it wants the memory, most often while the app is
         // in the background. Coming back used to find the Reports tab pointing at a port nobody
@@ -56,7 +63,7 @@ class EngineManager(
         // the user, a lost engine is started again; behind them, onStart does it on return.
         (engine as? io.github.pintofi.beanbook.engine.local.LocalEngineClient)?.onProcessLost = {
             Diagnostics.w(TAG, "the engine process ended on its own")
-            if (inForeground) currentProject?.let { start(it) }
+            if (inForeground || heldInBackground()) currentProject?.let { start(it) }
         }
     }
 
@@ -138,6 +145,7 @@ class EngineManager(
     override fun onStop(owner: LifecycleOwner) {
         inForeground = false
         shutdownJob?.cancel()
+        if (heldInBackground()) return
         shutdownJob = scope.launch {
             delay(gracePeriodMillis)
             Diagnostics.i(TAG, "grace period elapsed in the background; stopping the engine")

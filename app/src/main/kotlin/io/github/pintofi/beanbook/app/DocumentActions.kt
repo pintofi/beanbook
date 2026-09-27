@@ -144,6 +144,9 @@ internal suspend fun MainActivity.documentsLedger(
         // and approved before it happens. Filing continues on the next attempt, after the line
         // is in place.
         val line = "include \"$include\""
+        // Said where the save was tapped as well, so a form waiting on this is not left
+        // showing "Saving…" behind the dialog (B93).
+        saveMessage = "Not saved yet: $include needs to be included in ${main.name} first."
         pendingLedgerEdit = MainActivity.LedgerEdit(
             file = main.name,
             line = line,
@@ -191,12 +194,17 @@ internal fun MainActivity.unlinkDocument(
         var failure: String? = null
         while (removed < MAX_LINKS_PER_DOCUMENT) {
             val projectDir = app.workspace.projectDir(projectId)
+            // Metadata first, then the directive (B93). Under Fava's link_documents plugin an
+            // entry's `document:` key must match a `document` directive, so removing the
+            // directive while the key still named the file added "Document not found" to the
+            // ledger, the write was rolled back as it should be, and Unlink appeared to do
+            // nothing. In this order every step leaves a ledger that reads cleanly.
             val holder = findDocumentDirective(projectDir, path) { text, named ->
                 io.github.pintofi.beanbook.core.domain.BeancountText
-                    .removeDocumentDirective(text, named, from = from)
+                    .removeDocumentMetadata(text, named)
             } ?: findDocumentDirective(projectDir, path) { text, named ->
                 io.github.pintofi.beanbook.core.domain.BeancountText
-                    .removeDocumentMetadata(text, named)
+                    .removeDocumentDirective(text, named, from = from)
             } ?: break
 
             val (file, rewritten) = holder
@@ -217,11 +225,15 @@ internal fun MainActivity.unlinkDocument(
             if (failure != null) break
         }
 
-        saveMessage = when {
+        val outcome = when {
             failure != null -> "Not unlinked: $failure"
             removed == 0 -> "Nothing in the ledger links to $path."
             else -> "Unlinked $path. The file is still in the project."
         }
+        saveMessage = outcome
+        // Said on the Documents screen too, where the Unlink was tapped, the way a deleted
+        // file is (B93). The app-wide message alone left Organize looking unchanged.
+        app.documentCapture.report(outcome)
         app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
         // The list is built from the folder as well as the ledger, and nothing refreshed it:
         // an unlinked document kept its old row until the screen was left and re-entered.
@@ -775,7 +787,8 @@ internal fun MainActivity.captureHandle(
                 // (B66); there the directive still goes to files/documents.beancount.
                 val id = projectId.orEmpty()
                 app.documentCapture.save(id, account, label = label, attached = true) { paths ->
-                    lifecycleScope.launch {
+                    // The application's scope, like the save that follows (B93).
+                    app.workScope.launch {
                         val main = app.workspace.mainFile(id)
                         val linksDocuments = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                             runCatching { main.readText().contains("link_documents") }.getOrDefault(false)
@@ -795,8 +808,16 @@ internal fun MainActivity.captureHandle(
                                 path = documentPathIn(ledger, projectDir, path),
                             ).render()
                         }
-                        saveText(app, id, directives, operation = "attach-document", target = ledger) { outcome ->
-                            saveMessage = outcome
+                        saveText(
+                            app, id, directives,
+                            operation = "attach-document",
+                            target = ledger,
+                            reload = false,
+                            onResult = { outcome ->
+                            // The entry is saved next, so a success here is not the end of
+                            // the save and is not announced as one: the form would take
+                            // "Saved." as its own result and stop showing that it is working.
+                            if (!outcome.startsWith("Saved")) saveMessage = outcome
                             // Only when the directive is actually in the ledger. Reporting the
                             // path back on a rolled-back write would let the caller write an
                             // entry pointing at a document the file does not declare.
@@ -805,7 +826,8 @@ internal fun MainActivity.captureHandle(
                                 app.documentCapture.reset()
                                 refreshDocuments(app, id)
                             }
-                        }
+                            },
+                        )
                     }
                 }
             },

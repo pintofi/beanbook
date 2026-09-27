@@ -117,7 +117,7 @@ fun MirrorScreen(
                 .semantics { contentDescription = "Mirror now" },
         ) { Text("Mirror now") }
 
-        message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        message?.let { StatusLine(it) }
 
         if (conflicts.isNotEmpty()) {
             HorizontalDivider()

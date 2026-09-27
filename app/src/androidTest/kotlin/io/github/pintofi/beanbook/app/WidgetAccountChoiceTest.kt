@@ -108,11 +108,10 @@ class WidgetAccountChoiceTest {
 
 
     /**
-     * Several accounts on one widget (B48).
+     * Several accounts on one widget (B48), in a list that scrolls (B93).
      *
-     * Read out of the rendered view tree rather than asserted against the code that built
-     * it: the rows are added with `RemoteViews.addView`, and the failure worth catching is a
-     * row that never reaches the layout.
+     * Each row is inflated from the `RemoteViews` the list's service hands the launcher and
+     * read back from the view tree, so a row that never reaches its layout still fails.
      */
     private fun rows(chosen: List<String>, redacted: Boolean = false): Pair<List<String>, String> {
         val views = WidgetRenderer.render(
@@ -123,13 +122,33 @@ class WidgetAccountChoiceTest {
             chosenAccounts = chosen,
         )
         val root = views.apply(context, null) as android.view.ViewGroup
-        val container = root.findViewById<android.view.ViewGroup>(R.id.widget_rows)
-        val lines = (0 until container.childCount).map { index ->
-            val row = container.getChildAt(index) as android.view.ViewGroup
+        val palette = io.github.pintofi.beanbook.app.widget.WidgetPalette.of(context)
+        val lines = chosen.map { account ->
+            val row = WidgetRenderer.row(context, account, snapshot(), redacted, palette)
+                .apply(context, null)
             row.findViewById<TextView>(R.id.row_account).text.toString() + " " +
                 row.findViewById<TextView>(R.id.row_amount).text.toString()
         }
         return lines to root.findViewById<TextView>(R.id.widget_footnote).text.toString()
+    }
+
+    /** B93: every widget adds an entry, now that the widget that only did that is gone. */
+    @Test fun bothWidgetsCarryAnAddButton() {
+        listOf(
+            WidgetMetric.BALANCE to listOf("Assets:Bank:Current"),
+            WidgetMetric.BALANCE to listOf("Assets:Bank:Current", "Liabilities:Card"),
+            WidgetMetric.NET_WORTH to emptyList(),
+        ).forEach { (metric, chosen) ->
+            val root = WidgetRenderer.render(
+                context = context,
+                metric = metric,
+                snapshot = snapshot(),
+                redacted = false,
+                chosenAccounts = chosen,
+            ).apply(context, null)
+            val add = root.findViewById<android.view.View>(R.id.widget_add)
+            assertTrue("$metric $chosen has no add button", add != null && add.hasOnClickListeners())
+        }
     }
 
     @Test fun severalChosenAccountsEachGetTheirOwnRow() {

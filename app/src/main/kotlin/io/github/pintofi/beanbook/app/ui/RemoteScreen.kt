@@ -175,7 +175,7 @@ fun RemoteScreen(
 
         when (status) {
             is EngineStatus.Starting ->
-                Text("Connecting…", style = MaterialTheme.typography.bodySmall)
+                StatusLine("Connecting…")
 
             is EngineStatus.Serving ->
                 Notice(NoticeTone.QUIET) {

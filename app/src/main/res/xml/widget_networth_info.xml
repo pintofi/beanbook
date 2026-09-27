@@ -8,5 +8,7 @@
     android:minHeight="40dp"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_metric"
+    android:previewLayout="@layout/widget_preview_networth"
+    android:description="@string/widget_preview_networth_description"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen|keyguard" />

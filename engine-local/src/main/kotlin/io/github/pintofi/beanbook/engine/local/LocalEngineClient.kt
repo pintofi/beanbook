@@ -117,6 +117,28 @@ class LocalEngineClient(
         return status
     }
 
+    /**
+     * Shares the running Reports on the network, behind a sign-in (B93). Returns the port it
+     * listens on. Fails if Reports are not running, or the address is not a private one.
+     */
+    suspend fun startSharing(host: String, port: Int, username: String, passwordHash: String): Result<Int> =
+        withContext(io) {
+            connection.withEngine { it.startSharing(host, port, username, passwordHash) }
+                .mapCatching { report ->
+                    if (report.startsWith("error: ")) error(report.removePrefix("error: "))
+                    report.split(' ')
+                        .firstOrNull { it.startsWith("port=") }
+                        ?.removePrefix("port=")
+                        ?.toIntOrNull()
+                        ?: error("the engine did not say which port it is sharing on")
+                }
+        }
+
+    /** Stops sharing. Harmless when it was not on. */
+    suspend fun stopSharing(): Result<String> = withContext(io) {
+        connection.withEngine(retryIfDead = false) { it.stopSharing() }
+    }
+
     override suspend fun stop() = lifecycleLock.withLock {
         withContext(io) {
             connection.withEngine { it.stopEngine() }

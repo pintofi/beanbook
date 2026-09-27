@@ -256,16 +256,6 @@ class RetainedWebView {
     fun load(url: String) {
         view?.loadUrl(url)
     }
-
-    /**
-     * Reads the page again, so a ledger edited on disk is redrawn rather than left as it was.
-     *
-     * The current page, not the landing one: somebody reading a balance sheet wants that
-     * report with the new figures, not to be sent back to the index (B92).
-     */
-    fun reload() {
-        view?.reload()
-    }
 }
 
 /** The report page kept for the app's Reports tab (B89); provided by the app's composition. */

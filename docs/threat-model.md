@@ -69,12 +69,41 @@ The `play` edition removes this surface entirely.
 
 ### 3.3 Loopback service (T6)
 
-- Bound to `127.0.0.1` only, ephemeral port, never a LAN interface.
+- Bound to `127.0.0.1` only, ephemeral port, never a LAN interface. (Sharing on Wi-Fi,
+  §3.3a, is a separate server the user turns on.)
 - 256-bit per-process token required on every request; missing/incorrect → `403`.
 - `Origin`/`Referer` validated on state-changing requests (localhost request forgery).
 - Server stopped when not needed; never kept alive for widgets.
 - No `INTERNET`-independent assumption: local mode functions with the network off, which
   is also the strongest privacy demonstration we can offer.
+
+### 3.3a Sharing on Wi-Fi (B93)
+
+The one exception to "never a LAN interface", added at the owner's request on 2026-09-27.
+Off until the user turns it on, in both editions, and a separate server from the loopback
+one, which is unchanged.
+
+- Binds the device's own private IPv4 address on Wi-Fi or Ethernet, never `0.0.0.0`, and
+  refuses to start on an address that is not private.
+- Answers only clients on private, link-local or loopback addresses; anything else is `403`
+  before the sign-in page.
+- `Host` must name the bound address (DNS rebinding).
+- A username and password the user sets. Only a salted PBKDF2-SHA256 hash (150,000
+  rounds) is stored, in the app's private state folder, excluded from Android backup, never
+  in a project, backup or mirror; the password never reaches the engine process.
+- A signed-in browser holds a random 256-bit session id in an `HttpOnly`,
+  `SameSite=Strict` cookie; sessions expire after 12 idle hours, are capped at 32, and all
+  end when sharing stops. `SameSite=Strict` is the CSRF defence.
+- Five wrong attempts from one address lock that address out for a minute, doubling each
+  time up to a day.
+- A foreground service with a notification naming the address and offering Stop runs for
+  exactly as long as sharing is on; the engine is kept running in the background only then.
+
+**Residual risk, accepted and said on screen:** the connection is plain HTTP. Anyone who can
+observe the network can read the pages and replay the session cookie while it is valid. The
+screen says to use it only on a trusted network and to turn it off after. HTTPS would need a
+certificate the other device trusts, which a phone on a home network cannot obtain without
+the user installing one; that is recorded in docs/pending-verification.md, not built.
 
 ### 3.4 WebView (T5)
 

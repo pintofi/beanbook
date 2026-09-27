@@ -1,6 +1,8 @@
 package io.github.pintofi.beanbook.app.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -110,13 +112,7 @@ fun ScriptRunnerScreen(
         // The result directly under the button that produced it (B89). It used to come last,
         // below every saved script, so after a run it was off the bottom of the screen and
         // the run looked as if it had printed nothing.
-        message?.let {
-            Text(
-                it,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-            )
-        }
+        message?.let { StatusLine(it) }
         outcome?.let { Outcome(it) }
 
         if (saved.isNotEmpty()) {
@@ -178,27 +174,65 @@ private fun dateOf(epochMillis: Long): String =
 
 @Composable
 private fun Outcome(outcome: ScriptOutcome) {
-    Notice(
-        if (outcome.ok) NoticeTone.QUIET else NoticeTone.PROBLEM,
-        modifier = Modifier.semantics {
-            liveRegion = LiveRegionMode.Polite
-            contentDescription = "${outcome.name}: ${outcome.summary()}"
-        },
-    ) {
-        run {
-            Text(outcome.name, style = MaterialTheme.typography.titleSmall)
-            Text(outcome.summary(), style = MaterialTheme.typography.bodyMedium)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Notice(
+            if (outcome.ok) NoticeTone.QUIET else NoticeTone.PROBLEM,
+            modifier = Modifier.semantics {
+                liveRegion = LiveRegionMode.Polite
+                contentDescription = "${outcome.name}: ${outcome.summary()}"
+            },
+        ) {
+            run {
+                Text(outcome.name, style = MaterialTheme.typography.titleSmall)
+                Text(outcome.summary(), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        ScriptTerminal(outcome)
+    }
+}
 
-            if (outcome.output.isNotBlank()) {
-                Text("Output", style = MaterialTheme.typography.labelLarge)
-                // Monospace and scrolling sideways: script output is aligned text more often
-                // than it is prose, and rewrapping it makes a table unreadable.
-                Row(Modifier.horizontalScroll(rememberScrollState())) {
-                    Text(
-                        outcome.output.trimEnd(),
-                        style = MaterialTheme.typography.bodySmall
-                            .copy(fontFamily = FontFamily.Monospace),
-                    )
+/**
+ * The script's output exactly as it printed it, in a box that reads like a terminal (B93).
+ *
+ * Its own area rather than a line inside the result notice: output is often long -- a
+ * generated configuration runs to hundreds of lines -- and a notice that grew to hold it
+ * pushed everything else off the screen. The box has a fixed height and scrolls both ways, so
+ * aligned columns stay aligned, and the text can be selected and copied.
+ *
+ * Dark in both themes, like a terminal: it marks the text inside as the script's rather than
+ * the app's. A failure's error line is shown after the output, as a terminal would show it.
+ */
+@Composable
+private fun ScriptTerminal(outcome: ScriptOutcome) {
+    val ink = androidx.compose.ui.graphics.Color(0xFFE4EAE7)
+    val dim = androidx.compose.ui.graphics.Color(0xFF8A9A94)
+    val fault = androidx.compose.ui.graphics.Color(0xFFFFB4A9)
+    val mono = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+    val lines = outcome.output.trimEnd()
+    androidx.compose.foundation.layout.Box(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 96.dp, max = 360.dp)
+            .background(
+                androidx.compose.ui.graphics.Color(0xFF0D1211),
+                androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+            )
+            .padding(12.dp)
+            .semantics { contentDescription = "Output of ${outcome.name}" },
+    ) {
+        androidx.compose.foundation.text.selection.SelectionContainer {
+            Column(
+                Modifier
+                    .verticalScroll(rememberScrollState())
+                    .horizontalScroll(rememberScrollState()),
+            ) {
+                Text("$ python ${outcome.name}", style = mono, color = dim)
+                if (lines.isNotEmpty()) Text(lines, style = mono, color = ink)
+                if (!outcome.ok && outcome.error.isNotBlank()) {
+                    Text("${outcome.errorType}: ${outcome.error}", style = mono, color = fault)
+                }
+                if (lines.isEmpty() && outcome.ok) {
+                    Text("(nothing printed)", style = mono, color = dim)
                 }
             }
         }

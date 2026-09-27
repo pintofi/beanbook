@@ -177,7 +177,7 @@ fun BackupScreen(
             )
         }
 
-        message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        message?.let { StatusLine(it) }
 
         if (rollbackPoints.isNotEmpty()) {
             Text("Kept from earlier restores", style = MaterialTheme.typography.titleSmall)

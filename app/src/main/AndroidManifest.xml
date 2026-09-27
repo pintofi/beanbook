@@ -4,6 +4,21 @@
     <!-- Receipt capture (M8). Optional hardware: a tablet without a camera still runs the
          whole app, so this must not narrow the device list on Play. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!--
+      Finishing what the user started after they leave the app (B93): a plugin install or a
+      save runs under a short foreground service with a notification, and a partial wake lock
+      with a timeout keeps it going with the screen off. See work/KeepWorking.kt.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!--
+      Sharing Reports on Wi-Fi (B93): off until the user turns it on. The network state is
+      read to find this device's own Wi-Fi address; the special-use foreground service keeps
+      the share alive, with a notification naming the address, only while it is on.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
@@ -67,7 +82,7 @@
 
         <receiver
             android:name=".widget.BalanceWidget"
-            android:label="Account balance"
+            android:label="Account balances"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -89,16 +104,28 @@
                 android:resource="@xml/widget_networth_info" />
         </receiver>
 
-        <receiver
-            android:name=".widget.QuickAddWidget"
-            android:label="Add an entry"
+        <service
+            android:name=".sharing.SharingService"
+            android:foregroundServiceType="specialUse"
             android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_quickadd_info" />
-        </receiver>
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Serves the user's own ledger reports to their own browsers on the local network, behind a sign-in, only while the user has turned sharing on; stopped from the notification or the app." />
+        </service>
+
+        <service
+            android:name=".work.WorkService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
+
+        <!--
+          Supplies the rows of the multi-account balance widget (B93), so the list scrolls.
+          Bound only by the launcher, with this app's own BIND_REMOTEVIEWS permission, and it
+          reads the widget cache and nothing else: no engine, no network.
+        -->
+        <service
+            android:name=".widget.WidgetRowsService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
     </application>
 </manifest>

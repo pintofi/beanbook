@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.data.PluginIntegrity
@@ -85,7 +86,7 @@ fun PluginsScreen(
 
         message?.let {
             Notice(NoticeTone.QUIET) {
-                Text(it, style = MaterialTheme.typography.bodyMedium)
+                StatusLine(it, style = MaterialTheme.typography.bodyMedium)
             }
         }
 
@@ -276,17 +277,9 @@ private fun PackagesSection(
         var wanted by remember { mutableStateOf("") }
 
         when (status) {
-            is PackagesStatus.Resolving -> Text(
-                "Working out what ${status.request} needs…",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-            )
+            is PackagesStatus.Resolving -> StatusLine("Working out what ${status.request} needs…")
 
-            is PackagesStatus.Fetching -> Text(
-                "Downloading ${status.request}…",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-            )
+            is PackagesStatus.Fetching -> StatusLine("Downloading ${status.request}…")
 
             is PackagesStatus.Confirming -> Notice(
                 NoticeTone.ATTENTION,
@@ -435,9 +428,23 @@ internal fun CatalogueSection(catalogue: io.github.pintofi.beanbook.app.plugins.
     // already a narrowing, so the list starts short again whenever either changes.
     var expanded by remember(query, kind) { mutableStateOf(false) }
 
+    // What is installed has a section of its own, above the list to choose from (B93). Sorting
+    // installed plugins to the top of the whole catalogue mixed "what I have" with "what I
+    // could add", and a search or a filter could hide an installed plugin altogether.
+    val installed = catalogue.entries.filter { it.id in catalogue.installed }
+    if (installed.isNotEmpty()) {
+        Text(
+            "Installed plugins",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.semantics { heading() },
+        )
+        installed.forEach { entry -> CatalogueRow(entry, catalogue) }
+    }
+
     Text(
         if (catalogue.canInstall) "Plugins you can install" else "Plugins people use",
         style = MaterialTheme.typography.titleSmall,
+        modifier = Modifier.semantics { heading() },
     )
     if (!catalogue.canInstall) {
         Text(
@@ -471,13 +478,12 @@ internal fun CatalogueSection(catalogue: io.github.pintofi.beanbook.app.plugins.
     }
     val words = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
     val shown = catalogue.entries
+        .filter { it.id !in catalogue.installed }
         .filter { kind.includes(it.kind) }
         .filter { entry ->
             val text = "${entry.name} ${entry.description}".lowercase()
             words.all { it in text }
         }
-        // What is installed first, then the rest in the catalogue's order.
-        .sortedBy { it.id !in catalogue.installed }
     if (shown.isEmpty()) {
         Text("No plugin matches.", style = MaterialTheme.typography.bodyMedium)
     }
@@ -541,11 +547,7 @@ private fun CatalogueRow(
         }
         when {
             (status as? io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Installing)?.id == entry.id ->
-                Text(
-                    "Installing…",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                )
+                StatusLine("Installing…")
             installed -> OutlinedButton(
                 onClick = { catalogue.onRemove(entry.id) },
                 modifier = Modifier.semantics { contentDescription = "Remove ${entry.name}" },

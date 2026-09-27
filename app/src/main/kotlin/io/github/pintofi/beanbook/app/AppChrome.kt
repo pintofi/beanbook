@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Dns
@@ -344,6 +345,7 @@ internal fun MoreMenu(
         MoreSection.BACKUP to "Write a backup, restore one, or schedule them",
         MoreSection.MIRROR to "Keep a copy in a folder you choose, kept in step",
         MoreSection.REMOTE to "Use a Fava server you host yourself",
+        MoreSection.SHARING to "Open your Reports from another device on this Wi-Fi",
         MoreSection.PLUGINS to "Add checks, entries and report pages to your ledger",
         MoreSection.APPEARANCE to "Theme, dark mode and colours",
         MoreSection.SCRIPTS to "Run a Python script once against the open ledger",
@@ -547,6 +549,7 @@ private fun iconFor(section: MoreSection): ImageVector = when (section) {
     MoreSection.BACKUP -> Icons.Filled.Backup
     MoreSection.MIRROR -> Icons.Filled.Sync
     MoreSection.REMOTE -> Icons.Filled.Dns
+    MoreSection.SHARING -> Icons.Filled.Wifi
     MoreSection.PLUGINS -> Icons.Filled.Extension
     MoreSection.APPEARANCE -> Icons.Filled.Palette
     MoreSection.SCRIPTS -> Icons.Filled.Terminal

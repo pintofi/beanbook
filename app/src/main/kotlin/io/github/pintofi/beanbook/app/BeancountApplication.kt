@@ -48,6 +48,14 @@ class BeancountApplication : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob())
 
+    /**
+     * Where a write the user asked for runs (B93): the application's lifetime, on the main
+     * thread, rather than an activity's. A save launched from an activity's own scope was
+     * cancelled with the activity -- rotating, or Android reclaiming a screen left in the
+     * background -- and the entry the user had tapped Save on was never written.
+     */
+    val workScope = CoroutineScope(SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate)
+
     val workspace: ProjectWorkspace by lazy { ProjectWorkspace(filesDir) }
 
     /**
@@ -59,8 +67,20 @@ class BeancountApplication : Application() {
 
     val engine: LocalEngineClient by lazy { LocalEngineClient(this, connection = engineConnection) }
 
+    /** Sharing Reports on Wi-Fi, behind a sign-in (B93). Off until the user turns it on. */
+    val sharingState: io.github.pintofi.beanbook.app.sharing.SharingState by lazy {
+        io.github.pintofi.beanbook.app.sharing.SharingState(
+            this,
+            engine,
+            engine.status,
+            workScope,
+            io.github.pintofi.beanbook.app.sharing.SharingSettings(filesDir.resolve("state")),
+        )
+    }
+
     val engineManager: EngineManager by lazy {
         EngineManager(engine, appScope).apply {
+            heldInBackground = { sharingState.wanted }
             // The same directories the parse path is given, so a Fava extension the user
             // installed is importable while Fava serves as well as while the ledger is read.
             pluginDirectories = {
@@ -264,6 +284,7 @@ class BeancountApplication : Application() {
             observer = { line ->
                 io.github.pintofi.beanbook.app.diagnostics.Diagnostics.i("ProjectWriter", line)
             },
+            onWriting = { active -> ledgerWatcher.ownWrite(active) },
         )
     }
 

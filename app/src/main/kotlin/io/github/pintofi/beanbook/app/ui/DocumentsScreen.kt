@@ -263,7 +263,7 @@ fun DocumentsScreen(
         }
         } // end ADD
 
-        message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        message?.let { StatusLine(it) }
 
         if (mode == DocumentsMode.ORGANIZE && documents.isEmpty()) {
             EmptyState(

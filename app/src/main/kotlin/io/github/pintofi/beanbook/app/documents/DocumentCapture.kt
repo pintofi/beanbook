@@ -29,7 +29,7 @@ import kotlinx.coroutines.withContext
  * invariant 5).
  */
 class DocumentCapture(
-    context: Context,
+    private val context: Context,
     private val store: DocumentStore,
     private val scope: CoroutineScope,
     private val assembler: PdfAssembler = PdfAssembler(),
@@ -226,13 +226,19 @@ class DocumentCapture(
         }
 
         scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    documents().map { (bytes, extension) ->
-                        store.store(
-                            projectId, account, date, bytes,
-                            extension = extension, label = label, attached = attached,
-                        )
+            // Assembling the PDF renders every page; held until it is on disk (B93).
+            val result = io.github.pintofi.beanbook.app.work.KeepWorking.around(
+                context,
+                "Filing ${if (pages.isEmpty) "a document" else "${pages.size} page(s)"}",
+            ) {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        documents().map { (bytes, extension) ->
+                            store.store(
+                                projectId, account, date, bytes,
+                                extension = extension, label = label, attached = attached,
+                            )
+                        }
                     }
                 }
             }
