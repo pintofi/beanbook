@@ -234,7 +234,7 @@ fun QuickAddScreen(
             )
         },
     )
-    val problems = draft.validate(format)
+    val problems = draft.validate(format, vocabulary.openAccounts)
 
     // What the session had saved when this form opened, so the sweep answers this form's own
     // save rather than running as soon as a second entry is started (B92).

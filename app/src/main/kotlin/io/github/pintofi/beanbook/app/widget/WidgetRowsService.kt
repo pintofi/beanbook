@@ -32,8 +32,8 @@ class WidgetRowsService : RemoteViewsService() {
 
         /** Read again whenever the widget is told its data changed. */
         override fun onDataSetChanged() {
-            snapshot = WidgetCache(context.filesDir.resolve("state")).read()
             accounts = WidgetAccounts(context).accountsFor(widgetId)
+            snapshot = WidgetCache(context.filesDir.resolve("state")).read(prefer = accounts)
             // Hidden unless it is known not to be: a lock-screen list is no place to guess.
             redacted = WidgetRenderer.shouldRedact(context, widgetId, WidgetPreferences(context).hideAmounts())
             palette = WidgetPalette.of(context)

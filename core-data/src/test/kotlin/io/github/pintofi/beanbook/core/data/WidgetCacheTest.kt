@@ -174,4 +174,20 @@ class WidgetCacheTest {
 
         assertNull(cache.read())
     }
+
+    @Test
+    fun `another project does not blank a widget chosen for this one`() {
+        fun snap(project: String, vararg accounts: String, at: Long) = WidgetSnapshot(
+            projectId = project, projectTitle = project, generatedAtEpochMs = at,
+            balances = accounts.associateWith { "1.00" }, netWorth = null,
+            periodIncome = null, periodExpense = null, clean = true,
+        )
+        cache.write(snap("hmw", "Assets:Cash", at = 1))
+        File(dir, "widgets-hmw.json").setLastModified(1_000)
+        cache.write(snap("scratch", "Assets:Other", at = 2))
+
+        assertEquals("scratch", cache.read()?.projectId)
+        assertEquals("hmw", cache.read(prefer = listOf("Assets:Cash"))?.projectId)
+        assertEquals("scratch", cache.read(prefer = listOf("Assets:Nowhere"))?.projectId)
+    }
 }

@@ -71,6 +71,17 @@ class MirrorController(
 
     val folderUri: String? get() = settings.folderUri()
 
+    /**
+     * Points the mirror at [projectId]'s own folder and forgets the previous project's
+     * conflicts, which belong to files that are no longer open (B96).
+     */
+    fun useProject(projectId: String) {
+        settings.use(projectId)
+        _conflicts.value = emptyList()
+        _message.value = null
+        _status.value = restingStatus()
+    }
+
     val enabled: Boolean get() = settings.enabled() && folderUri != null
 
     fun setFolder(uri: String?) {
@@ -104,6 +115,9 @@ class MirrorController(
     }
 
     fun sync(projectId: String, announce: Boolean = true) {
+        // A pass for a project the settings are not answering for would copy it into
+        // another project's folder (B96).
+        if (settings.project != projectId) return
         val folder = folderUri ?: run {
             if (announce) _message.value = "Choose a folder to mirror into first."
             return
@@ -402,36 +416,72 @@ class MirrorController(
     }
 }
 
-/** Whether mirroring is on, and where it points. App state, outside any project. */
+/**
+ * Whether mirroring is on, and where it points, **for one project** (B96).
+ *
+ * It used to be one folder for the whole app, so opening or creating a second project made
+ * the mirror reconcile that project against the first one's folder: a new project pulled in
+ * hundreds of the other ledger's files and wrote `.conflict-*` copies of them every pass.
+ * Each project now has its own folder, switch and last-pass time. App state, outside any
+ * project.
+ */
 class MirrorSettings(private val stateDir: File) {
 
-    private val folderFile get() = File(stateDir, "mirror-folder")
-    private val enabledFile get() = File(stateDir, "mirror-enabled")
+    /** The project the settings answer for; null until one is opened. */
+    @Volatile
+    var project: String? = null
+        private set
 
-    fun folderUri(): String? = folderFile.takeIf { it.isFile }?.readText()?.trim()?.ifEmpty { null }
-
-    fun setFolder(uri: String?) {
-        stateDir.mkdirs()
-        if (uri == null) folderFile.delete() else folderFile.writeText(uri)
+    /**
+     * Makes [id] the project the settings answer for.
+     *
+     * A folder chosen before settings were per project is handed to the first project opened
+     * afterwards, once: it was set up for the project in use at the time, and nothing else
+     * can say which that was. Every other project starts with no folder.
+     */
+    fun use(id: String) {
+        project = id
+        val legacy = File(stateDir, "mirror-folder")
+        if (legacy.isFile && !File(stateDir, "mirror-migrated").exists()) {
+            stateDir.mkdirs()
+            File(stateDir, "mirror-folder-$id").writeText(legacy.readText())
+            File(stateDir, "mirror-enabled").takeIf { it.isFile }
+                ?.let { File(stateDir, "mirror-enabled-$id").writeText(it.readText()) }
+            File(stateDir, "mirror-last-pass").takeIf { it.isFile }
+                ?.let { File(stateDir, "mirror-last-pass-$id").writeText(it.readText()) }
+            File(stateDir, "mirror-migrated").writeText(id)
+        }
     }
 
-    fun enabled(): Boolean = enabledFile.takeIf { it.isFile }?.readText()?.trim() == "true"
+    private fun file(name: String): File? = project?.let { File(stateDir, "$name-$it") }
+
+    fun folderUri(): String? =
+        file("mirror-folder")?.takeIf { it.isFile }?.readText()?.trim()?.ifEmpty { null }
+
+    fun setFolder(uri: String?) {
+        val target = file("mirror-folder") ?: return
+        stateDir.mkdirs()
+        if (uri == null) target.delete() else target.writeText(uri)
+    }
+
+    fun enabled(): Boolean =
+        file("mirror-enabled")?.takeIf { it.isFile }?.readText()?.trim() == "true"
 
     fun setEnabled(value: Boolean) {
+        val target = file("mirror-enabled") ?: return
         stateDir.mkdirs()
-        enabledFile.writeText(value.toString())
+        target.writeText(value.toString())
     }
 
     /** When the last pass finished, so a resting screen can say how current the folder is. */
     fun lastPassAt(): Long? =
-        lastPassFile.takeIf { it.isFile }?.readText()?.trim()?.toLongOrNull()
+        file("mirror-last-pass")?.takeIf { it.isFile }?.readText()?.trim()?.toLongOrNull()
 
     fun recordPass(atEpochMs: Long) {
+        val target = file("mirror-last-pass") ?: return
         stateDir.mkdirs()
-        lastPassFile.writeText(atEpochMs.toString())
+        target.writeText(atEpochMs.toString())
     }
-
-    private val lastPassFile get() = File(stateDir, "mirror-last-pass")
 }
 
 /**

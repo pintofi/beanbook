@@ -283,6 +283,10 @@ class MainActivity : ComponentActivity() {
     private fun openProject(app: BeancountApplication, projectId: String) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
         app.projectsState.open(projectId)
+        // Before anything can sync: the mirror answers for this project only (B96).
+        app.mirror.useProject(projectId)
+        mirrorFolder = app.mirror.folderUri
+        mirrorEnabled = app.mirror.enabled
         app.templatesState.open(projectId)
         app.pluginsState.openProject(app.workspace.projectDir(projectId))
         app.packagesState.refresh()   // shared by every ledger; only needs what is on disk

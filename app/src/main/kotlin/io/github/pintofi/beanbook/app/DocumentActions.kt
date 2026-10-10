@@ -44,7 +44,9 @@ internal fun MainActivity.attachDocument(
         lifecycleScope.launch {
             // In files/documents.beancount rather than the main file (B89), where a folder of
             // receipts filed over a year had been piling up between the options and plugins.
-            val ledger = documentsLedger(app, projectId) ?: return@launch
+            val ledger = documentsLedger(app, projectId) {
+                attachDocument(app, projectId, account, label)
+            } ?: return@launch
             val projectDir = app.workspace.projectDir(projectId)
             val directives = paths.joinToString("") { relativePath ->
                 DirectiveDraft.Document(
@@ -128,6 +130,12 @@ internal fun pathAsNamedIn(file: File, projectDir: File, path: String): String? 
 internal suspend fun MainActivity.documentsLedger(
     app: BeancountApplication,
     projectId: String,
+    /**
+     * What to do once the include line is in place (B96). Without it the person had to find
+     * the filing button again and tap it a second time, and nothing on the Documents screen
+     * said so: the page showed "Saved ….pdf" and the ledger never got its directive.
+     */
+    then: () -> Unit = {},
 ): File? {
     val main = app.workspace.mainFile(projectId)
     val target = File(app.workspace.projectDir(projectId), "files/documents.beancount")
@@ -156,12 +164,15 @@ internal suspend fun MainActivity.documentsLedger(
             apply = {
                 lifecycleScope.launch {
                     val result = app.writer.append(projectId, main, "$line\n", operation = "include-documents")
-                    saveMessage = if (result is io.github.pintofi.beanbook.core.data.WriteResult.Committed) {
-                        "Added the include line. File the document again to write it."
+                    val added = result is io.github.pintofi.beanbook.core.data.WriteResult.Committed
+                    saveMessage = if (added) {
+                        "Added the include line. Filing the document now."
                     } else {
                         "The line could not be added, so nothing was filed."
                     }
+                    app.documentCapture.report(saveMessage ?: "")
                     app.ledgerState.load(main.absolutePath)
+                    if (added) then()
                 }
             },
         )
@@ -272,7 +283,9 @@ internal fun MainActivity.refileDocument(
     // would leave the unfiled state visible but unresolvable from the screen that shows it.
     if (from == null) {
         lifecycleScope.launch {
-            val ledger = documentsLedger(app, projectId) ?: return@launch
+            val ledger = documentsLedger(app, projectId) {
+                refileDocument(app, projectId, path, newAccount, from)
+            } ?: return@launch
             val directive = DirectiveDraft.Document(
                 date = LocalDate.now().toString(),
                 account = newAccount,

@@ -112,26 +112,54 @@ class WidgetCache(stateDir: File) {
 
     private val file = File(stateDir, "widgets.json")
 
-    fun read(): WidgetSnapshot? {
-        if (!file.isFile) return null
-        val root = runCatching { Json.parse(file.readText()) }.getOrNull() as? Json.Obj
+    private val dir = stateDir
+
+    private fun parse(source: File): WidgetSnapshot? {
+        if (!source.isFile) return null
+        val root = runCatching { Json.parse(source.readText()) }.getOrNull() as? Json.Obj
             ?: return null
         return WidgetSnapshot.fromJson(root)
+    }
+
+    /**
+     * The newest snapshot, or -- when [prefer] names accounts the newest one does not have --
+     * the newest one of any project that does (B96).
+     *
+     * The cache used to hold only the project open last, so opening a second project blanked
+     * every widget chosen for the first: the account names matched nothing and each row
+     * showed a dash until the first project was opened again. A widget is chosen by account
+     * name, so it follows the project that has those accounts.
+     */
+    fun read(prefer: Collection<String> = emptyList()): WidgetSnapshot? {
+        val latest = parse(file)
+        if (prefer.isEmpty() || latest == null || prefer.any { it in latest.balances }) return latest
+        return dir.listFiles { f -> f.name.startsWith("widgets-") && f.name.endsWith(".json") }
+            .orEmpty()
+            .sortedByDescending { it.lastModified() }
+            .mapNotNull { parse(it) }
+            .firstOrNull { snapshot -> prefer.any { it in snapshot.balances } }
+            ?: latest
     }
 
     /** Atomic, so a widget reading mid-write sees the old snapshot rather than half of one. */
     fun write(snapshot: WidgetSnapshot) {
         file.parentFile?.mkdirs()
-        val tmp = File(file.parentFile, "widgets.json.tmp")
-        tmp.writeText(snapshot.toJson().write() + "\n")
-        if (!tmp.renameTo(file)) {
-            tmp.copyTo(file, overwrite = true)
-            tmp.delete()
-        }
+        val text = snapshot.toJson().write() + "\n"
+        // One file per project beside the newest, so another project does not erase it (B96).
+        listOf(file, File(dir, "widgets-${snapshot.projectId.filter { it.isLetterOrDigit() || it == '-' }}.json"))
+            .forEach { target ->
+                val tmp = File(target.parentFile, "${target.name}.tmp")
+                tmp.writeText(text)
+                if (!tmp.renameTo(target)) {
+                    tmp.copyTo(target, overwrite = true)
+                    tmp.delete()
+                }
+            }
     }
 
     fun clear() {
         file.delete()
+        dir.listFiles { f -> f.name.startsWith("widgets-") }.orEmpty().forEach { it.delete() }
     }
 
     companion object {

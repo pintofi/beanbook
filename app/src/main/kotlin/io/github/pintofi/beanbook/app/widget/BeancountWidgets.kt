@@ -27,12 +27,13 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
         manager: AppWidgetManager,
         widgetIds: IntArray,
     ) {
-        val snapshot = WidgetCache(context.filesDir.resolve("state")).read()
+        val cache = WidgetCache(context.filesDir.resolve("state"))
         val hideAmounts = WidgetPreferences(context).hideAmounts()
 
         val accounts = WidgetAccounts(context)
 
         widgetIds.forEach { id ->
+            val snapshot = cache.read(prefer = accounts.accountsFor(id))
             manager.updateAppWidget(
                 id,
                 WidgetRenderer.render(

@@ -89,7 +89,15 @@ data class TransactionDraft(
      *   is what *the file* calls close enough to balance, and an app deciding that for itself
      *   is an app disagreeing with the ledger it is showing.
      */
-    fun validate(format: LedgerFormat = LedgerFormat.PLAIN): List<DraftProblem> {
+    fun validate(
+        format: LedgerFormat = LedgerFormat.PLAIN,
+        /**
+         * The accounts the ledger has opened, or null when that is not known or does not
+         * matter (a ledger with `auto_accounts`). A posting to any other account is an error
+         * Beancount reports for the whole ledger, so it is refused here, before the write (B96).
+         */
+        openAccounts: Set<String>? = null,
+    ): List<DraftProblem> {
         val problems = mutableListOf<DraftProblem>()
 
         if (!DATE.matches(date)) problems += DraftProblem.InvalidDate(date)
@@ -107,6 +115,8 @@ data class TransactionDraft(
         postings.forEach { posting ->
             if (!ACCOUNT.matches(posting.account)) {
                 problems += DraftProblem.InvalidAccount(posting.account)
+            } else if (openAccounts != null && posting.account !in openAccounts) {
+                problems += DraftProblem.UnknownAccount(posting.account)
             }
         }
 
@@ -249,6 +259,9 @@ sealed interface DraftProblem {
     data class InvalidFlag(val value: String) : DraftProblem
     data class TooFewPostings(val count: Int) : DraftProblem
     data class InvalidAccount(val account: String) : DraftProblem
+
+    /** A well-formed name the ledger has not opened. */
+    data class UnknownAccount(val account: String) : DraftProblem
     data class TooManyElidedPostings(val count: Int) : DraftProblem
     data class DoesNotBalance(val residuals: List<Amount>) : DraftProblem
     data class InvalidTag(val tag: String) : DraftProblem
@@ -270,6 +283,8 @@ sealed interface DraftProblem {
         is InvalidFlag -> "\"$value\" is not a transaction flag (* or !)"
         is TooFewPostings -> "a transaction needs at least two postings; this has $count"
         is InvalidAccount -> "\"$account\" is not a valid account name; accounts look like Expenses:Food"
+        is UnknownAccount ->
+            "\"$account\" is not an account in this ledger; pick one from the list, or open it first"
         is TooManyElidedPostings -> "$count postings have no amount; Beancount can work out only one"
         is DoesNotBalance -> "does not balance: " + residuals.joinToString(", ") { it.format() }
         is InvalidTag -> "\"$tag\" is not a valid tag; tags are letters, digits, - _ / . and no spaces"
@@ -306,6 +321,8 @@ data class LedgerVocabulary(
     val recentEntries: List<JournalEntry> = emptyList(),
     /** What the ledger's `commodity_attr` plugin requires of a commodity directive (B94). */
     val commodityAttributes: List<String> = emptyList(),
+    /** Accounts the ledger has opened; null where any name is acceptable (B96). */
+    val openAccounts: Set<String>? = null,
 ) {
     fun accountsMatching(prefix: String): List<String> = match(accounts, prefix)
     fun payeesMatching(prefix: String): List<String> = match(payees, prefix)
@@ -373,6 +390,11 @@ data class LedgerVocabulary(
             links = snapshot.journal.flatMap { it.links }.distinct().sorted(),
             recentEntries = snapshot.journal,
             commodityAttributes = snapshot.commodityAttributes,
+            openAccounts = if (snapshot.hasPlugin("beancount.plugins.auto_accounts")) {
+                null
+            } else {
+                snapshot.accounts.map { it.name }.toSet()
+            },
         )
     }
 }

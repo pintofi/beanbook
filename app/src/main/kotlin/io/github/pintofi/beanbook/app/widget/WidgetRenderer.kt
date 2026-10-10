@@ -222,7 +222,7 @@ object WidgetRenderer {
             .format(Date(snapshot.generatedAtEpochMs))
         return when {
             !snapshot.clean ->
-                "This ledger has errors — last good figures, $time"
+                "${snapshot.projectTitle} has errors to review · $time"
             snapshot.isStale(nowEpochMs) ->
                 "Out of date — from $time. Open the app to refresh."
             redacted -> "Hidden · $time"

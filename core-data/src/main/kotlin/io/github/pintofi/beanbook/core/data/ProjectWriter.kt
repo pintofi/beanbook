@@ -226,6 +226,7 @@ class ProjectWriter(
         // How many errors the ledger already had. Beancount never refuses to parse, so
         // this baseline is the only way to tell "the write broke something" from "the
         // ledger was already imperfect".
+        var baselineMessages: List<String> = emptyList()
         val baseline = if (policy == ErrorPolicy.ROLLBACK_ON_NEW_ERRORS) {
             val before = validator.validate(workspace.mainFile(projectId).absolutePath)
             // Nothing has been written yet, so refusing here is free and honest. Carrying on
@@ -240,7 +241,7 @@ class ProjectWriter(
                     )
                 }
             }
-            before.getOrElse { emptyList() }.size
+            before.getOrElse { emptyList() }.also { baselineMessages = it }.size
         } else {
             0
         }
@@ -298,7 +299,9 @@ class ProjectWriter(
                     reason = (errors.size - baseline).let {
                         if (it == 1) "it would add 1 error to your ledger" else "it would add $it errors to your ledger"
                     },
-                    errors = errors,
+                    // What this write added, not the whole list: a ledger that already had
+                    // errors would otherwise name them as though the new entry caused them (B96).
+                    errors = newErrors(errors, baselineMessages, errors.size - baseline),
                 )
             }
 
@@ -419,4 +422,14 @@ class ProjectWriter(
             }
         }
     }
+}
+
+/**
+ * The errors in [after] that were not in [before], by text; if the texts do not tell them
+ * apart (a line number moved), the last [count] -- a write appends, so they are the likeliest.
+ */
+internal fun newErrors(after: List<String>, before: List<String>, count: Int): List<String> {
+    val remaining = before.toMutableList()
+    val added = after.filter { message -> !remaining.remove(message) }
+    return if (added.size == count) added else after.takeLast(count.coerceAtLeast(0))
 }

@@ -86,8 +86,24 @@ class LocalEngineClient(
      */
     var pluginDirs: List<String> = emptyList()
 
+    /** The ledger the running server was started on, so a different one is not answered by it. */
+    @Volatile
+    private var servingPath: String? = null
+
     override suspend fun start(projectPath: String): EngineStatus = lifecycleLock.withLock {
-        (status.value as? EngineStatus.Serving)?.let { return it }
+        // Already serving *this* ledger: nothing to do. Serving another one is not "already
+        // started" -- after opening a second project the Reports tab kept showing the first
+        // project's entries under the second one's name (B96), so the old server is stopped
+        // and the new ledger takes its place.
+        (status.value as? EngineStatus.Serving)?.let { running ->
+            if (servingPath == projectPath) return running
+            withContext(io) {
+                connection.withEngine { it.stopEngine() }
+                    .onFailure { Log.w(TAG, "engine stop before switching ledger failed", it) }
+            }
+            token = null
+            servingPath = null
+        }
 
         _status.value = EngineStatus.Starting
         val newToken = newToken()
@@ -114,6 +130,7 @@ class LocalEngineClient(
             )
         }
         _status.value = status
+        servingPath = if (status is EngineStatus.Serving) projectPath else null
         return status
     }
 
@@ -146,6 +163,7 @@ class LocalEngineClient(
                 .onFailure { Log.w(TAG, "engine stop failed", it) }
         }
         token = null
+        servingPath = null
         _status.value = EngineStatus.Stopped
     }
 

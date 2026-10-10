@@ -93,7 +93,7 @@ internal fun MainActivity.saveText(
                     else if (result.warnings.size == 1) "Saved. The ledger has 1 error to review."
                     else "Saved. The ledger has ${result.warnings.size} errors to review."
                 is io.github.pintofi.beanbook.core.data.WriteResult.RolledBack ->
-                    "Not saved: ${result.reason}. Your ledger is unchanged."
+                    "Not saved: ${result.reason}${named(result.errors)}. Your ledger is unchanged."
                 is io.github.pintofi.beanbook.core.data.WriteResult.Refused ->
                     "Not saved: ${result.reason}"
             },
@@ -105,3 +105,11 @@ internal fun MainActivity.saveText(
     }
 }
 
+
+/** The first two errors by name, so a refusal says what is wrong and not only how many (B96). */
+private fun named(errors: List<String>): String {
+    val shown = errors.map { it.trim() }.filter { it.isNotEmpty() }.take(2)
+    if (shown.isEmpty()) return ""
+    val more = if (errors.size > shown.size) " (and ${errors.size - shown.size} more)" else ""
+    return ": " + shown.joinToString("; ") + more
+}

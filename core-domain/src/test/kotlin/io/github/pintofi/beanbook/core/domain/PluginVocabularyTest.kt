@@ -31,4 +31,20 @@ class PluginVocabularyTest {
         assertEquals(listOf("USD"), checked.currencies)
         assertEquals(listOf("EUR", "USD"), LedgerVocabulary.from(ledger()).currencies)
     }
+
+    @Test
+    fun `an account the ledger has not opened is refused before the write`() {
+        val vocabulary = LedgerVocabulary.from(ledger())
+        val draft = TransactionDraft(
+            date = "2026-10-10", narration = "x",
+            postings = listOf(
+                PostingDraft(account = "Assets:Bank:Ca", amount = Amount(BigDecimal.ONE, "USD")),
+                PostingDraft(account = "Assets:Bank:Checking", amount = null),
+            ),
+        )
+
+        val problems = draft.validate(openAccounts = vocabulary.openAccounts)
+
+        assertEquals(listOf(DraftProblem.UnknownAccount("Assets:Bank:Ca")), problems)
+    }
 }
