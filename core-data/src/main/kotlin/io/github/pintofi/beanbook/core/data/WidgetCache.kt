@@ -148,9 +148,11 @@ class WidgetCache(stateDir: File) {
             ledger: LedgerSnapshot,
             nowEpochMs: Long,
             accounts: Collection<String> = ledger.accounts.map { it.name },
+            valuation: io.github.pintofi.beanbook.core.domain.Valuation =
+                io.github.pintofi.beanbook.core.domain.Valuation.VALUE,
         ): WidgetSnapshot {
             // One definition of these three, shared with the home surface (B10).
-            val summary = LedgerSummary.of(ledger)
+            val summary = LedgerSummary.of(ledger, valuation)
             val wanted = accounts.toSet()
             // An account with no positions has nothing to show, and a widget saying nothing
             // is worse than one the user never added.
@@ -160,7 +162,7 @@ class WidgetCache(stateDir: File) {
                 // this row used the plain default, so a file asking for thousands separators got
                 // them on Home and in the headline widgets and not in the accounts widget.
                 .mapNotNull { account ->
-                    LedgerSummary.format(account.positions, ledger.format)?.let { account.name to it }
+                    LedgerSummary.format(valuation.of(account), ledger.format)?.let { account.name to it }
                 }
                 .toMap()
 

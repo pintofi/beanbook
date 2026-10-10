@@ -7,12 +7,14 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import io.github.pintofi.beanbook.core.domain.LedgerSummary
+import io.github.pintofi.beanbook.core.domain.Valuation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +22,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -238,7 +242,7 @@ fun BalancesScreen(
     // something it was told.
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember(context) { ValuationPreference(context) }
-    var basis by remember { mutableStateOf(store.read()) }
+    val basis by store.flow.collectAsState()
 
     Column(modifier = modifier.fillMaxSize()) {
         // Two bounds and an account, which is the pair of filters Fava puts above its own
@@ -323,7 +327,7 @@ fun BalancesScreen(
             Valuation.entries.forEachIndexed { index, option ->
                 SegmentedButton(
                     selected = basis == option,
-                    onClick = { basis = option; store.write(option) },
+                    onClick = { store.write(option) },
                     shape = SegmentedButtonDefaults.itemShape(
                         index,
                         Valuation.entries.size,
@@ -443,19 +447,6 @@ fun BalancesScreen(
                 }
             }
         }
-    }
-}
-
-/** Which of an account's three figures to show (B14). */
-enum class Valuation(val label: String) {
-    UNITS("Units"),
-    COST("At cost"),
-    VALUE("Market value");
-
-    fun of(account: AccountBalance): List<Amount> = when (this) {
-        UNITS -> account.positions
-        COST -> account.atCost
-        VALUE -> account.atValue
     }
 }
 
@@ -627,15 +618,39 @@ fun JournalScreen(
         JournalErrors.attach(snapshot.journal, snapshot.errors)
     }
     var onlyErrors by rememberSaveable { mutableStateOf(false) }
-    // A filter that is on while there is nothing left to filter would hide the whole journal
-    // behind a switch the person can no longer see the reason for.
-    val filteringErrors = onlyErrors && faults.isNotEmpty()
-    val found = remember(snapshot.journal, faults, query, filteringErrors) {
+    // Pending is `!` -- seen, not settled -- and Flagged is any other mark but the plain `*`.
+    // Together they are one choice of "which marks", so they add up; errors narrow further.
+    var onlyPending by rememberSaveable { mutableStateOf(false) }
+    var onlyFlagged by rememberSaveable { mutableStateOf(false) }
+    // The chips are always on screen; a switch that is on with nothing to match simply shows
+    // an empty list and says why, rather than hiding.
+    val found = remember(snapshot.journal, faults, query, onlyErrors, onlyPending, onlyFlagged) {
         snapshot.journal
-            .let { all -> if (filteringErrors) all.filter { JournalErrors.keyOf(it) in faults } else all }
+            .let { all -> if (onlyErrors) all.filter { JournalErrors.keyOf(it) in faults } else all }
+            .let { all ->
+                if (!onlyPending && !onlyFlagged) {
+                    all
+                } else {
+                    all.filter { it.hasMark(onlyPending, onlyFlagged) }
+                }
+            }
             .let { rows -> if (query.isBlank()) rows else rows.filter { it.matches(query) } }
     }
     val visible = remember(found, shown) { found.take(shown) }
+    // Two entries can share a position (a plugin that generates entries points them at the
+    // line that caused them), and a lazy list throws on a repeated key, which crashed the
+    // search. The first keeps its plain key; later ones get a suffix. Identity-keyed so equal
+    // entries are still told apart.
+    val rowKeys = remember(visible) {
+        val seen = HashMap<String, Int>()
+        val keys = java.util.IdentityHashMap<JournalEntry, String>()
+        for (e in visible) {
+            val base = "${e.file}:${e.line}"
+            val n = seen.merge(base, 1, Int::plus)!!
+            keys[e] = if (n == 1) base else "$base#$n"
+        }
+        keys
+    }
     // What no entry owns. The rest is shown on the entries themselves, and repeating it here
     // would say the same thing twice at the top of the screen.
     val loose = remember(snapshot.journal, snapshot.errors) {
@@ -718,25 +733,19 @@ fun JournalScreen(
         if (loose.isNotEmpty()) {
             item { ErrorBanner(loose) }
         }
-        if (faults.isNotEmpty()) {
-            item(key = "errorFilter") {
-                val count = faults.values.sumOf { it.size }
+        // Always shown (B95). The filters used to appear only when an error landed on an entry,
+        // which made them look like a feature that had gone; they are part of the Journal.
+        item(key = "filters") {
+            val count = faults.values.sumOf { it.size }
+            Column(modifier = Modifier.padding(horizontal = Measure.gutter, vertical = Measure.tight)) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Measure.gutter, vertical = Measure.tight),
-                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(Measure.snug),
                 ) {
-                    Text(
-                        text = if (count == 1) "1 error is on an entry." else "$count errors are on entries.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f).padding(end = Measure.snug),
-                    )
                     FilterChip(
                         selected = onlyErrors,
                         onClick = { onlyErrors = !onlyErrors },
-                        label = { Text("Only errors") },
+                        label = { Text("Errors") },
                         modifier = Modifier.semantics {
                             contentDescription = if (onlyErrors) {
                                 "Showing only entries with errors. Tap to show every entry"
@@ -745,7 +754,56 @@ fun JournalScreen(
                             }
                         },
                     )
+                    FilterChip(
+                        selected = onlyPending,
+                        onClick = { onlyPending = !onlyPending },
+                        label = { Text("Pending") },
+                        modifier = Modifier.semantics {
+                            contentDescription = if (onlyPending) {
+                                "Showing pending entries. Tap to stop filtering by pending"
+                            } else {
+                                "Show only pending entries, the ones marked with an exclamation mark"
+                            }
+                        },
+                    )
+                    FilterChip(
+                        selected = onlyFlagged,
+                        onClick = { onlyFlagged = !onlyFlagged },
+                        label = { Text("Flagged") },
+                        modifier = Modifier.semantics {
+                            contentDescription = if (onlyFlagged) {
+                                "Showing flagged entries. Tap to stop filtering by flag"
+                            } else {
+                                "Show only entries with a flag other than the plain star or the pending mark"
+                            }
+                        },
+                    )
                 }
+                val note = when {
+                    snapshot.errors.isEmpty() -> null
+                    count == 0 -> "No error is on a single entry; they are listed above."
+                    count == 1 -> "1 error is on an entry."
+                    else -> "$count errors are on entries."
+                }
+                if (note != null) {
+                    Text(
+                        text = note,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Measure.tight),
+                    )
+                }
+            }
+        }
+        val filtering = onlyErrors || onlyPending || onlyFlagged
+        if (found.isEmpty() && filtering && query.isBlank()) {
+            item {
+                EmptyState(
+                    title = "No entries match these filters",
+                    detail = "Turn a filter off to see more.",
+                    art = EmptyArt.SEARCH,
+                    modifier = Modifier.padding(horizontal = Measure.gutter),
+                )
             }
         }
         if (found.isEmpty() && query.isNotBlank()) {
@@ -779,7 +837,7 @@ fun JournalScreen(
                 }
             }
         }
-        items(visible, key = { "${it.file}:${it.line}" }) { entry ->
+        items(visible, key = { rowKeys[it] ?: "${it.file}:${it.line}" }) { entry ->
             // No placement animation (B77). Filtering moved the surviving rows up while the rows
             // that left vanished and the rows that stayed slid past each other, so for a
             // fraction of a second while typing in the search box two entries were drawn on
@@ -1076,4 +1134,10 @@ private fun DisclosureChevron(
         tint = tint,
         modifier = modifier.graphicsLayer { rotationZ = turn },
     )
+}
+
+/** Whether the entry carries a mark the Journal's flag filters ask for. */
+private fun JournalEntry.hasMark(pending: Boolean, flagged: Boolean): Boolean {
+    val mark = flag ?: return false
+    return (pending && mark == "!") || (flagged && mark != "*" && mark != "!")
 }

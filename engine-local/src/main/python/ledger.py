@@ -22,6 +22,63 @@ def _decimal_str(value: Any) -> str | None:
     return None if value is None else str(value)
 
 
+def _with_posting_prices(entries: Any, options_map: Any) -> list:
+    """The entries plus the rates their own postings state, for reading values only.
+
+    Only a posting with a price and **no cost** counts (`2000 SAR @ 75 PKR`): that is a
+    conversion the ledger states outright. A cost (`{500 USD}`) is what something was bought
+    for, not what it is worth now, and stays out -- the unpriced-holding rule in
+    test_ledger_valuation still holds.
+    """
+    from beancount.core import amount as amount_lib
+    from beancount.core import data
+
+    derived = list(entries)
+    seen = set()
+    for entry in entries:
+        if not isinstance(entry, data.Transaction):
+            continue
+        for posting in entry.postings:
+            if posting.units is None or posting.price is None or posting.cost is not None:
+                continue
+            base, quote = posting.units.currency, posting.price.currency
+            if base == quote or posting.price.number is None:
+                continue
+            key = (entry.date, base, quote)
+            if key in seen:
+                continue
+            seen.add(key)
+            derived.append(
+                data.Price(
+                    entry.meta, entry.date, base,
+                    amount_lib.Amount(posting.price.number, quote),
+                )
+            )
+    return derived
+
+
+def _commodity_attributes(options_map: Any) -> list:
+    """The metadata keys `beancount.plugins.commodity_attr` demands on every commodity (B94).
+
+    The ledger's own plugin line names them -- `plugin "beancount.plugins.commodity_attr"
+    "{'name': None, 'precision': None}"` -- and the plugin reports an error for each commodity
+    directive that lacks one. The Add form needs the same list to ask for them.
+    """
+    import ast
+
+    for entry in options_map.get("plugin") or []:
+        name, config = entry[0], entry[1] if len(entry) > 1 else None
+        if name != "beancount.plugins.commodity_attr" or not config:
+            continue
+        try:
+            parsed = ast.literal_eval(config)
+        except (ValueError, SyntaxError):
+            return []
+        if isinstance(parsed, dict):
+            return [str(key) for key in parsed]
+    return []
+
+
 def _error_dict(error: Any) -> dict[str, Any]:
     """Beancount errors carry their own source position; surface it verbatim."""
     meta = getattr(error, "source", None) or {}
@@ -238,7 +295,13 @@ def inspect(
     # Prices come from the file's own `price` directives. Nothing is fetched and nothing is
     # inferred: an asset the ledger never priced is reported at cost by Beancount's own
     # get_value, which is the honest answer rather than an invented one.
-    price_map = prices_lib.build_price_map(all_entries)
+    #
+    # One exception (B94): a posting that carries its own rate (`2000 SAR @ 75 PKR`) is the
+    # ledger saying what that commodity was worth on that day. Without it, a ledger that
+    # never wrote a `price` directive showed PKR and SAR as two unrelated figures. These are
+    # what Beancount's own `implicit_prices` plugin derives, used here only to read figures
+    # and never written back to a file.
+    price_map = prices_lib.build_price_map(_with_posting_prices(all_entries, options_map))
     # The end of the range being shown, not the end of the file: valuing a filtered ledger at
     # today's price would put figures on the screen that the chosen period never held.
     as_of = max((entry.date for entry in entries), default=None)
@@ -257,35 +320,66 @@ def inspect(
     # in one currency. This is the currency to put it in.
     operating = (options_map.get("operating_currency") or [None])[0]
 
-    def _in_operating(inventory):
-        """An inventory converted to the operating currency, or [] if it cannot be.
+    def _market(pos):
+        """The market value of one position, the way Fava's "Market Value" reads it (B95).
 
-        `convert_position` falls back to the position's own currency when no price connects
-        it to the target, exactly as `get_value` falls back to cost. So a holding the ledger
-        never priced is reported in its own currency rather than silently counted as though
-        it were operating-currency units, and the sum below keeps it as a separate figure
-        instead of adding pounds to dollars.
+        At the latest price on or before the end of the range; in the operating currency when
+        the ledger declares one, otherwise in whatever the price is quoted in. Where no price
+        connects the position, it is shown **at cost** if it was bought at one, and in its own
+        units if it was not -- so a purchase price is never silently dropped, and a holding
+        nobody priced is never given a value nobody stated.
         """
-        if inventory is None or operating is None:
+        if operating is not None:
+            value = convert.convert_position(pos, operating, price_map, as_of)
+            if value.currency == operating:
+                return value
+        else:
+            value = convert.get_value(pos, price_map, as_of)
+            if value.currency != pos.units.currency:
+                return value
+        if pos.cost is not None:
+            cost = convert.get_cost(pos)
+            if operating is not None and cost.currency != operating:
+                return convert.convert_amount(cost, operating, price_map, as_of)
+            return cost
+        return value
+
+    def _valued(inventory):
+        if inventory is None:
             return []
         converted = inventory_lib.Inventory()
         for pos in inventory:
-            converted.add_amount(
-                convert.convert_position(pos, operating, price_map, as_of)
-            )
+            converted.add_amount(_market(pos))
         return [
             {
                 # Quantised for display. Multiplying a balance by a rate gives as many
                 # decimal places as the rate has -- 1850.00 EUR at 1.085 came out as
                 # "2007.250000 USD" on the home screen. This rounds the *presentation* of a
                 # converted figure and nothing else: no converted number is ever written to a
-                # ledger, and the units, cost and market-value figures beside it are
-                # untouched, so invariant 1 still holds where it is about the books.
-                "number": _decimal_str(_display_round(pos.units.number)),
+                # ledger, and the units and cost figures beside it are untouched, so
+                # invariant 1 still holds where it is about the books.
+                #
+                # Only in the operating currency, where a conversion may have happened. A
+                # holding left in its own units (0.00012 BTC) keeps every place it has.
+                "number": _decimal_str(
+                    _display_round(pos.units.number)
+                    if pos.units.currency == operating
+                    else pos.units.number
+                ),
                 "currency": pos.units.currency,
             }
             for pos in converted
         ]
+
+    def _latest_rates():
+        """Each priced pair at its latest price, so the app can convert a posting itself."""
+        rates = []
+        for base, quote in sorted(price_map.keys()):
+            if isinstance(base, str) and isinstance(quote, str):
+                _date, rate = prices_lib.get_price(price_map, (base, quote), as_of)
+                if rate is not None:
+                    rates.append({"base": base, "quote": quote, "rate": _decimal_str(rate)})
+        return rates
 
     accounts = sorted(getters.get_accounts(entries))
     account_rows = []
@@ -296,10 +390,10 @@ def inspect(
                 "name": account,
                 "positions": _amounts(inventory, convert.get_units),
                 "at_cost": _amounts(inventory, convert.get_cost),
-                "at_value": _amounts(
-                    inventory, lambda pos: convert.get_value(pos, price_map, as_of)
-                ),
-                "at_operating": _in_operating(inventory),
+                # Market value (B95). `at_operating` is the same figure, kept so a cached
+                # snapshot and an older reader keep working.
+                "at_value": _valued(inventory),
+                "at_operating": _valued(inventory),
             }
         )
 
@@ -417,6 +511,12 @@ def inspect(
         "display_precision": dict(sorted(display.items())),
         "tolerances": dict(sorted(tolerances.items())),
         "documents": documents,
+        "commodity_attributes": _commodity_attributes(options_map),
+        "plugins": [
+            {"name": str(entry[0]), "config": None if len(entry) < 2 else entry[1]}
+            for entry in (options_map.get("plugin") or [])
+        ],
+        "rates": _latest_rates(),
         "load_ms": round(load_ms, 1),
         "title": options_map.get("title"),
         "operating_currency": list(options_map.get("operating_currency") or []),

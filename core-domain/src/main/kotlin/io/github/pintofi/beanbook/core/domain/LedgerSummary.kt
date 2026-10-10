@@ -24,13 +24,13 @@ data class LedgerSummary(
 ) {
     companion object {
 
-        fun of(ledger: LedgerSnapshot): LedgerSummary {
+        fun of(ledger: LedgerSnapshot, valuation: Valuation = Valuation.VALUE): LedgerSummary {
             // In the operating currency where the ledger declares one. These are single
             // headline figures, and a headline reading "1200.00 USD 340.00 EUR 0.5 BTC"
             // answers nothing -- it is a list of holdings, not a net worth. Where no
             // operating currency is declared, `atOperating` is the units and this behaves
             // exactly as it used to.
-            val select = AccountBalance::atOperating
+            val select = valuation::of
             // Rendered the way the file asks (B59): its own decimal places and its own
             // thousands separators, rather than whatever scale the arithmetic produced.
             val format = ledger.format

@@ -373,7 +373,7 @@ class WheelFetcher(
         val listing = get("$chaquopyIndex/$name/") ?: return null
         val href = CHAQUOPY_WHEEL.findAll(listing)
             .map { it.groupValues[1] }
-            .lastOrNull { it.contains(ABI_TAG) || it.contains("py3-none") }
+            .lastOrNull { chaquopyWheelFits(it) }
             ?: return null
         val url = "$chaquopyIndex/$name/$href"
         // Chaquopy's index publishes no digests, so the digest is of what we received. That
@@ -403,7 +403,7 @@ class WheelFetcher(
             version = href.split('-').getOrElse(1) { "?" },
             url = url,
             sha256 = digest,
-            native = !href.contains("py3-none"),
+            native = !href.contains("py3-none-any"),
         )
     }
 
@@ -438,6 +438,19 @@ class WheelFetcher(
         }
         return null
     }
+
+    /**
+     * Whether a file from Chaquopy's index is for this interpreter *and this device's ABI*.
+     *
+     * The companion wheels (`chaquopy-openblas`, `chaquopy-libffi`, ...) are named
+     * `py3-none-android_<api>_<arch>`. Matching on `py3-none` alone took the last one listed,
+     * which is x86_64, so an arm64 phone unpacked an x86_64 `libffi.so` and `libopenblas.so`
+     * that the linker could not use: "library not found" at the import (B94).
+     */
+    private fun chaquopyWheelFits(href: String): Boolean =
+        href.contains(ABI_TAG) ||
+            href.contains("py3-none-any") ||
+            (href.contains("py3-none-android_") && href.endsWith("_$DEVICE_ARCH.whl"))
 
     private fun isAndroidWheelForThisDevice(filename: String): Boolean =
         androidWheelFits(filename.substringAfterLast('/'), DEVICE_ARCH)

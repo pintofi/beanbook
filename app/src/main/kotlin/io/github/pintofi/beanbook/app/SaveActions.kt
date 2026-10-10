@@ -26,6 +26,25 @@ internal fun entryTarget(
     return if (transactions.canonicalPath in read) transactions else app.workspace.mainFile(projectId)
 }
 
+/**
+ * Where a directive from the Add form goes (B94). A commodity belongs in the file the ledger
+ * keeps its commodities in, `files/commodities.beancount`, when the ledger reads it; it used
+ * to land in the transactions file with everything else.
+ */
+internal fun directiveTarget(
+    app: BeancountApplication,
+    projectId: String,
+    ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?,
+    draft: io.github.pintofi.beanbook.core.domain.DirectiveDraft,
+): java.io.File {
+    if (draft is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Commodity) {
+        val commodities = app.workspace.projectDir(projectId).resolve("files/commodities.beancount")
+        val read = ledger?.includedFiles.orEmpty().map { java.io.File(it).canonicalPath }
+        if (commodities.canonicalPath in read) return commodities
+    }
+    return entryTarget(app, projectId, ledger)
+}
+
 /** The two writes the entry form makes, and the only ones that close it (B77). */
 internal const val ENTRY_OPERATION = "quick-add"
 internal const val DIRECTIVE_OPERATION = "add-directive"

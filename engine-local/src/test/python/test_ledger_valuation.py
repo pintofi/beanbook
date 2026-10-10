@@ -89,7 +89,7 @@ class ValuationTest(unittest.TestCase):
         self.assertEqual(cash["positions"], cash["at_cost"])
         self.assertEqual(cash["positions"], cash["at_value"])
 
-    def test_an_unpriced_asset_stays_in_its_own_units(self):
+    def test_an_unpriced_asset_is_shown_at_cost(self):
         """What Beancount does, and the right thing.
 
         This test first asserted a fallback to cost, which was my assumption rather than
@@ -105,10 +105,12 @@ class ValuationTest(unittest.TestCase):
             payload = json.loads(ledger.inspect(str(path)))
             art = next(r for r in payload["accounts"] if r["name"] == "Assets:Art")
 
+        # Market value falls back to cost when no price exists (B95), as Fava's does; a
+        # holding with neither a price nor a cost stays in its own units.
         self.assertEqual(
-            [{"number": "1", "currency": "PAINTING"}],
+            [{"number": "500.00", "currency": "USD"}],
             art["at_value"],
-            "an unpriced holding must not be given a value the ledger never stated",
+            "an unpriced holding bought at a cost is shown at that cost",
         )
         self.assertEqual(
             [{"number": "500.00", "currency": "USD"}],
@@ -119,3 +121,62 @@ class ValuationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+POSTING_RATE_LEDGER = """
+option "operating_currency" "PKR"
+plugin "beancount.plugins.commodity_attr" "{'name': None, 'precision': None}"
+2026-01-01 open Assets:Cash
+2026-01-01 open Assets:Foreign
+2026-01-01 open Equity:Opening
+
+2026-01-01 * "opening"
+  Assets:Cash        100000 PKR
+  Equity:Opening
+
+2026-01-02 * "buy riyals"
+  Assets:Foreign     2000 SAR @ 75 PKR
+  Assets:Cash       -150000 PKR
+"""
+
+
+class PostingRateTest(unittest.TestCase):
+    """A rate written on a posting is what values the commodity (B94)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._dir = tempfile.TemporaryDirectory()
+        path = Path(cls._dir.name) / "main.beancount"
+        path.write_text(POSTING_RATE_LEDGER)
+        cls.payload = json.loads(ledger.inspect(str(path)))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._dir.cleanup()
+
+    def test_foreign_holding_is_converted_by_its_own_rate(self):
+        foreign = next(a for a in self.payload["accounts"] if a["name"] == "Assets:Foreign")
+        self.assertEqual(
+            [("150000.00", "PKR")],
+            [(p["number"], p["currency"]) for p in foreign["at_operating"]],
+        )
+
+    def test_market_value_is_in_the_operating_currency_and_units_are_untouched(self):
+        foreign = next(a for a in self.payload["accounts"] if a["name"] == "Assets:Foreign")
+        self.assertEqual(foreign["at_operating"], foreign["at_value"])
+        self.assertEqual([("2000", "SAR")], [(p["number"], p["currency"]) for p in foreign["positions"]])
+
+    def test_the_latest_rates_are_exported_for_the_app_to_convert_postings(self):
+        self.assertIn(
+            {"base": "SAR", "quote": "PKR", "rate": "75"},
+            self.payload["rates"],
+        )
+
+    def test_the_plugin_lines_are_reported_in_order(self):
+        self.assertEqual(
+            ["beancount.plugins.commodity_attr"],
+            [p["name"] for p in self.payload["plugins"]],
+        )
+
+    def test_commodity_attr_keys_are_reported(self):
+        self.assertEqual(["name", "precision"], self.payload["commodity_attributes"])

@@ -37,6 +37,20 @@ class DirectiveDraftTest {
     }
 
     @Test
+    fun `a commodity writes the details a commodity_attr ledger requires`() {
+        val draft = DirectiveDraft.Commodity(
+            date, "SAR",
+            linkedMapOf("name" to "Saudi Riyal", "precision" to "2", "initials" to ""),
+        )
+
+        assertEquals(
+            "2026-09-01 commodity SAR\n  name: \"Saudi Riyal\"\n  precision: 2\n",
+            draft.render(),
+        )
+        assertTrue(draft.validate().isEmpty())
+    }
+
+    @Test
     fun `balance and price align their amounts`() {
         val balance = DirectiveDraft.Balance(date, "Assets:Cash", Amount.parse("120.00", "USD")).render()
         val price = DirectiveDraft.Price(date, "ACME", Amount.parse("12.50", "USD")).render()

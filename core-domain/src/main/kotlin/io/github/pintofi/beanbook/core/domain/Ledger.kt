@@ -60,7 +60,16 @@ data class LedgerSnapshot(
     val accountNames: AccountNames = AccountNames.DEFAULT,
     /** The folders `option "documents"` names, as the file writes them (B70). */
     val documentRoots: List<String> = emptyList(),
+    /** Metadata keys the `commodity_attr` plugin requires on each commodity (B94). */
+    val commodityAttributes: List<String> = emptyList(),
+    /** The latest price of each priced pair, for converting what the app adds up itself (B95). */
+    val rates: List<PriceRate> = emptyList(),
+    /** The plugins the ledger turns on, in order, with the configuration each was given (B95). */
+    val plugins: List<LedgerPlugin> = emptyList(),
 ) {
+    /** Whether the ledger turns on the plugin [name], such as `beancount.plugins.leafonly`. */
+    fun hasPlugin(name: String): Boolean = plugins.any { it.name == name }
+
     val hasErrors: Boolean get() = errors.isNotEmpty()
 
     /**
@@ -267,3 +276,6 @@ data class LedgerError(
             if (line != null) "$name:$line" else name
         }
 }
+
+/** One `plugin "name" "config"` line of a ledger. */
+data class LedgerPlugin(val name: String, val config: String? = null)

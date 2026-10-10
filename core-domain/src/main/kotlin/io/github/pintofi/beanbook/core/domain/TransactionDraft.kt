@@ -304,6 +304,8 @@ data class LedgerVocabulary(
     val links: List<String> = emptyList(),
     /** Newest first, for offering back what was used last time. */
     val recentEntries: List<JournalEntry> = emptyList(),
+    /** What the ledger's `commodity_attr` plugin requires of a commodity directive (B94). */
+    val commodityAttributes: List<String> = emptyList(),
 ) {
     fun accountsMatching(prefix: String): List<String> = match(accounts, prefix)
     fun payeesMatching(prefix: String): List<String> = match(payees, prefix)
@@ -338,15 +340,30 @@ data class LedgerVocabulary(
         const val SUGGESTION_LIMIT = 60
 
         fun from(snapshot: LedgerSnapshot): LedgerVocabulary = LedgerVocabulary(
-            accounts = snapshot.accounts.map { it.name }.distinct().sorted(),
+            // `leafonly` makes a posting to an account that has sub-accounts an error, so the
+            // form does not offer one (B95). The same list is used for every directive.
+            accounts = snapshot.accounts.map { it.name }.distinct().sorted().let { names ->
+                if (snapshot.hasPlugin("beancount.plugins.leafonly")) {
+                    names.filterNot { name -> names.any { it.startsWith("$name:") } }
+                } else {
+                    names
+                }
+            },
             payees = snapshot.journal.mapNotNull { it.payee }.distinct().sorted(),
             narrations = snapshot.journal.mapNotNull { it.narration }.distinct().sorted(),
             // Declared *and* held. A commodity directive with nothing in it yet is still one
             // the user meant to use, and holding a balance in something never declared is
             // normal in a hand-written ledger, so neither source is sufficient alone.
+            //
+            // With `check_commodity` the declared ones are the only valid ones: a commodity
+            // that is merely held is reported as an error by the plugin, so it is not offered.
             currencies = (
                 snapshot.commodities +
-                    snapshot.accounts.flatMap { account -> account.positions.map { it.currency } }
+                    if (snapshot.hasPlugin("beancount.plugins.check_commodity")) {
+                        emptyList()
+                    } else {
+                        snapshot.accounts.flatMap { account -> account.positions.map { it.currency } }
+                    }
                 ).distinct().sorted(),
             defaultCurrency = snapshot.operatingCurrencies.firstOrNull()
                 ?: snapshot.accounts.flatMap { it.positions }
@@ -355,6 +372,7 @@ data class LedgerVocabulary(
             tags = snapshot.journal.flatMap { it.tags }.distinct().sorted(),
             links = snapshot.journal.flatMap { it.links }.distinct().sorted(),
             recentEntries = snapshot.journal,
+            commodityAttributes = snapshot.commodityAttributes,
         )
     }
 }

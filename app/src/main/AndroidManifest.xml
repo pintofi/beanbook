@@ -13,6 +13,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!--
+      Android 13+ hides every notification, including a foreground service's, until the user
+      allows them. Without this declaration the app could not even ask (B94).
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!--
       Sharing Reports on Wi-Fi (B93): off until the user turns it on. The network state is
       read to find this device's own Wi-Fi address; the special-use foreground service keeps
       the share alive, with a notification naming the address, only while it is on.

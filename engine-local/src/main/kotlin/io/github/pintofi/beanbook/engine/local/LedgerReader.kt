@@ -14,6 +14,8 @@ import io.github.pintofi.beanbook.core.domain.LedgerFormat
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import java.io.File
 import java.math.BigDecimal
+import io.github.pintofi.beanbook.core.domain.LedgerPlugin
+import io.github.pintofi.beanbook.core.domain.PriceRate
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -131,6 +133,15 @@ class LedgerReader(
         format = root.toLedgerFormat(),
         accountNames = root.toAccountNames(),
         documentRoots = root.optJSONArray("document_dirs").toStringList(),
+        commodityAttributes = root.optJSONArray("commodity_attributes").toStringList(),
+        plugins = root.optJSONArray("plugins").map {
+            LedgerPlugin(it.getString("name"), it.optStringOrNull("config"))
+        },
+        rates = root.optJSONArray("rates").map { rate ->
+            PriceRate(
+                rate.getString("base"), rate.getString("quote"), BigDecimal(rate.getString("rate")),
+            )
+        },
         loadMillis = root.optDouble("load_ms", 0.0).toLong(),
     )
 

@@ -304,8 +304,13 @@ class MainActivity : ComponentActivity() {
         // them to redraw. No alarm, no worker, nothing for a background limit to restrict —
         // there is no background work (docs/ux.md §8).
         lifecycleScope.launch {
-            app.ledgerState.snapshot.collect { snapshot ->
-                if (snapshot != null) publishWidgets(app, projectId, snapshot)
+            // Republished when the basis changes too, so the widgets follow the same switch
+            // as Home and Balances (B95).
+            kotlinx.coroutines.flow.combine(
+                app.ledgerState.snapshot,
+                io.github.pintofi.beanbook.app.ui.ValuationPreference(this@MainActivity).flow,
+            ) { snapshot, valuation -> snapshot to valuation }.collect { (snapshot, valuation) ->
+                if (snapshot != null) publishWidgets(app, projectId, snapshot, valuation)
             }
         }
     }
@@ -315,6 +320,7 @@ class MainActivity : ComponentActivity() {
         app: BeancountApplication,
         projectId: String,
         ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot,
+        valuation: io.github.pintofi.beanbook.core.domain.Valuation,
     ) {
         withContext(Dispatchers.IO) {
             runCatching {
@@ -332,11 +338,30 @@ class MainActivity : ComponentActivity() {
                         // storage that never enters a backup or a mirror, and it already
                         // held account names; the cap bought no privacy it did not have.
                         accounts = ledger.accounts.map { it.name },
+                        valuation = valuation,
                     ),
                 )
                 io.github.pintofi.beanbook.app.widget.WidgetRefresh.refreshAll(this@MainActivity)
             }
         }
+    }
+
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    /**
+     * Android 13+ shows no notification, not even a foreground service's, until the user
+     * allows it, and the app never asked (B94). Asked once: a refusal is respected, and the
+     * work still runs -- only the "Beanbook keeps working" notice is not shown.
+     */
+    private fun askForNotifications() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return
+        val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        val prefs = getSharedPreferences("prompts", MODE_PRIVATE)
+        if (granted || prefs.getBoolean("asked_notifications", false)) return
+        prefs.edit().putBoolean("asked_notifications", true).apply()
+        notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -349,6 +374,8 @@ class MainActivity : ComponentActivity() {
         // depending on which Android is running it. The clearance itself comes from
         // safeDrawingPadding at the root, not from here.
         enableEdgeToEdge()
+
+        askForNotifications()
 
         val app = application as BeancountApplication
 
@@ -697,7 +724,7 @@ class MainActivity : ComponentActivity() {
                                 activeId!!,
                                 draft.render(),
                                 DIRECTIVE_OPERATION,
-                                target = entryTarget(app, activeId!!, ledger),
+                                target = directiveTarget(app, activeId!!, ledger, draft),
                             )
                         },
                         // In remote mode the outcome of a save comes from the server, so

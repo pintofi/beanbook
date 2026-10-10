@@ -120,6 +120,12 @@ fun RollingFigure(
     color: Color = Color.Unspecified,
     rollInFrom: String? = null,
 ) {
+    // A figure in several currencies is one line each. Rolled character by character the line
+    // break drew as nothing, and "669,140.23 PKR" ran into "2,000.00 SAR" (B94).
+    if ('\n' in text) {
+        Text(text, style = style, color = color, modifier = modifier)
+        return
+    }
     if (!LocalMotionEnabled.current) {
         Text(text, style = style, color = color, maxLines = 1, modifier = modifier)
         return

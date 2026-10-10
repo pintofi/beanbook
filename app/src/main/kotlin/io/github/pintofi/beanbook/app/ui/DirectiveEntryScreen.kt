@@ -74,10 +74,13 @@ fun DirectiveEntryScreen(
     var second by remember { mutableStateOf("") }
     var text by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
+    // What the ledger's commodity_attr plugin asks of a commodity (B94), keyed by attribute.
+    val attributes = remember { androidx.compose.runtime.mutableStateMapOf<String, String>() }
     var currency by remember { mutableStateOf(vocabulary.currencies.firstOrNull() ?: "USD") }
 
     // The date and the pre-selected currency are the form's own doing, so neither counts.
-    val dirty = account.isNotBlank() || second.isNotBlank() || text.isNotBlank() || amount.isNotBlank()
+    val dirty = account.isNotBlank() || second.isNotBlank() || text.isNotBlank() ||
+        amount.isNotBlank() || attributes.values.any { it.isNotBlank() }
     androidx.compose.runtime.LaunchedEffect(dirty) { onDirtyChange(dirty) }
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onDirtyChange(false) } }
 
@@ -97,7 +100,10 @@ fun DirectiveEntryScreen(
         DirectiveKind.PRICE -> DirectiveDraft.Price(date.trim(), account.trim(), parsedAmount)
         DirectiveKind.DOCUMENT -> DirectiveDraft.Document(date.trim(), account.trim(), text.trim())
         DirectiveKind.EVENT -> DirectiveDraft.Event(date.trim(), account.trim(), text)
-        DirectiveKind.COMMODITY -> DirectiveDraft.Commodity(date.trim(), account.trim())
+        DirectiveKind.COMMODITY -> DirectiveDraft.Commodity(
+            date.trim(), account.trim(),
+            vocabulary.commodityAttributes.associateWith { attributes[it].orEmpty() },
+        )
         DirectiveKind.QUERY -> DirectiveDraft.Query(date.trim(), account.trim(), text)
         DirectiveKind.CUSTOM -> DirectiveDraft.Custom(
             date.trim(), account.trim(),
@@ -180,6 +186,23 @@ fun DirectiveEntryScreen(
                     label = "Commodity",
                     suggestions = vocabulary.currencies,
                     modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
+        if (kind == DirectiveKind.COMMODITY && vocabulary.commodityAttributes.isNotEmpty()) {
+            Text(
+                "This ledger asks every commodity for these details.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            vocabulary.commodityAttributes.forEach { key ->
+                OutlinedTextField(
+                    value = attributes[key].orEmpty(),
+                    onValueChange = { attributes[key] = it },
+                    label = { Text(key) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }

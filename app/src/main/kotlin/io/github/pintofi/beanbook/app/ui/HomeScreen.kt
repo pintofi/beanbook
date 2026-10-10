@@ -30,6 +30,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +51,7 @@ import io.github.pintofi.beanbook.app.ui.theme.readableMeasure
 import io.github.pintofi.beanbook.core.domain.AttentionItem
 import io.github.pintofi.beanbook.core.domain.CategorySpend
 import io.github.pintofi.beanbook.core.domain.HomeInsights
+import io.github.pintofi.beanbook.core.domain.Valuation
 import io.github.pintofi.beanbook.core.domain.JournalEntry
 import io.github.pintofi.beanbook.core.domain.LedgerFormat
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
@@ -99,6 +101,8 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val store = remember(context) { HomePreferences(context) }
+    val valuationStore = remember(context) { ValuationPreference(context) }
+    val valuation by valuationStore.flow.collectAsState()
     var current by remember(layout) { mutableStateOf(layout ?: store.read()) }
     var customising by remember { mutableStateOf(false) }
 
@@ -128,8 +132,8 @@ fun HomeScreen(
 
         current.cards.forEach { card ->
             when (card) {
-                HomeCard.FIGURES -> FiguresCard(ledger, hideAmounts)
-                HomeCard.SPENDING -> SpendingCard(ledger, current, hideAmounts, today, onOpenJournal)
+                HomeCard.FIGURES -> FiguresCard(ledger, hideAmounts, valuation) { valuationStore.write(it) }
+                HomeCard.SPENDING -> SpendingCard(ledger, current, hideAmounts, today, valuation, onOpenJournal)
                 HomeCard.ATTENTION -> AttentionCard(
                     stamped = stamped,
                     ledger = ledger,
@@ -170,8 +174,13 @@ fun HomeScreen(
 }
 
 @Composable
-private fun FiguresCard(ledger: LedgerSnapshot, hideAmounts: Boolean) {
-    val summary = LedgerSummary.of(ledger)
+private fun FiguresCard(
+    ledger: LedgerSnapshot,
+    hideAmounts: Boolean,
+    valuation: Valuation,
+    onValuation: (Valuation) -> Unit,
+) {
+    val summary = LedgerSummary.of(ledger, valuation)
     // The one signature composition in the app (B74): the headline figure set large in the
     // figure face, hung off the column rule, with the two supporting figures under it in a
     // ruled pair. No card, no container -- this is the page itself, which is why it reads as
@@ -183,6 +192,19 @@ private fun FiguresCard(ledger: LedgerSnapshot, hideAmounts: Boolean) {
             emphasis = true,
             introduce = HomeIntro.claim(),
         )
+        Spacer(Modifier.height(Measure.snug))
+        // The same three bases as Fava's top-right switch, and the same one Balances uses:
+        // a figure on this page and its account on that one are always on the same basis.
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            Valuation.entries.forEachIndexed { index, option ->
+                SegmentedButton(
+                    selected = valuation == option,
+                    onClick = { onValuation(option) },
+                    shape = SegmentedButtonDefaults.itemShape(index, Valuation.entries.size),
+                    modifier = Modifier.semantics { contentDescription = "Show figures ${option.label}" },
+                ) { Text(option.label) }
+            }
+        }
         Spacer(Modifier.height(Measure.gap))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -243,10 +265,11 @@ private fun SpendingCard(
     layout: HomePreferences.Layout,
     hideAmounts: Boolean,
     today: LocalDate,
+    valuation: Valuation,
     onOpenJournal: () -> Unit,
 ) {
-    val report = remember(ledger, layout.period, layout.categories, today) {
-        HomeInsights.spending(ledger, layout.period, today, layout.categories)
+    val report = remember(ledger, layout.period, layout.categories, today, valuation) {
+        HomeInsights.spending(ledger, layout.period, today, layout.categories, valuation)
     }
     RuledColumn {
         LedgerHeading("Where the money went") {

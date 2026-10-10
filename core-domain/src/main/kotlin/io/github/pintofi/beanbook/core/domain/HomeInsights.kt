@@ -124,6 +124,7 @@ object HomeInsights {
         period: SpendingPeriod,
         today: LocalDate,
         topCategories: Int = DEFAULT_CATEGORIES,
+        valuation: Valuation = Valuation.UNITS,
     ): SpendingReport {
         val root = ledger.accountNames.expenses
         val now = period.range(today)
@@ -132,6 +133,8 @@ object HomeInsights {
         val current = mutableMapOf<String, MutableMap<String, BigDecimal>>()
         val past = mutableMapOf<String, MutableMap<String, BigDecimal>>()
         val seenCurrencies = mutableMapOf<String, BigDecimal>()
+        val book = PriceBook(ledger.rates)
+        val operating = ledger.operatingCurrencies.firstOrNull()
 
         ledger.journal.forEach { entry ->
             val date = runCatching { LocalDate.parse(entry.date) }.getOrNull() ?: return@forEach
@@ -142,7 +145,9 @@ object HomeInsights {
             }
             entry.postings.forEach { posting ->
                 if (!posting.account.startsWith("$root:") && posting.account != root) return@forEach
-                val amount = posting.amount ?: return@forEach
+                // On the chosen basis (B95): units as written, the cost they were bought at,
+                // or their value at the latest price in the operating currency.
+                val amount = valuation.ofPosting(posting, book, operating) ?: return@forEach
                 val category = category(posting.account)
                 bucket.getOrPut(category) { mutableMapOf() }
                     .merge(amount.currency, amount.number, BigDecimal::add)

@@ -187,14 +187,33 @@ sealed interface DirectiveDraft {
     data class Commodity(
         override val date: String,
         val currency: String,
+        /** Metadata under the directive, such as the `name` a `commodity_attr` ledger requires. */
+        val metadata: Map<String, String> = emptyMap(),
     ) : DirectiveDraft {
         override val label get() = "Commodity"
-        override fun render(): String = "$date commodity $currency\n"
+        override fun render(): String = buildString {
+            append("$date commodity $currency\n")
+            for ((key, value) in metadata) {
+                if (value.isBlank()) continue
+                // Numbers stay numbers: `precision: 2` is read back as a number, not text.
+                val shown = if (NUMBER.matches(value.trim())) value.trim() else BeancountText.quote(value.trim())
+                append("  $key: $shown\n")
+            }
+        }
         override fun validate(): List<DraftProblem> = buildList {
             if (!BeancountText.DATE.matches(date)) add(DraftProblem.InvalidDate(date))
             if (!BeancountText.CURRENCY.matches(currency)) {
                 add(DraftProblem.InvalidCurrency(currency))
             }
+            // A key that is not a Beancount metadata key would write a line the parser rejects.
+            metadata.filterValues { it.isNotBlank() }.keys
+                .filterNot { KEY.matches(it) }
+                .forEach { add(DraftProblem.MissingText("a valid name for \"$it\"")) }
+        }
+
+        private companion object {
+            val NUMBER = Regex("""-?\d+(\.\d+)?""")
+            val KEY = Regex("""[a-z][a-zA-Z0-9\-_]*""")
         }
     }
 
