@@ -3,7 +3,7 @@ package io.github.pintofi.beanbook.app.ui.theme
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
@@ -62,6 +62,13 @@ object BeancountTheme {
  * actually sees "this matches my phone" -- and the app keeps its own paper, ink, rules and
  * raised surfaces. The result still changes visibly with the wallpaper and still looks like
  * this app.
+ *
+ * **Material 3 Expressive (docs/material-expressive.md.)** The theme is
+ * [MaterialExpressiveTheme], so components take the expressive shapes, springs and type
+ * where this app has not stated its own. The motion scheme is the expressive one while
+ * animation is on and [StillMotionScheme] while it is off, so every Material component -- a
+ * toggle button changing shape, a navigation indicator, a floating toolbar -- honours the
+ * same switch the app's own motion does, rather than only the motion written here.
  */
 @Composable
 fun BeancountTheme(
@@ -115,8 +122,9 @@ fun BeancountTheme(
         LocalLedgerColours provides ledger,
         LocalMotionEnabled provides motion,
     ) {
-        MaterialTheme(
+        MaterialExpressiveTheme(
             colorScheme = colours,
+            motionScheme = ledgerMotionScheme(motion),
             typography = BeancountTypography,
             shapes = BeancountShapes,
             content = content,
@@ -128,7 +136,8 @@ fun BeancountTheme(
  * This app's paper and rules, wearing the wallpaper's accents.
  *
  * Only the roles a person reads as "my phone's colour" are taken: the three accent families
- * and the tint. Backgrounds, surfaces, outlines and the inverse roles stay as designed,
+ * -- including their fixed variants, which stay one tone in light and dark -- and the tint.
+ * Backgrounds, surfaces, outlines and the inverse roles stay as designed,
  * because those are the composition -- the paper the figures sit on and the rules that
  * organise them -- and handing them to a wallpaper is how an app loses its identity on
  * somebody else's home screen.
@@ -146,6 +155,18 @@ private fun ColorScheme.withAccentsFrom(dynamic: ColorScheme): ColorScheme = cop
     onTertiary = dynamic.onTertiary,
     tertiaryContainer = dynamic.tertiaryContainer,
     onTertiaryContainer = dynamic.onTertiaryContainer,
+    primaryFixed = dynamic.primaryFixed,
+    primaryFixedDim = dynamic.primaryFixedDim,
+    onPrimaryFixed = dynamic.onPrimaryFixed,
+    onPrimaryFixedVariant = dynamic.onPrimaryFixedVariant,
+    secondaryFixed = dynamic.secondaryFixed,
+    secondaryFixedDim = dynamic.secondaryFixedDim,
+    onSecondaryFixed = dynamic.onSecondaryFixed,
+    onSecondaryFixedVariant = dynamic.onSecondaryFixedVariant,
+    tertiaryFixed = dynamic.tertiaryFixed,
+    tertiaryFixedDim = dynamic.tertiaryFixedDim,
+    onTertiaryFixed = dynamic.onTertiaryFixed,
+    onTertiaryFixedVariant = dynamic.onTertiaryFixedVariant,
     inversePrimary = dynamic.inversePrimary,
     surfaceTint = dynamic.surfaceTint,
 )

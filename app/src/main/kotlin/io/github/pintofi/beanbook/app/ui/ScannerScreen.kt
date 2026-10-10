@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.MotionPhotosAuto
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -826,7 +825,7 @@ private fun ShutterButton(
             )
         }
         if (busy) {
-            CircularProgressIndicator(modifier = Modifier.size(32.dp), color = Color.Black)
+            LedgerLoadingIndicator(size = 32.dp, color = Color.Black)
         } else if (count > 0) {
             Text(
                 text = "$count",

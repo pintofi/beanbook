@@ -266,7 +266,7 @@
     "androidx.camera:camera-compose 1.6.2",
     "androidx.camera:camera-core 1.6.2",
     "androidx.camera:camera-lifecycle 1.6.2",
-    "androidx.compose.material3:material3 ?",
+    "androidx.compose.material3:material3 1.5.0-beta01",
     "androidx.compose.material:material-icons-extended ?",
     "androidx.compose.ui:ui ?",
     "androidx.compose.ui:ui-test-junit4 ?",

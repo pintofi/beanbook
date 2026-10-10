@@ -33,6 +33,12 @@ internal val BeancountShapes = Shapes(
     // Dialogs and sheets. Material takes both from this slot, so the two share a radius
     // rather than the app fighting the component for it on twelve call sites.
     extraLarge = RoundedCornerShape(28.dp),
+    // The three Expressive slots, stepped from the ones above rather than left at Material's
+    // defaults, so a component that reaches for them -- a floating toolbar, a large FAB, a
+    // menu -- stays on this scale instead of arriving with a radius of its own.
+    largeIncreased = RoundedCornerShape(24.dp),
+    extraLargeIncreased = RoundedCornerShape(32.dp),
+    extraExtraLarge = RoundedCornerShape(40.dp),
 )
 
 /** The shapes this app composes with by name, including the two Material does not have. */
@@ -82,4 +88,56 @@ object BeanbookShape {
 
     /** The same corner size the controls use, for building a partial shape. */
     val controlCorner: CornerSize = CornerSize(10.dp)
+
+    /**
+     * Where two segments of a connected choice meet: the stamp's knocked-off corner, a little
+     * rounder so the seam reads as a seam at 200% text and not as a gap.
+     */
+    private val seam = CornerSize(4.dp)
+
+    /** The seam while a finger is on the segment: it tightens, as if pressed into the row. */
+    private val seamPressed = CornerSize(2.dp)
+
+    /**
+     * The segments of a connected choice (Material 3 Expressive's connected button group),
+     * in this app's proportions.
+     *
+     * Material's own group is a pill at the ends that becomes a full pill when chosen. This
+     * one keeps the control radius at the outer ends and a stamp-sized seam between segments,
+     * and the chosen segment takes the control radius on every corner -- so choosing one
+     * *morphs* it into a control of its own, which is the expressive gesture, without turning
+     * a ruled page into a row of lozenges. All are corner shapes, so Material animates
+     * between them rather than swapping.
+     */
+    object Connected {
+        val leading: RoundedCornerShape = RoundedCornerShape(
+            topStart = controlCorner,
+            bottomStart = controlCorner,
+            topEnd = seam,
+            bottomEnd = seam,
+        )
+        val leadingPressed: RoundedCornerShape = RoundedCornerShape(
+            topStart = controlCorner,
+            bottomStart = controlCorner,
+            topEnd = seamPressed,
+            bottomEnd = seamPressed,
+        )
+        val middle: RoundedCornerShape = RoundedCornerShape(seam)
+        val middlePressed: RoundedCornerShape = RoundedCornerShape(seamPressed)
+        val trailing: RoundedCornerShape = RoundedCornerShape(
+            topStart = seam,
+            bottomStart = seam,
+            topEnd = controlCorner,
+            bottomEnd = controlCorner,
+        )
+        val trailingPressed: RoundedCornerShape = RoundedCornerShape(
+            topStart = seamPressed,
+            bottomStart = seamPressed,
+            topEnd = controlCorner,
+            bottomEnd = controlCorner,
+        )
+
+        /** A chosen segment: a control in its own right. */
+        val chosen: RoundedCornerShape = control
+    }
 }

@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,7 +50,6 @@ import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.core.engine.OriginAllowlist
 import io.github.pintofi.beanbook.core.engine.ReportPath
-import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 // What each destination renders. Split out of MainActivity.kt; see LedgerApp.kt.
 @Composable
 internal fun SurfaceContent(
@@ -257,24 +252,17 @@ internal fun SurfaceContent(
                             )
                         }
                     } else androidx.compose.foundation.layout.Column {
-                        // One or the other, never both: a segmented row rather than chips,
+                        // One or the other, never both: a connected choice rather than chips,
                         // matching the flag and valuation selectors elsewhere.
-                        SingleChoiceSegmentedButtonRow(
+                        io.github.pintofi.beanbook.app.ui.ConnectedChoiceRow(
+                            options = listOf(false, true),
+                            selected = otherDirectives,
+                            onSelect = { otherDirectives = it },
+                            label = { if (it) "Other directives" else "Transaction" },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 4.dp),
-                        ) {
-                            SegmentedButton(
-                                selected = !otherDirectives,
-                                onClick = { otherDirectives = false },
-                                shape = SegmentedButtonDefaults.itemShape(0, 2, baseShape = BeanbookShape.control),
-                            ) { Text("Transaction") }
-                            SegmentedButton(
-                                selected = otherDirectives,
-                                onClick = { otherDirectives = true },
-                                shape = SegmentedButtonDefaults.itemShape(1, 2, baseShape = BeanbookShape.control),
-                            ) { Text("Other directives") }
-                        }
+                        )
                         if (otherDirectives) {
                             io.github.pintofi.beanbook.app.ui.DirectiveEntryScreen(
                                 vocabulary = LedgerVocabulary.from(ledger),

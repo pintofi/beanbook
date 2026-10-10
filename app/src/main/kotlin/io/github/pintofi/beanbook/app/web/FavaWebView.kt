@@ -383,7 +383,7 @@ fun FavaWebView(
         visible = !loaded,
         modifier = androidx.compose.ui.Modifier.fillMaxSize(),
         enter = androidx.compose.animation.fadeIn(
-            io.github.pintofi.beanbook.app.ui.theme.MotionRole.local(),
+            io.github.pintofi.beanbook.app.ui.theme.MotionRole.fade(),
         ),
         exit = androidx.compose.animation.fadeOut(
             io.github.pintofi.beanbook.app.ui.theme.MotionRole.replace(),

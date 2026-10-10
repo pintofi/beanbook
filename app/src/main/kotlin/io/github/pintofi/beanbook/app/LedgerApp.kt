@@ -116,10 +116,10 @@ private fun DestinationMark(
     val animate = io.github.pintofi.beanbook.app.ui.theme.rememberAnimationsEnabled()
     val extent by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
+        // The expressive control spring: the mark is the bar's selection indicator, a control
+        // and not a figure, so it may land with the scheme's small overshoot.
         animationSpec = if (animate) {
-            io.github.pintofi.beanbook.app.ui.theme.Motion.standard(
-                io.github.pintofi.beanbook.app.ui.theme.Motion.QUICK_MS,
-            )
+            io.github.pintofi.beanbook.app.ui.theme.MotionRole.control()
         } else {
             androidx.compose.animation.core.snap()
         },

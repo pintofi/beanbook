@@ -25,7 +25,27 @@ import androidx.compose.ui.graphics.Color
  *
  * Contrast was checked against the pairs actually used: ink on paper is 14.9:1, teal on paper
  * 6.3:1, onSurfaceVariant on paper 7.2:1, and every container/on-container pair clears 4.5:1.
+ *
+ * The *fixed* roles (Material 3 Expressive) are the same tones in both themes by definition,
+ * so they are set once, below, from the light containers: teal, sage and terracotta at the
+ * container tone, a step darker for the dim variant, and the on-container inks on top. Left
+ * out, they would be Material's baseline purple -- the half-specified scheme this file exists
+ * to avoid. Every on-fixed ink clears 4.5:1 on both its fixed and its dim ground (the lowest,
+ * terracotta variant on the dim tone, is 5.5:1).
  */
+private val PrimaryFixed = Color(0xFFB9E7E2)
+private val PrimaryFixedDim = Color(0xFF9ACFC9)
+private val OnPrimaryFixed = Color(0xFF002B28)
+private val OnPrimaryFixedVariant = Color(0xFF0A4A46)
+private val SecondaryFixed = Color(0xFFCFE4DE)
+private val SecondaryFixedDim = Color(0xFFB3C9C2)
+private val OnSecondaryFixed = Color(0xFF05201C)
+private val OnSecondaryFixedVariant = Color(0xFF2A4A44)
+private val TertiaryFixed = Color(0xFFFFDBCD)
+private val TertiaryFixedDim = Color(0xFFFFB59B)
+private val OnTertiaryFixed = Color(0xFF3A1004)
+private val OnTertiaryFixedVariant = Color(0xFF75331C)
+
 internal val LightColours = lightColorScheme(
     // The teal is an ink colour, dark enough to read as text on paper without a container.
     primary = Color(0xFF0B5F5B),
@@ -76,6 +96,18 @@ internal val LightColours = lightColorScheme(
     surfaceContainerHigh = Color(0xFFE1E7E1),
     surfaceContainerHighest = Color(0xFFDBE2DC),
     surfaceTint = Color(0xFF0B5F5B),
+    primaryFixed = PrimaryFixed,
+    primaryFixedDim = PrimaryFixedDim,
+    onPrimaryFixed = OnPrimaryFixed,
+    onPrimaryFixedVariant = OnPrimaryFixedVariant,
+    secondaryFixed = SecondaryFixed,
+    secondaryFixedDim = SecondaryFixedDim,
+    onSecondaryFixed = OnSecondaryFixed,
+    onSecondaryFixedVariant = OnSecondaryFixedVariant,
+    tertiaryFixed = TertiaryFixed,
+    tertiaryFixedDim = TertiaryFixedDim,
+    onTertiaryFixed = OnTertiaryFixed,
+    onTertiaryFixedVariant = OnTertiaryFixedVariant,
 )
 
 internal val DarkColours = darkColorScheme(
@@ -123,6 +155,18 @@ internal val DarkColours = darkColorScheme(
     surfaceContainerHigh = Color(0xFF1A2220),
     surfaceContainerHighest = Color(0xFF212A28),
     surfaceTint = Color(0xFF6FD3CA),
+    primaryFixed = PrimaryFixed,
+    primaryFixedDim = PrimaryFixedDim,
+    onPrimaryFixed = OnPrimaryFixed,
+    onPrimaryFixedVariant = OnPrimaryFixedVariant,
+    secondaryFixed = SecondaryFixed,
+    secondaryFixedDim = SecondaryFixedDim,
+    onSecondaryFixed = OnSecondaryFixed,
+    onSecondaryFixedVariant = OnSecondaryFixedVariant,
+    tertiaryFixed = TertiaryFixed,
+    tertiaryFixedDim = TertiaryFixedDim,
+    onTertiaryFixed = OnTertiaryFixed,
+    onTertiaryFixedVariant = OnTertiaryFixedVariant,
 )
 
 /**

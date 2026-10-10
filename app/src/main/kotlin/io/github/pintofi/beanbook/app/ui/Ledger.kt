@@ -118,9 +118,11 @@ fun LedgerHeading(
             .padding(bottom = Measure.snug),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The Expressive emphasized title: one weight heavier than the prose title, so a
+        // section's name holds its own against the figures under it without growing.
         Text(
             text,
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleSmallEmphasized,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
@@ -302,7 +304,8 @@ fun EmptyState(
             EmptyIllustration(it)
             Spacer(Modifier.height(Measure.gap))
         }
-        Text(title, style = MaterialTheme.typography.titleMedium)
+        // Emphasized: the heading is the instruction, and the line under it the detail.
+        Text(title, style = MaterialTheme.typography.titleMediumEmphasized)
         Text(
             detail,
             style = MaterialTheme.typography.bodyMedium,

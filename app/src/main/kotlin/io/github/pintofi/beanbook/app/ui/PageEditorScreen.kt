@@ -1,7 +1,6 @@
 package io.github.pintofi.beanbook.app.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,11 +20,9 @@ import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,7 +44,6 @@ import io.github.pintofi.beanbook.core.domain.CropQuad
 import io.github.pintofi.beanbook.core.domain.PageStyle
 import java.io.File
 import kotlinx.coroutines.launch
-import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 
 /**
  * The captured pages, one screen each, with the things you do to a page (B58).
@@ -189,7 +185,7 @@ fun PageEditorScreen(
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 val bitmap = (shown as? PageRender.Ready)?.bitmap
                 if (shown == PageRender.Working) {
-                    androidx.compose.material3.CircularProgressIndicator(color = Color.White)
+                    LedgerLoadingIndicator(color = Color.White)
                 } else if (bitmap == null) {
                     Text("This page could not be opened.", color = Color.White)
                 } else {
@@ -210,56 +206,49 @@ fun PageEditorScreen(
 
         // How this page is rendered, per page rather than per session: a batch is often one
         // printed page and one handwritten receipt, and one treatment cannot suit both.
-        SingleChoiceSegmentedButtonRow(
+        ConnectedChoiceRow(
+            options = PageStyle.entries,
+            selected = pages.pages[current].style,
+            onSelect = { onRestyle(current, it) },
+            label = { it.label() },
+            describe = { "Render page ${current + 1} in ${it.label()}" },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        ) {
-            PageStyle.entries.forEachIndexed { index, option ->
-                SegmentedButton(
-                    selected = pages.pages[current].style == option,
-                    onClick = { onRestyle(current, option) },
-                    shape = SegmentedButtonDefaults.itemShape(
-                        index,
-                        PageStyle.entries.size,
-                        baseShape = BeanbookShape.control,
-                    ),
-                    modifier = Modifier.semantics {
-                        contentDescription = "Render page ${current + 1} in ${option.label()}"
-                    },
-                    // Legible on the editor's black ground (B79): the theme's colours for an
-                    // unselected segment are dark text meant for a light surface.
-                    colors = SegmentedButtonDefaults.colors(
-                        inactiveContainerColor = Color.Transparent,
-                        inactiveContentColor = Color.White,
-                        inactiveBorderColor = Color.White.copy(alpha = 0.6f),
-                        activeBorderColor = Color.White.copy(alpha = 0.6f),
-                    ),
-                ) { Text(option.label()) }
-            }
-        }
+            // Legible on the editor's black ground (B79): the theme's colours for an
+            // unchosen segment are dark text meant for a light surface.
+            colors = androidx.compose.material3.ToggleButtonDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = Color.White,
+                checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
+        )
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = { onRotate(current, false) },
-                modifier = Modifier.semantics {
-                    contentDescription = "Turn page ${current + 1} anticlockwise"
-                },
-            ) { Icon(Icons.Filled.RotateLeft, contentDescription = null, tint = Color.White) }
-            IconButton(
-                onClick = { onRotate(current, true) },
-                modifier = Modifier.semantics {
-                    contentDescription = "Turn page ${current + 1} clockwise"
-                },
-            ) { Icon(Icons.Filled.RotateRight, contentDescription = null, tint = Color.White) }
-            IconButton(
-                onClick = { cropping = current },
-                modifier = Modifier.semantics {
-                    contentDescription = "Set the corners of page ${current + 1}"
-                },
-            ) { Icon(Icons.Filled.Crop, contentDescription = null, tint = Color.White) }
+        // The page's tools on an Expressive floating toolbar: a raised strip over the black
+        // ground, so the three read as one set of tools for this page rather than as icons
+        // loose on a photograph. Always expanded -- there are three tools and nothing to
+        // scroll -- and the icons take the toolbar's own content colour.
+        Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
+            HorizontalFloatingToolbar(expanded = true) {
+                IconButton(
+                    onClick = { onRotate(current, false) },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Turn page ${current + 1} anticlockwise"
+                    },
+                ) { Icon(Icons.Filled.RotateLeft, contentDescription = null) }
+                IconButton(
+                    onClick = { onRotate(current, true) },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Turn page ${current + 1} clockwise"
+                    },
+                ) { Icon(Icons.Filled.RotateRight, contentDescription = null) }
+                IconButton(
+                    onClick = { cropping = current },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Set the corners of page ${current + 1}"
+                    },
+                ) { Icon(Icons.Filled.Crop, contentDescription = null) }
+            }
         }
     }
 

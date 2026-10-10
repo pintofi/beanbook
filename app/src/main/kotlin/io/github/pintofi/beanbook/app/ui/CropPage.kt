@@ -85,7 +85,7 @@ fun CropPageScreen(
     val source = loaded
     if (source == null) {
         Box(modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-            androidx.compose.material3.CircularProgressIndicator(color = Color.White)
+            LedgerLoadingIndicator(color = Color.White)
         }
         return
     }

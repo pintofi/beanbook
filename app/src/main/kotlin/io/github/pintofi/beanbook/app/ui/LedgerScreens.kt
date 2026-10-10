@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -22,15 +21,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.Close
@@ -318,27 +312,17 @@ fun BalancesScreen(
                 .padding(bottom = Measure.snug),
         )
 
-        // Segmented buttons, not chips. These are one basis at a time -- the same figures
-        // valued three ways -- and a segmented row is what Material uses to say "pick one
+        // A connected choice, not chips. These are one basis at a time -- the same figures
+        // valued three ways -- and a connected row is what Material uses to say "pick one
         // of these". Chips read as filters that combine, which is the opposite.
-        SingleChoiceSegmentedButtonRow(
+        ConnectedChoiceRow(
+            options = Valuation.entries,
+            selected = basis,
+            onSelect = { store.write(it) },
+            label = { it.label },
+            describe = { "Show balances ${it.label}" },
             modifier = Modifier.fillMaxWidth().padding(horizontal = Measure.gutter),
-        ) {
-            Valuation.entries.forEachIndexed { index, option ->
-                SegmentedButton(
-                    selected = basis == option,
-                    onClick = { store.write(option) },
-                    shape = SegmentedButtonDefaults.itemShape(
-                        index,
-                        Valuation.entries.size,
-                        baseShape = BeanbookShape.control,
-                    ),
-                    modifier = Modifier.semantics {
-                        contentDescription = "Show balances ${option.label}"
-                    },
-                ) { Text(option.label) }
-            }
-        }
+        )
     
 
         val needle = filter.trim()
@@ -738,47 +722,14 @@ fun JournalScreen(
         item(key = "filters") {
             val count = faults.values.sumOf { it.size }
             Column(modifier = Modifier.padding(horizontal = Measure.gutter, vertical = Measure.tight)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(Measure.snug),
-                ) {
-                    FilterChip(
-                        selected = onlyErrors,
-                        onClick = { onlyErrors = !onlyErrors },
-                        label = { Text("Errors") },
-                        modifier = Modifier.semantics {
-                            contentDescription = if (onlyErrors) {
-                                "Showing only entries with errors. Tap to show every entry"
-                            } else {
-                                "Show only entries with errors"
-                            }
-                        },
-                    )
-                    FilterChip(
-                        selected = onlyPending,
-                        onClick = { onlyPending = !onlyPending },
-                        label = { Text("Pending") },
-                        modifier = Modifier.semantics {
-                            contentDescription = if (onlyPending) {
-                                "Showing pending entries. Tap to stop filtering by pending"
-                            } else {
-                                "Show only pending entries, the ones marked with an exclamation mark"
-                            }
-                        },
-                    )
-                    FilterChip(
-                        selected = onlyFlagged,
-                        onClick = { onlyFlagged = !onlyFlagged },
-                        label = { Text("Flagged") },
-                        modifier = Modifier.semantics {
-                            contentDescription = if (onlyFlagged) {
-                                "Showing flagged entries. Tap to stop filtering by flag"
-                            } else {
-                                "Show only entries with a flag other than the plain star or the pending mark"
-                            }
-                        },
-                    )
-                }
+                JournalFilterChips(
+                    onlyErrors = onlyErrors,
+                    onErrors = { onlyErrors = it },
+                    onlyPending = onlyPending,
+                    onPending = { onlyPending = it },
+                    onlyFlagged = onlyFlagged,
+                    onFlagged = { onlyFlagged = it },
+                )
                 val note = when {
                     snapshot.errors.isEmpty() -> null
                     count == 0 -> "No error is on a single entry; they are listed above."

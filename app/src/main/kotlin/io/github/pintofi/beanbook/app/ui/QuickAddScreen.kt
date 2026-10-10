@@ -740,9 +740,9 @@ fun QuickAddScreen(
             if (inFlight != null) {
                 // Working, and saying so with more than a word (B93): a save that files pages
                 // and re-reads a large ledger takes seconds.
-                androidx.compose.material3.CircularProgressIndicator(
-                    modifier = Modifier.padding(end = Measure.snug).size(18.dp),
-                    strokeWidth = 2.dp,
+                LedgerLoadingIndicator(
+                    modifier = Modifier.padding(end = Measure.snug),
+                    size = 20.dp,
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
                 Text(inFlight.label)

@@ -24,7 +24,7 @@ be decided against; it is not a claim that the position is settled.
 | `androidx.camera:camera-compose` | 1.6.2 | Apache-2.0 | AndroidX is Apache-2.0 throughout; see architecture.md §7.1 |
 | `androidx.camera:camera-core` | 1.6.2 | Apache-2.0 | AndroidX is Apache-2.0 throughout; see architecture.md §7.1 |
 | `androidx.camera:camera-lifecycle` | 1.6.2 | Apache-2.0 | AndroidX is Apache-2.0 throughout; see architecture.md §7.1 |
-| `androidx.compose.material3:material3` | ? | Apache-2.0 | AndroidX is Apache-2.0 throughout; see architecture.md §7.1 |
+| `androidx.compose.material3:material3` | 1.5.0-beta01 | Apache-2.0 | AndroidX is Apache-2.0 throughout; see architecture.md §7.1 |
 | `androidx.compose.material:material-icons-extended` | ? | Apache-2.0 | AndroidX is Apache-2.0 throughout; see architecture.md §7.1 |
 | `androidx.compose.ui:ui` | ? | Apache-2.0 | AndroidX is Apache-2.0 throughout; see architecture.md §7.1 |
 | `androidx.compose.ui:ui-test-junit4` | ? | Apache-2.0 | AndroidX is Apache-2.0 throughout; see architecture.md §7.1 |

@@ -257,12 +257,12 @@ fun LedgerReveal(
         modifier = modifier,
         label = label,
         enter = if (animate) {
-            expandVertically(MotionRole.local()) + fadeIn(MotionRole.local())
+            expandVertically(MotionRole.local()) + fadeIn(MotionRole.fade())
         } else {
             fadeIn(tween(0))
         },
         exit = if (animate) {
-            shrinkVertically(MotionRole.local()) + fadeOut(MotionRole.local())
+            shrinkVertically(MotionRole.local()) + fadeOut(MotionRole.fade())
         } else {
             fadeOut(tween(0))
         },
@@ -389,6 +389,10 @@ fun Modifier.arrivesFrom(origin: TransformOrigin, visible: Boolean = true): Modi
  * coming out of the page. Kept small and quick: this happens on every destination change, and
  * anything longer would be the first thing a person notices about the app and then the first
  * thing they tire of.
+ *
+ * The scale is the expressive control spring ([MotionRole.control]): the button is an object
+ * a finger is about to press, so it may settle with the scheme's small overshoot. The fade
+ * beside it is an effects spring and does not.
  */
 @Composable
 fun LedgerAction(
@@ -402,14 +406,14 @@ fun LedgerAction(
         modifier = modifier,
         label = "action",
         enter = if (animate) {
-            scaleIn(MotionRole.local(), initialScale = 0.8f, transformOrigin = Move.action) +
-                fadeIn(MotionRole.local())
+            scaleIn(MotionRole.control(), initialScale = 0.8f, transformOrigin = Move.action) +
+                fadeIn(MotionRole.fade())
         } else {
             fadeIn(tween(0))
         },
         exit = if (animate) {
             scaleOut(MotionRole.local(), targetScale = 0.8f, transformOrigin = Move.action) +
-                fadeOut(MotionRole.local())
+                fadeOut(MotionRole.fade())
         } else {
             fadeOut(tween(0))
         },

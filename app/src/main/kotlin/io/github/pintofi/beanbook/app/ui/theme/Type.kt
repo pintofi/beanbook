@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.sp
  * licence to audit, nothing added to the APK, and no runtime fetch -- and the app inherits the
  * user's font settings, which is what an Android app should do.
  */
-internal val BeancountTypography = Typography(
+private val ProseTypography = Typography(
     // Reserved for the one figure that is the subject of a screen. Tight tracking, because at
     // this size the default spacing reads as a gap rather than a word.
     displayLarge = TextStyle(
@@ -89,6 +89,60 @@ internal val BeancountTypography = Typography(
         fontWeight = FontWeight.Medium,
         letterSpacing = 0.2.sp,
     ),
+)
+
+/**
+ * The scale the theme installs: the prose voice above, with the Expressive emphasized styles
+ * derived from it (docs/material-expressive.md).
+ *
+ * Derived, not taken from Material: the same size, line height and tracking, one weight
+ * heavier. Material's own emphasized defaults are its larger display sizes, and a component
+ * reaching for one would set 57sp of something in a ledger that never wants it. Used
+ * sparingly -- a heading the app speaks in, the chosen item of a set -- and never on a figure:
+ * the figure voice is [LedgerType], and its weight is part of how a column lines up.
+ */
+internal val BeancountTypography: Typography = with(ProseTypography) {
+    Typography(
+        displayLarge = displayLarge,
+        displayMedium = displayMedium,
+        displaySmall = displaySmall,
+        headlineLarge = headlineLarge,
+        headlineMedium = headlineMedium,
+        headlineSmall = headlineSmall,
+        titleLarge = titleLarge,
+        titleMedium = titleMedium,
+        titleSmall = titleSmall,
+        bodyLarge = bodyLarge,
+        bodyMedium = bodyMedium,
+        bodySmall = bodySmall,
+        labelLarge = labelLarge,
+        labelMedium = labelMedium,
+        labelSmall = labelSmall,
+        displayLargeEmphasized = displayLarge.emphasized(),
+        displayMediumEmphasized = displayMedium.emphasized(),
+        displaySmallEmphasized = displaySmall.emphasized(),
+        headlineLargeEmphasized = headlineLarge.emphasized(),
+        headlineMediumEmphasized = headlineMedium.emphasized(),
+        headlineSmallEmphasized = headlineSmall.emphasized(),
+        titleLargeEmphasized = titleLarge.emphasized(),
+        titleMediumEmphasized = titleMedium.emphasized(),
+        titleSmallEmphasized = titleSmall.emphasized(),
+        bodyLargeEmphasized = bodyLarge.emphasized(),
+        bodyMediumEmphasized = bodyMedium.emphasized(),
+        bodySmallEmphasized = bodySmall.emphasized(),
+        labelLargeEmphasized = labelLarge.emphasized(),
+        labelMediumEmphasized = labelMedium.emphasized(),
+        labelSmallEmphasized = labelSmall.emphasized(),
+    )
+}
+
+/** One step heavier: Normal becomes Medium, Medium becomes SemiBold, anything heavier stays. */
+private fun TextStyle.emphasized(): TextStyle = copy(
+    fontWeight = when (fontWeight ?: FontWeight.Normal) {
+        FontWeight.Normal -> FontWeight.Medium
+        FontWeight.Medium -> FontWeight.SemiBold
+        else -> fontWeight
+    },
 )
 
 /**

@@ -8,6 +8,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
@@ -132,12 +133,36 @@ fun rememberAnimationsEnabled(): Boolean {
  *   person has to wait through twice is a transition they resent.
  * - **Nothing bounces on money.** Springs are used for direct manipulation, where overshoot
  *   reads as physical, and never on an amount, a warning, or a destructive confirmation.
+ *
+ * **Material 3 Expressive (docs/material-expressive.md).** Expressive motion is springs, split
+ * the way Material splits them: *spatial* for position, size and shape, *effects* for colour
+ * and opacity, which must never overshoot. The roles that change a thing in place --
+ * [feedback], [local], [fade], [control] -- are those springs now, at the expressive scheme's
+ * stiffnesses. Only [control] keeps the scheme's bounce, and only a control uses it; the rest
+ * are critically damped, so the page making room for a notice under a column of figures
+ * settles without a wobble. Page transitions ([replace], [peer], [hierarchy]) stay short
+ * tweens: two pages crossing need to finish together, and a spring has no fixed end.
  */
 object MotionRole {
 
     /** Press, selection, toggle: the app answering a finger. Fast, and never noticed. */
-    fun <T> feedback(): FiniteAnimationSpec<T> =
-        tween(durationMillis = Motion.QUICK_MS, easing = Motion.standardEasing)
+    fun <T> feedback(): FiniteAnimationSpec<T> = spring(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = ExpressiveStiffness.FAST_EFFECTS,
+    )
+
+    /** Opacity and colour: an effects spring, which by Material's rule never overshoots. */
+    fun <T> fade(): FiniteAnimationSpec<T> = spring(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = ExpressiveStiffness.DEFAULT_EFFECTS,
+    )
+
+    /**
+     * A control arriving or changing shape: the primary action growing in, a toggle choosing.
+     * The expressive scheme's own fast-spatial spring, bounce and all, because a control is an
+     * object a finger moves -- and never used on a figure, a notice, or a row.
+     */
+    fun <T> control(): FiniteAnimationSpec<T> = MotionScheme.expressive().fastSpatialSpec()
 
     /** A press scale, where a spring is right because a finger is physical. */
     fun <T> press(): FiniteAnimationSpec<T> = spring(
@@ -145,9 +170,16 @@ object MotionRole {
         stiffness = Spring.StiffnessMediumLow,
     )
 
-    /** Expand, collapse, show, hide: one surface changing inside a page that stays put. */
-    fun <T> local(): FiniteAnimationSpec<T> =
-        tween(durationMillis = Motion.STANDARD_MS, easing = Motion.standardEasing)
+    /**
+     * Expand, collapse, turn: one surface changing size or angle inside a page that stays put.
+     * A spatial spring at the expressive fast stiffness, critically damped -- it settles in about
+     * the old [Motion.STANDARD_MS] and, unlike a tween, picks up from wherever it was when
+     * interrupted. For the fade that goes with it, use [fade].
+     */
+    fun <T> local(): FiniteAnimationSpec<T> = spring(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = ExpressiveStiffness.FAST_SPATIAL,
+    )
 
     /** One set of content replacing another in the same frame: a section, a report, a state. */
     fun <T> replace(): FiniteAnimationSpec<T> =
@@ -168,6 +200,38 @@ object MotionRole {
     /** The signature: the rule drawing down a surface, and the entry filing itself. */
     fun <T> signature(): FiniteAnimationSpec<T> =
         tween(durationMillis = Motion.RULE_MS, easing = Motion.enter)
+}
+
+/**
+ * The expressive motion scheme's spring stiffnesses, by name (Material 3 Expressive motion
+ * tokens). Material keeps its token object internal, so the values the [MotionRole] springs
+ * borrow are restated here; [MotionRole.control] reads the scheme itself.
+ */
+internal object ExpressiveStiffness {
+    const val FAST_SPATIAL = 800f
+    const val DEFAULT_EFFECTS = 1600f
+    const val FAST_EFFECTS = 3800f
+}
+
+/**
+ * The motion scheme the theme hands to Material's components.
+ *
+ * The expressive scheme while animation is on. While it is off, [StillMotionScheme]: Material's
+ * components take their springs from the theme rather than from the system setting, so without
+ * this a toggle button would still morph and a navigation indicator would still slide for a
+ * person who has turned animation off.
+ */
+fun ledgerMotionScheme(animate: Boolean): MotionScheme =
+    if (animate) MotionScheme.expressive() else StillMotionScheme
+
+/** Every spec an instant one: the motion scheme for a person who has asked for no animation. */
+object StillMotionScheme : MotionScheme {
+    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = snap()
+    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = snap()
+    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = snap()
+    override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = snap()
+    override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = snap()
+    override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = snap()
 }
 
 /** How far a surface travels. Small on purpose: this is a page settling, not a slide show. */

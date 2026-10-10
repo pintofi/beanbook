@@ -15,6 +15,14 @@ kotlin = "2.4.10"
 # Current AndroidX and Compose require compileSdk 37. The SDK package is named
 # "platforms;android-37.0", not "platforms;android-37" - see docs/feasibility/m1.md.
 composeBom = "2026.08.00"
+# Material 3 is pinned above the BOM (which carries 1.4.0) for the Expressive components --
+# MaterialExpressiveTheme, MotionScheme, ButtonGroup, LoadingIndicator, MaterialShapes --
+# none of which 1.4.0 contains (docs/material-expressive.md). Apache-2.0 AndroidX like the
+# rest of Compose. 1.5.0-beta01 asks for Compose foundation/ui 1.12.0, which is exactly what
+# the BOM above already resolves, so nothing else moves; it adds one transitive AndroidX
+# module, androidx.graphics:graphics-shapes 1.0.1 (Apache-2.0), for the shape morphs.
+# Return to the BOM's version when a stable BOM carries 1.5.0.
+material3 = "1.5.0-beta01"
 chaquopy = "17.0.0"
 # detekt for Kotlin static analysis (N2). Apache-2.0, which is fine here in a way it would
 # not be for a shipped dependency: it runs at build time and no part of it is linked into
@@ -92,7 +100,7 @@ androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-ru
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
-compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }

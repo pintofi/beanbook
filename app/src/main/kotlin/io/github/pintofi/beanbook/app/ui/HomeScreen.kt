@@ -23,9 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,7 +55,6 @@ import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.core.domain.LedgerSummary
 import io.github.pintofi.beanbook.core.domain.SpendingPeriod
 import java.time.LocalDate
-import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 
 /**
  * What the app opens on: what the ledger says, before what it contains.
@@ -195,16 +191,14 @@ private fun FiguresCard(
         Spacer(Modifier.height(Measure.snug))
         // The same three bases as Fava's top-right switch, and the same one Balances uses:
         // a figure on this page and its account on that one are always on the same basis.
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            Valuation.entries.forEachIndexed { index, option ->
-                SegmentedButton(
-                    selected = valuation == option,
-                    onClick = { onValuation(option) },
-                    shape = SegmentedButtonDefaults.itemShape(index, Valuation.entries.size),
-                    modifier = Modifier.semantics { contentDescription = "Show figures ${option.label}" },
-                ) { Text(option.label) }
-            }
-        }
+        ConnectedChoiceRow(
+            options = Valuation.entries,
+            selected = valuation,
+            onSelect = onValuation,
+            label = { it.label },
+            describe = { "Show figures ${it.label}" },
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(Modifier.height(Measure.gap))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -583,27 +577,19 @@ private fun CustomiseHomeDialog(
 
                 if (HomeCard.SPENDING in cards) {
                     Text("Where the money went", style = MaterialTheme.typography.titleSmall)
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SpendingPeriod.entries.forEachIndexed { index, option ->
-                            SegmentedButton(
-                                selected = period == option,
-                                onClick = { period = option },
-                                shape = SegmentedButtonDefaults.itemShape(
-                                index,
-                                SpendingPeriod.entries.size,
-                                baseShape = BeanbookShape.control,
-                            ),
-                                modifier = Modifier.semantics { contentDescription = option.label },
-                            ) {
-                                // The short name, on one line. The full ones -- "This month",
-                                // "Last 30 days", "This year" -- wrapped to two lines in two
-                                // of the three segments and to one in the other, so the row
-                                // came out with three different heights. The card's own
-                                // header still says the long name, where there is room.
-                                Text(option.shortLabel, maxLines = 1)
-                            }
-                        }
-                    }
+                    // The short name, on one line. The full ones -- "This month", "Last 30 days",
+                    // "This year" -- wrapped to two lines in two of the three segments and to one
+                    // in the other, so the row came out with three different heights. The card's
+                    // own header still says the long name, where there is room.
+                    ConnectedChoiceRow(
+                        options = SpendingPeriod.entries,
+                        selected = period,
+                        onSelect = { period = it },
+                        label = { it.shortLabel },
+                        describe = { it.label },
+                        maxLines = 1,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
