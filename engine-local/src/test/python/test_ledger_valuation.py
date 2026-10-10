@@ -180,3 +180,22 @@ class PostingRateTest(unittest.TestCase):
 
     def test_commodity_attr_keys_are_reported(self):
         self.assertEqual(["name", "precision"], self.payload["commodity_attributes"])
+
+
+class ExtensionHealthTest(unittest.TestCase):
+    """A Fava extension that cannot be imported is reported, not hidden (B97)."""
+
+    def test_missing_extension_is_reported_and_present_one_is_not(self):
+        text = (
+            '2026-01-01 open Assets:Cash\n'
+            '2026-01-01 custom "fava-extension" "no_such_extension_module"\n'
+            '2026-01-01 custom "fava-extension" "json"\n'
+        ).replace("\\\\n", "\\n")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "main.beancount"
+            path.write_text(text)
+            payload = json.loads(ledger.inspect(str(path)))
+
+        health = payload["extension_health"]
+        self.assertIsNone(health["json"])
+        self.assertIn("ModuleNotFoundError", health["no_such_extension_module"])

@@ -61,3 +61,4 @@ engine-local/requirements-local.lock
 # and friends). Their findings are summarised in docs/pending-verification.md; the raw
 # worker JSON is a per-run artefact and is not worth versioning.
 .scratch/
+.claude/worktrees/

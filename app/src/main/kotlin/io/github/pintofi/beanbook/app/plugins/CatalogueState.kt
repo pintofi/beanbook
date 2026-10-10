@@ -60,6 +60,30 @@ class CatalogueState(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    init {
+        reapplyOverlays()
+    }
+
+    /**
+     * Applies the shipped overlays to plugins installed before they existed (B97).
+     *
+     * An overlay was only applied at install time, so `fava-portfolio-returns` installed
+     * earlier kept the SciPy import SciPy-free code now replaces, and kept failing with "No
+     * module named 'scipy'" until it was removed and installed again. Applying is a copy of
+     * files the APK carries, version-matched, and idempotent: running it for an install that
+     * already has them changes nothing.
+     */
+    private fun reapplyOverlays() {
+        runCatching {
+            installer.installed().forEach { (id, version) ->
+                val entry = catalogue.entries.firstOrNull { it.id == id } ?: return@forEach
+                if (entry.install?.version != version && version.isNotEmpty()) return@forEach
+                val replaced = overlay.apply(entry, installer.siteFor(id))
+                if (replaced.isNotEmpty()) Diagnostics.i(TAG, "overlay re-applied to $id")
+            }
+        }.onFailure { Diagnostics.w(TAG, "overlays could not be re-applied", it) }
+    }
+
     /** The folders to put on `sys.path`: one per installed plugin. */
     fun directories(): List<String> =
         installer.installed().keys.map { installer.siteFor(it).absolutePath }

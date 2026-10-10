@@ -44,7 +44,7 @@ jobs:
         # them — were never going to run in CI even once the workflow
         # could be loaded at all.
         run: >-
-          ./gradlew :core-domain:test :core-data:test :core-engine:test
+          ./gradlew :core-domain:test :core-data:test :core-engine:test :app:testPlayDebugUnitTest
           :engine-remote:test
 
       - name: Reproducible Python bytecode
