@@ -44,7 +44,9 @@ fun FormSaveBar(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column {
-            LedgerHairline()
+            // Inside the page gutter, like every rule on a form: drawn edge to edge it was the one
+            // thing in the forms' side margins, which the pixel gate refuses (B98).
+            LedgerHairline(Modifier.padding(horizontal = Measure.gutter))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

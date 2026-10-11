@@ -101,7 +101,7 @@
                 android:layout_height="wrap_content"
                 android:paddingEnd="12dp"
                 android:paddingRight="12dp"
-                android:maxLines="2"
+                android:maxLines="1"
                 android:ellipsize="end"
                 android:textSize="11sp"
                 android:text=""

@@ -3,6 +3,7 @@ package io.github.pintofi.beanbook.app
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -294,4 +296,34 @@ internal fun AddEntryButton(onClick: () -> Unit) {
         // the round form is an unnamed button to a screen reader.
         modifier = Modifier.semantics { contentDescription = "Add an entry" },
     )
+}
+
+/**
+ * Calls [release] on a tap that nothing beneath took (B98): a tap on blank page, not on a
+ * control. `detectTapGestures` waits for an unconsumed press, and a button, a field, a chip or
+ * a clickable row consumes its own, so taps on those never reach here; a scroll is a drag, not a
+ * tap, and does not either.
+ */
+internal fun Modifier.releaseFocusOnBlankTap(release: () -> Unit): Modifier =
+    this.then(
+        Modifier.pointerInput(Unit) {
+            detectTapGestures(onTap = { release() })
+        },
+    )
+
+/** The key a page's kept state is filed under: a destination, or a More section within it. */
+internal fun pageKey(surface: Surface, section: MoreSection? = null): String =
+    if (section == null) "page:${surface.name}" else "page:${surface.name}:${section.name}"
+
+/**
+ * [content] with its remembered-and-saved state -- scroll positions, list positions -- filed
+ * under [key] in [pages], so it comes back when the page does (B98). A null key keeps nothing.
+ */
+@Composable
+internal fun KeptPage(
+    pages: androidx.compose.runtime.saveable.SaveableStateHolder,
+    key: String?,
+    content: @Composable () -> Unit,
+) {
+    if (key == null) content() else pages.SaveableStateProvider(key, content)
 }

@@ -182,6 +182,8 @@ class InputFieldsTest {
             }
         }
 
+        // The period is in the filter sheet since B98, one tap from the summary control.
+        compose.onNodeWithContentDescription("Filters: period, tags and links").performClick()
         compose.onNodeWithContentDescription("Pick From from a calendar").assertIsDisplayed()
         compose.onNodeWithContentDescription("Pick To from a calendar").assertIsDisplayed()
     }

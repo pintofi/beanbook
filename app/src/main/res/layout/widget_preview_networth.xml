@@ -21,7 +21,8 @@
         android:layout_height="match_parent"
         android:scaleType="fitXY"
         android:importantForAccessibility="no"
-        android:src="@drawable/widget_paper" />
+        android:src="@drawable/widget_paper"
+        android:tint="@color/widget_surface" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -34,7 +35,8 @@
             android:layout_height="match_parent"
             android:scaleType="fitXY"
             android:importantForAccessibility="no"
-            android:src="@drawable/widget_rule" />
+            android:src="@drawable/widget_rule"
+            android:tint="@color/widget_rule" />
 
         <LinearLayout
             android:layout_width="match_parent"

@@ -320,7 +320,8 @@ class AccessibilityTest {
             DirectiveEntryScreen(vocabulary, onSave = {}, today = today)
         }
         compose.onNodeWithText("Will be written as").performScrollTo().assertExists()
-        compose.onNodeWithText("Save ", substring = true).performScrollTo().assertExists()
+        // On the sticky save bar since B98: on screen, outside the scroll.
+        compose.onNodeWithText("Save ", substring = true).assertIsDisplayed()
         assertAccessible()
     }
 

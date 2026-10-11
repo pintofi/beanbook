@@ -122,15 +122,9 @@ fun MirrorScreen(
 
             if (conflicts.isNotEmpty()) {
                 // One summary, then one compact row per file (device audit 2026-10-10: four loud
-                // red cards stacked). The status card above already says how many; this is where
-                // each one is decided.
-                FolioHeading(
-                    if (conflicts.size == 1) {
-                        "1 file needs your decision"
-                    } else {
-                        "${conflicts.size} files need your decision"
-                    },
-                )
+                // red cards stacked). The status card above already says how many, so the
+                // heading names the task rather than saying the count a second time.
+                FolioHeading(if (conflicts.size == 1) "Decide this file" else "Decide each file")
                 FolioGroup {
                     conflicts.forEach { conflict ->
                         item { ConflictRow(conflict, onKeepMine, onKeepTheirs) }

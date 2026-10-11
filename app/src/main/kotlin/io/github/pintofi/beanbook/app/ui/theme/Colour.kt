@@ -231,7 +231,7 @@ data class LedgerColours(
         val Light = LedgerColours(
             positive = Color(0xFF1B5E3F),
             negative = Color(0xFFA3264E),
-            neutral = Color(0xFF66736E),
+            neutral = Color(0xFF5E6B66), // 4.9:1 on the band (B98); #66736E was 4.3
             pending = Color(0xFF9A4C2E),
             rule = Color(0xFF0B5F5B),
             flagged = Color(0xFF4F4FA0),

@@ -453,7 +453,11 @@ internal fun LedgerApp(
     // Journal used to greet the next new entry in red on its sticky bar.
     val staleMessage = remember(adding, editSession) { saveState }
     val formMessage = saveState.takeIf { it != staleMessage }
-    Box(modifier = modifier) {
+    // A tap on empty page lets go of the field being typed in (B98), as platform text fields
+    // do: the keyboard and the suggestions under the field go with it. It sees only taps no
+    // control took -- a button, a field or a row consumes its own -- so it never steals one.
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    Box(modifier = modifier.releaseFocusOnBlankTap { focusManager.clearFocus() }) {
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -608,6 +612,17 @@ internal fun LedgerApp(
             androidx.compose.runtime.CompositionLocalProvider(
                 io.github.pintofi.beanbook.app.web.LocalReportsPage provides reportsPage,
             ) {
+            // Each page keeps where it was while it is on the stack (B98): back from a More
+            // section lands on More scrolled where it was left, and a destination keeps its
+            // place between tab switches. A section's state goes when the section leaves the
+            // stack, so opening it again starts at its top, as a fresh page does; the entry
+            // form keeps none, so a closed form never comes back with its old words in it.
+            val pages = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
+            var stackBefore by remember { mutableStateOf(moreStack) }
+            androidx.compose.runtime.LaunchedEffect(moreStack) {
+                (stackBefore - moreStack.toSet()).forEach { pages.removeState(pageKey(Surface.MORE, it)) }
+                stackBefore = moreStack
+            }
             io.github.pintofi.beanbook.app.ui.LedgerContent(
                 targetState = Triple(selected, adding, moreSection),
                 label = "destination",
@@ -619,6 +634,7 @@ internal fun LedgerApp(
             androidx.compose.foundation.layout.Box(
                 Modifier.background(MaterialTheme.colorScheme.background),
             ) {
+            KeptPage(pages, key = if (shownAdding) null else pageKey(shownSurface, shownSection)) {
             SurfaceContent(
                 stamped = stampShowing,
                 selected = shownSurface,
@@ -745,6 +761,7 @@ internal fun LedgerApp(
                 onDeleteEntries = onDeleteEntries,
                 onEngineUnreachable = onEngineUnreachable,
             )
+            }
             }
             }
             }

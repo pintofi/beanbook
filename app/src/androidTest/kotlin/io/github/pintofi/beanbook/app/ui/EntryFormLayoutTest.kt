@@ -167,13 +167,9 @@ class EntryFormLayoutTest {
             compose.onAllNodes(hasText("document: \"2026-09-13.0123456789ab.pdf\"", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNode(
-            hasText(
-                "2026-09-13 document Expenses:Food:Groceries " +
-                    "\"documents/Expenses/Food/Groceries/2026-09-13.0123456789ab.pdf\"",
-                substring = true,
-            ),
-        ).assertExists()
+        // No separate `document` directive in the preview since B92: the attachment belongs
+        // to this entry, by its `document:` line (checked above). This assertion still looked
+        // for the directive and had been failing since then; found running the suite in B98.
         // An attached file is a second link, under its own key, and is listed in the form (B80).
         compose.onNode(hasText("document-2: \"2026-09-13.ba9876543210.jpg\"", substring = true)).assertExists()
         compose.onNodeWithContentDescription("Remove the attached file invoice.jpg").assertExists()

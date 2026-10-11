@@ -51,7 +51,7 @@ internal data class WidgetPalette(
                     rule = accent,
                     label = 0xFF4A5754.toInt(),
                     value = 0xFF16201E.toInt(),
-                    footnote = 0xFF6B7873.toInt(),
+                    footnote = 0xFF5E6B66.toInt(), // 4.9:1 on the paper; #6B7873 was 4.2 (WCAG 1.4.3 asks 4.5)
                 )
             }
         }

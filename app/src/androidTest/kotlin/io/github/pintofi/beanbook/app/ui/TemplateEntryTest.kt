@@ -133,7 +133,8 @@ class TemplateEntryTest {
         compose.onNodeWithText("Template name").performTextInput("Broken")
 
         // The same wording appears on the form behind the dialog, so both are expected.
-        compose.onAllNodesWithText("a transaction needs at least two postings", substring = true)
+        // Case-blind: the save bar sets the same check as a sentence (B98).
+        compose.onAllNodesWithText("a transaction needs at least two postings", substring = true, ignoreCase = true)
             .assertCountEquals(2)
         compose.onNodeWithText("Save template").assertIsNotEnabled()
         assertNull("an unusable template must not be saved", captured)
