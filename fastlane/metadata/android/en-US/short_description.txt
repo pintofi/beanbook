@@ -1,0 +1,1 @@
+Plain-text accounting for Beancount, on your phone, with no account.

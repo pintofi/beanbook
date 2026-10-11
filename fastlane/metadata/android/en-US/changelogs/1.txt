@@ -1,0 +1,6 @@
+First public release (0.1.0).
+• Read your ledger: Home, Journal, Balances, and Fava Reports inside the app.
+• Units, At cost and Market value everywhere, as in Fava.
+• Add entries and directives, edit files, and Undo the last change.
+• Scan receipts into PDFs, mirror and back up your project.
+• Plugins, Fava extensions and scripts in the Expert edition.

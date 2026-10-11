@@ -1,0 +1,25 @@
+Beanbook keeps your books where they already live: in ordinary Beancount text files, on your phone. It runs the real Beancount and Fava on the device, so the figures you see are the ones bean-check and Fava produce on a desktop.
+
+There is no account to create, no sign-in and no server run by this project. Your ledger is a folder of text files you own.
+
+<b>What you can do</b>
+• Read your ledger: a Home page with net worth and where the money went, a searchable Journal, and Balances for every account.
+• Show figures three ways, as Fava does: Units, At cost, or Market value.
+• Add entries and other Beancount directives with a form that shows the exact text before it is written.
+• Edit the files themselves, with every save re-read by Beancount before it is called saved, and an Undo for the last change.
+• Scan receipts and statements into PDFs and file them under an account.
+• Open Fava's Reports inside the app.
+• Mirror a project to a folder you choose, and back it up with an optional passphrase.
+• Use Beancount plugins and Fava extensions, and run your own Python scripts (Expert edition).
+• Home-screen widgets for balances and net worth.
+
+<b>Your data stays yours</b>
+• No telemetry, analytics, crash uploads or ads.
+• Local mode makes no network requests.
+• If you turn on Share on Wi-Fi, other devices can reach your Reports only while it is on, only on a private network, and only after signing in.
+• Nothing is sold, and there is nothing to subscribe to.
+
+<b>Two editions</b>
+The Expert edition adds plugins and packages that include native code, fetched only when you ask. The Play edition does without them. Both are free.
+
+Beanbook is an independent project. It is built on Beancount and Fava and is not affiliated with or endorsed by them. It comes with no warranty, as its GPL-2.0 licence states: keep backups of your ledger.
