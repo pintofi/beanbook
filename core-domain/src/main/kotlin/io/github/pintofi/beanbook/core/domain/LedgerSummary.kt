@@ -22,31 +22,49 @@ data class LedgerSummary(
     val income: String?,
     val expenses: String?,
 ) {
+    /** The three figures as amounts per commodity, summed but not formatted. */
+    data class Totals(
+        val netWorth: List<Amount>,
+        val income: List<Amount>,
+        val expenses: List<Amount>,
+    )
+
     companion object {
 
         fun of(ledger: LedgerSnapshot, valuation: Valuation = Valuation.VALUE): LedgerSummary {
+            // Rendered the way the file asks (B59): its own decimal places and its own
+            // thousands separators, rather than whatever scale the arithmetic produced.
+            val format = ledger.format
+            val totals = totals(ledger, valuation)
+            return LedgerSummary(
+                netWorth = format(totals.netWorth, format),
+                income = format(totals.income, format),
+                expenses = format(totals.expenses, format),
+            )
+        }
+
+        /**
+         * The same three figures as amounts, before formatting, for a surface that has to
+         * choose which of several commodities to show ([HeadlineFigures]). One computation:
+         * [of] formats exactly these, so the two can never disagree.
+         */
+        fun totals(ledger: LedgerSnapshot, valuation: Valuation = Valuation.VALUE): Totals {
             // In the operating currency where the ledger declares one. These are single
             // headline figures, and a headline reading "1200.00 USD 340.00 EUR 0.5 BTC"
             // answers nothing -- it is a list of holdings, not a net worth. Where no
             // operating currency is declared, `atOperating` is the units and this behaves
             // exactly as it used to.
             val select = valuation::of
-            // Rendered the way the file asks (B59): its own decimal places and its own
-            // thousands separators, rather than whatever scale the arithmetic produced.
-            val format = ledger.format
-            return LedgerSummary(
+            return Totals(
                 // Assets *plus* liabilities, not minus: Beancount already stores what you
                 // owe as a negative balance, so negating it made debt increase net worth.
-                netWorth = format(
-                    sumByCurrency(
-                        ledger.totalFor(ledger.accountNames.assets, select) +
-                            ledger.totalFor(ledger.accountNames.liabilities, select),
-                    ),
-                    format,
+                netWorth = sumByCurrency(
+                    ledger.totalFor(ledger.accountNames.assets, select) +
+                        ledger.totalFor(ledger.accountNames.liabilities, select),
                 ),
                 // Income is stored negative as well, and "-3000.00 earned" reads as a loss.
-                income = format(sumByCurrency(negated(ledger.totalFor(ledger.accountNames.income, select))), format),
-                expenses = format(sumByCurrency(ledger.totalFor(ledger.accountNames.expenses, select)), format),
+                income = sumByCurrency(negated(ledger.totalFor(ledger.accountNames.income, select))),
+                expenses = sumByCurrency(ledger.totalFor(ledger.accountNames.expenses, select)),
             )
         }
 
