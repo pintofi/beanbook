@@ -79,6 +79,51 @@ def _commodity_attributes(options_map: Any) -> list:
     return []
 
 
+_EXTENSION_CACHE: dict = {}
+
+
+def _extension_health(entries: Any, plugin_dirs: str, allow_bridge: bool) -> dict:
+    """Whether each Fava extension the ledger names can be imported (B97).
+
+    Fava reports a failed extension only on its own Errors page, so the app showed a healthy
+    plugin and an error count one short. The modules are the `fava-extension` custom
+    directives; each is imported once inside the same plugin context a load gets, and the
+    answer is kept until the modules or the plugin folders change, because importing numpy
+    and pandas again on every reload would cost seconds each time.
+    """
+    from beancount.core import data as _data
+
+    modules = sorted(
+        {
+            str(entry.values[0].value)
+            for entry in entries
+            if isinstance(entry, _data.Custom)
+            and entry.type == "fava-extension"
+            and entry.values
+        }
+    )
+    if not modules:
+        return {}
+    key = (tuple(modules), plugin_dirs, allow_bridge)
+    if key in _EXTENSION_CACHE:
+        return _EXTENSION_CACHE[key]
+    import importlib
+
+    import plugins
+
+    health: dict = {}
+    with plugins.activated(plugin_dirs, allow_bridge):
+        for module in modules:
+            try:
+                importlib.import_module(module)
+                health[module] = None
+            except BaseException as exc:  # noqa: BLE001 - a plugin may raise anything
+                health[module] = f"{type(exc).__name__}: {exc}"[:400]
+    _EXTENSION_CACHE.clear()
+    _EXTENSION_CACHE[key] = health
+    return health
+
+
 def _error_dict(error: Any) -> dict[str, Any]:
     """Beancount errors carry their own source position; surface it verbatim."""
     meta = getattr(error, "source", None) or {}
@@ -512,6 +557,7 @@ def inspect(
         "tolerances": dict(sorted(tolerances.items())),
         "documents": documents,
         "commodity_attributes": _commodity_attributes(options_map),
+        "extension_health": _extension_health(all_entries, "" if plugin_failure else plugin_dirs, allow_bridge),
         "plugins": [
             {"name": str(entry[0]), "config": None if len(entry) < 2 else entry[1]}
             for entry in (options_map.get("plugin") or [])

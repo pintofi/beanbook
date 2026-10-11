@@ -134,6 +134,9 @@ class LedgerReader(
         accountNames = root.toAccountNames(),
         documentRoots = root.optJSONArray("document_dirs").toStringList(),
         commodityAttributes = root.optJSONArray("commodity_attributes").toStringList(),
+        extensionHealth = root.optJSONObject("extension_health").let { health ->
+            health?.keys()?.asSequence()?.associateWith { health.optStringOrNull(it) }.orEmpty()
+        },
         plugins = root.optJSONArray("plugins").map {
             LedgerPlugin(it.getString("name"), it.optStringOrNull("config"))
         },

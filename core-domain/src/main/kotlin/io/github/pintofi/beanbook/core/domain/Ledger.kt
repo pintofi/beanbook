@@ -66,7 +66,15 @@ data class LedgerSnapshot(
     val rates: List<PriceRate> = emptyList(),
     /** The plugins the ledger turns on, in order, with the configuration each was given (B95). */
     val plugins: List<LedgerPlugin> = emptyList(),
+    /**
+     * The Fava extensions the ledger names, each with why it cannot be imported, or null when
+     * it can (B97). Fava shows a failed extension only on its own Errors page.
+     */
+    val extensionHealth: Map<String, String?> = emptyMap(),
 ) {
+    /** How many extensions fail to import: errors the ledger's own list does not include. */
+    val extensionFailures: Int get() = extensionHealth.values.count { it != null }
+
     /** Whether the ledger turns on the plugin [name], such as `beancount.plugins.leafonly`. */
     fun hasPlugin(name: String): Boolean = plugins.any { it.name == name }
 

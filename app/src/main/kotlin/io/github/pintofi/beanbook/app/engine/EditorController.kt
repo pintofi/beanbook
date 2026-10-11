@@ -31,6 +31,8 @@ class EditorController(
     private val writer: ProjectWriter,
     private val drafts: DraftStore,
     private val scope: CoroutineScope,
+    /** Told when a save committed, so an Undo can be offered for it (B97). */
+    private val onCommitted: (projectId: String, result: WriteResult.Committed) -> Unit = { _, _ -> },
 ) {
     private val _state = MutableStateFlow<EditorState>(EditorState.Idle)
     val state: StateFlow<EditorState> = _state.asStateFlow()
@@ -127,6 +129,7 @@ class EditorController(
 
             _message.value = when (result) {
                 is WriteResult.Committed -> {
+                    onCommitted(projectId, result)
                     withContext(Dispatchers.IO) { drafts.clear(projectId, editing.file.relativePath) }
                     val newSha = withContext(Dispatchers.IO) {
                         WriteJournal.sha256(File(editing.file.absolutePath))

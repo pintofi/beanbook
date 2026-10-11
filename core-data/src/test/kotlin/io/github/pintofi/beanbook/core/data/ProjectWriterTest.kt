@@ -175,6 +175,30 @@ class ProjectWriterTest {
         assertTrue(writer().undoLast(projectId) is WriteResult.Refused)
     }
 
+    @Test
+    fun `an offered undo is refused once something else has been saved`() = runBlocking {
+        val file = newProject()
+        val w = writer()
+
+        val first = w.append(projectId, file, "2026-01-02 note Assets:Cash \"first\"") as WriteResult.Committed
+        w.append(projectId, file, "2026-01-03 note Assets:Cash \"second\"")
+
+        assertTrue(w.undoIfLatest(projectId, first.txnId) is WriteResult.Refused)
+        assertTrue(file.readText().contains("first") && file.readText().contains("second"))
+    }
+
+    @Test
+    fun `an offered undo for the latest write restores the file`() = runBlocking {
+        val file = newProject()
+        val before = file.readText()
+        val w = writer()
+
+        val saved = w.append(projectId, file, "2026-01-02 note Assets:Cash \"x\"") as WriteResult.Committed
+
+        assertTrue(w.undoIfLatest(projectId, saved.txnId) is WriteResult.Committed)
+        assertEquals(before, file.readText())
+    }
+
     // --- recovery from process death --------------------------------------------------
 
     @Test

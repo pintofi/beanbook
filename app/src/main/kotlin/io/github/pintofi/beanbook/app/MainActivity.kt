@@ -285,6 +285,7 @@ class MainActivity : ComponentActivity() {
         app.projectsState.open(projectId)
         // Before anything can sync: the mirror answers for this project only (B96).
         app.mirror.useProject(projectId)
+        app.undo.dismiss()
         mirrorFolder = app.mirror.folderUri
         mirrorEnabled = app.mirror.enabled
         app.templatesState.open(projectId)

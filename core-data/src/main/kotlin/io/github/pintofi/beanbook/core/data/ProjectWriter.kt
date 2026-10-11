@@ -322,6 +322,21 @@ class ProjectWriter(
      * Backed by durable snapshots, not UI state (invariant 8), so it survives process
      * death.
      */
+    /**
+     * Undoes the write [txnId] **only if it is still the latest**.
+     *
+     * An "Undo" shown after a save must not undo something else: a mirror pass or another
+     * edit may have committed since, and restoring the older snapshot would silently discard
+     * that too (B97). Refused, with nothing changed, when anything came after.
+     */
+    suspend fun undoIfLatest(projectId: String, txnId: String): WriteResult {
+        val latest = lock.withLock { journal.committed(projectId).firstOrNull()?.txnId }
+        if (latest != txnId) {
+            return WriteResult.Refused("something else has been saved since, so this cannot be undone safely")
+        }
+        return undoLast(projectId)
+    }
+
     suspend fun undoLast(projectId: String): WriteResult = lock.withLock {
         val last = journal.committed(projectId).firstOrNull()
             ?: return WriteResult.Refused("nothing to undo")

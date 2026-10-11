@@ -103,7 +103,14 @@ class BeancountApplication : Application() {
     val drafts: DraftStore by lazy { DraftStore(workspace) }
 
     val editorController: EditorController by lazy {
-        EditorController(workspace, writer, drafts, appScope)
+        EditorController(workspace, writer, drafts, appScope) { id, result ->
+            undo.offerFor(id, result, "the file edit")
+        }
+    }
+
+    /** Offers to take back the last save, delete or file edit (B97). */
+    val undo: io.github.pintofi.beanbook.app.undo.UndoController by lazy {
+        io.github.pintofi.beanbook.app.undo.UndoController(writer, workScope)
     }
 
     /** Entry templates for the open project; app state, never part of the ledger. */

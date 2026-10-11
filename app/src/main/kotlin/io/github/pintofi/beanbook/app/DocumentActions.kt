@@ -392,6 +392,8 @@ internal fun MainActivity.deleteEntries(
             return@launch
         }
         var deleted = 0
+        var committedWrites = 0
+        var lastCommitted: io.github.pintofi.beanbook.core.data.WriteResult.Committed? = null
         var failure: String? = null
         for ((path, inFile) in slices.groupBy { it.file }) {
             val target = java.io.File(path)
@@ -414,7 +416,11 @@ internal fun MainActivity.deleteEntries(
                 operation = "delete-entries",
             )
             when (result) {
-                is io.github.pintofi.beanbook.core.data.WriteResult.Committed -> deleted += inFile.size
+                is io.github.pintofi.beanbook.core.data.WriteResult.Committed -> {
+                    deleted += inFile.size
+                    committedWrites += 1
+                    lastCommitted = result
+                }
                 is io.github.pintofi.beanbook.core.data.WriteResult.RolledBack -> { failure = result.reason; break }
                 is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> { failure = result.reason; break }
             }
@@ -423,6 +429,13 @@ internal fun MainActivity.deleteEntries(
             failure == null -> if (deleted == 1) "Deleted 1 entry." else "Deleted $deleted entries."
             deleted == 0 -> "Nothing was deleted: $failure."
             else -> "Deleted $deleted of ${entries.size} entries, then stopped: $failure."
+        }
+        // Undo is offered when the delete was one write: with several files only the last
+        // could be taken back, which would leave the rest deleted (B97).
+        if (failure == null && committedWrites == 1) {
+            lastCommitted?.let {
+                app.undo.offerFor(projectId, it, if (deleted == 1) "deleted 1 entry" else "deleted $deleted entries")
+            }
         }
         app.ledgerState.load(mainFile)
     }
