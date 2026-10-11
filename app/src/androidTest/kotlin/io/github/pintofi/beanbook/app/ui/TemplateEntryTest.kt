@@ -71,7 +71,8 @@ class TemplateEntryTest {
             .assertTextContains("2026-09-01 * \"Landlord\" \"Monthly rent\"", substring = true)
         preview().assertTextContains("750.00 EUR", substring = true)
 
-        compose.onNodeWithText("Save entry").performScrollTo().assertIsEnabled()
+        // On the sticky save bar since B98: always on screen, and outside the scroll.
+        compose.onNodeWithText("Save entry").assertIsEnabled()
         compose.onNodeWithText("Save entry").performClick()
 
         val draft = requireNotNull(saved) { "the form did not save" }

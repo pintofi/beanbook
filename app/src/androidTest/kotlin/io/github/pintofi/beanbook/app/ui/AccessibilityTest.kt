@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -197,7 +198,8 @@ class AccessibilityTest {
         compose.onAllNodesWithText("Date")[0].assertExists()
         compose.onNodeWithContentDescription("Commodity for posting 1").assertExists()
         assertNull("nothing should be saved until Save is pressed", saved)
-        compose.onNodeWithText("Save changes").performScrollTo().performClick()
+        // On the sticky save bar since B98: always on screen, and outside the scroll.
+        compose.onNodeWithText("Save changes").performClick()
         assertEquals(
             "an untouched entry should be written back exactly as it was",
             original.render(),
@@ -233,7 +235,9 @@ class AccessibilityTest {
             QuickAddScreen(vocabulary, onSave = {}, today = today)
         }
         compose.onNodeWithText("Will be written as").performScrollTo().assertExists()
-        compose.onNodeWithText("Save entry").performScrollTo().assertExists()
+        // On the sticky save bar since B98, so on screen without scrolling to it: that is the
+        // point of the bar, and scrolling to it would fail -- it is not inside the scroll.
+        compose.onNodeWithText("Save entry").assertIsDisplayed()
         assertAccessible()
     }
 
@@ -610,8 +614,10 @@ class AccessibilityTest {
         // LazyColumn: scrolling to the export button at the bottom disposes the project row
         // at the top, and looking for it afterwards finds nothing at all — the failure reads
         // exactly like a missing label. Anything above is checked before anything below.
+        // A prefix: the row also says when it is the open project (B98).
         compose.onNodeWithContentDescription(
             "Open Household, ${project.describe()}",
+            substring = true,
         ).performScrollTo().assertExists()
         compose.onNodeWithContentDescription(
             "Export a copy of the open project to a folder",

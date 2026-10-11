@@ -63,8 +63,10 @@ fun FormSaveBar(
                         StampMark(LedgerMark.ATTENTION, modifier = Modifier.padding(top = 1.dp, end = Measure.snug))
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             shown.take(MAX_SHOWN).forEach {
+                                // As a sentence: the checks are written for logs ("a transaction
+                                // needs at least two postings"), the bar is read by a person.
                                 Text(
-                                    it,
+                                    it.replaceFirstChar { c -> c.uppercase() },
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.error,
                                 )

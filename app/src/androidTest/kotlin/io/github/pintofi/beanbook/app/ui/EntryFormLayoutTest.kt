@@ -89,7 +89,8 @@ class EntryFormLayoutTest {
         compose.onNode(hasText("food")).assertExists()
         assertEquals("opening an entry is not a change to it", false, dirty)
 
-        compose.onNodeWithText("Save changes").performScrollTo().performClick()
+        // On the sticky save bar since B98: always on screen, and outside the scroll.
+        compose.onNodeWithText("Save changes").performClick()
         assertEquals("an untouched entry is written back as it was", entry.render(), saved?.render())
     }
 
@@ -176,7 +177,8 @@ class EntryFormLayoutTest {
         // An attached file is a second link, under its own key, and is listed in the form (B80).
         compose.onNode(hasText("document-2: \"2026-09-13.ba9876543210.jpg\"", substring = true)).assertExists()
         compose.onNodeWithContentDescription("Remove the attached file invoice.jpg").assertExists()
-        compose.onNodeWithText("Save entry with 1 page and 1 file").performScrollTo().assertExists()
+        // On the sticky save bar since B98: always on screen, and outside the scroll.
+        compose.onNodeWithText("Save entry with 1 page and 1 file").assertExists()
     }
 
     @Test fun aFileCanBeAttachedFromTheEntrysOwnActions() {

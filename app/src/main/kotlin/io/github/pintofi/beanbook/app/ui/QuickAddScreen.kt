@@ -933,7 +933,9 @@ private fun PostingEditor(
                 placeholder = if (index == 0) null else { { Text("optional") } },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.weight(3f),
+                // Even halves (B98): at 3:2 the commodity box was too narrow for "Commodity · PKR",
+                // and the default it falls back to was cut off its own label.
+                modifier = Modifier.weight(1f),
             )
             SuggestingField(
                 value = row.commodity,
@@ -946,7 +948,7 @@ private fun PostingEditor(
                 // 2026-10-10: the box was blank although the ledger declares one, so nothing on
                 // screen said what the amount would be in).
                 placeholder = defaultCommodity.ifBlank { null },
-                modifier = Modifier.weight(2f),
+                modifier = Modifier.weight(1f),
             )
         }
         if (row.showDetails) {
