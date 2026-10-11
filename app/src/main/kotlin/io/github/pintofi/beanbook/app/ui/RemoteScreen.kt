@@ -27,6 +27,11 @@ import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.engine.remote.RemoteAddress
 import io.github.pintofi.beanbook.engine.remote.ServerCapabilities
 import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.LinkOff
 
 /**
  * What an `http://` address actually means, said plainly and before the fact.
@@ -98,112 +103,50 @@ fun RemoteScreen(
         RemoteAddress.parse(address).getOrNull()?.isCleartext == true
     }
 
-    Column(
-        modifier = modifier.verticalScroll(rememberScrollState())
-            .padding(horizontal = Measure.gutter)
-            .padding(top = Measure.gap, bottom = Measure.section),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text("Your own Fava server", style = MaterialTheme.typography.titleMedium)
+    Column(modifier = modifier.verticalScroll(rememberScrollState())) {
+    FolioPage(modifier = Modifier.readableMeasureCentred()) {
         Text(
             "Connect to a Fava server you host. The ledger stays there: this app shows it " +
                 "and can add entries, but keeps no copy on the device.",
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Measure.tight),
         )
 
-        OutlinedTextField(
-            value = address,
-            onValueChange = { address = it },
-            label = { Text("Address") },
-            placeholder = { Text("https://fava.example.com") },
-            singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "Server address" },
-        )
-        Text(
-            "https:// is checked strictly: if the certificate cannot be verified, the " +
-                "connection stops and there is no way past it. http:// also works, for a " +
-                "server on your own network.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-
-        if (cleartext) {
-            CleartextWarning(hasPassword = secret.isNotEmpty())
-        }
-
-        Text(
-            "If your server is behind a login (Fava has none of its own), enter it here.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Username (optional)") },
-            singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "Username" },
-        )
-        OutlinedTextField(
-            value = secret,
-            onValueChange = { secret = it },
-            label = { Text("Password (optional)") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "Password" },
-        )
-        Text(
-            "The password is kept in this device's keystore, where the app can use it but " +
-                "cannot read it back, and it is never included in a backup.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-
-        Button(
-            onClick = {
-                val typed = secret.toCharArray()
-                onConnect(address.trim(), username.trim().ifBlank { null }, typed.takeIf { it.isNotEmpty() })
-                secret = ""
-            },
-            enabled = address.isNotBlank(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "Connect to the server" },
-        ) { Text(if (status is EngineStatus.Serving) "Reconnect" else "Connect") }
-
+        // Where the connection stands, first: the answer people open the page for.
         when (status) {
             is EngineStatus.Starting ->
-                StatusLine("Connecting…")
-
+                StatusLine("Connecting…", modifier = Modifier.padding(horizontal = Measure.tight))
             is EngineStatus.Serving ->
                 Notice(NoticeTone.QUIET) {
-                    Text(
-                        capabilities?.describe() ?: "Connected.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        StampMark(
+                            LedgerMark.CLEARED,
+                            decorative = true,
+                            modifier = Modifier.padding(end = Measure.snug),
+                        )
+                        Text(
+                            capabilities?.describe() ?: "Connected.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                     Text(
                         "Reports come from this server; the Reports tab shows it.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-
             is EngineStatus.Failed ->
                 Notice(NoticeTone.PROBLEM) {
                     Text(status.message, style = MaterialTheme.typography.bodyMedium)
                 }
-
             EngineStatus.Stopped -> Unit
         }
-
         message?.takeIf { status !is EngineStatus.Failed }?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall)
+            FolioNote(it)
         }
 
         if (pendingRetry) {
-            LedgerHairline()
             Notice(NoticeTone.PROBLEM) {
                 run {
                     Text("An entry did not get through", style = MaterialTheme.typography.titleSmall)
@@ -225,17 +168,99 @@ fun RemoteScreen(
             }
         }
 
-        if (savedAddress != null) {
-            HorizontalDivider()
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onDisconnect) { Text("Disconnect") }
-                TextButton(
-                    onClick = onForget,
-                    modifier = Modifier.semantics {
-                        contentDescription = "Forget this server and its password"
-                    },
-                ) { Text("Forget this server") }
+        FolioHeading("Server")
+        FolioGroup {
+            item {
+                FolioBody {
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = { address = it },
+                        label = { Text("Address") },
+                        placeholder = { Text("https://fava.example.com") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "Server address" },
+                    )
+                    if (cleartext) {
+                        CleartextWarning(hasPassword = secret.isNotEmpty())
+                    }
+                }
             }
         }
+        FolioNote(
+            "https:// is checked strictly: if the certificate cannot be verified, the " +
+                "connection stops and there is no way past it. http:// also works, for a " +
+                "server on your own network.",
+        )
+
+        FolioHeading("Login, if your server has one")
+        FolioGroup {
+            item {
+                FolioBody {
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text("Username (optional)") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "Username" },
+                    )
+                    OutlinedTextField(
+                        value = secret,
+                        onValueChange = { secret = it },
+                        label = { Text("Password (optional)") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "Password" },
+                    )
+                }
+            }
+        }
+        FolioNote(
+            "Fava has no login of its own; this is for a server behind one. The password is kept " +
+                "in this device's keystore, where the app can use it but cannot read it back, and " +
+                "it is never included in a backup.",
+        )
+
+        Button(
+            onClick = {
+                val typed = secret.toCharArray()
+                onConnect(address.trim(), username.trim().ifBlank { null }, typed.takeIf { it.isNotEmpty() })
+                secret = ""
+            },
+            enabled = address.isNotBlank(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
+                .semantics { contentDescription = "Connect to the server" },
+        ) { Text(if (status is EngineStatus.Serving) "Reconnect" else "Connect") }
+
+        if (savedAddress != null) {
+            FolioGroup {
+                item {
+                    FolioRow(
+                        title = "Disconnect",
+                        detail = "Go back to the ledger on this device. The server is remembered.",
+                        icon = Icons.Outlined.LinkOff,
+                        onClick = onDisconnect,
+                    )
+                }
+                item {
+                    FolioRow(
+                        title = "Forget this server",
+                        detail = "Removes its address and password from this device.",
+                        icon = Icons.Outlined.Delete,
+                        tone = FolioTone.PROBLEM,
+                        onClick = onForget,
+                        describe = "Forget this server and its password",
+                    )
+                }
+            }
+        }
+    }
     }
 }

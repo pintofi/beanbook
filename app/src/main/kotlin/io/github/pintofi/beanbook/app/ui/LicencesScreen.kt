@@ -31,6 +31,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import org.json.JSONObject
 import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Gavel
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.fillMaxWidth
 
 /**
  * One thing the app distributes, and the licence that came with it.
@@ -107,48 +114,77 @@ fun LicencesScreen(modifier: Modifier = Modifier) {
         return
     }
 
-    LazyColumn(modifier = modifier) {
-        item {
-            Column(
-                Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                RuledColumn(
-                    modifier = Modifier
-                        .clickable(role = Role.Button) { showing = app }
-                        .semantics {
-                            contentDescription =
-                                "${app.name} is under ${app.version}. Read the full licence."
-                        },
-                    verticalArrangement = Arrangement.spacedBy(Measure.tight),
-                ) {
-                    Text("${app.name}, ${app.version}", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        app.source,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text("Read the full licence", style = MaterialTheme.typography.labelLarge)
+    var query by remember { mutableStateOf("") }
+    // Narrowed as it is typed (device audit 2026-10-10: some sixty rows and no way to find one).
+    val shown = remember(components, query) {
+        val needle = query.trim()
+        if (needle.isEmpty()) components else components.filter { it.name.contains(needle, ignoreCase = true) }
+    }
+
+    LazyColumn(
+        modifier = modifier.readableMeasureCentred(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = Measure.gutter,
+            end = Measure.gutter,
+            top = Measure.snug,
+            bottom = Measure.section,
+        ),
+        verticalArrangement = Arrangement.spacedBy(Measure.seam),
+    ) {
+        item(key = "app") {
+            Column(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
+                FolioGroup {
+                    item {
+                        FolioRow(
+                            title = "${app.name}, ${app.version}",
+                            detail = app.source,
+                            icon = Icons.Outlined.Gavel,
+                            tone = FolioTone.ACCENT,
+                            onClick = { showing = app },
+                            opens = true,
+                            describe = "${app.name} is under ${app.version}. Read the full licence.",
+                        )
+                    }
                 }
+                FolioHeading("Built on")
                 Text(
                     "This app is built on other people's work. Each of these came with a " +
                         "licence, and each licence is here in full.",
                     style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Measure.tight),
                 )
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    label = { Text("Find a package") },
+                    singleLine = true,
+                    leadingIcon = { androidx.compose.material3.Icon(Icons.Filled.Search, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = Measure.snug),
+                )
+                if (shown.isEmpty()) {
+                    FolioNote("Nothing bundled is called that.")
+                }
             }
         }
 
-        items(components, key = { "${it.kind()}:${it.name}" }) { entry ->
-            ListItem(
-                headlineContent = { Text(entry.name) },
-                supportingContent = { Text(entry.version) },
-                modifier = Modifier
-                    .clickable(role = Role.Button) { showing = entry }
-                    .semantics {
-                        contentDescription = "${entry.name}, ${entry.version}. Read its licence."
-                    },
-            )
-            HorizontalDivider()
+        // Each row its own slip with the folio's seams, so the long list is the same object as
+        // every other set of rows in the app while staying lazy.
+        itemsIndexed(shown, key = { _, entry -> "${entry.kind()}:${entry.name}" }) { index, entry ->
+            androidx.compose.material3.Surface(
+                shape = io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.Folio.at(index, shown.size),
+                color = folioContainer(),
+            ) {
+                FolioRow(
+                    title = entry.name,
+                    detail = entry.version,
+                    onClick = { showing = entry },
+                    opens = true,
+                    describe = "${entry.name}, ${entry.version}. Read its licence.",
+                )
+            }
         }
     }
 }

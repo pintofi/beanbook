@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -97,56 +98,6 @@ class RemoteReports(
     val auth: () -> AllowlistWebViewClient.HttpAuth?,
 )
 
-
-/**
- * A destination's icon, with the rule that marks the one you are on (B74).
- *
- * The rule grows from the centre rather than fading in: it is the same gesture as the column
- * rule drawing down a surface, at the size of a tab, so moving between destinations reads as
- * the same app doing the same thing. Material's filled pill is replaced rather than recoloured
- * -- a lozenge under a column of figures is the loudest thing on the screen, and this design
- * marks things with rules.
- */
-@Composable
-private fun DestinationMark(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    selected: Boolean,
-) {
-    val colour = io.github.pintofi.beanbook.app.ui.theme.BeancountTheme.ledger.rule
-    val animate = io.github.pintofi.beanbook.app.ui.theme.rememberAnimationsEnabled()
-    val extent by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (selected) 1f else 0f,
-        // The expressive control spring: the mark is the bar's selection indicator, a control
-        // and not a figure, so it may land with the scheme's small overshoot.
-        animationSpec = if (animate) {
-            io.github.pintofi.beanbook.app.ui.theme.MotionRole.control()
-        } else {
-            androidx.compose.animation.core.snap()
-        },
-        label = "destination",
-    )
-    Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-        androidx.compose.foundation.Canvas(
-            modifier = Modifier
-                .width(20.dp)
-                .height(2.dp)
-                .clearAndSetSemantics { },
-        ) {
-            if (extent > 0f) {
-                drawRect(
-                    color = colour,
-                    topLeft = androidx.compose.ui.geometry.Offset(
-                        x = size.width * (1f - extent) / 2f,
-                        y = 0f,
-                    ),
-                    size = androidx.compose.ui.geometry.Size(size.width * extent, size.height),
-                )
-            }
-        }
-        androidx.compose.foundation.layout.Spacer(Modifier.height(4.dp))
-        Icon(icon, contentDescription = null)
-    }
-}
 
 /**
  * Whether the add button belongs on screen.
@@ -492,6 +443,11 @@ internal fun LedgerApp(
     // services while the scanner is up, so a screen reader does not wander into a form the
     // camera is covering.
     val scanning = documentCapture.scanning
+    // The add button steps aside while the page is read downwards (design-direction §7). Reset
+    // on every move, so a destination always opens with its button in view.
+    val actionScroll = remember { ActionScroll() }
+    androidx.compose.runtime.LaunchedEffect(selected, adding, moreSection) { actionScroll.reset() }
+    val addable = showsAddAction(selected, adding, hasLedger = ledger != null)
     Box(modifier = modifier) {
     Row(
         modifier = Modifier
@@ -499,7 +455,13 @@ internal fun LedgerApp(
             .then(if (scanning) Modifier.clearAndSetSemantics {} else Modifier),
     ) {
         if (layout != PaneLayout.COMPACT) {
-            LedgerNavigationRail(selected = selected, onSelect = { selected = it })
+            LedgerNavigationRail(
+                selected = selected,
+                adding = adding,
+                showAdd = addable,
+                onAdd = { adding = true },
+                onSelect = { leavingAdd { goTo(it) } },
+            )
         }
 
     // Whether the open ledger went from errors to none while the app was running (B87), for
@@ -574,16 +536,15 @@ internal fun LedgerApp(
             // The button grows in and shrinks back out rather than blinking: it disappears
             // whenever the form opens, and a control that vanishes between frames reads as a
             // glitch rather than as the thing that became the page in front of you (B76).
+            // On the rail layout it lives in the rail's header instead (design-direction §8);
+            // here it also steps aside while the page is read downwards, and while the
+            // keyboard is up, where it sat between the list and the keys covering rows.
+            @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+            val keyboard = WindowInsets.isImeVisible
             io.github.pintofi.beanbook.app.ui.LedgerAction(
-                visible = showsAddAction(selected, adding, hasLedger = ledger != null),
+                visible = addable && layout == PaneLayout.COMPACT && !actionScroll.readingOn && !keyboard,
             ) {
-                androidx.compose.material3.FloatingActionButton(
-                    onClick = { adding = true },
-                ) {
-                    // The description is on the icon because there is no longer a label to
-                    // carry it. Without it this is an unnamed button to a screen reader.
-                    Icon(Icons.Outlined.Add, contentDescription = "Add an entry")
-                }
+                AddEntryButton(onClick = { adding = true })
             }
         },
         bottomBar = {
@@ -593,70 +554,24 @@ internal fun LedgerApp(
             // a form the one thing it is short of on a phone: height.
             @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
             if (androidx.compose.foundation.layout.WindowInsets.isImeVisible) return@Scaffold
-            // Six text-only destinations fit across a phone at normal text size and do not
-            // at 200%: a NavigationBar there wrapped the labels mid-word and clipped
-            // "Projects" off the screen edge. Below 130% the bar stays as it was; above it,
-            // scrolling tabs keep every label whole and every destination reachable.
+            // One bar at every text size (design-direction §5). At 200% it used to become a
+            // scrolling row of words with the icons gone and "More" cut to "M"; the labels now
+            // stop growing at 150% and shrink to fit their item, and every icon stays.
             //
-            // "Six" is load-bearing. A seventh was added once and "Balances" wrapped to
-            // "Balance" / "s" on every screen until it was found by looking at the app --
-            // the a11y gate only exercises 200%, where the scrolling path is already in use.
-            // Files moved into More to get back to six. Adding a destination here means
-            // checking the bar by eye at normal text size, or moving another one out.
-            if (LocalDensity.current.fontScale > 1.3f) {
-                PrimaryScrollableTabRow(
-                    selectedTabIndex = if (adding) -1 else Surface.entries.indexOf(selected),
-                    edgePadding = 0.dp,
-                ) {
-                    Surface.entries.forEach { surface ->
-                        Tab(
-                            selected = !adding && selected == surface,
-                            onClick = { leavingAdd { goTo(surface) } },
-                            text = { Text(surface.label, softWrap = false) },
-                            modifier = Modifier.semantics { contentDescription = surface.label },
-                        )
-                    }
-                }
-            } else {
-                // The footer rule (B74). The bar sits on the same paper as the page, with a
-                // hairline above it and no shadow, and the selected destination is marked by
-                // a short rule over its icon rather than by Material's filled pill -- the
-                // same vocabulary as every other rule in the app, and quieter under a column
-                // of figures than a lozenge of colour.
-                Column {
-                    io.github.pintofi.beanbook.app.ui.LedgerHairline()
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        tonalElevation = 0.dp,
-                    ) {
-                        Surface.entries.forEach { surface ->
-                            // Nothing is selected while the form is open: the form is not a
-                            // destination, and a bar highlighting Home while a person stands
-                            // in the entry form is telling them where they are not (B61).
-                            val chosen = !adding && selected == surface
-                            NavigationBarItem(
-                                selected = chosen,
-                                onClick = { leavingAdd { goTo(surface) } },
-                                label = { Text(surface.label) },
-                                icon = { DestinationMark(surface.icon, chosen) },
-                                colors = NavigationBarItemDefaults.colors(
-                                    indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                                    selectedIconColor = MaterialTheme.colorScheme.onSurface,
-                                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                ),
-                                // No contentDescription: the label already supplies one, and
-                                // setting both made TalkBack say "Reports, Reports" on every
-                                // destination.
-                            )
-                        }
-                    }
-                }
-            }
+            // Five destinations is still load-bearing: a sixth leaves each item too narrow for
+            // "Balances" even shrunk. Adding one means moving another into More.
+            LedgerBottomBar(
+                selected = selected,
+                adding = adding,
+                onSelect = { surface -> leavingAdd { goTo(surface) } },
+            )
         },
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .nestedScroll(actionScroll),
+        ) {
             // The banner makes room for itself rather than appearing in place, so the page
             // under it is pushed down by something arriving instead of being covered by
             // something that was always there (B76).

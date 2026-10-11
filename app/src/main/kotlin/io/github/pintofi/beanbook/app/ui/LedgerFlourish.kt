@@ -126,18 +126,22 @@ fun RollingFigure(
         Text(text, style = style, color = color, modifier = modifier)
         return
     }
+    // A still figure fits its space rather than being cut at its edge (design-direction §5):
+    // `maxLines = 1` alone clipped "2,624,167.69 PKR" to "2,624,167." at 200% text.
+    val align = style.textAlign.takeIf { it != androidx.compose.ui.text.style.TextAlign.Unspecified }
+        ?: androidx.compose.ui.text.style.TextAlign.Start
     if (!LocalMotionEnabled.current) {
-        Text(text, style = style, color = color, maxLines = 1, modifier = modifier)
+        FitFigure(text, style = style, color = color, textAlign = align, modifier = modifier)
         return
     }
     // A column of characters cannot shrink the way a line of text does, so a figure wider than
-    // its space -- a narrow tile, a large font -- is shown as the plain text it was before and
-    // loses nothing but the roll.
+    // its space -- a narrow tile, a large font -- is shown as a fitted figure and loses nothing
+    // but the roll.
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
     val needed = remember(text, style) { measurer.measure(text, style, maxLines = 1).size.width }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
         if (constraints.hasBoundedWidth && needed > constraints.maxWidth) {
-            Text(text, style = style, color = color, maxLines = 1)
+            FitFigure(text, style = style, color = color, textAlign = align)
         } else {
             RollingColumns(text, style, color, rollInFrom)
         }

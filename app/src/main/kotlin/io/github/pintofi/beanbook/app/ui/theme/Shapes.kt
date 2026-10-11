@@ -22,8 +22,10 @@ import androidx.compose.ui.unit.dp
  * has no slot for: the flat data surface and the stamp.
  */
 internal val BeancountShapes = Shapes(
-    // Chips and the smallest containers. Square-ish: these sit inside data.
-    extraSmall = RoundedCornerShape(4.dp),
+    // Text fields, menus and snackbars take this slot. It was 4dp, so every field in the app
+    // was squarer than the buttons and segments beside it; at the control radius a form reads
+    // as one set of controls (design-direction §6).
+    extraSmall = RoundedCornerShape(10.dp),
     // Fields and controls. Enough radius to read as touchable, not enough to read as a pill.
     small = RoundedCornerShape(10.dp),
     // Notices and cards: the page interrupting itself.
@@ -88,6 +90,50 @@ object BeanbookShape {
 
     /** The same corner size the controls use, for building a partial shape. */
     val controlCorner: CornerSize = CornerSize(10.dp)
+
+    /**
+     * The tinted square an icon sits on at the start of a folio row: rounder than a stamp,
+     * squarer than a pill, so a column of them reads as a set of keys rather than of badges.
+     */
+    val badge: Shape = RoundedCornerShape(12.dp)
+
+    /**
+     * A folio: a group of rows a person acts on -- settings, sections, choices -- as one
+     * rounded object with seams between its rows (docs/design-direction.md §3).
+     *
+     * The connected choice row's vocabulary turned vertical: a generous outer radius where the
+     * group meets the page and a stamp-sized seam between rows, so each row is a target of its
+     * own and the group is still one thing. Rows are controls, so they are rounded; the money
+     * on a ledger page stays square.
+     */
+    object Folio {
+        private val outer = CornerSize(20.dp)
+        private val seam = CornerSize(4.dp)
+
+        /** A group of one row. */
+        val single: RoundedCornerShape = RoundedCornerShape(outer)
+        val top: RoundedCornerShape = RoundedCornerShape(
+            topStart = outer,
+            topEnd = outer,
+            bottomStart = seam,
+            bottomEnd = seam,
+        )
+        val middle: RoundedCornerShape = RoundedCornerShape(seam)
+        val bottom: RoundedCornerShape = RoundedCornerShape(
+            topStart = seam,
+            topEnd = seam,
+            bottomStart = outer,
+            bottomEnd = outer,
+        )
+
+        /** The shape for the row at [index] of [count]. */
+        fun at(index: Int, count: Int): RoundedCornerShape = when {
+            count <= 1 -> single
+            index == 0 -> top
+            index == count - 1 -> bottom
+            else -> middle
+        }
+    }
 
     /**
      * Where two segments of a connected choice meet: the stamp's knocked-off corner, a little

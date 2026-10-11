@@ -65,4 +65,13 @@ object Measure {
 
     /** Space kept under a scrolling surface so the action button never covers the last row. */
     val actionClearance: Dp = 96.dp
+
+    /** The gap between two rows of a folio: enough to see the seam, not enough to split it. */
+    val seam: Dp = 2.dp
+
+    /** The icon badge at the start of a folio row. */
+    val badge: Dp = 40.dp
+
+    /** Content columns on a wide window, side by side (Home in landscape and on a tablet). */
+    val columnGap: Dp = 28.dp
 }

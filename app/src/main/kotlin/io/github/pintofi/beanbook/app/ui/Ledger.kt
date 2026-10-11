@@ -139,28 +139,70 @@ fun LedgerHeading(
  * balance -- and **one rule over a gap for a pending one**, which reads as a line still to be
  * drawn.
  *
- * Colour reinforces and never carries: the two shapes differ, and the description names the
+ * Colour reinforces and never carries: the shapes differ, and the description names the
  * state in words.
+ *
+ * **Any other flag is its own mark (FLAGGED).** Beancount allows a letter -- `P` for a
+ * transaction a price plugin wrote, `S`, `T`, whatever a file uses -- and the app drew every one
+ * of them as cleared, and the entry page said "Cleared" (device audit 2026-10-10). It is a small
+ * pennant on a staff: something marked, which is all the app can honestly say about a letter it
+ * does not interpret. The letter itself is spoken and, on the entry page, printed.
  */
-enum class LedgerMark { CLEARED, PENDING, ATTENTION }
+enum class LedgerMark { CLEARED, PENDING, FLAGGED, ATTENTION }
+
+/**
+ * What an entry with no payee and no narration is called, everywhere it is named: the Journal
+ * row, Home, the entry page and the delete confirmation. The list showed a blank line where the
+ * entry page said this (device audit 2026-10-10).
+ */
+const val NO_DESCRIPTION = "(no description)"
+
+/** The mark for an entry's flag: `*` cleared, `!` pending, any other character flagged. */
+fun markForFlag(flag: String?): LedgerMark = when (flag) {
+    "!" -> LedgerMark.PENDING
+    null, "", "*", "txn" -> LedgerMark.CLEARED
+    else -> LedgerMark.FLAGGED
+}
+
+/** What an entry's flag means, in words: "Cleared", "Pending", or "Flagged P". */
+fun describeFlag(flag: String?): String = when (markForFlag(flag)) {
+    LedgerMark.PENDING -> "Pending"
+    LedgerMark.FLAGGED -> "Flagged $flag"
+    else -> "Cleared"
+}
 
 @Composable
-fun StampMark(mark: LedgerMark, modifier: Modifier = Modifier) {
+fun StampMark(
+    mark: LedgerMark,
+    modifier: Modifier = Modifier,
+    /** The file's own flag, so a FLAGGED mark can say which one. */
+    flag: String? = null,
+    /** True where the control it sits in already says the state in words. */
+    decorative: Boolean = false,
+) {
     val ledger = BeancountTheme.ledger
     val colour = when (mark) {
         LedgerMark.CLEARED -> ledger.rule
         LedgerMark.PENDING -> ledger.pending
+        LedgerMark.FLAGGED -> ledger.flagged
         LedgerMark.ATTENTION -> MaterialTheme.colorScheme.error
     }
     val described = when (mark) {
         LedgerMark.CLEARED -> "Cleared"
         LedgerMark.PENDING -> "Pending"
+        LedgerMark.FLAGGED -> if (flag.isNullOrBlank()) "Flagged" else "Flagged $flag"
         LedgerMark.ATTENTION -> "Needs attention"
     }
     Canvas(
         modifier = modifier
             .size(width = Measure.stamp, height = Measure.stamp)
-            .semantics { contentDescription = described },
+            .then(
+                if (decorative) {
+                    Modifier.clearAndSetSemantics { }
+                } else {
+                    Modifier.semantics { contentDescription = described }
+                },
+            ),
     ) {
         val thickness = size.minDimension * 0.16f
         val inset = size.minDimension * 0.12f
@@ -182,6 +224,11 @@ fun StampMark(mark: LedgerMark, modifier: Modifier = Modifier) {
             LedgerMark.PENDING -> {
                 bar(top = 0.34f, width = full)
                 bar(top = 0.58f, width = full * 0.45f)
+            }
+            // A pennant on a staff: marked, for a reason the file knows.
+            LedgerMark.FLAGGED -> {
+                bar(top = 0.16f, width = thickness * 1.2f, height = size.height * 0.68f)
+                bar(top = 0.16f, width = full * 0.78f, height = size.height * 0.3f)
             }
             // An upright mark: something here needs a person.
             LedgerMark.ATTENTION -> {
@@ -294,22 +341,30 @@ fun EmptyState(
     art: EmptyArt? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
+    // Centred, art and words on one axis (design-direction §7). Left-aligned inside a block that
+    // was itself centred, it read as accidentally off-centre (device audit 2026-10-10).
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = Measure.chapter),
         verticalArrangement = Arrangement.spacedBy(Measure.snug),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         art?.let {
             EmptyIllustration(it)
             Spacer(Modifier.height(Measure.gap))
         }
         // Emphasized: the heading is the instruction, and the line under it the detail.
-        Text(title, style = MaterialTheme.typography.titleMediumEmphasized)
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMediumEmphasized,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
         Text(
             detail,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
         action?.let {
             Spacer(Modifier.height(Measure.tight))

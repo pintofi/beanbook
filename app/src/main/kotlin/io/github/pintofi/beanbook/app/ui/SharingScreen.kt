@@ -33,6 +33,10 @@ import io.github.pintofi.beanbook.app.BeancountApplication
 import io.github.pintofi.beanbook.app.sharing.SharingStatus
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Key
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,23 +64,17 @@ fun SharingScreen(modifier: Modifier = Modifier) {
     var password by remember { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = modifier.verticalScroll(rememberScrollState())
-            .padding(horizontal = Measure.gutter)
-            .padding(top = Measure.gap, bottom = Measure.section),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            "Share on Wi-Fi",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() },
-        )
+    Column(modifier = modifier.verticalScroll(rememberScrollState())) {
+    FolioPage(modifier = Modifier.readableMeasureCentred()) {
         Text(
             "Open your Reports in a browser on another device on the same Wi-Fi, such as a " +
                 "laptop. It shows the same pages as the Reports tab, and changes made there " +
                 "are saved to this phone.",
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Measure.tight),
         )
+        // The risk before the control, every time (content style guide §8).
         Notice(NoticeTone.ATTENTION) {
             Text(
                 "Anyone on this network can reach the sign-in page. Only someone with the " +
@@ -87,85 +85,111 @@ fun SharingScreen(modifier: Modifier = Modifier) {
             )
         }
 
-        if (editing) {
-            Text("Sign-in", style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
-            OutlinedTextField(
-                value = username,
-                onValueChange = { username = it.trim() },
-                label = { Text("Username") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password") },
-                supportingText = { Text("At least $MIN_PASSWORD characters. Kept on this phone only as a hash.") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Button(
-                onClick = {
-                    saving = true
-                    val chars = password.toCharArray()
-                    val name = username
-                    password = ""
-                    scope.launch {
-                        // PBKDF2 is slow on purpose; off the main thread.
-                        withContext(Dispatchers.Default) { sharing.settings.save(name, chars) }
-                        savedName = name
-                        saving = false
-                        editing = false
+        // While sharing, the address is the subject of the page: large, selectable, first.
+        (status as? SharingStatus.On)?.let { current ->
+            FolioHeading("Open this address on the other device")
+            FolioGroup {
+                item {
+                    FolioBody {
+                        SelectionContainer {
+                            Text(
+                                current.address,
+                                style = LedgerType.figure.copy(
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                                ),
+                            )
+                        }
+                        StatusLine("Sharing. Stops when you tap Stop sharing, or from the notification.")
                     }
-                },
-                enabled = !saving && username.isNotBlank() && password.length >= MIN_PASSWORD,
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (saving) "Saving…" else "Save sign-in") }
-            if (savedName != null) {
-                TextButton(onClick = { editing = false; password = "" }) { Text("Cancel") }
+                }
             }
-        } else {
-            Text("Signs in as $savedName.", style = MaterialTheme.typography.bodyMedium)
-            TextButton(
-                onClick = {
-                    sharing.stop()
-                    editing = true
-                },
-                modifier = Modifier.semantics { contentDescription = "Change the username and password" },
-            ) { Text("Change sign-in") }
+        }
+
+        FolioHeading("Sign-in")
+        FolioGroup {
+            item {
+                if (editing) {
+                    FolioBody {
+                        OutlinedTextField(
+                            value = username,
+                            onValueChange = { username = it.trim() },
+                            label = { Text("Username") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Password") },
+                            supportingText = {
+                                Text("At least $MIN_PASSWORD characters. Kept on this phone only as a hash.")
+                            },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Button(
+                            onClick = {
+                                saving = true
+                                val chars = password.toCharArray()
+                                val name = username
+                                password = ""
+                                scope.launch {
+                                    // PBKDF2 is slow on purpose; off the main thread.
+                                    withContext(Dispatchers.Default) { sharing.settings.save(name, chars) }
+                                    savedName = name
+                                    saving = false
+                                    editing = false
+                                }
+                            },
+                            enabled = !saving && username.isNotBlank() && password.length >= MIN_PASSWORD,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(if (saving) "Saving…" else "Save sign-in") }
+                        if (savedName != null) {
+                            TextButton(onClick = { editing = false; password = "" }) { Text("Cancel") }
+                        }
+                    }
+                } else {
+                    FolioRow(
+                        title = "Signs in as $savedName",
+                        detail = "The password is kept on this phone only as a hash.",
+                        icon = Icons.Outlined.Key,
+                    ) {
+                        TextButton(
+                            onClick = {
+                                sharing.stop()
+                                editing = true
+                            },
+                            modifier = Modifier.semantics { contentDescription = "Change the username and password" },
+                        ) { Text("Change") }
+                    }
+                }
+            }
         }
 
         when (val current = status) {
-            is SharingStatus.On -> {
-                RuledColumn {
-                    LedgerHeading("Open this address on the other device")
-                    SelectionContainer {
-                        Text(current.address, style = LedgerType.source)
-                    }
-                }
-                StatusLine("Sharing. Stops when you tap Stop sharing, or from the notification.")
-                OutlinedButton(
-                    onClick = { sharing.stop() },
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Stop sharing") }
-            }
-            SharingStatus.Starting -> StatusLine("Starting to share…")
+            is SharingStatus.On -> OutlinedButton(
+                onClick = { sharing.stop() },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            ) { Text("Stop sharing") }
+            SharingStatus.Starting ->
+                StatusLine("Starting to share…", modifier = Modifier.padding(horizontal = Measure.tight))
             is SharingStatus.Failed -> {
                 Notice(NoticeTone.PROBLEM) { Text(current.reason, style = MaterialTheme.typography.bodyMedium) }
                 Button(
                     onClick = { sharing.start() },
                     enabled = !editing,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 ) { Text("Try again") }
             }
             SharingStatus.Off -> Button(
                 onClick = { sharing.start() },
                 enabled = !editing,
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(top = 4.dp),
             ) { Text("Start sharing") }
         }
+    }
     }
 }
 

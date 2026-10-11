@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
 
 /**
  * What the app has been doing, for somebody trying to say what went wrong (B62).
@@ -55,74 +56,78 @@ fun DiagnosticsScreen(
     val record = remember(reads) { read() }
     val lines = record.lines
 
-    Column(modifier = modifier.fillMaxWidth().padding(16.dp)) {
-        Text(
-            "Diagnostics",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() },
-        )
-        Text(
-            "What the app recorded while it ran. Passwords, keys and access codes are " +
-                "removed before anything is written, and your ledger's entries are never in " +
-                "here. Nothing is sent anywhere unless you share it yourself.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Button(
-                onClick = onShare,
-                modifier = Modifier.semantics {
-                    contentDescription = "Share the diagnostic report"
-                },
-            ) { Text("Share report") }
-            TextButton(
-                onClick = onCopy,
-                modifier = Modifier.semantics {
-                    contentDescription = "Copy the diagnostic report"
-                },
-            ) { Text("Copy") }
-            TextButton(
-                onClick = { confirmingClear = true },
-                modifier = Modifier.semantics { contentDescription = "Clear the recorded log" },
-            ) { Text("Clear") }
-        }
-
-        Text(
-            if (lines.isEmpty()) {
-                "Nothing recorded yet."
-            } else {
-                val count = if (lines.size == 1) "1 line" else "${lines.size} lines"
-                "$count · ${describeSize(record.sizeBytes)} kept on this device"
-            },
-            style = MaterialTheme.typography.bodySmall,
-        )
-
-        message?.let {
-            Notice(NoticeTone.QUIET, modifier = Modifier.padding(top = Measure.snug)) {
-                Text(it, style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-
-        HorizontalDivider(Modifier.padding(vertical = 8.dp))
-
-        // Newest first: the reason anybody opens this is something that just happened.
-        val newestFirst = remember(lines) { lines.asReversed() }
-        LazyColumn(modifier = Modifier.fillMaxWidth().semantics { contentDescription = "The recorded log" }) {
-            items(newestFirst) { line ->
-                // Monospace and scrolling sideways rather than wrapped: a timestamp and a tag
-                // in a column are what makes a log readable, and rewrapping loses both.
-                Row(Modifier.horizontalScroll(rememberScrollState())) {
-                    Text(
-                        line,
-                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                        modifier = Modifier.padding(vertical = 2.dp),
-                    )
+    // Newest first: the reason anybody opens this is something that just happened.
+    val newestFirst = remember(lines) { lines.asReversed() }
+    LazyColumn(
+        modifier = modifier
+            .fillMaxWidth()
+            .readableMeasureCentred(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = Measure.gutter,
+            end = Measure.gutter,
+            top = Measure.snug,
+            bottom = Measure.section,
+        ),
+    ) {
+        item(key = "head") {
+            Column(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
+                Text(
+                    "What the app recorded while it ran. Passwords, keys and access codes are " +
+                        "removed before anything is written, and your ledger's entries are never in " +
+                        "here. Nothing is sent anywhere unless you share it yourself.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Measure.tight),
+                )
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Button(
+                        onClick = onShare,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Share the diagnostic report"
+                        },
+                    ) { Text("Share report") }
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = onCopy,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Copy the diagnostic report"
+                        },
+                    ) { Text("Copy") }
+                    TextButton(
+                        onClick = { confirmingClear = true },
+                        modifier = Modifier.semantics { contentDescription = "Clear the recorded log" },
+                    ) { Text("Clear") }
                 }
+                message?.let {
+                    Notice(NoticeTone.QUIET) {
+                        Text(it, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                FolioHeading(
+                    if (lines.isEmpty()) {
+                        "Nothing recorded yet."
+                    } else {
+                        val count = if (lines.size == 1) "1 line" else "${lines.size} lines"
+                        "$count · ${describeSize(record.sizeBytes)} kept on this device"
+                    },
+                )
             }
+        }
+        // Wrapped, with a hairline between lines (device audit 2026-10-10): lines that scrolled
+        // sideways one by one were cut at the right edge, and nothing said they went further --
+        // the useful end of "script beangrow_config -> F..." could not be read on the phone.
+        // Each line keeps its own row, so the timestamp still starts every entry.
+        items(newestFirst) { line ->
+            Text(
+                line,
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp, horizontal = Measure.tight),
+            )
+            LedgerHairline()
         }
     }
 

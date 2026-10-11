@@ -352,11 +352,67 @@ fun QuickAddScreen(
     // At large text two fields side by side stop fitting; the flag goes under the date.
     val large = LocalDensity.current.fontScale > 1.3f
 
+    // The link the pages will make, shown before the save that makes it (B79). The preview
+    // used to leave it out until the moment of saving, so a person who had just scanned a
+    // receipt saw an entry with nothing connecting it to one. The name is the real one --
+    // a hash of the PDF these pages assemble into, the same bytes the save files.
+    val pendingAccount = rows.firstOrNull { it.account.isNotBlank() }?.account?.trim().orEmpty()
+    val plannedPaths by androidx.compose.runtime.produceState(
+        emptyList<String>(),
+        capture?.pages,
+        attachedFiles,
+        pendingAccount,
+        documentName,
+    ) {
+        value = if (capture == null || !hasDocuments) {
+            emptyList()
+        } else {
+            kotlinx.coroutines.delay(PLANNED_NAME_DEBOUNCE_MS)
+            capture.plannedPaths(pendingAccount, documentName.trim().ifBlank { null })
+        }
+    }
+    val previewDraft = withDocuments(draft, plannedPaths)
+
+    // What the form showed at the moment Save was tapped, held until the save is over
+    // (B93). Saving files the pages first, and filing empties the capture, so the form
+    // recomputed itself with no pages mid-save: the `document:` line left the preview and
+    // "Save entry with 1 page" became a greyed "Save entry", as if the pages had been lost.
+    var saving by remember { mutableStateOf<SavingForm?>(null) }
+    var retryable by remember { mutableStateOf(false) }
+    LaunchedEffect(saveState) {
+        if (saving != null && saveState != null && !saveState.startsWith("Saving")) {
+            saving = null
+            // A save that did not happen can be tried again as it stands. The duplicate
+            // guard below is for a save that *did* (invariant 6).
+            retryable = !saveState.startsWith("Saved")
+        }
+    }
+
+    // Invariant 6: a retried write never creates a duplicate entry. `ProjectWriter.append`
+    // cannot enforce that on its own, so the guard is the draft itself: once this exact
+    // draft has been submitted the button is disabled, and it comes back the moment any
+    // field changes.
+    var submitted by remember { mutableStateOf<TransactionDraft?>(null) }
+    LaunchedEffect(retryable) {
+        if (retryable) {
+            submitted = null
+            retryable = false
+        }
+    }
+
+    // Pages photographed, or files attached, and not yet filed (B57, B66, B80): filed by
+    // saving the entry.
+    val documentAccount = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty()
+    val documentsWord = documentsLabel(pageCount, attachedFiles.size)
+
+    // The form scrolls; its save area does not (design-direction §7, FormSaveBar).
+    Column(modifier = modifier.fillMaxSize()) {
     Column(
         // No `imePadding()` here: the Scaffold above insets the whole app for the keyboard,
         // and doing it again shrank the scrolling viewport a second time -- a blank band
         // above the keyboard, and a last field that could not be scrolled into view (B54).
-        modifier = modifier
+        modifier = Modifier
+            .weight(1f)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Measure.gutter)
             .padding(top = Measure.snug, bottom = Measure.section),
@@ -400,17 +456,27 @@ fun QuickAddScreen(
                 // One chip rather than a two-way segmented row: cleared is what nearly every
                 // entry is, so the control that says otherwise is the one that needs to exist
                 // (B15, B77). A chip stays the height of a finger rather than of a field.
+                //
+                // The label is the *state*, with the entry's own mark beside it; the spoken
+                // description adds the action (device audit 2026-10-10: the chip read "Pending"
+                // on a cleared entry, naming what a tap would do rather than what was true). A
+                // flag the app does not interpret -- `P` -- is shown as it is, and the
+                // description says plainly that a tap replaces it.
+                val mark = markForFlag(flag)
                 FilterChip(
-                    selected = flag == "!",
+                    selected = mark != LedgerMark.CLEARED,
                     onClick = { flag = if (flag == "!") "*" else "!" },
-                    label = { Text("Pending") },
-                    modifier = Modifier.semantics {
-                        contentDescription = if (flag == "!") {
-                            "Pending transaction"
-                        } else {
-                            "Cleared transaction. Tap to mark pending"
-                        }
-                    },
+                    label = { Text(describeFlag(flag)) },
+                    leadingIcon = { StampMark(mark, flag = flag, decorative = true) },
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .semantics {
+                            contentDescription = when (mark) {
+                                LedgerMark.PENDING -> "Pending transaction. Tap to mark cleared"
+                                LedgerMark.FLAGGED -> "Flagged $flag. Tap to mark pending instead"
+                                else -> "Cleared transaction. Tap to mark pending"
+                            }
+                        },
                 )
             }
             if (large) {
@@ -583,6 +649,7 @@ fun QuickAddScreen(
                     index = index,
                     row = row,
                     vocabulary = vocabulary,
+                    defaultCommodity = commodity.trim(),
                     removable = rows.size > 2,
                     onRemove = { rows.removeAt(index) },
                 )
@@ -620,42 +687,6 @@ fun QuickAddScreen(
 
         FormGap()
 
-        // The link the pages will make, shown before the save that makes it (B79). The preview
-        // used to leave it out until the moment of saving, so a person who had just scanned a
-        // receipt saw an entry with nothing connecting it to one. The name is the real one --
-        // a hash of the PDF these pages assemble into, the same bytes the save files.
-        val pendingAccount = rows.firstOrNull { it.account.isNotBlank() }?.account?.trim().orEmpty()
-        val plannedPaths by androidx.compose.runtime.produceState(
-            emptyList<String>(),
-            capture?.pages,
-            attachedFiles,
-            pendingAccount,
-            documentName,
-        ) {
-            value = if (capture == null || !hasDocuments) {
-                emptyList()
-            } else {
-                kotlinx.coroutines.delay(PLANNED_NAME_DEBOUNCE_MS)
-                capture.plannedPaths(pendingAccount, documentName.trim().ifBlank { null })
-            }
-        }
-        val previewDraft = withDocuments(draft, plannedPaths)
-
-        // What the form showed at the moment Save was tapped, held until the save is over
-        // (B93). Saving files the pages first, and filing empties the capture, so the form
-        // recomputed itself with no pages mid-save: the `document:` line left the preview and
-        // "Save entry with 1 page" became a greyed "Save entry", as if the pages had been lost.
-        var saving by remember { mutableStateOf<SavingForm?>(null) }
-        var retryable by remember { mutableStateOf(false) }
-        LaunchedEffect(saveState) {
-            if (saving != null && saveState != null && !saveState.startsWith("Saving")) {
-                saving = null
-                // A save that did not happen can be tried again as it stands. The duplicate
-                // guard below is for a save that *did* (invariant 6).
-                retryable = !saveState.startsWith("Saved")
-            }
-        }
-
         // The promise the form makes, and the one moment in it that looks like the file: the
         // lines about to be written, in the source face, hung from the app's rule.
         RuledColumn {
@@ -681,39 +712,53 @@ fun QuickAddScreen(
             )
         }
 
-        // A validation message pushes the form down rather than appearing between two fields
-        // that were already there: what changed is that the form has something to say.
-        // Not before anything has been typed (B77): an empty form is not wrong, it is empty,
-        // and greeting it with "needs at least two postings" is noise the person did nothing
-        // to cause. The button stays disabled either way.
-        LedgerReveal(visible = dirty && problems.isNotEmpty(), label = "problems") {
-            val shown = remember(problems) { problems }
-            Notice(NoticeTone.PROBLEM, modifier = Modifier.padding(top = Measure.gap)) {
-                shown.forEach { problem ->
-                    Text(problem.describe(), style = MaterialTheme.typography.bodyMedium)
-                }
+        // Secondary actions stay with the form; Save is on the bar below it.
+        androidx.compose.foundation.layout.FlowRow(
+            modifier = Modifier.padding(top = Measure.snug),
+            horizontalArrangement = Arrangement.spacedBy(Measure.tight),
+        ) {
+            TextButton(
+                onClick = { namingTemplate = true },
+                // Also where saved templates are deleted, so it opens whenever there are any --
+                // the form no longer arrives with accounts filled in, and gating it on one would
+                // hide the only way to remove a template from an empty form.
+                enabled = rows.any { it.account.isNotBlank() } || templates.isNotEmpty(),
+                modifier = Modifier.semantics { contentDescription = "Save this entry as a template" },
+            ) { Text("Save as template") }
+
+            // The text editor is still there for an entry being edited: for a layout of one's
+            // own, or a change the fields cannot make.
+            editing?.let { session ->
+                TextButton(
+                    onClick = session.onEditAsText,
+                    modifier = Modifier.semantics { contentDescription = "Edit this entry as text instead" },
+                ) { Text("Edit as text instead") }
             }
         }
 
-        // Invariant 6: a retried write never creates a duplicate entry. `ProjectWriter.append`
-        // cannot enforce that on its own, so the guard is the draft itself: once this exact
-        // draft has been submitted the button is disabled, and it comes back the moment any
-        // field changes.
-        var submitted by remember { mutableStateOf<TransactionDraft?>(null) }
-        LaunchedEffect(retryable) {
-            if (retryable) {
-                submitted = null
-                retryable = false
-            }
+        if (namingTemplate) {
+            TemplateDialog(
+                draft = draft,
+                fallbackCurrency = commodity.trim(),
+                existing = templates,
+                onSave = { template ->
+                    onSaveTemplate(template)
+                    namingTemplate = false
+                },
+                onDelete = onDeleteTemplate,
+                onDismiss = { namingTemplate = false },
+            )
         }
+    }
 
-        // Pages photographed, or files attached, and not yet filed (B57, B66, B80): filed by
-        // saving the entry.
-        val documentAccount = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty()
-        val documentsWord = documentsLabel(pageCount, attachedFiles.size)
-
-        FormGap()
-
+    // Not before anything has been typed (B77): an empty form is not wrong, it is empty, and
+    // greeting it with "needs at least two postings" is noise the person did nothing to cause.
+    // The button stays disabled either way.
+    FormSaveBar(
+        problems = if (dirty) problems.map { it.describe() } else emptyList(),
+        // What the write did, arriving beside the button that did it.
+        message = saveState,
+    ) {
         Button(
             onClick = {
                 submitted = draft
@@ -751,50 +796,7 @@ fun QuickAddScreen(
                 Text(if (hasDocuments) "$what with $documentsWord" else what)
             }
         }
-
-        // What the write did, arriving under the button that did it.
-        LedgerReveal(visible = saveState != null, label = "saveState") {
-            val shown = remember(saveState) { saveState }
-            Text(
-                shown.orEmpty(),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = Measure.snug),
-            )
-        }
-
-        TextButton(
-            onClick = { namingTemplate = true },
-            // Also where saved templates are deleted, so it opens whenever there are any --
-            // the form no longer arrives with accounts filled in, and gating it on one would
-            // hide the only way to remove a template from an empty form.
-            enabled = rows.any { it.account.isNotBlank() } || templates.isNotEmpty(),
-            modifier = Modifier
-                .padding(top = Measure.tight)
-                .semantics { contentDescription = "Save this entry as a template" },
-        ) { Text("Save as template") }
-
-        // The text editor is still there for an entry being edited: for a layout of one's own,
-        // or a change the fields cannot make.
-        editing?.let { session ->
-            TextButton(
-                onClick = session.onEditAsText,
-                modifier = Modifier.semantics { contentDescription = "Edit this entry as text instead" },
-            ) { Text("Edit as text instead") }
-        }
-
-        if (namingTemplate) {
-            TemplateDialog(
-                draft = draft,
-                fallbackCurrency = commodity.trim(),
-                existing = templates,
-                onSave = { template ->
-                    onSaveTemplate(template)
-                    namingTemplate = false
-                },
-                onDelete = onDeleteTemplate,
-                onDismiss = { namingTemplate = false },
-            )
-        }
+    }
     }
 }
 
@@ -900,6 +902,8 @@ private fun PostingEditor(
     index: Int,
     row: PostingRow,
     vocabulary: LedgerVocabulary,
+    /** What an empty commodity box stands for: the ledger's operating currency, usually. */
+    defaultCommodity: String,
     removable: Boolean,
     onRemove: () -> Unit,
 ) {
@@ -938,6 +942,10 @@ private fun PostingEditor(
                 suggestions = vocabulary.currencies,
                 describe = "Commodity for posting ${index + 1}",
                 transform = { it.uppercase().filterNot(Char::isWhitespace) },
+                // The commodity an empty box falls back to, shown in it (device audit
+                // 2026-10-10: the box was blank although the ledger declares one, so nothing on
+                // screen said what the amount would be in).
+                placeholder = defaultCommodity.ifBlank { null },
                 modifier = Modifier.weight(2f),
             )
         }

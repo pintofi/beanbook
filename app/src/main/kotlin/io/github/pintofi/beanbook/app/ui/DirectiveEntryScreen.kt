@@ -4,7 +4,9 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -76,7 +78,11 @@ fun DirectiveEntryScreen(
     var amount by remember { mutableStateOf("") }
     // What the ledger's commodity_attr plugin asks of a commodity (B94), keyed by attribute.
     val attributes = remember { androidx.compose.runtime.mutableStateMapOf<String, String>() }
-    var currency by remember { mutableStateOf(vocabulary.currencies.firstOrNull() ?: "USD") }
+    // The operating currency first, as the transaction form does: it is what the ledger says
+    // it counts in.
+    var currency by remember {
+        mutableStateOf(vocabulary.defaultCurrency ?: vocabulary.currencies.firstOrNull() ?: "USD")
+    }
 
     // The date and the pre-selected currency are the form's own doing, so neither counts.
     val dirty = account.isNotBlank() || second.isNotBlank() || text.isNotBlank() ||
@@ -112,14 +118,20 @@ fun DirectiveEntryScreen(
     }
     val problems = draft.validate()
 
+    Column(modifier = modifier.fillMaxSize()) {
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState())
+        modifier = Modifier
+            .weight(1f)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = Measure.gutter)
             .padding(top = Measure.gap, bottom = Measure.section),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        // Wrapped onto as many lines as they need rather than scrolled sideways (device audit
+        // 2026-10-10): "Document" was cut in half at the edge and Commodity, Query and Custom
+        // were off screen with nothing to say they were there. Every kind is in view.
+        androidx.compose.foundation.layout.FlowRow(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             DirectiveKind.entries.forEach { option ->
@@ -250,18 +262,20 @@ fun DirectiveEntryScreen(
             )
         }
 
-        if (problems.isNotEmpty()) {
-            Notice(NoticeTone.PROBLEM) {
-                problems.forEach { Text(it.describe(), style = MaterialTheme.typography.bodyMedium) }
-            }
-        }
+    }
 
+    // On the bar, beside Save, and only once something has been typed (device audit
+    // 2026-10-10): an untouched Open form greeted the person with a red `"" is not a valid
+    // account name`. The button stays disabled either way.
+    FormSaveBar(
+        problems = if (dirty) problems.map { it.describe() } else emptyList(),
+        message = saveState,
+    ) {
         Button(
             onClick = { onSave(draft) },
             enabled = problems.isEmpty(),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         ) { Text("Save ${draft.label.lowercase()}") }
-
-        saveState?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+    }
     }
 }

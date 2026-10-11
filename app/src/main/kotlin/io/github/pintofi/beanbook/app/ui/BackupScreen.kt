@@ -27,6 +27,14 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.data.RestoreStaged
 import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.SettingsBackupRestore
 
 /**
  * Back up, restore, and schedule (docs/storage-and-backup.md §7).
@@ -61,77 +69,66 @@ fun BackupScreen(
 
     val passphrasesMatch = passphrase.isNotEmpty() && passphrase == confirmation
 
-    Column(
-        modifier = modifier.verticalScroll(rememberScrollState())
-            .padding(horizontal = Measure.gutter)
-            .padding(top = Measure.gap, bottom = Measure.section),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            "One .bcaz file holding the whole project. Without a passphrase it is an ordinary zip, openable " +
-                "without this app.",
-            style = MaterialTheme.typography.bodySmall,
+    Column(modifier = modifier.verticalScroll(rememberScrollState())) {
+    FolioPage(modifier = Modifier.readableMeasureCentred()) {
+        FolioHeading("Back up now")
+        FolioGroup {
+            item {
+                FolioSwitchRow(
+                    title = "Encrypt with a passphrase",
+                    checked = encrypt,
+                    onCheckedChange = { encrypt = it },
+                    icon = Icons.Outlined.Lock,
+                    describe = "Encrypt with a passphrase",
+                )
+            }
+            if (encrypt) {
+                item {
+                    FolioBody {
+                        // The warning is deliberately blunt and sits *above* the fields, where it
+                        // is read before a passphrase is chosen rather than after
+                        // (docs/storage-and-backup.md 7).
+                        Notice(NoticeTone.PROBLEM) {
+                            Text(
+                                "If you forget this passphrase, the backup cannot be opened. There is " +
+                                    "no reset and no recovery code. Write it down before you continue.",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                        OutlinedTextField(
+                            value = passphrase,
+                            onValueChange = { passphrase = it },
+                            label = { Text("Passphrase") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { contentDescription = "Passphrase" },
+                        )
+                        OutlinedTextField(
+                            value = confirmation,
+                            onValueChange = { confirmation = it },
+                            label = { Text("Passphrase again") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            isError = confirmation.isNotEmpty() && !passphrasesMatch,
+                            supportingText = if (confirmation.isNotEmpty() && !passphrasesMatch) {
+                                { Text("The two passphrases are different.") }
+                            } else {
+                                null
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { contentDescription = "Passphrase again" },
+                        )
+                    }
+                }
+            }
+        }
+        FolioNote(
+            "One .bcaz file holding the whole project. Without a passphrase it is an ordinary zip, " +
+                "openable without this app.",
         )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "Encrypt with a passphrase",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
-            )
-            Switch(
-                checked = encrypt,
-                onCheckedChange = { encrypt = it },
-                modifier = Modifier.semantics {
-                    contentDescription = "Encrypt with a passphrase"
-                },
-            )
-        }
-
-        if (encrypt) {
-            // The warning is deliberately blunt and sits *above* the fields, where it is read
-            // before a passphrase is chosen rather than after (docs/storage-and-backup.md 7).
-            Notice(NoticeTone.PROBLEM) {
-                Text(
-                    "If you forget this passphrase, the backup cannot be opened. There is " +
-                        "no reset and no recovery code. Write it down before you continue.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            OutlinedTextField(
-                value = passphrase,
-                onValueChange = { passphrase = it },
-                label = { Text("Passphrase") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "Passphrase" },
-            )
-            OutlinedTextField(
-                value = confirmation,
-                onValueChange = { confirmation = it },
-                label = { Text("Passphrase again") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                isError = confirmation.isNotEmpty() && !passphrasesMatch,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "Passphrase again" },
-            )
-            if (confirmation.isNotEmpty() && !passphrasesMatch) {
-                Text(
-                    "The two passphrases are different.",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-
         Button(
             onClick = {
                 onBackUpNow(if (encrypt) passphrase.toCharArray() else null)
@@ -139,87 +136,106 @@ fun BackupScreen(
             enabled = !encrypt || passphrasesMatch,
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 52.dp)
                 .semantics { contentDescription = "Back up $projectTitle now" },
         ) { Text(if (encrypt) "Back up, encrypted" else "Back up now") }
 
-        HorizontalDivider()
+        message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
 
-        Text("Restore", style = MaterialTheme.typography.titleSmall)
-        if (pendingRestore == null) {
-            Text(
-                "Nothing is overwritten until you confirm. You see what would change first.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            TextButton(onClick = onChooseRestoreFile) { Text("Choose a backup file") }
-
-            if (passphraseNeeded) {
-                OutlinedTextField(
-                    value = unlockPassphrase,
-                    onValueChange = { unlockPassphrase = it },
-                    label = { Text("Passphrase for this backup") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { contentDescription = "Passphrase for this backup" },
-                )
-                Button(
-                    onClick = { onUnlockRestore(unlockPassphrase.toCharArray()) },
-                    enabled = unlockPassphrase.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Open this backup") }
+        FolioHeading("Restore")
+        FolioGroup {
+            if (pendingRestore == null) {
+                item {
+                    FolioRow(
+                        title = "Choose a backup file",
+                        detail = "Nothing is overwritten until you confirm. You see what would change first.",
+                        icon = Icons.Outlined.SettingsBackupRestore,
+                        onClick = onChooseRestoreFile,
+                        opens = true,
+                    )
+                }
+                if (passphraseNeeded) {
+                    item {
+                        FolioBody {
+                            OutlinedTextField(
+                                value = unlockPassphrase,
+                                onValueChange = { unlockPassphrase = it },
+                                label = { Text("Passphrase for this backup") },
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .semantics { contentDescription = "Passphrase for this backup" },
+                            )
+                            Button(
+                                onClick = { onUnlockRestore(unlockPassphrase.toCharArray()) },
+                                enabled = unlockPassphrase.isNotEmpty(),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text("Open this backup") }
+                        }
+                    }
+                }
+            } else {
+                item {
+                    FolioBody {
+                        RestorePreview(
+                            staged = pendingRestore,
+                            onAccept = onAcceptRestore,
+                            onDiscard = onDiscardRestore,
+                        )
+                    }
+                }
             }
-        } else {
-            RestorePreview(
-                staged = pendingRestore,
-                onAccept = onAcceptRestore,
-                onDiscard = onDiscardRestore,
-            )
         }
-
-        message?.let { StatusLine(it) }
 
         if (rollbackPoints.isNotEmpty()) {
-            Text("Kept from earlier restores", style = MaterialTheme.typography.titleSmall)
-            rollbackPoints.forEach { name ->
-                Text(name, style = MaterialTheme.typography.bodySmall)
+            FolioHeading("Kept from earlier restores")
+            FolioGroup {
+                rollbackPoints.forEach { name ->
+                    item { FolioRow(title = name, icon = Icons.Outlined.History) }
+                }
             }
         }
 
-        HorizontalDivider()
-
-        Text("Scheduled backups", style = MaterialTheme.typography.titleSmall)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "Back up automatically",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
-            )
-            Switch(
-                checked = scheduleEnabled,
-                onCheckedChange = onScheduleChanged,
-                enabled = scheduleFolder != null,
-                modifier = Modifier.semantics {
-                    contentDescription = "Back up automatically"
-                },
-            )
+        // The folder first, then the switch that needs it (device audit 2026-10-10): the switch
+        // sat above "Choose a folder", disabled, with nothing beside it saying why.
+        FolioHeading("Scheduled backups")
+        FolioGroup {
+            item {
+                FolioRow(
+                    title = scheduleFolder?.let { humanFolder(it) } ?: "No folder chosen",
+                    detail = if (scheduleFolder == null) {
+                        "Where scheduled backups are written"
+                    } else {
+                        "Backups go to this folder"
+                    },
+                    icon = Icons.Outlined.Folder,
+                    tone = if (scheduleFolder == null) FolioTone.PLAIN else FolioTone.ACCENT,
+                ) {
+                    TextButton(onClick = onChooseScheduleFolder) {
+                        Text(if (scheduleFolder == null) "Choose a folder" else "Change folder")
+                    }
+                }
+            }
+            item {
+                FolioSwitchRow(
+                    title = "Back up automatically",
+                    checked = scheduleEnabled,
+                    onCheckedChange = onScheduleChanged,
+                    enabled = scheduleFolder != null,
+                    // Said plainly rather than implied: Android decides when this actually runs.
+                    detail = if (scheduleFolder == null) {
+                        "Choose a folder first."
+                    } else {
+                        "About once a day. Android decides the exact moment."
+                    },
+                    icon = Icons.Outlined.Schedule,
+                    describe = "Back up automatically",
+                )
+            }
         }
-        // Said plainly rather than implied: Android decides when this actually runs.
-        Text(
-            "About once a day. Android decides the exact moment.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-        TextButton(onClick = onChooseScheduleFolder) {
-            Text(if (scheduleFolder == null) "Choose a folder" else "Change folder")
-        }
-        scheduleFolder?.let {
-            Text("Backups go to $it", style = MaterialTheme.typography.bodySmall)
-        }
-        lastRun?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        lastRun?.let { FolioNote(it) }
+    }
     }
 }
 
@@ -230,7 +246,7 @@ private fun RestorePreview(
     onAccept: () -> Unit,
     onDiscard: () -> Unit,
 ) {
-    RuledColumn(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
         run {
             Text(
                 "Backup of \"${staged.manifest.projectTitle}\"",

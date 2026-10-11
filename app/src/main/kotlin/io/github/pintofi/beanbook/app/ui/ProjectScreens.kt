@@ -53,6 +53,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.data.ProjectSummary
 import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DriveFolderUpload
+import androidx.compose.material.icons.outlined.FolderZip
+import androidx.compose.material.icons.outlined.Output
 
 /**
  * First run, in two pages: what this is, and then the ways in.
@@ -231,6 +238,11 @@ private fun WaysInPage(
 /**
  * The project list. Shows enough to recognise a ledger without opening it, and never waits
  * on the engine to draw.
+ *
+ * Folios (design-direction §7), in the order a person needs them: the projects there are, a new
+ * one, one brought in from elsewhere, and what can be done with the open one. "New project" has
+ * a heading of its own: the field used to sit under "The open project" and read as part of it
+ * (device audit 2026-10-10).
  */
 @Composable
 fun ProjectPickerScreen(
@@ -248,71 +260,105 @@ fun ProjectPickerScreen(
     var pendingDelete by remember { mutableStateOf<ProjectSummary?>(null) }
     var newTitle by remember { mutableStateOf("") }
 
-    LazyColumn(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        FolioPage(modifier = Modifier.readableMeasureCentred()) {
+            busyMessage?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
 
-        items(projects, key = { it.id }) { project ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(role = Role.Button) { onOpen(project.id) }
-                    .padding(16.dp)
-                    .semantics {
-                        contentDescription = "Open ${project.title}, ${project.describe()}"
-                    },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = project.title + if (project.id == activeId) "  ·  open" else "",
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text(project.describe(), style = MaterialTheme.typography.bodySmall)
+            FolioHeading("Your projects")
+            FolioGroup {
+                projects.forEach { project ->
+                    item {
+                        val open = project.id == activeId
+                        FolioRow(
+                            title = project.title,
+                            detail = if (open) "Open now · ${project.describe()}" else project.describe(),
+                            icon = if (open) Icons.Filled.FolderOpen else Icons.Outlined.Folder,
+                            tone = if (open) FolioTone.ACCENT else FolioTone.PLAIN,
+                            onClick = { onOpen(project.id) },
+                            describe = "Open ${project.title}, ${project.describe()}" +
+                                if (open) ". This is the open project" else "",
+                        ) {
+                            // An icon, not a second text button of the same weight as the row's
+                            // own action (audit): deleting is the rare choice, and it asks first.
+                            IconButton(
+                                onClick = { pendingDelete = project },
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Delete ${project.title}"
+                                },
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Delete,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                 }
-                TextButton(onClick = { pendingDelete = project }) { Text("Delete") }
             }
-            HorizontalDivider()
-        }
 
-        item {
-            Column(
-                Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text("Add a project", style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onOpenFolder) { Text("Import folder") }
-                    OutlinedButton(onClick = onOpenArchive) { Text("Import .zip") }
+            FolioHeading("New project")
+            FolioGroup {
+                item {
+                    FolioBody {
+                        OutlinedTextField(
+                            value = newTitle,
+                            onValueChange = { newTitle = it },
+                            label = { Text("Name") },
+                            placeholder = { Text("Household") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Button(
+                            onClick = { onCreateNew(newTitle); newTitle = "" },
+                            enabled = newTitle.isNotBlank(),
+                            modifier = Modifier.semantics { contentDescription = "Create a new project" },
+                        ) { Text("Create project") }
+                    }
                 }
+            }
+            FolioNote(
+                "A project is the folder that holds one ledger. " +
+                    "A new one starts with a main file you can add to.",
+            )
 
-                if (activeId != null) {
-                    HorizontalDivider()
-                    Text("The open project", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Write a copy into a folder you choose: the ledger, everything " +
-                            "it includes, and its documents. It is a copy taken now, not kept " +
-                            "in step afterwards; Mirror is the one that stays in step.",
-                        style = MaterialTheme.typography.bodySmall,
+            FolioHeading("Bring one in")
+            FolioGroup {
+                item {
+                    FolioRow(
+                        title = "Import a folder",
+                        detail = "A folder of Beancount files, on this device or in cloud storage",
+                        icon = Icons.Outlined.DriveFolderUpload,
+                        onClick = onOpenFolder,
+                        opens = true,
                     )
-                    OutlinedButton(
-                        onClick = onExport,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Export a copy of the open project to a folder"
-                        },
-                    ) { Text("Export a copy") }
                 }
-                OutlinedTextField(
-                    value = newTitle,
-                    onValueChange = { newTitle = it },
-                    label = { Text("Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedButton(
-                    onClick = { onCreateNew(newTitle); newTitle = "" },
-                    enabled = newTitle.isNotBlank(),
-                ) { Text("Create") }
-                busyMessage?.let { StatusLine(it) }
+                item {
+                    FolioRow(
+                        title = "Import a .zip",
+                        detail = "A project exported from Beanbook, or any archive of a ledger",
+                        icon = Icons.Outlined.FolderZip,
+                        onClick = onOpenArchive,
+                        opens = true,
+                    )
+                }
+            }
+
+            if (activeId != null) {
+                FolioHeading("The open project")
+                FolioGroup {
+                    item {
+                        FolioRow(
+                            title = "Export a copy",
+                            detail = "The ledger, everything it includes, and its documents, written " +
+                                "into a folder you choose. A copy taken now; Mirror is the one that " +
+                                "stays in step.",
+                            icon = Icons.Outlined.Output,
+                            onClick = onExport,
+                            describe = "Export a copy of the open project to a folder",
+                        )
+                    }
+                }
             }
         }
     }
@@ -332,10 +378,15 @@ fun ProjectPickerScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    onDelete(project.id)
-                    pendingDelete = null
-                }) { Text("Move to trash") }
+                TextButton(
+                    onClick = {
+                        onDelete(project.id)
+                        pendingDelete = null
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) { Text("Move to trash") }
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) { Text("Keep it") }
@@ -360,19 +411,9 @@ private fun WelcomeHeader() {
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Measure.gap),
     ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(colorResource(R.color.ic_launcher_background)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                painter = painterResource(R.drawable.ic_launcher_foreground),
-                contentDescription = null,
-                modifier = Modifier.size(108.dp),
-            )
-        }
+        // In the theme's colours, so the first thing the app shows is in the palette of
+        // everything after it (design-direction §4).
+        BeanbookMark(size = 72.dp)
         Text("Beanbook", style = MaterialTheme.typography.displaySmall)
         Text(
             "Plain-text double-entry accounting, on your device.",

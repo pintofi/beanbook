@@ -1,6 +1,7 @@
 package io.github.pintofi.beanbook.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,6 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -38,6 +44,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -94,6 +102,8 @@ fun HomeScreen(
     header: @Composable () -> Unit = {},
     /** The ledger went from errors to none while the app was open: stamp it (B87). */
     stamped: Boolean = false,
+    /** Opens Balances, where a headline's left-out commodities are listed in full. */
+    onOpenBalances: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val store = remember(context) { HomePreferences(context) }
@@ -108,60 +118,85 @@ fun HomeScreen(
         onLayoutChange(next)
     }
 
-    Column(
-        modifier = modifier
-            .readableMeasure()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = Measure.gutter)
-            .padding(top = Measure.gap, bottom = Measure.actionClearance),
-        verticalArrangement = Arrangement.spacedBy(Measure.section),
-    ) {
-        header()
-        if (ledger == null) {
-            EmptyState(
-                title = "No ledger open",
-                detail = "Open a project to see where it stands.",
-                art = EmptyArt.SHEET,
-            )
-            return@Column
-        }
-
-        current.cards.forEach { card ->
-            when (card) {
-                HomeCard.FIGURES -> FiguresCard(ledger, hideAmounts, valuation) { valuationStore.write(it) }
-                HomeCard.SPENDING -> SpendingCard(ledger, current, hideAmounts, today, valuation, onOpenJournal)
-                HomeCard.ATTENTION -> AttentionCard(
-                    stamped = stamped,
-                    ledger = ledger,
-                    unfiledDocuments = unfiledDocuments,
-                    brokenDocumentLinks = brokenDocumentLinks,
-                    mirrorConflicts = mirrorConflicts,
-                    onOpenJournal = onOpenJournal,
-                    onOpenDocuments = onOpenDocuments,
-                    onOpenMirror = onOpenMirror,
-                )
-                HomeCard.PENDING -> PendingCard(ledger, hideAmounts, onOpenEntry)
+    @Composable
+    fun Card(card: HomeCard, snapshot: LedgerSnapshot) {
+        when (card) {
+            HomeCard.FIGURES -> FiguresCard(snapshot, hideAmounts, valuation, onOpenBalances) {
+                valuationStore.write(it)
             }
-        }
-
-        if (current.cards.isEmpty()) {
-            Text(
-                "Home is empty because every card is turned off. Choose what it shows below.",
-                style = MaterialTheme.typography.bodySmall,
+            HomeCard.SPENDING -> SpendingCard(snapshot, current, hideAmounts, today, valuation, onOpenJournal)
+            HomeCard.ATTENTION -> AttentionCard(
+                stamped = stamped,
+                ledger = snapshot,
+                unfiledDocuments = unfiledDocuments,
+                brokenDocumentLinks = brokenDocumentLinks,
+                mirrorConflicts = mirrorConflicts,
+                onOpenJournal = onOpenJournal,
+                onOpenDocuments = onOpenDocuments,
+                onOpenMirror = onOpenMirror,
             )
+            HomeCard.PENDING -> PendingCard(snapshot, hideAmounts, onOpenEntry)
         }
+    }
 
-        OutlinedButton(
-            onClick = { customising = true },
-            modifier = Modifier.semantics { contentDescription = "Choose what Home shows" },
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
+        // Two columns once the window is wide enough for two readable ones (design-direction
+        // §8): in landscape the single column used about 55% of the width and left the rest
+        // empty (device audit 2026-10-10). Cards keep the person's order, read left then right.
+        val twoColumns = maxWidth >= TWO_COLUMN_WIDTH
+        Column(
+            modifier = Modifier
+                .then(if (twoColumns) Modifier.widthIn(max = WIDE_MEASURE) else Modifier.readableMeasure())
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Measure.gutter)
+                .padding(top = Measure.gap, bottom = Measure.actionClearance),
+            verticalArrangement = Arrangement.spacedBy(Measure.section),
         ) {
-            Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-            Text("Customise Home")
+            header()
+            if (ledger == null) {
+                EmptyState(
+                    title = "No ledger open",
+                    detail = "Open a project to see where it stands.",
+                    art = EmptyArt.SHEET,
+                )
+                return@Column
+            }
+
+            if (twoColumns && current.cards.size > 1) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Measure.columnGap)) {
+                    listOf(0, 1).forEach { side ->
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(Measure.section),
+                        ) {
+                            current.cards.filterIndexed { index, _ -> index % 2 == side }
+                                .forEach { Card(it, ledger) }
+                        }
+                    }
+                }
+            } else {
+                current.cards.forEach { Card(it, ledger) }
+            }
+
+            if (current.cards.isEmpty()) {
+                Text(
+                    "Home is empty because every card is turned off. Choose what it shows below.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+
+            OutlinedButton(
+                onClick = { customising = true },
+                modifier = Modifier.semantics { contentDescription = "Choose what Home shows" },
+            ) {
+                Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Text("Customise Home")
+            }
         }
     }
 
     if (customising) {
-        CustomiseHomeDialog(
+        CustomiseHomeSheet(
             layout = current,
             onApply = { apply(it) },
             onDismiss = { customising = false },
@@ -169,25 +204,60 @@ fun HomeScreen(
     }
 }
 
+/** The window width at which Home lays its cards in two columns. */
+private val TWO_COLUMN_WIDTH = 720.dp
+
+/** How wide two columns may grow together: two readable measures and the gap between. */
+private val WIDE_MEASURE = 1160.dp
+
 @Composable
 private fun FiguresCard(
     ledger: LedgerSnapshot,
     hideAmounts: Boolean,
     valuation: Valuation,
+    onOpenBalances: () -> Unit,
     onValuation: (Valuation) -> Unit,
 ) {
     val summary = LedgerSummary.of(ledger, valuation)
+    val totals = remember(ledger, valuation) { LedgerSummary.totals(ledger, valuation) }
     // The one signature composition in the app (B74): the headline figure set large in the
     // figure face, hung off the column rule, with the two supporting figures under it in a
     // ruled pair. No card, no container -- this is the page itself, which is why it reads as
     // a ledger rather than as a dashboard tile.
     RuledColumn {
-        KeyFigure(
-            label = "Net worth",
-            value = shown(summary.netWorth, hideAmounts),
-            emphasis = true,
-            introduce = HomeIntro.claim(),
-        )
+        // Capped at three commodities and "+N more" (design-direction §5): in Units a ledger
+        // of twenty holdings stacked twenty 34sp lines here, taller than the screen.
+        val headline = remember(totals, ledger.operatingCurrencies) {
+            io.github.pintofi.beanbook.core.domain.HeadlineFigures.of(totals.netWorth, ledger.operatingCurrencies)
+        }
+        val introduce = HomeIntro.claim()
+        if (headline.shown.size <= 1 && headline.more == 0) {
+            KeyFigure(
+                label = "Net worth",
+                value = shown(summary.netWorth, hideAmounts),
+                emphasis = true,
+                introduce = introduce,
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(Measure.tight)) {
+                HeadlineFigure(
+                    figures = headline,
+                    format = ledger.format,
+                    hideAmounts = hideAmounts,
+                    onMore = onOpenBalances,
+                    modifier = Modifier.semantics(mergeDescendants = false) {
+                        contentDescription = "Net worth: " + headline.shown.joinToString(", ") {
+                            if (hideAmounts) "hidden" else ledger.format.format(it)
+                        }
+                    },
+                )
+                Text(
+                    "Net worth",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         Spacer(Modifier.height(Measure.snug))
         // The same three bases as Fava's top-right switch, and the same one Balances uses:
         // a figure on this page and its account on that one are always on the same basis.
@@ -200,36 +270,111 @@ private fun FiguresCard(
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(Measure.gap))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Measure.hairline),
-        ) {
-            // Labelled with this ledger's own names for the two trees (B70), because the
-            // figures beneath them are the totals of exactly those trees. One description per
-            // tile, so a screen reader says "Income, 3000.00 USD" rather than reading a number
-            // and a word as two unrelated things.
+        // Labelled with this ledger's own names for the two trees (B70), because the
+        // figures beneath them are the totals of exactly those trees. One description per
+        // tile, so a screen reader says "Income, 3000.00 USD" rather than reading a number
+        // and a word as two unrelated things.
+        //
+        // Side by side while a figure fits beside another; one above the other at large text,
+        // where two tiles in one row clipped "2,624,167.69 PKR" to "2,624,167." (audit).
+        val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+        val income: @Composable (Modifier) -> Unit = { tile ->
             SupportingFigure(
                 label = ledger.accountNames.income,
-                value = shown(summary.income, hideAmounts),
-                modifier = Modifier.weight(1f),
+                value = shownHeadline(totals.income, ledger, hideAmounts),
+                modifier = tile,
             )
+        }
+        val expenses: @Composable (Modifier) -> Unit = { tile ->
             SupportingFigure(
                 label = ledger.accountNames.expenses,
-                value = shown(summary.expenses, hideAmounts),
-                modifier = Modifier.weight(1f),
+                value = shownHeadline(totals.expenses, ledger, hideAmounts),
+                modifier = tile,
             )
+        }
+        // One tinted band holding both, split by a hairline of paper, so the two read as a pair
+        // of equal tiles even when one figure takes two lines -- without asking the figures for
+        // intrinsic sizes, which a rolling figure cannot give.
+        val paper = MaterialTheme.colorScheme.background
+        val band = MaterialTheme.colorScheme.surfaceContainerLow
+        if (stacked) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(band),
+            ) {
+                income(Modifier.fillMaxWidth())
+                LedgerHairline(Modifier.padding(horizontal = Measure.indent))
+                expenses(Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(band)
+                    .drawBehind {
+                        val seam = Measure.hairline.toPx()
+                        drawRect(
+                            color = paper,
+                            topLeft = androidx.compose.ui.geometry.Offset(size.width / 2f - seam / 2f, 0f),
+                            size = androidx.compose.ui.geometry.Size(seam, size.height),
+                        )
+                    },
+            ) {
+                income(Modifier.weight(1f))
+                expenses(Modifier.weight(1f))
+            }
         }
     }
 }
 
+/**
+ * A supporting figure's text: up to two commodities, one per line, and "+N more" -- the same
+ * cap as the headline, narrower because a tile is half a page wide.
+ */
+private fun shownHeadline(
+    amounts: List<io.github.pintofi.beanbook.core.domain.Amount>,
+    ledger: LedgerSnapshot,
+    hideAmounts: Boolean,
+): String {
+    val capped = io.github.pintofi.beanbook.core.domain.HeadlineFigures.of(
+        amounts,
+        ledger.operatingCurrencies,
+        max = SUPPORTING_LINES,
+    )
+    if (capped.shown.isEmpty()) return "—"
+    if (hideAmounts) return "•••"
+    val lines = capped.shown.map { ledger.format.format(it) }
+    return (lines + listOfNotNull(capped.more.takeIf { it > 0 }?.let { "+$it more" })).joinToString("\n")
+}
+
+/** How many commodities a supporting tile names before "+N more". */
+private const val SUPPORTING_LINES = 2
+
 /** One of the two figures under the headline: the total of an account tree. */
 @Composable
 private fun SupportingFigure(label: String, value: String, modifier: Modifier = Modifier) {
-    FigureTile(modifier.semantics(mergeDescendants = true) { contentDescription = "$label: $value" }) {
-        RollingFigure(
-            text = value,
-            style = LedgerType.figure.copy(textAlign = TextAlign.Start),
-        )
+    Column(
+        modifier = modifier
+            .semantics(mergeDescendants = true) { contentDescription = "$label: $value" }
+            .heightIn(min = Measure.rowMinHeight)
+            .padding(horizontal = Measure.indent, vertical = Measure.gap),
+        verticalArrangement = Arrangement.spacedBy(Measure.tight),
+    ) {
+        if ('\n' in value) {
+            value.lines().forEach { line ->
+                FitFigure(
+                    line,
+                    style = if (line.startsWith("+")) LedgerType.small else LedgerType.figure,
+                    color = if (line.startsWith("+")) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
+                )
+            }
+        } else {
+            RollingFigure(
+                text = value,
+                style = LedgerType.figure.copy(textAlign = TextAlign.Start),
+            )
+        }
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,
@@ -447,8 +592,14 @@ private fun AttentionCard(
         return@LedgerContent
     }
 
-    Notice(NoticeTone.PROBLEM) {
-        Text("Needs attention", style = MaterialTheme.typography.titleSmall)
+    // Calm ground, marked items (design-direction §3): the attention marks and the heading carry
+    // the alarm, so one ordinary error no longer turns a third of Home red.
+    Notice(NoticeTone.QUIET) {
+        Text(
+            "Needs attention",
+            style = MaterialTheme.typography.titleSmallEmphasized,
+            color = MaterialTheme.colorScheme.error,
+        )
         shown.forEach { item ->
             val go = when (item.destination) {
                 AttentionItem.Destination.JOURNAL -> onOpenJournal
@@ -466,10 +617,23 @@ private fun AttentionCard(
                     LedgerMark.ATTENTION,
                     modifier = Modifier.padding(top = Measure.tight, end = Measure.gap),
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(Measure.tight)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(Measure.tight),
+                ) {
                     Text(item.headline, style = MaterialTheme.typography.bodyLarge)
-                    Text(item.detail, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        item.detail,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+                Icon(
+                    androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = Measure.snug).align(Alignment.CenterVertically),
+                )
             }
         }
     }
@@ -519,9 +683,17 @@ private fun PendingCard(
     }
 }
 
-/** Choose the cards, their order, and how the spending card is set up (B71). */
+/**
+ * Choose the cards, their order, and how the spending card is set up (B71).
+ *
+ * A bottom sheet rather than a dialog (device audit 2026-10-10): the dialog stood at 60% of the
+ * screen over the page it was changing, with its controls at the top where a thumb is not. The
+ * sheet rises from the bottom, built from folios like every other set of choices in the app,
+ * and Save and Cancel sit at the end of it, under the choices they confirm.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun CustomiseHomeDialog(
+private fun CustomiseHomeSheet(
     layout: HomePreferences.Layout,
     onApply: (HomePreferences.Layout) -> Unit,
     onDismiss: () -> Unit,
@@ -531,113 +703,164 @@ private fun CustomiseHomeDialog(
     var categories by remember(layout) { mutableStateOf(layout.categories) }
     var compare by remember(layout) { mutableStateOf(layout.compare) }
 
-    AlertDialog(
+    androidx.compose.material3.ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text("What Home shows") },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                // Enabled cards first, in their order, then the ones that are off: the list
-                // is what the screen will look like, read top to bottom.
-                val ordered = cards + HomeCard.entries.filterNot { it in cards }
+        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        shape = io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.sheet,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Measure.gutter)
+                .padding(bottom = Measure.section),
+            verticalArrangement = Arrangement.spacedBy(Measure.snug),
+        ) {
+            Text(
+                "What Home shows",
+                style = MaterialTheme.typography.titleLargeEmphasized,
+                modifier = Modifier.semantics { heading() },
+            )
+            FolioHeading("Cards, in order")
+            // Enabled cards first, in their order, then the ones that are off: the list is
+            // what the screen will look like, read top to bottom.
+            val ordered = cards + HomeCard.entries.filterNot { it in cards }
+            FolioGroup {
                 ordered.forEach { card ->
-                    val on = card in cards
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = on,
-                            onCheckedChange = { checked ->
-                                cards = if (checked) cards + card else cards - card
-                            },
-                            modifier = Modifier.semantics { contentDescription = "Show ${card.label}" },
-                        )
-                        Column(Modifier.weight(1f)) {
-                            Text(card.label, style = MaterialTheme.typography.bodyMedium)
-                            Text(card.description, style = MaterialTheme.typography.bodySmall)
-                        }
-                        if (on) {
-                            val at = cards.indexOf(card)
-                            IconButton(
-                                onClick = { cards = cards.swap(at, at - 1) },
-                                enabled = at > 0,
-                                modifier = Modifier.semantics { contentDescription = "Move ${card.label} up" },
-                            ) { Icon(Icons.Filled.ArrowUpward, contentDescription = null) }
-                            IconButton(
-                                onClick = { cards = cards.swap(at, at + 1) },
-                                enabled = at < cards.lastIndex,
-                                modifier = Modifier.semantics { contentDescription = "Move ${card.label} down" },
-                            ) { Icon(Icons.Filled.ArrowDownward, contentDescription = null) }
+                    item {
+                        val on = card in cards
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 64.dp)
+                                .padding(start = Measure.tight, end = Measure.tight),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = on,
+                                onCheckedChange = { checked ->
+                                    cards = if (checked) cards + card else cards - card
+                                },
+                                modifier = Modifier.semantics { contentDescription = "Show ${card.label}" },
+                            )
+                            Column(Modifier.weight(1f).padding(vertical = Measure.snug)) {
+                                Text(card.label, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    card.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (on) {
+                                val at = cards.indexOf(card)
+                                IconButton(
+                                    onClick = { cards = cards.swap(at, at - 1) },
+                                    enabled = at > 0,
+                                    modifier = Modifier.semantics { contentDescription = "Move ${card.label} up" },
+                                ) { Icon(Icons.Filled.ArrowUpward, contentDescription = null) }
+                                IconButton(
+                                    onClick = { cards = cards.swap(at, at + 1) },
+                                    enabled = at < cards.lastIndex,
+                                    modifier = Modifier.semantics { contentDescription = "Move ${card.label} down" },
+                                ) { Icon(Icons.Filled.ArrowDownward, contentDescription = null) }
+                            }
                         }
                     }
                 }
+            }
 
-                if (HomeCard.SPENDING in cards) {
-                    Text("Where the money went", style = MaterialTheme.typography.titleSmall)
-                    // The short name, on one line. The full ones -- "This month", "Last 30 days",
-                    // "This year" -- wrapped to two lines in two of the three segments and to one
-                    // in the other, so the row came out with three different heights. The card's
-                    // own header still says the long name, where there is room.
-                    ConnectedChoiceRow(
-                        options = SpendingPeriod.entries,
-                        selected = period,
-                        onSelect = { period = it },
-                        label = { it.shortLabel },
-                        describe = { it.label },
-                        maxLines = 1,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text("Categories shown: $categories", modifier = Modifier.weight(1f))
-                        IconButton(
-                            onClick = { categories = (categories - 1).coerceAtLeast(HomePreferences.MIN_CATEGORIES) },
-                            modifier = Modifier.semantics { contentDescription = "Show fewer categories" },
-                        ) { Icon(Icons.Filled.ArrowDownward, contentDescription = null) }
-                        IconButton(
-                            onClick = { categories = (categories + 1).coerceAtMost(HomePreferences.MAX_CATEGORIES) },
-                            modifier = Modifier.semantics { contentDescription = "Show more categories" },
-                        ) { Icon(Icons.Filled.ArrowUpward, contentDescription = null) }
+            if (HomeCard.SPENDING in cards) {
+                FolioHeading("Where the money went")
+                FolioGroup {
+                    item {
+                        FolioBody {
+                            // The short name, on one line. The full ones -- "This month", "Last 30
+                            // days", "This year" -- wrapped to two lines in two of the three
+                            // segments and to one in the other, so the row came out with three
+                            // different heights. The card's own header still says the long name.
+                            ConnectedChoiceRow(
+                                options = SpendingPeriod.entries,
+                                selected = period,
+                                onSelect = { period = it },
+                                label = { it.shortLabel },
+                                describe = { it.label },
+                                maxLines = 1,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text("Compare with the period before", modifier = Modifier.weight(1f))
-                        Switch(
+                    item {
+                        // Fewer, then more: minus before plus, the order a stepper reads in, and
+                        // with the count between them where the eye checks it.
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = Measure.rowMinHeight)
+                                .padding(start = Measure.indent, end = Measure.tight),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "Categories shown",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(
+                                onClick = {
+                                    categories = (categories - 1).coerceAtLeast(HomePreferences.MIN_CATEGORIES)
+                                },
+                                enabled = categories > HomePreferences.MIN_CATEGORIES,
+                                modifier = Modifier.semantics { contentDescription = "Show fewer categories" },
+                            ) { Icon(Icons.Filled.Remove, contentDescription = null) }
+                            Text(
+                                "$categories",
+                                style = LedgerType.row,
+                                modifier = Modifier.semantics {
+                                    contentDescription = "$categories categories shown"
+                                },
+                            )
+                            IconButton(
+                                onClick = {
+                                    categories = (categories + 1).coerceAtMost(HomePreferences.MAX_CATEGORIES)
+                                },
+                                enabled = categories < HomePreferences.MAX_CATEGORIES,
+                                modifier = Modifier.semantics { contentDescription = "Show more categories" },
+                            ) { Icon(Icons.Filled.Add, contentDescription = null) }
+                        }
+                    }
+                    item {
+                        FolioSwitchRow(
+                            title = "Compare with the period before",
                             checked = compare,
                             onCheckedChange = { compare = it },
-                            modifier = Modifier.semantics { contentDescription = "Compare with the period before" },
                         )
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onApply(
-                        HomePreferences.Layout(
-                            cards = cards,
-                            period = period,
-                            categories = categories,
-                            compare = compare,
-                        ),
-                    )
-                    onDismiss()
-                },
-                modifier = Modifier.semantics { contentDescription = "Save what Home shows" },
-            ) { Text("Save") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Measure.gap),
+                horizontalArrangement = Arrangement.spacedBy(Measure.snug, Alignment.End),
+            ) {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                androidx.compose.material3.Button(
+                    onClick = {
+                        onApply(
+                            HomePreferences.Layout(
+                                cards = cards,
+                                period = period,
+                                categories = categories,
+                                compare = compare,
+                            ),
+                        )
+                        onDismiss()
+                    },
+                    modifier = Modifier.semantics { contentDescription = "Save what Home shows" },
+                ) { Text("Save") }
+            }
+        }
+    }
 }
 
 private fun List<HomeCard>.swap(from: Int, to: Int): List<HomeCard> {
@@ -679,8 +902,7 @@ private fun changeLine(
 }
 
 /** What the file's own flag says about an entry, in the app's mark vocabulary. */
-private fun markOf(entry: JournalEntry): LedgerMark =
-    if (entry.flag == "!") LedgerMark.PENDING else LedgerMark.CLEARED
+private fun markOf(entry: JournalEntry): LedgerMark = markForFlag(entry.flag)
 
 /**
  * One entry on a ruled page: mark, description, date, amount.
@@ -717,10 +939,10 @@ private fun EntryRow(
             .padding(vertical = Measure.snug),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StampMark(mark, modifier = Modifier.padding(end = Measure.gap))
+        StampMark(mark, flag = entry.flag, modifier = Modifier.padding(end = Measure.gap))
         Column(Modifier.weight(1f).padding(end = Measure.snug)) {
             Text(
-                entry.description.ifBlank { "(no description)" },
+                entry.description.ifBlank { NO_DESCRIPTION },
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

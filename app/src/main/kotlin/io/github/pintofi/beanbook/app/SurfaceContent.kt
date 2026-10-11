@@ -210,6 +210,7 @@ internal fun SurfaceContent(
                     },
                     mirrorConflicts = mirrorConflicts.size,
                     onOpenJournal = { onSelectSurface(Surface.JOURNAL) },
+                    onOpenBalances = { onSelectSurface(Surface.BALANCES) },
                     onOpenEntry = { onSelectSurface(Surface.JOURNAL) },
                     onOpenDocuments = {
                         onSelectSurface(Surface.MORE)

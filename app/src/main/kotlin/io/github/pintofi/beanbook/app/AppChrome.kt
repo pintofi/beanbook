@@ -49,6 +49,7 @@ import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
 import io.github.pintofi.beanbook.app.ui.RuledColumn
 import io.github.pintofi.beanbook.app.ui.NoticeTone
 import io.github.pintofi.beanbook.app.ui.Notice
@@ -85,33 +86,6 @@ internal fun RemoteReportProblem(message: String, modifier: Modifier = Modifier)
 
 /** Which of the three layouts in docs/ux.md §7 the current window calls for. */
 internal enum class PaneLayout { COMPACT, MEDIUM, EXPANDED }
-
-/**
- * The navigation rail, for windows too wide for a bottom bar.
- *
- * At 600dp and up a bottom bar wastes the shape of the screen: it puts the destinations
- * along the short edge of a landscape window and leaves a strip of empty space under a
- * ledger that would rather be taller. The rail moves them to the side, which is also where
- * a hand holding a tablet already is.
- */
-@Composable
-internal fun LedgerNavigationRail(selected: Surface, onSelect: (Surface) -> Unit) {
-    androidx.compose.material3.NavigationRail {
-        Surface.entries.forEach { surface ->
-            androidx.compose.material3.NavigationRailItem(
-                selected = selected == surface,
-                onClick = { onSelect(surface) },
-                // The label used to go in the icon slot, because these destinations had no
-                // icons and an empty slot drew the selection indicator around nothing while
-                // the label sat outside it. They have icons now, so the slots hold what they
-                // are for and the rail matches the bar.
-                icon = { Icon(surface.icon, contentDescription = null) },
-                label = { Text(surface.label) },
-                modifier = Modifier.padding(vertical = 6.dp),
-            )
-        }
-    }
-}
 
 /**
  * The app bar: whose ledger this is, and whether it is healthy.
@@ -359,63 +333,69 @@ internal fun MoreMenu(
     // neither edition self-updates now, and both have a version worth showing.
     val sections = MoreSection.entries
 
+    // Grouped by what a person came to do (design-direction §7): thirteen rows of two-line text
+    // read as one block, and the row you wanted was found by reading every label. Each group is
+    // a folio; each row a target with its icon on a badge, the anchor the eye finds first.
+    val groups = listOf(
+        "Your ledger" to listOf(MoreSection.PROJECTS, MoreSection.FILES, MoreSection.DOCUMENTS),
+        "Keep it safe" to listOf(MoreSection.BACKUP, MoreSection.MIRROR),
+        "Reach it from elsewhere" to listOf(MoreSection.REMOTE, MoreSection.SHARING),
+        "Add to it" to listOf(MoreSection.PLUGINS, MoreSection.SCRIPTS),
+        "This app" to listOf(
+            MoreSection.APPEARANCE,
+            MoreSection.DIAGNOSTICS,
+            MoreSection.LICENCES,
+            MoreSection.ABOUT,
+        ),
+    )
+    // Every section is listed exactly once, so a section added to the enum and forgotten here
+    // still appears -- at the end of "This app" -- rather than becoming unreachable.
+    val grouped = groups.flatMap { it.second }.toSet()
+    val leftOver = sections.filterNot { it in grouped }
+
     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
         // What this edition is, and what the other one adds (B81). Said in More, where people
         // go looking for what the app can do, rather than over their ledger.
         io.github.pintofi.beanbook.app.about.EditionNotice()
-        sections.forEach { entry ->
-            androidx.compose.material3.ListItem(
-                headlineContent = { Text(entry.label) },
-                supportingContent = descriptions[entry]?.let { { Text(it) } },
-                // An anchor for the eye. Eleven rows of two-line text read as one block, and
-                // the row you want is found by reading each label rather than by recognising
-                // a shape. Decorative in the semantics sense -- the description beside it
-                // already names the row -- so it carries no contentDescription of its own.
-                leadingContent = {
-                    Icon(
-                        iconFor(entry),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        io.github.pintofi.beanbook.app.ui.FolioPage(modifier = Modifier.readableMeasureCentred()) {
+            groups.forEach { (heading, members) ->
+                val rows = if (heading == "This app") members + leftOver else members
+                io.github.pintofi.beanbook.app.ui.FolioHeading(heading)
+                io.github.pintofi.beanbook.app.ui.FolioGroup {
+                    rows.forEach { entry ->
+                        item {
+                            io.github.pintofi.beanbook.app.ui.FolioRow(
+                                title = entry.label,
+                                detail = descriptions[entry],
+                                icon = iconFor(entry),
+                                tone = if (entry == MoreSection.PROJECTS) {
+                                    io.github.pintofi.beanbook.app.ui.FolioTone.ACCENT
+                                } else {
+                                    io.github.pintofi.beanbook.app.ui.FolioTone.PLAIN
+                                },
+                                opens = true,
+                                onClick = { onOpen(entry) },
+                                describe = "${entry.label}. ${descriptions[entry].orEmpty()}",
+                            )
+                        }
+                    }
+                }
+            }
+            // Last, and an action rather than a section: it does not open a screen, it starts
+            // the app again (B77).
+            androidx.compose.foundation.layout.Spacer(Modifier.height(Measure.gap))
+            io.github.pintofi.beanbook.app.ui.FolioGroup {
+                item {
+                    io.github.pintofi.beanbook.app.ui.FolioRow(
+                        title = "Restart the app",
+                        detail = "Close Beanbook and open it again, reading your files afresh",
+                        icon = Icons.Filled.RestartAlt,
+                        onClick = { confirmingRestart = true },
+                        describe = "Restart the app. Closes Beanbook and opens it again",
                     )
-                },
-                colors = androidx.compose.material3.ListItemDefaults.colors(
-                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                ),
-                modifier = Modifier
-                    .clickable(role = Role.Button) { onOpen(entry) }
-                    .padding(horizontal = Measure.tight)
-                    .semantics {
-                        contentDescription = "${entry.label}. ${descriptions[entry].orEmpty()}"
-                    },
-            )
-            // Indented to where the labels start rather than cut edge to edge, so the list
-            // reads as ruled paper and the icons sit in a margin of their own.
-            io.github.pintofi.beanbook.app.ui.LedgerHairline(
-                Modifier.padding(start = Measure.gutter + Measure.chapter),
-            )
+                }
+            }
         }
-        // Last, and an action rather than a section: it does not open a screen, it starts the
-        // app again (B77).
-        androidx.compose.material3.ListItem(
-            headlineContent = { Text("Restart the app") },
-            supportingContent = { Text("Close Beanbook and open it again, reading your files afresh") },
-            leadingContent = {
-                Icon(
-                    Icons.Filled.RestartAlt,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            colors = androidx.compose.material3.ListItemDefaults.colors(
-                containerColor = androidx.compose.ui.graphics.Color.Transparent,
-            ),
-            modifier = Modifier
-                .clickable(role = Role.Button) { confirmingRestart = true }
-                .padding(horizontal = Measure.tight)
-                .semantics {
-                    contentDescription = "Restart the app. Closes Beanbook and opens it again"
-                },
-        )
     }
 
     if (confirmingRestart) {
@@ -500,13 +480,9 @@ internal fun LoadingOrError(
             else -> {
                 // A rule filling, rather than a spinner: the mark the rest of the app uses to
                 // say "this is the ledger", drawn while there is not a ledger yet.
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().height(Measure.rule),
-                    color = BeancountTheme.ledger.rule,
-                    trackColor = MaterialTheme.colorScheme.outlineVariant,
-                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Butt,
-                    gapSize = 0.dp,
-                )
+                // Still when animations are off (LedgerProgressRule): the audit found this bar
+                // sliding regardless.
+                io.github.pintofi.beanbook.app.ui.LedgerProgressRule()
                 Text(
                     "Reading your ledger…",
                     style = MaterialTheme.typography.bodyMedium,

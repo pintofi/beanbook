@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.plugins.SavedScript
 import io.github.pintofi.beanbook.app.plugins.ScriptOutcome
 import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
+import androidx.compose.material.icons.outlined.Terminal
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 
 /**
@@ -49,28 +51,23 @@ fun ScriptRunnerScreen(
     onRunSaved: (String) -> Unit = {},
     onForgetSaved: (String) -> Unit = {},
 ) {
-    Column(
-        modifier = modifier.verticalScroll(rememberScrollState())
-            .padding(horizontal = Measure.gutter)
-            .padding(top = Measure.gap, bottom = Measure.section),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            "Run a script",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() },
-        )
+    Column(modifier = modifier.verticalScroll(rememberScrollState())) {
+    FolioPage(modifier = Modifier.readableMeasureCentred()) {
         Text(
             "A Python script, run once against the ledger you have open. It is given the " +
                 "path in ledger_path and runs in the folder your main file is in, so a " +
                 "relative path names a file beside your ledger. Anything it prints appears " +
                 "below.",
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Measure.tight),
         )
 
-        Notice(NoticeTone.PROBLEM) {
+        // The risk, read before the button (content style guide §6), in the attention tone:
+        // always on screen, so it should read as a statement, not an alarm.
+        Notice(NoticeTone.ATTENTION) {
             run {
-                Text("What running a script means", style = MaterialTheme.typography.titleSmall)
+                Text("What running a script means", style = MaterialTheme.typography.titleSmallEmphasized)
                 Text(
                     "It runs with this app's permissions and is not sandboxed. It can read " +
                         "and change your ledger and anything else the app can reach" +
@@ -104,6 +101,7 @@ fun ScriptRunnerScreen(
                 onClick = onPick,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 52.dp)
                     .semantics { contentDescription = "Choose a script file and run it" },
             ) { Text("Choose a script…") }
         }
@@ -111,19 +109,22 @@ fun ScriptRunnerScreen(
         // The result directly under the button that produced it (B89). It used to come last,
         // below every saved script, so after a run it was off the bottom of the screen and
         // the run looked as if it had printed nothing.
-        message?.let { StatusLine(it) }
+        message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
         outcome?.let { Outcome(it) }
 
         if (saved.isNotEmpty()) {
-            Text("Your scripts", style = MaterialTheme.typography.titleSmall)
-            Text(
+            FolioHeading("Your scripts")
+            FolioGroup {
+                saved.forEach { script ->
+                    item { SavedScriptCard(script, running == null, onRunSaved, onForgetSaved) }
+                }
+            }
+            FolioNote(
                 "Kept when you ran them, so you do not have to find the file again. They are " +
                     "copies: editing the original does not change these.",
-                style = MaterialTheme.typography.bodySmall,
             )
-            saved.forEach { script -> SavedScriptCard(script, running == null, onRunSaved, onForgetSaved) }
         }
-
+    }
     }
 }
 
@@ -131,7 +132,9 @@ fun ScriptRunnerScreen(
  * One kept script: what it is, when it was kept, and the checksum of the copy.
  *
  * The same three facts a plugin shows, for the same reason — this is code the user chose to
- * trust, and "where did this come from" is the question asked six months later.
+ * trust, and "where did this come from" is the question asked six months later. Run is tonal
+ * rather than filled: with several scripts, a column of filled buttons said nothing about which
+ * one mattered (device audit 2026-10-10).
  */
 @Composable
 private fun SavedScriptCard(
@@ -140,29 +143,35 @@ private fun SavedScriptCard(
     onRun: (String) -> Unit,
     onForget: (String) -> Unit,
 ) {
-    RuledColumn(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
-        run {
-            Text(script.name, style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Kept ${dateOf(script.savedAtEpochMs)} · checksum ${script.sha256.take(12)}…",
-                style = LedgerType.small,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+    FolioBody {
+        Row(verticalAlignment = androidx.compose.ui.Alignment.Top) {
+            FolioBadge(
+                androidx.compose.material.icons.Icons.Outlined.Terminal,
+                modifier = Modifier.padding(end = Measure.indent),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = { onRun(script.id) },
-                    enabled = runnable,
-                    modifier = Modifier.semantics {
-                        contentDescription = "Run the saved script ${script.name}"
-                    },
-                ) { Text("Run") }
-                TextButton(
-                    onClick = { onForget(script.id) },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Remove the saved script ${script.name}"
-                    },
-                ) { Text("Remove") }
+            Column(verticalArrangement = Arrangement.spacedBy(Measure.tight)) {
+                Text(script.name, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Kept ${dateOf(script.savedAtEpochMs)} · checksum ${script.sha256.take(12)}…",
+                    style = LedgerType.small,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.material3.FilledTonalButton(
+                onClick = { onRun(script.id) },
+                enabled = runnable,
+                modifier = Modifier.semantics {
+                    contentDescription = "Run the saved script ${script.name}"
+                },
+            ) { Text("Run") }
+            TextButton(
+                onClick = { onForget(script.id) },
+                modifier = Modifier.semantics {
+                    contentDescription = "Remove the saved script ${script.name}"
+                },
+            ) { Text("Remove") }
         }
     }
 }

@@ -1,6 +1,8 @@
 package io.github.pintofi.beanbook.app.ui.theme
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -22,3 +24,13 @@ import androidx.compose.ui.unit.dp
  * is one, not stretching a single column across it is better than stretching it.
  */
 fun Modifier.readableMeasure(): Modifier = this.widthIn(max = 720.dp)
+
+/**
+ * The readable measure, centred in a wider window: for pages of controls (More and its
+ * sections), which on a tablet otherwise hugged the left edge and left the rest of the window
+ * empty. Ledger pages keep [readableMeasure], where the start edge lines up with the rail.
+ */
+fun Modifier.readableMeasureCentred(): Modifier = this
+    .fillMaxWidth()
+    .wrapContentWidth(androidx.compose.ui.Alignment.CenterHorizontally)
+    .widthIn(max = 720.dp)

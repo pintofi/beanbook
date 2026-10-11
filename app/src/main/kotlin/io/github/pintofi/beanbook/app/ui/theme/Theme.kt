@@ -11,6 +11,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.enableEdgeToEdge
 
 /** What the user asked for, which is not always what the system is doing. */
 /**
@@ -108,6 +109,24 @@ fun BeancountTheme(
     // phone in light mode got dark clock and battery icons on the dark band: there, but
     // unreadable. Set on every change of theme, against the window this content is in.
     val view = androidx.compose.ui.platform.LocalView.current
+    // And the bars' own style, from the same choice (device audit 2026-10-10): the insets
+    // controller alone was not enough on the phone -- Light on a dark phone still left white
+    // clock and battery icons on the pale band -- because `enableEdgeToEdge()` with no
+    // arguments re-derives the style from the *system* mode. Passing the app's mode settles it.
+    val activity = view.context as? androidx.activity.ComponentActivity
+    if (activity != null && !view.isInEditMode) {
+        androidx.compose.runtime.LaunchedEffect(activity, dark) {
+            val bars = if (dark) {
+                androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+            } else {
+                androidx.activity.SystemBarStyle.light(
+                    android.graphics.Color.TRANSPARENT,
+                    android.graphics.Color.TRANSPARENT,
+                )
+            }
+            activity.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+        }
+    }
     if (!view.isInEditMode) {
         androidx.compose.runtime.SideEffect {
             val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect

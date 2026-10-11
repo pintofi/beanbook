@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -68,6 +69,7 @@ fun DateField(
                 modifier = Modifier.semantics { contentDescription = "Pick $label from a calendar" },
             ) { Icon(Icons.Filled.DateRange, contentDescription = null) }
         },
+        shape = io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.control,
         modifier = modifier,
     )
 
@@ -138,6 +140,12 @@ fun SuggestingField(
     trailingIcon: @Composable (() -> Unit)? = null,
     /** Applied to what is typed, before it reaches the caller: tags refuse spaces, say. */
     transform: (String) -> String = { it },
+    /**
+     * What an empty field stands for, shown faintly inside it: the commodity a posting falls
+     * back to, say. Never the only label (content style guide §7): the label stays above it.
+     */
+    placeholder: String? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
 ) {
     // The field's own copy, so the selection survives the caller's round trip. It follows the
     // caller whenever the caller's value is something the field did not produce -- a template
@@ -189,8 +197,11 @@ fun SuggestingField(
                 }
             },
             label = { Text(label) },
+            placeholder = placeholder?.let { { Text(it) } },
             singleLine = true,
             trailingIcon = trailingIcon,
+            leadingIcon = leadingIcon,
+            shape = io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.control,
             modifier = Modifier
                 .fillMaxWidth()
                 .onFocusChanged { focused = it.isFocused }
@@ -200,9 +211,11 @@ fun SuggestingField(
             val shown = remember(offered) { offered }
             androidx.compose.foundation.layout.Column(
                 modifier = Modifier
+                    .padding(top = 4.dp)
                     .fillMaxWidth()
                     .heightIn(max = SUGGESTION_LIST_HEIGHT)
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .clip(io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.control)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .verticalScroll(rememberScrollState()),
             ) {
                 shown.forEach { suggestion ->

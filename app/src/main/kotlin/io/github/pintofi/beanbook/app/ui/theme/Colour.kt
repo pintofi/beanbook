@@ -202,11 +202,22 @@ internal fun ColorScheme.onBlack(): ColorScheme = copy(
  * number is negative. The minus sign does that, and the balance mark beside an entry says in
  * shape what [pending] says in colour. These exist to reinforce, never to carry.
  *
- * [negative] is an amber-brown rather than a red: a negative balance is ordinary in
- * double-entry bookkeeping, and dressing it up as an error would be wrong about accounting as
- * well as alarming. [pending] is the terracotta, and marks work a person has not finished.
- * [rule] is the ledger's own line colour, brighter than the Material hairline because it is
- * the spine of a list rather than a divider between two of them.
+ * **Colour is for a difference, not a direction (docs/design-direction.md §4).** Postings and
+ * balances are drawn in ink everywhere, and the minus sign says which way the money went.
+ * [positive] and [negative] colour only a *change*: this period against the last, an entry that
+ * does not balance, Fava's diff columns. They were applied to every posting, which put green on
+ * money spent in the entry form and an amber-brown "negative" next to the terracotta accent,
+ * where it read as "selected" (device audit 2026-10-10).
+ *
+ * [negative] is carmine: clearly neither the accent nor the error red, so a change downward is
+ * not mistaken for a choice or a fault. [pending] is the terracotta, and marks work a person
+ * has not finished. [flagged] is an indigo ink for any flag other than `*` and `!` -- a `P`, an
+ * `S` -- which used to be drawn as cleared. [rule] is the ledger's own line colour, brighter
+ * than the Material hairline because it is the spine of a list rather than a divider between
+ * two of them.
+ *
+ * Contrast (WCAG, computed): carmine on paper 6.5:1, indigo on paper 6.5:1; their dark tones on
+ * the dark ground 8.8:1 and 10.7:1, and higher on AMOLED black.
  */
 data class LedgerColours(
     val positive: Color,
@@ -214,21 +225,24 @@ data class LedgerColours(
     val neutral: Color = Color(0xFF6B7873),
     val pending: Color = Color(0xFF9A4C2E),
     val rule: Color = Color(0xFF0B5F5B),
+    val flagged: Color = Color(0xFF4F4FA0),
 ) {
     companion object {
         val Light = LedgerColours(
             positive = Color(0xFF1B5E3F),
-            negative = Color(0xFF8A4B00),
+            negative = Color(0xFFA3264E),
             neutral = Color(0xFF66736E),
             pending = Color(0xFF9A4C2E),
             rule = Color(0xFF0B5F5B),
+            flagged = Color(0xFF4F4FA0),
         )
         val Dark = LedgerColours(
             positive = Color(0xFF7FD3A8),
-            negative = Color(0xFFFFB870),
+            negative = Color(0xFFFF8FAE),
             neutral = Color(0xFF9AA7A2),
             pending = Color(0xFFFFB59B),
             rule = Color(0xFF6FD3CA),
+            flagged = Color(0xFFBDBDFF),
         )
     }
 }

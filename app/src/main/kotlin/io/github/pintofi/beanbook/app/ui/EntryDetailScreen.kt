@@ -82,23 +82,26 @@ fun EntryDetailScreen(
         RuledColumn {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StampMark(
-                    when {
-                        errors.isNotEmpty() -> LedgerMark.ATTENTION
-                        entry.flag == "!" -> LedgerMark.PENDING
-                        else -> LedgerMark.CLEARED
-                    },
+                    if (errors.isNotEmpty()) LedgerMark.ATTENTION else markForFlag(entry.flag),
+                    flag = entry.flag,
                     modifier = Modifier.padding(end = Measure.gap),
                 )
+                // The file's own flag, said as what it is (device audit 2026-10-10): a `P` entry
+                // was described here as "Cleared".
                 Text(
                     entry.flag?.let { flag ->
-                        if (flag == "!") "Pending, flagged for another look" else "Cleared"
+                        when (markForFlag(flag)) {
+                            LedgerMark.PENDING -> "Pending, flagged for another look"
+                            LedgerMark.FLAGGED -> "Flagged $flag"
+                            else -> "Cleared"
+                        }
                     } ?: "No flag",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
-                entry.description.ifBlank { "(no description)" },
+                entry.description.ifBlank { NO_DESCRIPTION },
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(top = Measure.snug),
             )
@@ -129,11 +132,12 @@ fun EntryDetailScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        posting.account,
+                        breakableAccount(posting.account),
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.weight(1f).padding(end = Measure.snug),
                     )
-                    posting.amount?.let { AmountText(it, signed = true, format = format) }
+                    // In ink: the sign carries direction (design-direction §4).
+                    posting.amount?.let { AmountText(it, format = format) }
                         ?: Text(
                             "(worked out by Beancount)",
                             style = MaterialTheme.typography.bodySmall,
@@ -195,7 +199,11 @@ fun EntryDetailScreen(
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(Measure.snug)) {
+        // Wraps onto a second line at large text rather than pushing Close off the screen.
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Measure.snug),
+            verticalArrangement = Arrangement.spacedBy(Measure.tight),
+        ) {
             Button(
                 onClick = onClone,
                 modifier = Modifier.semantics {
@@ -233,7 +241,7 @@ fun EntryDetailScreen(
             ) {
                 Text("Delete this transaction?", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "\"${entry.description.ifBlank { entry.date }}\" will be removed from " +
+                    "\"${entrySummary(entry, format)}\" will be removed from " +
                         "${entry.file?.substringAfterLast('/') ?: "the ledger"}. Any document " +
                         "it links to stays where it is, and this can be undone.",
                     style = MaterialTheme.typography.bodySmall,
@@ -241,6 +249,10 @@ fun EntryDetailScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(Measure.snug)) {
                     Button(
                         onClick = { confirmingDelete = false; onDelete() },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
                         modifier = Modifier.semantics {
                             contentDescription = "Delete this transaction"
                         },

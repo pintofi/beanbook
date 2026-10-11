@@ -27,6 +27,11 @@ import io.github.pintofi.beanbook.core.data.MirrorAction
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
+import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Sync
 
 /**
  * Auto-mirror (docs/storage-and-backup.md §6).
@@ -49,114 +54,133 @@ fun MirrorScreen(
     modifier: Modifier = Modifier,
     message: String? = null,
 ) {
-    Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = Measure.gutter)
-            .padding(top = Measure.gap, bottom = Measure.section),
-        verticalArrangement = Arrangement.spacedBy(Measure.gap),
-    ) {
-        // The state first, before any control. A screen whose top half is settings cannot
-        // answer the question people open it to ask -- is my folder current right now -- and
-        // the answer used to exist only as a message left over from the last pass (B65).
-        MirrorStatusCard(status)
+    Column(modifier = modifier.verticalScroll(rememberScrollState())) {
+        FolioPage(modifier = Modifier.readableMeasureCentred()) {
+            // The state first, before any control. A screen whose top half is settings cannot
+            // answer the question people open it to ask -- is my folder current right now -- and
+            // the answer used to exist only as a message left over from the last pass (B65).
+            MirrorStatusCard(status)
 
-        Text("Mirror to a folder", style = MaterialTheme.typography.titleMedium)
-        Text(
-            "A copy of your project is kept in a folder you choose, and changes made in that " +
-                "folder are brought back in. The version on this device stays the original: " +
-                "anything the app cannot decide by itself waits for you, with both versions " +
-                "kept.",
-            style = MaterialTheme.typography.bodySmall,
-        )
+            FolioHeading("Mirror to a folder")
+            // The folder first, then what to do about it. The switch cannot be turned on without
+            // a folder, so offering it above the folder was offering a dead control.
+            FolioGroup {
+                item {
+                    FolioRow(
+                        // The folder by its name, not by Android's handle for it (device audit
+                        // 2026-10-10: the raw content:// grant was printed here).
+                        title = folder?.let { humanFolder(it) } ?: "No folder chosen",
+                        detail = if (folder == null) {
+                            "A synced folder works well: Syncthing, Nextcloud or Drive."
+                        } else {
+                            "Mirroring to this folder"
+                        },
+                        icon = Icons.Outlined.Folder,
+                        tone = if (folder == null) FolioTone.PLAIN else FolioTone.ACCENT,
+                    ) {
+                        TextButton(
+                            onClick = onChooseFolder,
+                            modifier = Modifier.semantics {
+                                contentDescription =
+                                    if (folder == null) "Choose a folder to mirror into" else "Change the folder"
+                            },
+                        ) { Text(if (folder == null) "Choose a folder" else "Change folder") }
+                    }
+                }
+                item {
+                    FolioSwitchRow(
+                        title = "Mirror after every change",
+                        checked = enabled,
+                        onCheckedChange = onEnabledChanged,
+                        enabled = folder != null,
+                        detail = if (folder == null) {
+                            "Choose a folder first."
+                        } else {
+                            "Both ways: writes here go out, and changes there come back."
+                        },
+                        icon = Icons.Outlined.Sync,
+                        describe = "Mirror after every change",
+                    )
+                }
+            }
+            FolioNote(
+                "The version on this device stays the original: anything the app cannot decide by " +
+                    "itself waits for you, with both versions kept.",
+            )
 
-        // The folder first, then what to do about it. The switch cannot be turned on without
-        // a folder, so offering it above the folder button was offering a dead control and
-        // making the reader work out why.
-        OutlinedButton(
-            onClick = onChooseFolder,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics {
-                    contentDescription =
-                        if (folder == null) "Choose a folder to mirror into" else "Change the folder"
-                },
-        ) { Text(if (folder == null) "Choose a folder" else "Change folder") }
-        folder?.let { Text("Mirroring to $it", style = MaterialTheme.typography.bodySmall) }
+            Button(
+                onClick = onSyncNow,
+                enabled = folder != null && !status.isRunning,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+                    .semantics { contentDescription = "Mirror now" },
+            ) { Text("Mirror now") }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Mirror after every change", style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    if (folder == null) {
-                        "Choose a folder first."
+            message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
+
+            if (conflicts.isNotEmpty()) {
+                // One summary, then one compact row per file (device audit 2026-10-10: four loud
+                // red cards stacked). The status card above already says how many; this is where
+                // each one is decided.
+                FolioHeading(
+                    if (conflicts.size == 1) {
+                        "1 file needs your decision"
                     } else {
-                        "Both ways: writes here go out, and changes there come back."
+                        "${conflicts.size} files need your decision"
                     },
-                    style = MaterialTheme.typography.bodySmall,
+                )
+                FolioGroup {
+                    conflicts.forEach { conflict ->
+                        item { ConflictRow(conflict, onKeepMine, onKeepTheirs) }
+                    }
+                }
+                FolioNote(
+                    "Nothing has been overwritten. The folder's copy is saved beside yours with a " +
+                        "\".conflict-\" suffix until you choose.",
+                )
+            }
+        }
+    }
+}
+
+/** One file both sides changed: where it is, what differs, and the two ways to settle it. */
+@Composable
+private fun ConflictRow(
+    conflict: MirrorAction.Conflict,
+    onKeepMine: (String) -> Unit,
+    onKeepTheirs: (String) -> Unit,
+) {
+    FolioBody {
+        Row(verticalAlignment = Alignment.Top) {
+            StampMark(LedgerMark.ATTENTION, modifier = Modifier.padding(top = 2.dp, end = Measure.gap))
+            Column(verticalArrangement = Arrangement.spacedBy(Measure.tight)) {
+                Text(conflict.path, style = LedgerType.small)
+                Text(
+                    conflict.describe(),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Switch(
-                checked = enabled,
-                onCheckedChange = onEnabledChanged,
-                enabled = folder != null,
-                modifier = Modifier.semantics { contentDescription = "Mirror after every change" },
-            )
         }
-
-        Button(
-            onClick = onSyncNow,
-            enabled = folder != null && !status.isRunning,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "Mirror now" },
-        ) { Text("Mirror now") }
-
-        message?.let { StatusLine(it) }
-
-        if (conflicts.isNotEmpty()) {
-            HorizontalDivider()
-            Text(
-                "Needs your decision",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-            Text(
-                "Nothing has been overwritten. The folder's copy is saved beside yours with " +
-                    "a \".conflict-\" suffix until you choose.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-
-            conflicts.forEach { conflict ->
-                Notice(NoticeTone.PROBLEM) {
-                    Text(conflict.path, style = LedgerType.small)
-                    Text(conflict.describe(), style = MaterialTheme.typography.bodyMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(Measure.snug)) {
-                            // Outlined, not text: these two decide which copy of a file
-                            // survives, and a decision that destructive must look like a
-                            // control rather than a caption (B66).
-                            OutlinedButton(
-                                onClick = { onKeepMine(conflict.path) },
-                                modifier = Modifier.semantics {
-                                    contentDescription =
-                                        "Keep this device's version of ${conflict.path}"
-                                },
-                            ) { Text("Keep this device's") }
-                            OutlinedButton(
-                                onClick = { onKeepTheirs(conflict.path) },
-                                modifier = Modifier.semantics {
-                                    contentDescription =
-                                        "Keep the folder's version of ${conflict.path}"
-                                },
-                            ) { Text("Keep the folder's") }
-                    }
-                }
-            }
+        // Outlined, not text: these two decide which copy of a file survives, and a decision
+        // that destructive must look like a control rather than a caption (B66).
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Measure.snug),
+            verticalArrangement = Arrangement.spacedBy(Measure.tight),
+        ) {
+            OutlinedButton(
+                onClick = { onKeepMine(conflict.path) },
+                modifier = Modifier.semantics {
+                    contentDescription = "Keep this device's version of ${conflict.path}"
+                },
+            ) { Text("Keep this device's") }
+            OutlinedButton(
+                onClick = { onKeepTheirs(conflict.path) },
+                modifier = Modifier.semantics {
+                    contentDescription = "Keep the folder's version of ${conflict.path}"
+                },
+            ) { Text("Keep the folder's") }
         }
     }
 }
@@ -217,25 +241,14 @@ private fun MirrorStatusCard(status: MirrorStatus) {
         // A rule filling, in the app's own measure: a pass that is counting files fills it
         // by count, and one that is still comparing draws it without a figure to fill to.
         when (status) {
-            is MirrorStatus.Copying -> LinearProgressIndicator(
+            is MirrorStatus.Copying -> LedgerProgressRule(
                 progress = {
                     if (status.total <= 0) 0f else status.done.toFloat() / status.total
                 },
-                modifier = Modifier.fillMaxWidth().height(Measure.rule),
-                color = BeancountTheme.ledger.rule,
-                trackColor = MaterialTheme.colorScheme.outlineVariant,
-                strokeCap = androidx.compose.ui.graphics.StrokeCap.Butt,
-                gapSize = 0.dp,
-                drawStopIndicator = {},
             )
 
-            MirrorStatus.Comparing -> LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth().height(Measure.rule),
-                color = BeancountTheme.ledger.rule,
-                trackColor = MaterialTheme.colorScheme.outlineVariant,
-                strokeCap = androidx.compose.ui.graphics.StrokeCap.Butt,
-                gapSize = 0.dp,
-            )
+            // Still, with animations off (LedgerProgressRule).
+            MirrorStatus.Comparing -> LedgerProgressRule()
 
             else -> Unit
         }
