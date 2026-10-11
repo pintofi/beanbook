@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -189,13 +191,22 @@ internal fun LedgerNavigationRail(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     elevation = FloatingActionButtonDefaults.loweredElevation(),
-                    modifier = Modifier.padding(vertical = 12.dp),
+                    modifier = Modifier.padding(vertical = 4.dp),
                 ) {
                     Icon(Icons.Outlined.Add, contentDescription = "Add an entry")
                 }
             }
         },
     ) {
+        // Scrolls when the window is shorter than the rail, so no destination is ever out of
+        // reach (B98). On a phone in landscape -- about 410dp tall -- the add button leaves the
+        // rail for the corner of the page ([railHoldsAdd]), and the five destinations fit.
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
         Surface.entries.forEach { surface ->
             val chosen = !adding && selected == surface
             NavigationRailItem(
@@ -210,11 +221,25 @@ internal fun LedgerNavigationRail(
                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
-                modifier = Modifier.padding(vertical = 6.dp),
+                modifier = Modifier.padding(vertical = 2.dp),
             )
+        }
         }
     }
 }
+
+/**
+ * Whether the rail has room for the add button above its five destinations (B98). Below about
+ * 480dp of height -- a phone on its side -- it does not: "More" was pushed off the bottom and
+ * "Reports" lost its icon. There the button floats in the page's corner, as on a phone held
+ * upright.
+ */
+@Composable
+internal fun railHoldsAdd(): Boolean =
+    androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp >= SHORT_RAIL_DP
+
+/** The window height below which the add button leaves the rail. */
+private const val SHORT_RAIL_DP = 480
 
 /**
  * Whether the page under the add button is being scrolled down (design-direction §7).
@@ -234,6 +259,10 @@ internal class ActionScroll : NestedScrollConnection {
         // a drag on a page too short to scroll, should not hide the button forever.
         if (consumed.y < -SCROLL_SLOP) readingOn = true
         if (consumed.y > SCROLL_SLOP) readingOn = false
+        // A pull downwards that the page has no room for -- at the top of a list, or on a page
+        // opened after the button stepped aside (an entry page closing back to the Journal) --
+        // also brings it back, so it is never hidden with no scroll left to recall it.
+        if (available.y > SCROLL_SLOP && source == NestedScrollSource.UserInput) readingOn = false
         return Offset.Zero
     }
 

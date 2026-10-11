@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -30,13 +30,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import io.github.pintofi.beanbook.app.R
 import io.github.pintofi.beanbook.app.ui.loadLicences
 import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
 
@@ -119,13 +117,13 @@ fun AboutSection(onOpenLicences: () -> Unit, modifier: Modifier = Modifier) {
                     io.github.pintofi.beanbook.app.ui.FolioRow(
                         title = "Source",
                         detail = "The code on GitHub, in your browser",
-                        icon = null,
+                        // On a badge like every row beside it (B98): the GitHub mark trailing
+                        // on its own left this one row without the column of badges.
+                        icon = androidx.compose.material.icons.Icons.Filled.Code,
                         onClick = { open(SOURCE_URL) },
                         describe = "Source code on GitHub, opens in your browser",
                         opens = true,
-                    ) {
-                        Icon(painterResource(R.drawable.ic_github), contentDescription = null)
-                    }
+                    )
                 }
                 item {
                     io.github.pintofi.beanbook.app.ui.FolioRow(

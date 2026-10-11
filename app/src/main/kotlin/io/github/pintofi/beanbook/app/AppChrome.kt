@@ -118,6 +118,8 @@ internal fun LedgerTopBar(
     adding: Boolean = false,
     /** The form is open on an entry already in the file (B79). */
     editing: Boolean = false,
+    /** Whether the rule beside the name says "in balance" ([ledgerHealthy]). */
+    healthy: Boolean = health?.contains("no errors") == true,
 ) {
     androidx.compose.material3.TopAppBar(
         // The band: a tint one step off the paper, so the chrome reads as a strip laid over
@@ -153,7 +155,7 @@ internal fun LedgerTopBar(
                 // where it is not: the same vocabulary as the mark beside an entry, so the
                 // shape says "in balance" before the words under it are read.
                 if (switchable) {
-                    HealthRule(healthy = health?.contains("no errors") == true)
+                    HealthRule(healthy = healthy)
                     androidx.compose.foundation.layout.Spacer(Modifier.width(12.dp))
                 }
                 Column {
@@ -176,6 +178,7 @@ internal fun LedgerTopBar(
                             title,
                             style = MaterialTheme.typography.titleLarge,
                             maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         )
                     }
                     io.github.pintofi.beanbook.app.ui.LedgerReveal(
@@ -183,11 +186,15 @@ internal fun LedgerTopBar(
                         label = "health",
                     ) {
                         val shown = remember(health) { health }
+                        // Ends in an ellipsis rather than a cut word at large text (B98): "1 error
+                        // · 2" read as a different count. A screen reader still gets the whole
+                        // line: the row merges it.
                         Text(
                             shown.orEmpty(),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -294,10 +301,30 @@ private fun Modifier.androidHeight(): Modifier = this.then(Modifier.height(20.dp
 internal fun ledgerHealth(status: EngineStatus, ledger: LedgerSnapshot?): String? = when {
     ledger == null && status is EngineStatus.Failed -> "Couldn't read the ledger"
     ledger == null -> "Loading…"
-    ledger.errors.isEmpty() -> "${ledger.entryCount} entries · no errors"
-    ledger.errors.size == 1 -> "${ledger.entryCount} entries · 1 error"
-    else -> "${ledger.entryCount} entries · ${ledger.errors.size} errors"
+    else -> listOfNotNull(
+        "${ledger.entryCount} entries",
+        when (ledger.errors.size) {
+            0 -> "no errors"
+            1 -> "1 error"
+            else -> "${ledger.errors.size} errors"
+        },
+        // A report extension that does not import is not in Beancount's list, so the count
+        // above was one short of Fava's Errors page (device audit 2026-10-10, B97).
+        when (ledger.extensionFailures) {
+            0 -> null
+            1 -> "1 extension failed"
+            else -> "${ledger.extensionFailures} extensions failed"
+        },
+    ).joinToString(" · ")
 }
+
+/**
+ * Whether the header's rule says "in balance": no ledger errors *and* every report extension
+ * imports. Decided from the ledger, not by reading [ledgerHealth]'s words, which can say
+ * "no errors" beside "1 extension failed".
+ */
+internal fun ledgerHealthy(ledger: LedgerSnapshot?): Boolean =
+    ledger != null && ledger.errors.isEmpty() && ledger.extensionFailures == 0
 
 /**
  * The sections behind More, as a list.

@@ -57,6 +57,13 @@ class LedgerWatcher(
         if (folders.isEmpty()) return
         observer = object : FileObserver(folders, EVENTS) {
             override fun onEvent(event: Int, path: String?) {
+                // Only the events asked for (B98). Removing a watch makes the kernel send
+                // IN_IGNORED with no path, and `watch` replaces the observer on every reload;
+                // the new observer can be handed the old one's IN_IGNORED (watch descriptors
+                // are reused), which read as "something changed", scheduled a reload, which
+                // re-watched, which sent another -- a reload every 0.7 s, for ever, from the
+                // first outside change on (seen on the emulator after an Undo).
+                if (event and EVENTS == 0) return
                 // A rename reports the old name and then the new one, and a delete reports
                 // nothing at all, so a null path counts: the safe reading of "something
                 // happened here" is to read the ledger again.

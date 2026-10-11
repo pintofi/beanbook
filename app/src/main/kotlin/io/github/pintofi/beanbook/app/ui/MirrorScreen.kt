@@ -68,24 +68,25 @@ fun MirrorScreen(
                 item {
                     FolioRow(
                         // The folder by its name, not by Android's handle for it (device audit
-                        // 2026-10-10: the raw content:// grant was printed here).
-                        title = folder?.let { humanFolder(it) } ?: "No folder chosen",
+                        // 2026-10-10: the raw content:// grant was printed here). The whole row
+                        // chooses or changes it: a button beside the words squeezed them into a
+                        // column four lines tall on a phone (B98).
+                        title = folder?.let { humanFolder(it) } ?: "Choose a folder",
                         detail = if (folder == null) {
                             "A synced folder works well: Syncthing, Nextcloud or Drive."
                         } else {
-                            "Mirroring to this folder"
+                            "Mirroring to this folder. Tap to change it."
                         },
                         icon = Icons.Outlined.Folder,
                         tone = if (folder == null) FolioTone.PLAIN else FolioTone.ACCENT,
-                    ) {
-                        TextButton(
-                            onClick = onChooseFolder,
-                            modifier = Modifier.semantics {
-                                contentDescription =
-                                    if (folder == null) "Choose a folder to mirror into" else "Change the folder"
-                            },
-                        ) { Text(if (folder == null) "Choose a folder" else "Change folder") }
-                    }
+                        onClick = onChooseFolder,
+                        opens = true,
+                        describe = if (folder == null) {
+                            "Choose a folder to mirror into"
+                        } else {
+                            "Mirroring to ${humanFolder(folder)}. Change the folder"
+                        },
+                    )
                 }
                 item {
                     FolioSwitchRow(

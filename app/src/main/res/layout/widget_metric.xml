@@ -73,6 +73,9 @@
                     android:textColor="@color/widget_rule" />
             </LinearLayout>
 
+            <!-- The figure shrinks to the height it has, and the footnote keeps to one line (B98):
+                 at 2 x 1 on a Pixel launcher a two-line footnote left the figure no room at all,
+                 and the widget showed "Net worth" with no number under it. -->
             <TextView
                 android:id="@+id/widget_value"
                 android:layout_width="match_parent"
@@ -84,6 +87,10 @@
                 android:maxLines="2"
                 android:ellipsize="end"
                 android:textSize="22sp"
+                android:autoSizeTextType="uniform"
+                android:autoSizeMinTextSize="11sp"
+                android:autoSizeMaxTextSize="22sp"
+                android:autoSizeStepGranularity="1sp"
                 android:fontFamily="monospace"
                 android:text="—"
                 android:textColor="@color/widget_value" />
@@ -94,7 +101,7 @@
                 android:layout_height="wrap_content"
                 android:paddingEnd="12dp"
                 android:paddingRight="12dp"
-                android:maxLines="2"
+                android:maxLines="1"
                 android:ellipsize="end"
                 android:textSize="11sp"
                 android:text=""

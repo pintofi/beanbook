@@ -40,6 +40,15 @@ class UndoController(
         _offer.value = null
     }
 
+    /**
+     * Says the outcome of a write that offers no undo -- a refused delete -- in the same place
+     * an undo's outcome is said, so it is on screen wherever the person is (B98).
+     */
+    fun tell(message: String) {
+        _offer.value = null
+        _message.value = message
+    }
+
     fun clearMessage() {
         _message.value = null
     }

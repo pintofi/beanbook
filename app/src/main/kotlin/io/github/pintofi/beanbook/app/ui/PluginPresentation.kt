@@ -6,8 +6,8 @@ package io.github.pintofi.beanbook.app.ui
  * import every time the ledger loads).
  *
  * A slot for the card to fill, not a judgement the screen makes: the status comes from what the
- * engine and Fava reported when the ledger loaded, which the Plugins screen is handed. Until
- * that is wired, every plugin is [Unknown], and an unknown status draws nothing -- the card
+ * engine and Fava reported when the ledger loaded ([pluginStatusFor]). Where nothing has been
+ * reported a plugin is [Unknown], and an unknown status draws nothing -- the card
  * never claims a plugin works when nobody has said so.
  */
 sealed interface PluginStatus {
@@ -19,6 +19,43 @@ sealed interface PluginStatus {
 
     /** Nothing has said either way. */
     data object Unknown : PluginStatus
+}
+
+/**
+ * What the last load said about a plugin that provides [modules] (B97 data, design-direction §7).
+ *
+ * Two sources, both from the load itself, never a guess:
+ * - a Fava extension's import result, from [extensionHealth] (module to the import error, or
+ *   null when it imports) -- Fava shows these only on its own Errors page;
+ * - a Beancount plugin's import failure, which Beancount reports as an ordinary ledger error
+ *   naming the module (`Error importing "beancount_interpolate.depreciate"`), among [errors].
+ *
+ * A module the ledger does not name, or any module while safe mode holds plugins back, says
+ * nothing either way. Any failing module makes the plugin [PluginStatus.Failed] with the first
+ * reason; at least one known-good module and no failure make it [PluginStatus.Loaded]; no data
+ * at all is [PluginStatus.Unknown], which draws nothing.
+ */
+fun pluginStatusFor(
+    modules: List<String>,
+    extensionHealth: Map<String, String?>,
+    ledgerPlugins: List<String>,
+    errors: List<String>,
+    safeMode: Boolean,
+): PluginStatus {
+    if (safeMode || modules.isEmpty()) return PluginStatus.Unknown
+    var known = false
+    modules.forEach { module ->
+        if (module in extensionHealth) {
+            known = true
+            extensionHealth[module]?.let { return PluginStatus.Failed(it) }
+        }
+        if (module in ledgerPlugins) {
+            known = true
+            errors.firstOrNull { it.contains("\"$module\"") && it.contains("import", ignoreCase = true) }
+                ?.let { return PluginStatus.Failed(it) }
+        }
+    }
+    return if (known) PluginStatus.Loaded else PluginStatus.Unknown
 }
 
 /**

@@ -248,12 +248,18 @@ class LoginGate:
 <meta name="referrer" content="no-referrer">
 <title>Sign in to Beanbook</title>
 <style>
-body{{font-family:system-ui,sans-serif;background:#f3f5f2;color:#16201e;margin:0;display:grid;place-items:center;min-height:100vh}}
-form{{background:#fff;border-left:3px solid #0b5f5b;padding:24px;max-width:320px;width:calc(100% - 48px)}}
-label{{display:block;margin-top:12px;font-size:14px}}
-input{{width:100%;box-sizing:border-box;padding:10px;margin-top:4px;font-size:16px}}
-button{{margin-top:20px;padding:10px 16px;font-size:16px;background:#0b5f5b;color:#fff;border:0}}
-.problem{{color:#a02a20}} .note{{font-size:13px;color:#44534e}}
+:root{{color-scheme:light dark;--paper:#f3f5f2;--band:#edf1ec;--folio:#ffffff;--ink:#16201e;--quiet:#44534e;--rule:#0b5f5b;--on-rule:#ffffff;--line:#c0c9c4;--problem:#ba1a1a}}
+@media (prefers-color-scheme:dark){{:root{{--paper:#0d1211;--band:#101615;--folio:#1b2120;--ink:#e2e8e5;--quiet:#bfc9c4;--rule:#6fd3ca;--on-rule:#003734;--line:#3f4946;--problem:#ffb4ab}}}}
+*{{box-sizing:border-box}}
+body{{font-family:system-ui,sans-serif;background:var(--paper);color:var(--ink);margin:0;display:grid;place-items:center;min-height:100vh;padding:16px}}
+form{{background:var(--folio);border-radius:20px;border-top:3px solid var(--rule);padding:28px 24px 24px;max-width:360px;width:100%;box-shadow:0 1px 3px rgba(0,0,0,.12)}}
+h1{{color:var(--ink);letter-spacing:-.01em}}
+label{{display:block;margin-top:16px;font-size:14px;font-weight:500;color:var(--quiet)}}
+input{{width:100%;padding:12px 14px;margin-top:6px;font-size:16px;color:var(--ink);background:var(--band);border:1px solid var(--line);border-radius:10px;min-height:48px}}
+input:focus{{outline:2px solid var(--rule);outline-offset:1px;border-color:transparent}}
+button{{margin-top:24px;width:100%;min-height:48px;padding:12px 16px;font-size:16px;font-weight:600;background:var(--rule);color:var(--on-rule);border:0;border-radius:999px;cursor:pointer}}
+button:focus-visible{{outline:2px solid var(--ink);outline-offset:2px}}
+.problem{{color:var(--problem);font-weight:500}} .note{{font-size:13px;line-height:1.45;color:var(--quiet);margin:8px 0 0}}
 </style></head><body>
 <form method="post" action="{LOGIN_PATH}">
 <h1 style="font-size:20px;margin:0">Beanbook reports</h1>

@@ -196,7 +196,15 @@ fun SuggestingField(
                     onValueChange(text)
                 }
             },
-            label = { Text(label) },
+            // A resting, empty field shows its label in the box, where Material hides the
+            // placeholder; so the fallback rides on the label until the field is touched
+            // ("Commodity · PKR"), then moves into the box as the placeholder (B98).
+            label = {
+                Text(
+                    if (placeholder != null && value.isEmpty() && !focused) "$label · $placeholder" else label,
+                    maxLines = 1,
+                )
+            },
             placeholder = placeholder?.let { { Text(it) } },
             singleLine = true,
             trailingIcon = trailingIcon,

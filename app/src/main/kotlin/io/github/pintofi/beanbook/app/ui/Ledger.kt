@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.app.ui
 
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -298,15 +299,21 @@ fun Notice(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScopeAlias.() -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
     val container = when (tone) {
-        NoticeTone.QUIET -> MaterialTheme.colorScheme.surfaceContainerHigh
-        NoticeTone.ATTENTION -> MaterialTheme.colorScheme.tertiaryContainer
-        NoticeTone.PROBLEM -> MaterialTheme.colorScheme.errorContainer
+        NoticeTone.QUIET -> scheme.surfaceContainerHigh
+        // A tint of the accent on the band, not the accent's container (B98): a wallpaper
+        // palette on Android 16+ can hand back a light tertiary container in dark mode, and a
+        // pale slab of body text in a dark app read as a different app. A tint keeps the
+        // notice in the page's own lightness in every theme, with ink that always reads.
+        NoticeTone.ATTENTION -> scheme.tertiary.copy(alpha = ATTENTION_TINT)
+            .compositeOver(scheme.surfaceContainerLow)
+        NoticeTone.PROBLEM -> scheme.errorContainer
     }
     val onContainer = when (tone) {
-        NoticeTone.QUIET -> MaterialTheme.colorScheme.onSurface
-        NoticeTone.ATTENTION -> MaterialTheme.colorScheme.onTertiaryContainer
-        NoticeTone.PROBLEM -> MaterialTheme.colorScheme.onErrorContainer
+        NoticeTone.QUIET -> scheme.onSurface
+        NoticeTone.ATTENTION -> scheme.onSurface
+        NoticeTone.PROBLEM -> scheme.onErrorContainer
     }
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -321,6 +328,9 @@ fun Notice(
         )
     }
 }
+
+/** How much of the accent an attention notice carries over the band. */
+private const val ATTENTION_TINT = 0.16f
 
 /** The receiver [Notice] hands its content, aliased so callers need no extra import. */
 typealias ColumnScopeAlias = androidx.compose.foundation.layout.ColumnScope

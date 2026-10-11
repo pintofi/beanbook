@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -95,6 +96,7 @@ fun HomeScreen(
     onOpenEntry: (JournalEntry) -> Unit = {},
     onOpenDocuments: () -> Unit = {},
     onOpenMirror: () -> Unit = {},
+    onOpenPlugins: () -> Unit = {},
     today: LocalDate = LocalDate.now(),
     layout: HomePreferences.Layout? = null,
     onLayoutChange: (HomePreferences.Layout) -> Unit = {},
@@ -134,6 +136,7 @@ fun HomeScreen(
                 onOpenJournal = onOpenJournal,
                 onOpenDocuments = onOpenDocuments,
                 onOpenMirror = onOpenMirror,
+                onOpenPlugins = onOpenPlugins,
             )
             HomeCard.PENDING -> PendingCard(snapshot, hideAmounts, onOpenEntry)
         }
@@ -204,8 +207,11 @@ fun HomeScreen(
     }
 }
 
-/** The window width at which Home lays its cards in two columns. */
-private val TWO_COLUMN_WIDTH = 720.dp
+/**
+ * The width Home's own area must have for two columns: two cards of about 290dp and the gap.
+ * Measured inside the rail, so a phone in landscape (about 650dp beside the rail) qualifies.
+ */
+private val TWO_COLUMN_WIDTH = 600.dp
 
 /** How wide two columns may grow together: two readable measures and the gap between. */
 private val WIDE_MEASURE = 1160.dp
@@ -553,6 +559,7 @@ private fun AttentionCard(
     onOpenJournal: () -> Unit,
     onOpenDocuments: () -> Unit,
     onOpenMirror: () -> Unit,
+    onOpenPlugins: () -> Unit,
 ) {
     val items = remember(ledger, unfiledDocuments, brokenDocumentLinks, mirrorConflicts) {
         HomeInsights.attention(ledger, unfiledDocuments, brokenDocumentLinks, mirrorConflicts)
@@ -605,6 +612,7 @@ private fun AttentionCard(
                 AttentionItem.Destination.JOURNAL -> onOpenJournal
                 AttentionItem.Destination.DOCUMENTS -> onOpenDocuments
                 AttentionItem.Destination.MIRROR -> onOpenMirror
+                AttentionItem.Destination.PLUGINS -> onOpenPlugins
             }
             Row(
                 modifier = Modifier
@@ -710,8 +718,11 @@ private fun CustomiseHomeSheet(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(
+            // Clear of the navigation bar (B98): Save and Cancel sat under the gesture bar,
+            // half drawn, until the sheet was scrolled.
             modifier = Modifier
                 .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
                 .padding(horizontal = Measure.gutter)
                 .padding(bottom = Measure.section),
             verticalArrangement = Arrangement.spacedBy(Measure.snug),

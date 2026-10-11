@@ -85,7 +85,7 @@ internal fun MainActivity.saveText(
             operation in ENTRY_OPERATIONS
         ) {
             entryCommits += 1
-            app.undo.offerFor(projectId, result, "the saved entry")
+            app.undo.offerFor(projectId, result, "saved the entry")
         }
         onResult(
             when (result) {

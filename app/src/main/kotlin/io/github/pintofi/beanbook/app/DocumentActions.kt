@@ -436,6 +436,10 @@ internal fun MainActivity.deleteEntries(
             lastCommitted?.let {
                 app.undo.offerFor(projectId, it, if (deleted == 1) "deleted 1 entry" else "deleted $deleted entries")
             }
+        } else {
+            // Said over the Journal, where the delete was asked for (B98): the save message is
+            // shown only in the entry form, so a refused delete used to say nothing at all.
+            saveMessage?.let(app.undo::tell)
         }
         app.ledgerState.load(mainFile)
     }
@@ -493,6 +497,13 @@ internal fun MainActivity.deleteEntry(
             is io.github.pintofi.beanbook.core.data.WriteResult.RolledBack ->
                 "Not deleted: ${result.reason}. Your ledger is unchanged."
             is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> "Not deleted: ${result.reason}"
+        }
+        // The confirmation promised Undo; the bar keeps that promise (B98). A refusal is said
+        // there too, since the entry page closes and the form's message line is not on screen.
+        if (result is io.github.pintofi.beanbook.core.data.WriteResult.Committed) {
+            app.undo.offerFor(projectId, result, "deleted 1 entry")
+        } else {
+            saveMessage?.let(app.undo::tell)
         }
         app.ledgerState.load(mainFile)
     }

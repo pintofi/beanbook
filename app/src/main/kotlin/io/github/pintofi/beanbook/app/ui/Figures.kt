@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.isSpecified
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.pintofi.beanbook.app.ui.theme.AmountTextStyle
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
@@ -157,10 +158,16 @@ fun HeadlineFigure(
         if (figures.more > 0) {
             val words = if (figures.more == 1) "1 more commodity" else "${figures.more} more commodities"
             if (onMore != null) {
+                // Flush with the figures above it: a text button's own inset set "+4 more" a
+                // step to the right of the column it belongs to. The target stays 48dp.
                 TextButton(
                     onClick = onMore,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        start = 0.dp,
+                        end = Measure.gap,
+                    ),
                     modifier = Modifier.semantics { contentDescription = "$words. Open Balances to see them all" },
-                ) { Text("+${figures.more} more") }
+                ) { Text("+${figures.more} more", style = MaterialTheme.typography.labelLarge) }
             } else {
                 Text(
                     "+${figures.more} more",

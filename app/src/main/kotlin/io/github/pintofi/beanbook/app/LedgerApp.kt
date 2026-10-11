@@ -446,8 +446,13 @@ internal fun LedgerApp(
     // The add button steps aside while the page is read downwards (design-direction §7). Reset
     // on every move, so a destination always opens with its button in view.
     val actionScroll = remember { ActionScroll() }
-    androidx.compose.runtime.LaunchedEffect(selected, adding, moreSection) { actionScroll.reset() }
+    androidx.compose.runtime.LaunchedEffect(selected, adding, moreSection, ledger) { actionScroll.reset() }
     val addable = showsAddAction(selected, adding, hasLedger = ledger != null)
+    // What the form's save bar says: only what happened since this form opened (B98). The
+    // message is shared with deletes and document filing, and a refused delete from the
+    // Journal used to greet the next new entry in red on its sticky bar.
+    val staleMessage = remember(adding, editSession) { saveState }
+    val formMessage = saveState.takeIf { it != staleMessage }
     Box(modifier = modifier) {
     Row(
         modifier = Modifier
@@ -458,7 +463,7 @@ internal fun LedgerApp(
             LedgerNavigationRail(
                 selected = selected,
                 adding = adding,
-                showAdd = addable,
+                showAdd = addable && railHoldsAdd(),
                 onAdd = { adding = true },
                 onSelect = { leavingAdd { goTo(it) } },
             )
@@ -516,12 +521,15 @@ internal fun LedgerApp(
         // appeared under the form -- roughly the height of the keyboard, left behind when the
         // keyboard went away and the animation settled.
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets.exclude(WindowInsets.ime),
+        // Undo, over any screen, above the bar and under the lifted add button (B98).
+        snackbarHost = { UndoBar() },
         topBar = {
             LedgerTopBar(
                 projectName = projects.firstOrNull { it.id == activeProjectId }?.title
                     ?: ledger?.title
                     ?: "Beanbook",
                 health = ledgerHealth(engineStatus, ledger),
+                healthy = ledgerHealthy(ledger),
                 sectionTitle = if (selected == Surface.MORE) moreSection?.label else null,
                 adding = adding,
                 editing = adding && editSession != null,
@@ -542,7 +550,10 @@ internal fun LedgerApp(
             @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
             val keyboard = WindowInsets.isImeVisible
             io.github.pintofi.beanbook.app.ui.LedgerAction(
-                visible = addable && layout == PaneLayout.COMPACT && !actionScroll.readingOn && !keyboard,
+                visible = addable &&
+                    (layout == PaneLayout.COMPACT || !railHoldsAdd()) &&
+                    !actionScroll.readingOn &&
+                    !keyboard,
             ) {
                 AddEntryButton(onClick = { adding = true })
             }
@@ -701,7 +712,7 @@ internal fun LedgerApp(
                 onSaveTemplate = onSaveTemplate,
                 onDeleteTemplate = onDeleteTemplate,
                 onSaveDirective = onSaveDirective,
-                saveState = saveState,
+                saveState = formMessage,
                 entryCommits = entryCommits,
                 editSession = editSession,
                 projects = projects,

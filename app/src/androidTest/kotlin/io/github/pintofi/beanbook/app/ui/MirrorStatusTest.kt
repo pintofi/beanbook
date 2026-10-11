@@ -124,7 +124,8 @@ class MirrorStatusTest {
     @Test fun theFolderIsOfferedBeforeTheSwitchThatNeedsIt() {
         show(MirrorStatus.Manual(lastPassAtEpochMs = null))
 
-        val folder = compose.onNodeWithText("Change folder").fetchSemanticsNode()
+        val folder = compose.onNodeWithContentDescription("Change the folder", substring = true)
+            .fetchSemanticsNode()
         val switch = compose.onNodeWithText("Mirror after every change").fetchSemanticsNode()
         assert(folder.positionInRoot.y < switch.positionInRoot.y) {
             "the switch was above the folder it depends on"

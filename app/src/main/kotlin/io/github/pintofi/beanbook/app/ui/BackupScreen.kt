@@ -202,20 +202,25 @@ fun BackupScreen(
         FolioHeading("Scheduled backups")
         FolioGroup {
             item {
+                // The whole row chooses or changes the folder (B98): a button beside the words
+                // squeezed them into a narrow column on a phone.
                 FolioRow(
-                    title = scheduleFolder?.let { humanFolder(it) } ?: "No folder chosen",
+                    title = scheduleFolder?.let { humanFolder(it) } ?: "Choose a folder",
                     detail = if (scheduleFolder == null) {
                         "Where scheduled backups are written"
                     } else {
-                        "Backups go to this folder"
+                        "Backups go to this folder. Tap to change it."
                     },
                     icon = Icons.Outlined.Folder,
                     tone = if (scheduleFolder == null) FolioTone.PLAIN else FolioTone.ACCENT,
-                ) {
-                    TextButton(onClick = onChooseScheduleFolder) {
-                        Text(if (scheduleFolder == null) "Choose a folder" else "Change folder")
-                    }
-                }
+                    onClick = onChooseScheduleFolder,
+                    opens = true,
+                    describe = if (scheduleFolder == null) {
+                        "Choose a folder for scheduled backups"
+                    } else {
+                        "Backups go to ${humanFolder(scheduleFolder)}. Change the folder"
+                    },
+                )
             }
             item {
                 FolioSwitchRow(

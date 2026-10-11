@@ -104,7 +104,7 @@ class BeancountApplication : Application() {
 
     val editorController: EditorController by lazy {
         EditorController(workspace, writer, drafts, appScope) { id, result ->
-            undo.offerFor(id, result, "the file edit")
+            undo.offerFor(id, result, "saved the file")
         }
     }
 

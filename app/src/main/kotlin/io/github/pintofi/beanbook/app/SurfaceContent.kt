@@ -216,6 +216,10 @@ internal fun SurfaceContent(
                         onSelectSurface(Surface.MORE)
                         onMoreSection(MoreSection.DOCUMENTS)
                     },
+                    onOpenPlugins = {
+                        onSelectSurface(Surface.MORE)
+                        onMoreSection(MoreSection.PLUGINS)
+                    },
                     onOpenMirror = {
                         onSelectSurface(Surface.MORE)
                         onMoreSection(MoreSection.MIRROR)
@@ -386,6 +390,19 @@ internal fun SurfaceContent(
                                 onSetSafeMode = onSetPluginSafeMode,
                                 packages = packages,
                                 message = pluginMessage,
+                                // What the last load said about each catalogue plugin's
+                                // modules (B97): extension imports and plugin import errors.
+                                status = { id ->
+                                    val modules = packages.catalogue.entries
+                                        .firstOrNull { it.id == id }?.install?.modules.orEmpty()
+                                    io.github.pintofi.beanbook.app.ui.pluginStatusFor(
+                                        modules = modules,
+                                        extensionHealth = ledger?.extensionHealth.orEmpty(),
+                                        ledgerPlugins = ledger?.plugins.orEmpty().map { it.name },
+                                        errors = ledger?.errors.orEmpty().map { it.message },
+                                        safeMode = pluginSafeMode,
+                                    )
+                                },
                             )
 
 
