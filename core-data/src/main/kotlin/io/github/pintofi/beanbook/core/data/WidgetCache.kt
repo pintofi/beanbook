@@ -202,11 +202,27 @@ class WidgetCache(stateDir: File) {
                 // Assets *plus* liabilities, not minus: Beancount already stores what you
                 // owe as a negative balance. Negating it made debt increase net worth, which
                 // is the most cheerful possible way to be wrong about someone's finances.
-                netWorth = summary.netWorth,
+                // In Home's headline order (B98): operating currencies first, then the largest.
+                // Alphabetical put "80.00 AIRSF-E" above the rupees, and a widget with room for
+                // one line showed that line.
+                netWorth = headlineOrder(ledger, valuation) ?: summary.netWorth,
                 periodIncome = summary.income,
                 periodExpense = summary.expenses,
                 clean = ledger.errors.isEmpty(),
             )
+        }
+
+        /** The net worth lines as Home orders them, or null when there is no non-zero one. */
+        private fun headlineOrder(
+            ledger: LedgerSnapshot,
+            valuation: io.github.pintofi.beanbook.core.domain.Valuation,
+        ): String? {
+            val ordered = io.github.pintofi.beanbook.core.domain.HeadlineFigures.of(
+                LedgerSummary.totals(ledger, valuation).netWorth,
+                ledger.operatingCurrencies,
+                max = Int.MAX_VALUE,
+            ).shown
+            return if (ordered.isEmpty()) null else LedgerSummary.format(ordered, ledger.format)
         }
 
         /**

@@ -103,7 +103,7 @@ data class AttentionItem(
     val detail: String,
     val destination: Destination,
 ) {
-    enum class Destination { JOURNAL, DOCUMENTS, MIRROR }
+    enum class Destination { JOURNAL, DOCUMENTS, MIRROR, PLUGINS }
 }
 
 /** The computations behind the home cards. Pure, so the arithmetic is testable (B71). */
@@ -238,6 +238,22 @@ object HomeInsights {
                     "${onEntries.values.sumOf { it.size }} of them are on entries, marked in the Journal."
                 },
                 destination = AttentionItem.Destination.JOURNAL,
+            )
+        }
+        // Fava extensions that do not import (B97): Fava lists them only on its own Errors page,
+        // so the ledger read as healthy while a report page it names was missing.
+        val failedExtensions = ledger.extensionHealth.filterValues { it != null }.keys.sorted()
+        if (failedExtensions.isNotEmpty()) {
+            items += AttentionItem(
+                headline = if (failedExtensions.size == 1) {
+                    "1 report extension did not load"
+                } else {
+                    "${failedExtensions.size} report extensions did not load"
+                },
+                detail = failedExtensions.joinToString(", ") +
+                    (if (failedExtensions.size == 1) ". Its pages are" else ". Their pages are") +
+                    " missing from Reports. Tap to see why in Plugins.",
+                destination = AttentionItem.Destination.PLUGINS,
             )
         }
         if (brokenDocumentLinks > 0) {

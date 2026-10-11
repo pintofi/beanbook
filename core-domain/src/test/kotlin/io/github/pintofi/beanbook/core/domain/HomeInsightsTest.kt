@@ -207,6 +207,28 @@ class HomeInsightsTest {
         assertEquals("1 document is missing", items.first().headline)
     }
 
+    @Test fun `a report extension that does not import needs attention, one that does not`() {
+        val withExtensions = ledger().copy(
+            extensionHealth = mapOf(
+                "fava_portfolio_returns" to "No module named 'scipy'",
+                "fava_investor" to null,
+            ),
+        )
+
+        val item = HomeInsights.attention(withExtensions).single()
+
+        assertEquals("1 report extension did not load", item.headline)
+        assertEquals(AttentionItem.Destination.PLUGINS, item.destination)
+        assertTrue(item.detail.startsWith("fava_portfolio_returns. Its pages are missing"))
+        assertEquals(1, withExtensions.extensionFailures)
+    }
+
+    @Test fun `extensions that all import need no attention`() {
+        val healthy = ledger().copy(extensionHealth = mapOf("fava_investor" to null))
+
+        assertTrue(HomeInsights.attention(healthy).isEmpty())
+    }
+
     @Test fun `a clean ledger needs no attention`() {
         assertTrue(HomeInsights.attention(ledger()).isEmpty())
     }
