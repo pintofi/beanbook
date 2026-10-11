@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 
 private const val TAG = "FavaWebView"
 
@@ -49,7 +51,13 @@ class AllowlistWebViewClient(
     private val themeScript: () -> String? = { null },
     /** Every address the page moves to, including Fava's in-page navigation (B89). */
     private val onUrlChanged: (String) -> Unit = {},
+    /** A document load began; [onPageLoaded] says when it ended (the native progress rule). */
+    private val onPageBegan: (String) -> Unit = {},
 ) : WebViewClient() {
+
+    override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+        onPageBegan(url)
+    }
 
     override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
         // Fava moves between reports without loading a new document, so onPageFinished does
@@ -294,7 +302,16 @@ fun FavaWebView(
     }
     val currentTheme = androidx.compose.runtime.rememberUpdatedState(themeScript)
 
+    // Whether Fava is working on something right now (design-direction §10): a document load,
+    // from onPageStarted to onPageFinished, or one of Fava's own in-page navigations, which load
+    // no document and are read from its header spinner. A 30 s report used to show no native
+    // sign of life at all (device audit 2026-10-10).
+    var documentLoading by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var favaBusy by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val webRef = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<WebView?>(null) }
+
     val onLoaded = androidx.compose.runtime.rememberUpdatedState { at: String ->
+        documentLoading = false
         loaded = true
         retained?.let {
             if (!it.loaded || it.landing == null) it.landing = at
@@ -321,6 +338,7 @@ fun FavaWebView(
                 (kept?.parent as? android.view.ViewGroup)?.removeView(kept)
                 val web = (kept ?: WebView(context).apply { applyBeancountHardening(debuggingAllowed) }).apply {
                     retained?.view = this
+                    webRef.value = this
                     // A page that renders nothing says nothing without this: the report is
                     // Fava's own JavaScript, and when it throws the only record is the
                     // browser console. Debug builds only, and it reads messages rather than
@@ -348,6 +366,7 @@ fun FavaWebView(
                         onPageLoaded = { onLoaded(it) },
                         themeScript = { currentTheme.value },
                         onUrlChanged = { retained?.currentUrl = it },
+                        onPageBegan = { documentLoading = true },
                     )
                 }
                 addView(
@@ -378,20 +397,41 @@ fun FavaWebView(
     )
 
     // The report fading up over the shell's own loading rule, rather than a white page
-    // becoming a report between two frames.
+    // becoming a report between two frames. An instant swap with animations off (design-
+    // direction §9): the audit found this fade running regardless.
+    val motion = io.github.pintofi.beanbook.app.ui.theme.LocalMotionEnabled.current
     androidx.compose.animation.AnimatedVisibility(
         visible = !loaded,
         modifier = androidx.compose.ui.Modifier.fillMaxSize(),
         enter = androidx.compose.animation.fadeIn(
-            io.github.pintofi.beanbook.app.ui.theme.MotionRole.fade(),
+            if (motion) {
+                io.github.pintofi.beanbook.app.ui.theme.MotionRole.fade()
+            } else {
+                androidx.compose.animation.core.snap()
+            },
         ),
         exit = androidx.compose.animation.fadeOut(
-            io.github.pintofi.beanbook.app.ui.theme.MotionRole.replace(),
+            if (motion) {
+                io.github.pintofi.beanbook.app.ui.theme.MotionRole.replace()
+            } else {
+                androidx.compose.animation.core.snap()
+            },
         ),
         label = "report",
     ) {
         ReportLoading()
     }
+
+    // Fava's own state, read while Reports is on screen. evaluateJavascript hands the result to
+    // the app's callback; the page is given nothing and can call nothing (no JS bridge).
+    androidx.compose.runtime.LaunchedEffect(webRef.value) {
+        val web = webRef.value ?: return@LaunchedEffect
+        while (true) {
+            kotlinx.coroutines.delay(BUSY_POLL_MS)
+            web.evaluateJavascript(FavaTheme.BUSY_PROBE) { answer -> favaBusy = answer == "true" }
+        }
+    }
+    if (loaded) ReportWorking(busy = documentLoading || favaBusy)
     }
 
     DisposableEffect(url) {
@@ -415,17 +455,81 @@ private fun ReportLoading() {
             .padding(horizontal = 20.dp, vertical = 32.dp),
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
     ) {
-        androidx.compose.material3.LinearProgressIndicator(
-            modifier = androidx.compose.ui.Modifier.fillMaxWidth().height(2.dp),
-            color = io.github.pintofi.beanbook.app.ui.theme.BeancountTheme.ledger.rule,
-            trackColor = androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant,
-            strokeCap = androidx.compose.ui.graphics.StrokeCap.Butt,
-            gapSize = 0.dp,
-        )
+        // Still when animations are off (LedgerProgressRule).
+        io.github.pintofi.beanbook.app.ui.LedgerProgressRule()
         androidx.compose.material3.Text(
             "Drawing the report…",
             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
             color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/** How often Reports asks Fava whether it is busy: often enough to feel immediate, cheap. */
+private const val BUSY_POLL_MS = 400L
+
+/** How long Fava may work before the progress rule appears: a quick page shows no flicker. */
+private const val BUSY_SHOW_AFTER_MS = 250L
+
+/** How long it may work before the words appear as well. */
+private const val BUSY_WORDS_AFTER_MS = 3_000L
+
+/**
+ * The native sign that a report is on its way, over a page that is already showing
+ * (design-direction §10): the ledger's rule filling across the top as soon as a wait is
+ * noticeable, and after a few seconds a line saying so, announced politely. Both go the moment
+ * Fava is done.
+ */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.ReportWorking(busy: Boolean) {
+    var showRule by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showWords by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(busy) {
+        if (busy) {
+            kotlinx.coroutines.delay(BUSY_SHOW_AFTER_MS)
+            showRule = true
+            kotlinx.coroutines.delay(BUSY_WORDS_AFTER_MS - BUSY_SHOW_AFTER_MS)
+            showWords = true
+        } else {
+            showRule = false
+            showWords = false
+        }
+    }
+    if (showRule) {
+        io.github.pintofi.beanbook.app.ui.LedgerProgressRule(
+            modifier = androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.TopCenter),
+        )
+    }
+    io.github.pintofi.beanbook.app.ui.LedgerReveal(
+        visible = showWords,
+        label = "reportWorking",
+        modifier = androidx.compose.ui.Modifier
+            .align(androidx.compose.ui.Alignment.BottomCenter)
+            .padding(bottom = 24.dp),
+    ) {
+        androidx.compose.material3.Surface(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+            color = androidx.compose.material3.MaterialTheme.colorScheme.inverseSurface,
+            contentColor = androidx.compose.material3.MaterialTheme.colorScheme.inverseOnSurface,
+            shadowElevation = 3.dp,
+            modifier = androidx.compose.ui.Modifier.semantics {
+                liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+            },
+        ) {
+            androidx.compose.foundation.layout.Row(
+                modifier = androidx.compose.ui.Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
+            ) {
+                io.github.pintofi.beanbook.app.ui.LedgerLoadingIndicator(
+                    size = 20.dp,
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.inverseOnSurface,
+                )
+                androidx.compose.material3.Text(
+                    "Drawing the report…",
+                    style = androidx.compose.material3.MaterialTheme.typography.labelLarge,
+                )
+            }
+        }
     }
 }
