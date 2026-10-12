@@ -106,7 +106,11 @@ class LedgerReader(
                     val snapshot = parse(JSONObject(text))
                     // Cached against the files this load actually read, which is what makes
                     // an added `include` invalidate it next time.
-                    cache.write(ledgerPath, snapshot.includedFiles + ledgerPath, inputs, text)
+                    // Not when the extension answer is "not known yet" (B101): a cache would keep
+                    // that for as long as the ledger's files did not change.
+                    if (JSONObject(text).optBoolean("extension_health_complete", true)) {
+                        cache.write(ledgerPath, snapshot.includedFiles + ledgerPath, inputs, text)
+                    }
                     // Wall clock, not the engine's own `load_ms`, and on both paths.
                     //
                     // The engine reports how long Beancount spent, which excludes starting

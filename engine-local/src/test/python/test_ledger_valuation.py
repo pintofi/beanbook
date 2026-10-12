@@ -183,19 +183,44 @@ class PostingRateTest(unittest.TestCase):
 
 
 class ExtensionHealthTest(unittest.TestCase):
-    """A Fava extension that cannot be imported is reported, not hidden (B97)."""
+    """Extension health comes from what Fava reported, and nothing is imported (B101)."""
 
-    def test_missing_extension_is_reported_and_present_one_is_not(self):
-        text = (
-            '2026-01-01 open Assets:Cash\n'
-            '2026-01-01 custom "fava-extension" "no_such_extension_module"\n'
-            '2026-01-01 custom "fava-extension" "json"\n'
-        ).replace("\\\\n", "\\n")
+    TEXT = (
+        '2026-01-01 open Assets:Cash\n'
+        '2026-01-01 custom "fava-extension" "broken_ext"\n'
+        '2026-01-01 custom "fava-extension" "fine_ext"\n'
+    )
+
+    def _inspect(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "main.beancount"
-            path.write_text(text)
-            payload = json.loads(ledger.inspect(str(path)))
+            path.write_text(self.TEXT)
+            return json.loads(ledger.inspect(str(path)))
 
-        health = payload["extension_health"]
-        self.assertIsNone(health["json"])
-        self.assertIn("ModuleNotFoundError", health["no_such_extension_module"])
+    def setUp(self):
+        import extension_state
+
+        self.state = extension_state
+        self.state.ready, self.state.errors = False, {}
+
+    def tearDown(self):
+        self.state.ready, self.state.errors = False, {}
+
+    def test_not_known_until_fava_has_loaded(self):
+        payload = self._inspect()
+        self.assertEqual({}, payload["extension_health"])
+        self.assertFalse(payload["extension_health_complete"])
+
+    def test_failure_and_success_come_from_fava(self):
+        self.state.errors = {"broken_ext": "ModuleNotFoundError: No module named 'scipy'"}
+        self.state.ready = True
+        payload = self._inspect()
+        self.assertTrue(payload["extension_health_complete"])
+        self.assertIn("scipy", payload["extension_health"]["broken_ext"])
+        self.assertIsNone(payload["extension_health"]["fine_ext"])
+
+    def test_the_extension_modules_are_never_imported(self):
+        self.state.ready = True
+        self._inspect()
+        self.assertNotIn("broken_ext", sys.modules)
+        self.assertNotIn("fine_ext", sys.modules)

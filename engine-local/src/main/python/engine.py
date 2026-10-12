@@ -95,6 +95,10 @@ def start(
     if _server is not None:
         stop()
 
+    import extension_state
+
+    extension_state.starting = True
+
     path = Path(ledger_path)
     if not path.is_file():
         raise FileNotFoundError(f"no such ledger file: {ledger_path}")
@@ -129,6 +133,7 @@ def start(
 
     flask_app = create_app([path], load=True, poll_watcher=poll_watcher)
     app_ready = time.monotonic()
+    _record_extension_errors(flask_app)
 
     gate = TokenGate(flask_app, token)
 
@@ -155,6 +160,28 @@ def start(
     )
 
 
+def _record_extension_errors(flask_app) -> None:
+    """Remembers which Fava extensions failed to load, from Fava's own error list (B101)."""
+    import re
+
+    import extension_state
+
+    found: dict = {}
+    try:
+        for ledger in (flask_app.config.get("LEDGERS") or {}).values():
+            for error in getattr(ledger, "errors", None) or []:
+                message = str(getattr(error, "message", error))
+                named = re.match(r'Importing module "([^"]+)" failed', message)
+                if named:
+                    reason = re.search(r'Error: "(.*?)"\s*$', message, re.S)
+                    found[named.group(1)] = (reason.group(1) if reason else message).strip()[:400]
+    except Exception:  # noqa: BLE001 - health is information; it must never stop Fava starting
+        pass
+    extension_state.errors = found
+    extension_state.ready = True
+    extension_state.starting = False
+
+
 def _discover_slug(flask_app, path: Path) -> str:
     """Fava namespaces every route by ledger slug. Ask, never guess (S4 finding)."""
     ledgers = flask_app.config.get("LEDGERS")
@@ -173,6 +200,12 @@ def stop() -> str:
     that is never stopped keeps the process alive (Phase 0 finding C7).
     """
     global _server, _thread
+
+    import extension_state
+
+    extension_state.ready = False
+    extension_state.starting = False
+    extension_state.errors = {}
 
     # Sharing serves the same Fava application, so it cannot outlive it.
     import sharing

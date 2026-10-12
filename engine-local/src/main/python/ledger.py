@@ -79,39 +79,16 @@ def _commodity_attributes(options_map: Any) -> list:
     return []
 
 
-_EXTENSION_CACHE: dict = {}
+def _extension_health(entries: Any) -> tuple:
+    """Whether each Fava extension the ledger names loaded, as Fava itself found (B97, B101).
 
-
-def _package_stamp(plugin_dirs: str, modules: list) -> float:
-    """The newest source file under the extensions' own packages (B101).
-
-    The health answer is kept per module set and folder list, and a repaired plugin has the
-    same modules in the same folders: without this a fixed install kept its old failure.
-    """
-    import os
-
-    newest = 0.0
-    for directory in [d for d in str(plugin_dirs).split(",") if d]:
-        for module in modules:
-            root = os.path.join(directory, module.split(".")[0])
-            for current, _dirs, names in os.walk(root):
-                for name in names:
-                    if name.endswith(".py"):
-                        try:
-                            newest = max(newest, os.path.getmtime(os.path.join(current, name)))
-                        except OSError:
-                            pass
-    return newest
-
-
-def _extension_health(entries: Any, plugin_dirs: str, allow_bridge: bool) -> dict:
-    """Whether each Fava extension the ledger names can be imported (B97).
-
-    Fava reports a failed extension only on its own Errors page, so the app showed a healthy
-    plugin and an error count one short. The modules are the `fava-extension` custom
-    directives; each is imported once inside the same plugin context a load gets, and the
-    answer is kept until the modules or the plugin folders change, because importing numpy
-    and pandas again on every reload would cost seconds each time.
+    Returns (health, complete). The modules are the `fava-extension` custom directives. The
+    answer comes from what Fava reported when it loaded the ledger (`extension_state`), and
+    **nothing is imported here**: the first version imported each extension inside the load and
+    then evicted it, and when Fava later imported numpy again the second initialisation of its
+    C extension crashed the whole engine process (SIGSEGV), taking Reports down with it.
+    `complete` is False until Fava has finished loading, so a caller does not keep an answer
+    that was only "not known yet".
     """
     from beancount.core import data as _data
 
@@ -125,25 +102,18 @@ def _extension_health(entries: Any, plugin_dirs: str, allow_bridge: bool) -> dic
         }
     )
     if not modules:
-        return {}
-    key = (tuple(modules), plugin_dirs, allow_bridge, _package_stamp(plugin_dirs, modules))
-    if key in _EXTENSION_CACHE:
-        return _EXTENSION_CACHE[key]
-    import importlib
+        return {}, True
+    import extension_state
 
-    import plugins
-
-    health: dict = {}
-    with plugins.activated(plugin_dirs, allow_bridge):
-        for module in modules:
-            try:
-                importlib.import_module(module)
-                health[module] = None
-            except BaseException as exc:  # noqa: BLE001 - a plugin may raise anything
-                health[module] = f"{type(exc).__name__}: {exc}"[:400]
-    _EXTENSION_CACHE.clear()
-    _EXTENSION_CACHE[key] = health
-    return health
+    # Fava is loading the same ledger in the same process, at the same time as this call: wait
+    # for it (bounded) rather than reporting "not known yet" and having that cached.
+    waited = 0.0
+    while extension_state.starting and not extension_state.ready and waited < 40.0:
+        time.sleep(0.25)
+        waited += 0.25
+    if not extension_state.ready:
+        return {}, False
+    return {m: extension_state.errors.get(m) for m in modules}, True
 
 
 def _error_dict(error: Any) -> dict[str, Any]:
@@ -558,6 +528,7 @@ def inspect(
         for currency, value in (options_map.get("inferred_tolerance_default") or {}).items()
     }
 
+    _health = _extension_health(all_entries)
     payload = {
         "ok": True,
         "render_commas": bool(options_map.get("render_commas")),
@@ -579,7 +550,8 @@ def inspect(
         "tolerances": dict(sorted(tolerances.items())),
         "documents": documents,
         "commodity_attributes": _commodity_attributes(options_map),
-        "extension_health": _extension_health(all_entries, "" if plugin_failure else plugin_dirs, allow_bridge),
+        "extension_health": _health[0],
+        "extension_health_complete": _health[1],
         "plugins": [
             {"name": str(entry[0]), "config": None if len(entry) < 2 else entry[1]}
             for entry in (options_map.get("plugin") or [])
