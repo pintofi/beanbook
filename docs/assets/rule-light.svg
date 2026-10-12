@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 40" width="1280" height="40" role="img" aria-label="Section rule">
+<style>
+@media (prefers-reduced-motion: no-preference){
+ .l{transform-box:fill-box;transform-origin:right;animation:d 1.1s cubic-bezier(.05,.7,.1,1) .2s both}
+ .r{transform-box:fill-box;transform-origin:left;animation:d 1.1s cubic-bezier(.05,.7,.1,1) .2s both}
+ .m{transform-box:fill-box;transform-origin:center;animation:m .6s cubic-bezier(.3,1.5,.5,1) both}
+}
+@keyframes d{from{transform:scaleX(0)}}
+@keyframes m{from{transform:scale(0)}}
+</style>
+<g fill="#0b5f5b">
+ <g class="l"><rect x="40" y="16" width="528.0" height="2.5"/><rect x="40" y="22.5" width="528.0" height="2.5"/></g>
+ <g class="r"><rect x="712.0" y="16" width="528.0" height="2.5"/><rect x="712.0" y="22.5" width="528.0" height="2.5"/></g>
+ <g class="m"><rect x="620.0" y="13" width="40" height="5" rx="1"/><rect x="620.0" y="23" width="40" height="5" rx="1"/></g>
+</g>
+</svg>
