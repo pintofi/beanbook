@@ -100,9 +100,14 @@ android {
         buildConfig = true
     }
 
+    // An App Bundle is split per ABI by Play itself, and Android Gradle Plugin refuses to bundle
+    // while per-ABI APK splits are on ("Multiple shrunk-resources files found", B101): the
+    // splits are off for a bundle build and on for every APK build.
+    val bundling = gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) }
+
     splits {
         abi {
-            isEnable = true
+            isEnable = !bundling
             reset()
             include("arm64-v8a", "x86_64")
             // Per-ABI downloads save ~11 MB over the universal APK

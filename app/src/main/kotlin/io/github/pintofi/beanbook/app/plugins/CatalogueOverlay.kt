@@ -38,10 +38,13 @@ internal class CatalogueOverlay(private val assets: AssetManager) {
                     "overlay file escapes the install folder: $relative"
                 }
                 target.parentFile?.mkdirs()
-                assets.open("$prefix/$relative").use { source ->
-                    target.outputStream().use { source.copyTo(it) }
+                val bytes = assets.open("$prefix/$relative").use { it.readBytes() }
+                // Only what actually changes is reported, so "re-applied" means a repair and
+                // not a start-up that rewrote identical files (B101).
+                if (!target.isFile || !target.readBytes().contentEquals(bytes)) {
+                    target.writeBytes(bytes)
+                    replaced += relative
                 }
-                replaced += relative
             }.onFailure { Diagnostics.w(TAG, "overlay file $relative not applied", it) }
         }
         if (replaced.isNotEmpty()) Diagnostics.i(TAG, "overlay applied to ${entry.id}: $replaced")

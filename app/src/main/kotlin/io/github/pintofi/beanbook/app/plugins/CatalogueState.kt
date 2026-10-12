@@ -79,7 +79,13 @@ class CatalogueState(
                 val entry = catalogue.entries.firstOrNull { it.id == id } ?: return@forEach
                 if (entry.install?.version != version && version.isNotEmpty()) return@forEach
                 val replaced = overlay.apply(entry, installer.siteFor(id))
-                if (replaced.isNotEmpty()) Diagnostics.i(TAG, "overlay re-applied to $id")
+                if (replaced.isNotEmpty()) {
+                    Diagnostics.i(TAG, "overlay re-applied to $id")
+                    // The ledger snapshot carries which extensions import, and it is cached
+                    // against the ledger's files, not the plugin's: a repaired plugin kept
+                    // showing the failure it had been repaired for (B101).
+                    File(context.cacheDir, "ledger-snapshots").deleteRecursively()
+                }
             }
         }.onFailure { Diagnostics.w(TAG, "overlays could not be re-applied", it) }
     }

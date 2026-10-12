@@ -82,6 +82,28 @@ def _commodity_attributes(options_map: Any) -> list:
 _EXTENSION_CACHE: dict = {}
 
 
+def _package_stamp(plugin_dirs: str, modules: list) -> float:
+    """The newest source file under the extensions' own packages (B101).
+
+    The health answer is kept per module set and folder list, and a repaired plugin has the
+    same modules in the same folders: without this a fixed install kept its old failure.
+    """
+    import os
+
+    newest = 0.0
+    for directory in [d for d in str(plugin_dirs).split(",") if d]:
+        for module in modules:
+            root = os.path.join(directory, module.split(".")[0])
+            for current, _dirs, names in os.walk(root):
+                for name in names:
+                    if name.endswith(".py"):
+                        try:
+                            newest = max(newest, os.path.getmtime(os.path.join(current, name)))
+                        except OSError:
+                            pass
+    return newest
+
+
 def _extension_health(entries: Any, plugin_dirs: str, allow_bridge: bool) -> dict:
     """Whether each Fava extension the ledger names can be imported (B97).
 
@@ -104,7 +126,7 @@ def _extension_health(entries: Any, plugin_dirs: str, allow_bridge: bool) -> dic
     )
     if not modules:
         return {}
-    key = (tuple(modules), plugin_dirs, allow_bridge)
+    key = (tuple(modules), plugin_dirs, allow_bridge, _package_stamp(plugin_dirs, modules))
     if key in _EXTENSION_CACHE:
         return _EXTENSION_CACHE[key]
     import importlib
