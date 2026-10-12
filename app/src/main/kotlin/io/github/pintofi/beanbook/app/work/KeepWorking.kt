@@ -38,6 +38,29 @@ object KeepWorking {
     private var next = 0L
     private var wakeLock: PowerManager.WakeLock? = null
 
+    /**
+     * Whether [WorkService] has called `startForeground` yet (B99).
+     *
+     * Android gives a service started with `startForegroundService` a few seconds to call it,
+     * and kills the *app* if it is stopped first. A save with a scanned page ends in well under
+     * that, so `end` stopped the service before it had started: "Context.startForegroundService()
+     * did not then call Service.startForeground()", a crash on every quick save.
+     */
+    private var serviceStarted = false
+
+    /** Called by the service once it is in the foreground; stops it at once if nothing is left. */
+    internal fun onServiceStarted(service: Service) {
+        val idle = synchronized(lock) {
+            serviceStarted = true
+            running.isEmpty()
+        }
+        if (idle) service.stopSelf()
+    }
+
+    internal fun onServiceDestroyed() {
+        synchronized(lock) { serviceStarted = false }
+    }
+
     /** Runs [block] with the app kept alive, describing it as [what] in the notification. */
     suspend fun <T> around(
         context: Context,
@@ -93,7 +116,10 @@ object KeepWorking {
         }
         runCatching {
             if (remaining == null) {
-                context.stopService(Intent(context, WorkService::class.java))
+                // Stopped now only if it is up; otherwise it stops itself the moment it has
+                // started, which is the only order Android accepts.
+                val up = synchronized(lock) { serviceStarted }
+                if (up) context.stopService(Intent(context, WorkService::class.java))
             } else {
                 context.startService(Intent(context, WorkService::class.java).putExtra(EXTRA_WHAT, remaining))
             }
@@ -140,6 +166,11 @@ class WorkService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onDestroy() {
+        KeepWorking.onServiceDestroyed()
+        super.onDestroy()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val what = intent?.getStringExtra(KeepWorking.EXTRA_WHAT) ?: "Finishing up"
         val notification = KeepWorking.notification(this, what)
@@ -148,6 +179,7 @@ class WorkService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
+        KeepWorking.onServiceStarted(this)
         // Not restarted if Android stops it: the work it guards lives in the app's process,
         // and a restarted service with nothing to guard would only show a stale notification.
         return START_NOT_STICKY

@@ -397,4 +397,27 @@ object BeancountText {
         val padding = (column - left.length - right.length).coerceAtLeast(1)
         return left + " ".repeat(padding) + right
     }
+
+    /**
+     * Removes the 1-based lines [startLine]..[endLine] and the one blank line that set the
+     * entry apart, so adding an entry and deleting it again gives back the file as it was (B99).
+     *
+     * Appending puts one blank line between the old last line and the new entry; deleting used
+     * to take only the entry, leaving that blank line behind, so each add-and-delete grew the
+     * file. The separator that goes is the blank line before the entry, unless the entry is the
+     * first thing in the file or follows a comment run with no blank line, in which case it is
+     * the one after. Nothing else is touched: other blank lines, comments and whitespace stay.
+     */
+    fun removeEntryLines(lines: MutableList<String>, startLine: Int, endLine: Int) {
+        val first = startLine - 1
+        val last = endLine - 1
+        val before = lines.getOrNull(first - 1)?.isBlank() == true
+        val after = lines.getOrNull(last + 1)?.isBlank() == true
+        val atEnd = last + 1 >= lines.size
+        repeat(last - first + 1) { lines.removeAt(first) }
+        when {
+            before && (after || atEnd) -> lines.removeAt(first - 1)
+            !before && after -> lines.removeAt(first)
+        }
+    }
 }

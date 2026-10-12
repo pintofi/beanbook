@@ -36,10 +36,11 @@ class WidgetHostTest {
     @Test fun theSystemSeesEveryWidgetThisAppDeclares() {
         val declared = providers().map { it.shortClassName.substringAfterLast('.') }.sorted()
 
-        // SPEC §8: account balance, income/expense for a period, net worth, quick add.
+        // Two since B93: the multi-account Balance list and the Net worth figure. The separate
+        // "Add an entry" widget was removed -- both widgets carry a + button instead.
         assertTrue(
-            "the system lists $declared, which is not the three widgets ux.md 8 specifies",
-            declared.size == 3,
+            "the system lists $declared, which is not the two widgets the app declares",
+            declared == listOf("BalanceWidget", "NetWorthWidget"),
         )
     }
 

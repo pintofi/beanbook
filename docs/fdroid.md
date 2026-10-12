@@ -18,9 +18,9 @@ What is true today (2026-10-11):
 
 - **No proprietary libraries.** Billing and ML Kit are gone; nothing from Google Play services
   is linked.
-- **Licence.** GPL-2.0-only. [LICENSE-EXCEPTION.md](../LICENSE-EXCEPTION.md) is an exception for
-  the Play Billing Library, which no longer ships (B81) and is explained there; F-Droid
-  maintainers may ask why it is still present, so be ready to answer.
+- **Licence.** GPL-2.0-only with no additional permissions: the dormant Play Billing exception
+  was withdrawn on 2026-10-12 (nothing is sold, no build links the library), so there is
+  nothing for F-Droid maintainers to ask about.
 - **Source build of the Python layer.** The embedded engine needs `beancount` and `watchfiles`
   cross-built for Android (`tools/build-wheels.sh`, pinned sdists and backends) and Chaquopy's
   Gradle plugin. F-Droid builds from source on its own servers, so its recipe has to run that

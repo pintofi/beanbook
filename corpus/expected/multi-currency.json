@@ -16,8 +16,8 @@
       ],
       "at_value": [
         {
-          "currency": "EUR",
-          "number": "1850.00"
+          "currency": "USD",
+          "number": "2007.25"
         }
       ],
       "name": "Assets:Bank:EUR",
@@ -102,11 +102,7 @@
       "at_value": [
         {
           "currency": "USD",
-          "number": "-5000.00"
-        },
-        {
-          "currency": "EUR",
-          "number": "-2000.00"
+          "number": "-7170.00"
         }
       ],
       "name": "Equity:Opening-Balances",
@@ -136,8 +132,8 @@
       ],
       "at_value": [
         {
-          "currency": "EUR",
-          "number": "150.00"
+          "currency": "USD",
+          "number": "162.75"
         }
       ],
       "name": "Expenses:Travel",

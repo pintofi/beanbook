@@ -182,9 +182,8 @@ Beancount, beanquery, and beangulp are GPL-2.0-*only*, explicitly not "or later"
 cannot be used here. The full text is in [COPYING](COPYING), and the copyright holders are
 listed in [AUTHORS](AUTHORS).
 
-Neither edition links any proprietary library for payments: nothing is sold (B81).
-[LICENSE-EXCEPTION.md](LICENSE-EXCEPTION.md) records the linking permission the project granted
-while Play Billing was planned; no shipped build relies on it now.
+Neither edition links any proprietary library for payments: nothing is sold (B81). There is
+no additional licence permission: Beanbook is GPL-2.0-only, with nothing added.
 
 Beancount and Fava are independent projects. This app is built on their work and is not
 affiliated with or endorsed by them.

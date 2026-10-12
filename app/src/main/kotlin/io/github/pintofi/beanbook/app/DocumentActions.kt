@@ -401,7 +401,8 @@ internal fun MainActivity.deleteEntries(
                 val lines = target.readText().split(Regex("(?<=\n)")).toMutableList()
                 if (lines.lastOrNull()?.isEmpty() == true) lines.removeAt(lines.lastIndex)
                 inFile.sortedByDescending { it.startLine }.forEach { slice ->
-                    repeat(slice.endLine - slice.startLine + 1) { lines.removeAt(slice.startLine - 1) }
+                    io.github.pintofi.beanbook.core.domain.BeancountText
+                        .removeEntryLines(lines, slice.startLine, slice.endLine)
                 }
                 lines.joinToString("")
             }.getOrElse {

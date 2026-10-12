@@ -14,6 +14,9 @@ the project has not been released yet, so everything is under *Unreleased*.
 - The Bound Ledger redesign on Material 3 Expressive, built for 200% text, landscape and tablets.
 
 ### Fixed
+- Saving an entry with a scanned page no longer crashes the app.
+- Deleting an entry also removes the blank line that set it apart, so adding and deleting returns the file to how it was.
+- Plugins installed before their Android overlay existed get it applied at start (the SciPy-free `fava_portfolio_returns`).
 - Searching the Journal no longer crashes when two entries share a position.
 - Native companion libraries are fetched for the device's own architecture.
 - The mirror is per project, and Reports follow the open project.

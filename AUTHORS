@@ -1,9 +1,10 @@
 # Authors and copyright holders
 
-Beanbook is licensed GPL-2.0-only ([COPYING](COPYING)), with an additional permission for the
-Google Play Billing Library ([LICENSE-EXCEPTION.md](LICENSE-EXCEPTION.md)). That permission is
-granted by everyone listed here, so this list has to be accurate and complete: an exception is
-only as good as the copyright holders standing behind it.
+Beanbook is licensed GPL-2.0-only ([COPYING](COPYING)), with no additional permissions. (A
+permission for the Google Play Billing Library was granted while Play billing was planned and
+was withdrawn on 2026-10-12, since nothing is sold and no build links that library.) A future
+exception, for example for a proprietary OCR library, needs the consent of everyone listed here,
+so this list has to be accurate and complete.
 
 ## Copyright holders
 
