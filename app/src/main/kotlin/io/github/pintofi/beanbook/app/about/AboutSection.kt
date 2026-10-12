@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
@@ -134,6 +135,19 @@ fun AboutSection(onOpenLicences: () -> Unit, modifier: Modifier = Modifier) {
                         describe = "Email $CONTACT_EMAIL, opens your mail app",
                         opens = true,
                     )
+                }
+                // Only where the edition names a support page: never the Play edition (B101).
+                EditionFacts.SUPPORT_URL?.let { support ->
+                    item {
+                        io.github.pintofi.beanbook.app.ui.FolioRow(
+                            title = "Support the project",
+                            detail = "Beanbook is free and stays free; tips go to Ko-fi",
+                            icon = Icons.Filled.FavoriteBorder,
+                            onClick = { open(support) },
+                            describe = "Support Beanbook on Ko-fi, opens in your browser",
+                            opens = true,
+                        )
+                    }
                 }
             }
 

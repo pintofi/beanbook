@@ -46,6 +46,15 @@ android {
     // notifications on first launch (Android 13+), and that dialog sits over the first
     // activity of a fresh install, so the first Compose test found "no compose hierarchies".
     // The prompt itself is exercised by hand; a test run is not the place for it.
+    // Android's default asset filter drops every directory whose name starts with an underscore
+    // ("<dir>_*"). The fava-portfolio-returns overlay lives under `_vendor`, so its SciPy-free
+    // returns.py was silently left out of the APK while REMOVES.txt next to it was kept: the
+    // plugin installed without SciPy, imported it anyway, and "did not load" for want of a
+    // package that no Android build exists for (B101). The same default minus that one rule.
+    androidResources {
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
+    }
+
     testOptions {
         installation {
             installOptions += "-g"

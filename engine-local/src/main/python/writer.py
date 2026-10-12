@@ -107,16 +107,15 @@ def delete_lines(file_path: str, start_line: int, end_line: int) -> str:
         return json.dumps({"ok": False, "error": "line range outside the file"})
 
     # The blank line that set the entry apart goes with it, so adding an entry and deleting it
-    # again gives back the file as it was (B99). Same rule as BeancountText.removeEntryLines:
-    # the blank line before, unless the entry is first or glued to the line above, in which
-    # case the one after. Nothing else is touched.
+    # again leaves no stray blank line (B101). Same rule as BeancountText.removeEntryLines and as
+    # Fava: every entry is followed by one blank line, and that line goes with it; an entry with
+    # none after it takes the one before. Nothing else is touched.
     first, last = start_line - 1, end_line - 1
     before = first > 0 and lines[first - 1].strip() == ""
     after = last + 1 < len(lines) and lines[last + 1].strip() == ""
-    at_end = last + 1 >= len(lines)
     updated = lines[:first] + lines[last + 1 :]
-    if before and (after or at_end):
-        del updated[first - 1]
-    elif not before and after:
+    if after:
         del updated[first]
+    elif before:
+        del updated[first - 1]
     return json.dumps({"ok": True, "content": "".join(updated)})

@@ -53,7 +53,19 @@ class AllowlistWebViewClient(
     private val onUrlChanged: (String) -> Unit = {},
     /** A document load began; [onPageLoaded] says when it ended (the native progress rule). */
     private val onPageBegan: (String) -> Unit = {},
+    /**
+     * How many times a main-frame load that failed is tried again, after a short wait, before
+     * it is reported (B101). The local server can be a moment behind the WebView, or on a new
+     * port after Android revived the app, and the first load then fails; Android shows its own
+     * error page and *still* calls `onPageFinished`, which counted as "loaded" and took the
+     * loading cover away, leaving that page on screen.
+     */
+    private val retries: Int = 0,
 ) : WebViewClient() {
+
+    private var attemptsLeft = retries
+    private var failedUrl: String? = null
+    private var failedMessage: String? = null
 
     override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
         onPageBegan(url)
@@ -146,7 +158,10 @@ class AllowlistWebViewClient(
         error: WebResourceError,
     ) {
         if (!request.isForMainFrame) return
-        onLoadProblem("The server could not be reached (${error.description}).")
+        // Not reported yet: onPageFinished decides, after a retry or two, so the person sees
+        // the loading cover and not a browser error page.
+        failedUrl = request.url.toString()
+        failedMessage = "The server could not be reached (${error.description})."
     }
 
     private fun describe(error: SslError): String = when (error.primaryError) {
@@ -158,11 +173,48 @@ class AllowlistWebViewClient(
         else -> "the certificate was rejected"
     }
 
+    override fun onReceivedHttpError(
+        view: WebView,
+        request: WebResourceRequest,
+        errorResponse: android.webkit.WebResourceResponse,
+    ) {
+        // Only for the local server, which answers 401 until the session cookie is in place
+        // and 5xx while Fava is still starting: those pages are plain text, not a report.
+        if (retries == 0 || !request.isForMainFrame) return
+        val status = errorResponse.statusCode
+        if (status == 401 || status == 403 || status >= 500) {
+            failedUrl = request.url.toString()
+            failedMessage = "Reports answered with an error ($status)."
+        }
+    }
+
     override fun onPageFinished(view: WebView, url: String) {
+        val failed = failedUrl
+        if (failed != null) {
+            // This "page" is Android's error page, not a report: it is neither themed nor
+            // counted as loaded, so the native cover stays up while the load is tried again.
+            val message = failedMessage.orEmpty()
+            failedUrl = null
+            failedMessage = null
+            if (attemptsLeft > 0) {
+                attemptsLeft -= 1
+                val wait = RETRY_WAIT_MS * (retries - attemptsLeft)
+                view.postDelayed({ view.loadUrl(failed) }, wait)
+            } else {
+                attemptsLeft = retries
+                onLoadProblem(message)
+            }
+            return
+        }
+        attemptsLeft = retries
         // Applied per page rather than once: Fava serves a fresh document for each report,
         // so a style injected into one page is gone by the next.
         themeScript()?.let { view.evaluateJavascript(it, null) }
         onPageLoaded(url)
+    }
+
+    private companion object {
+        const val RETRY_WAIT_MS = 600L
     }
 }
 
@@ -367,6 +419,8 @@ fun FavaWebView(
                         themeScript = { currentTheme.value },
                         onUrlChanged = { retained?.currentUrl = it },
                         onPageBegan = { documentLoading = true },
+                        // The local server is retried; a server the user hosts is reported at once.
+                        retries = if (retained != null) 4 else 0,
                     )
                 }
                 addView(

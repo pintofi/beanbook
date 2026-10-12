@@ -158,7 +158,9 @@ class ProjectWriter(
         return write(
             projectId = projectId,
             file = file,
-            newContent = (existing + separator + text.trimEnd() + "\n").toByteArray(Charsets.UTF_8),
+            // Every entry is followed by one blank line, as Fava writes them, so the next entry
+            // is already set apart and a delete can take that line with it (B101).
+            newContent = (existing + separator + text.trimEnd() + "\n\n").toByteArray(Charsets.UTF_8),
             expectedSha = if (file.isFile) WriteJournal.sha256(file) else "",
             operation = operation,
             policy = policy,

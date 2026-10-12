@@ -171,8 +171,9 @@ class HomeCardsTest {
         show()
         compose.onNodeWithContentDescription("Choose what Home shows").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Show Uncleared and pending").performScrollTo().performClick()
-        // The dialog's buttons sit outside its scrolling content, so there is nothing to scroll.
-        compose.onNodeWithContentDescription("Save what Home shows").performClick()
+        // Since the sheet (B98) Save is the last thing in its scrolling content, below the fold on a
+        // short window such as API 29's 3-button navigation, so it is scrolled to like the rest.
+        compose.onNodeWithContentDescription("Save what Home shows").performScrollTo().performClick()
 
         compose.onAllNodesWithText("Uncleared and pending").assertCountEquals(0)
         assertTrue(
@@ -185,8 +186,9 @@ class HomeCardsTest {
         show()
         compose.onNodeWithContentDescription("Choose what Home shows").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Last 30 days").performScrollTo().performClick()
-        // The dialog's buttons sit outside its scrolling content, so there is nothing to scroll.
-        compose.onNodeWithContentDescription("Save what Home shows").performClick()
+        // Since the sheet (B98) Save is the last thing in its scrolling content, below the fold on a
+        // short window such as API 29's 3-button navigation, so it is scrolled to like the rest.
+        compose.onNodeWithContentDescription("Save what Home shows").performScrollTo().performClick()
 
         // August's 100.00 is inside a 30-day window ending 2026-09-11 and outside "this
         // month", so the total changes to prove the period is really being used.
@@ -198,8 +200,9 @@ class HomeCardsTest {
         show()
         compose.onNodeWithContentDescription("Choose what Home shows").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Move Needs attention up").performScrollTo().performClick()
-        // The dialog's buttons sit outside its scrolling content, so there is nothing to scroll.
-        compose.onNodeWithContentDescription("Save what Home shows").performClick()
+        // Since the sheet (B98) Save is the last thing in its scrolling content, below the fold on a
+        // short window such as API 29's 3-button navigation, so it is scrolled to like the rest.
+        compose.onNodeWithContentDescription("Save what Home shows").performScrollTo().performClick()
 
         val cards = store.read().cards
         assertTrue(

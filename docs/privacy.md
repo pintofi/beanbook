@@ -38,7 +38,8 @@ storage off the device.
 
 In local mode the app makes no network requests at all. It works with the network off. The
 embedded Fava binds only to `127.0.0.1` on an ephemeral port and requires a token generated per
-process, so it is reachable from inside the app and nowhere else.
+process, so it is reachable from inside the app and nowhere else, unless you turn on Share on
+Wi-Fi (below).
 
 There are three outbound paths in the whole codebase, and each is one you start:
 
@@ -50,6 +51,16 @@ on.
 **Optional Python packages, Expert edition only.** When you ask for a package, it is downloaded
 from the Python Package Index. The request contains the package name; none of your ledger goes
 with it. The Play edition never downloads code from anywhere.
+
+**Share on Wi-Fi (incoming connections, off by default).** If you turn this on in More → Share on
+Wi-Fi, other devices on the same private Wi-Fi network can open your Reports in a browser. It does
+not start until you start it. It listens only on the phone's private network address, never a
+public one. It shows nothing until someone signs in with the username and password you set, it
+locks out repeated wrong passwords, and a notification is shown for as long as it is on. It stops
+when you tap Stop sharing, or from the notification. The connection is plain `http://`, which is
+not encrypted: anyone watching that network could read the pages while it is on, so use it only
+on a network you trust. Your password is kept only as a salted hash. Nothing about sharing is
+sent to the developer or to anyone else, and sharing makes no outgoing request.
 
 Sharing a document to another app is a fourth transfer, but it happens only when you tap Share
 and choose the recipient. Android grants that app read access to the one file.

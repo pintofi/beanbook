@@ -176,6 +176,23 @@ class ProjectWriterTest {
     }
 
     @Test
+    fun `every appended entry is followed by one blank line, as Fava writes them`() = runBlocking {
+        val file = newProject()
+        file.writeText("2026-01-01 open Assets:Cash\n")
+        val w = writer()
+
+        w.append(projectId, file, "2026-01-02 note Assets:Cash \"one\"")
+        w.append(projectId, file, "2026-01-03 note Assets:Cash \"two\"")
+
+        assertEquals(
+            "2026-01-01 open Assets:Cash\n\n" +
+                "2026-01-02 note Assets:Cash \"one\"\n\n" +
+                "2026-01-03 note Assets:Cash \"two\"\n\n",
+            file.readText(),
+        )
+    }
+
+    @Test
     fun `an offered undo is refused once something else has been saved`() = runBlocking {
         val file = newProject()
         val w = writer()

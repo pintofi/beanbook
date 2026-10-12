@@ -19,16 +19,15 @@ def delete(text, start, end):
 
 
 class DeleteLinesTest(unittest.TestCase):
-    def test_append_then_delete_is_the_original_file(self):
-        original = "2026-01-01 open Assets:Cash\n"
-        appended = original + "\n2026-01-02 *\n  A  1 USD\n  B\n"
-        self.assertEqual(original, delete(appended, 3, 5))
+    def test_entry_written_by_the_app_goes_with_the_blank_line_after_it(self):
+        text = "2026-01-01 open Assets:Cash\n\n2026-01-02 *\n  A  1 USD\n  B\n\n"
+        self.assertEqual("2026-01-01 open Assets:Cash\n\n", delete(text, 3, 5))
 
     def test_between_two_entries_takes_one_blank_line(self):
         self.assertEqual("a\n\nb\n", delete("a\n\nENTRY\n  p\n\nb\n", 3, 4))
 
-    def test_first_entry_takes_the_blank_line_after(self):
-        self.assertEqual("b\n", delete("ENTRY\n  p\n\nb\n", 1, 2))
+    def test_last_entry_with_no_blank_after_takes_the_one_before(self):
+        self.assertEqual("a\n", delete("a\n\nENTRY\n  p\n", 3, 4))
 
     def test_glued_entry_takes_nothing_extra(self):
         self.assertEqual("a\nb\n", delete("a\nENTRY\nb\n", 2, 2))
