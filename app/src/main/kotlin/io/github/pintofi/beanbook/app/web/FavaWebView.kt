@@ -209,8 +209,26 @@ class AllowlistWebViewClient(
         attemptsLeft = retries
         // Applied per page rather than once: Fava serves a fresh document for each report,
         // so a style injected into one page is gone by the next.
-        themeScript()?.let { view.evaluateJavascript(it, null) }
-        onPageLoaded(url)
+        //
+        // The page counts as loaded, and the native cover goes, only after the style has run
+        // *and* the WebView has drawn a frame that includes it (B102). Calling onPageLoaded
+        // straight after the asynchronous evaluateJavascript uncovered Fava's own layout and
+        // colours for a moment before the app's were applied.
+        val script = themeScript()
+        if (script == null) {
+            onPageLoaded(url)
+            return
+        }
+        view.evaluateJavascript(script) {
+            view.postVisualStateCallback(
+                url.hashCode().toLong(),
+                object : WebView.VisualStateCallback() {
+                    override fun onComplete(requestId: Long) {
+                        onPageLoaded(url)
+                    }
+                },
+            )
+        }
     }
 
     private companion object {

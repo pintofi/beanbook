@@ -175,6 +175,12 @@ private fun UnsandboxedWarning(policy: PluginPolicy) {
 internal fun PluginStatusLine(status: PluginStatus) {
     when (status) {
         PluginStatus.Unknown -> Unit
+        PluginStatus.Checking -> Text(
+            "Checking…",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+        )
         PluginStatus.Loaded -> Row(verticalAlignment = Alignment.CenterVertically) {
             StampMark(LedgerMark.CLEARED, decorative = true, modifier = Modifier.padding(end = Measure.snug))
             Text(

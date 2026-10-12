@@ -17,6 +17,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import io.github.pintofi.beanbook.app.mirror.MirrorHistoryEntry
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -133,6 +136,40 @@ fun MirrorScreen(
                 FolioNote(
                     "Nothing has been overwritten. The folder's copy is saved beside yours with a " +
                         "\".conflict-\" suffix until you choose.",
+                )
+            }
+
+            MirrorRecentActivity()
+        }
+    }
+}
+
+/** The last ten things the mirror did, newest first (B102). */
+@Composable
+private fun MirrorRecentActivity() {
+    val app = androidx.compose.ui.platform.LocalContext.current.applicationContext
+        as io.github.pintofi.beanbook.app.BeancountApplication
+    val history by app.mirror.history.collectAsState()
+    FolioHeading("Recent activity")
+    if (history.isEmpty()) {
+        FolioNote("Nothing has been mirrored yet. The last ten files and decisions appear here.")
+        return
+    }
+    val format = androidx.compose.runtime.remember {
+        java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.getDefault())
+    }
+    FolioGroup {
+        history.forEach { entry ->
+            item {
+                FolioRow(
+                    title = entry.detail,
+                    detail = "${entry.kind.label} · ${format.format(java.util.Date(entry.atEpochMs))}",
+                    tone = if (entry.kind == MirrorHistoryEntry.Kind.FAILED) {
+                        FolioTone.ATTENTION
+                    } else {
+                        FolioTone.PLAIN
+                    },
+                    describe = "${entry.kind.label}: ${entry.detail}",
                 )
             }
         }

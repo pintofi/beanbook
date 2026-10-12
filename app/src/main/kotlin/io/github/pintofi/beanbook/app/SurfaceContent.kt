@@ -393,6 +393,14 @@ internal fun SurfaceContent(
                                 // What the last load said about each catalogue plugin's
                                 // modules (B97): extension imports and plugin import errors.
                                 status = { id ->
+                                    // While the ledger or the engine is reloading, the last
+                                    // answer may be stale (B102): say so rather than flash an
+                                    // error that is about to clear.
+                                    val reloading = refreshing ||
+                                        engineStatus !is io.github.pintofi.beanbook.core.engine.EngineStatus.Serving
+                                    if (reloading) {
+                                        return@PluginsScreen io.github.pintofi.beanbook.app.ui.PluginStatus.Checking
+                                    }
                                     val modules = packages.catalogue.entries
                                         .firstOrNull { it.id == id }?.install?.modules.orEmpty()
                                     io.github.pintofi.beanbook.app.ui.pluginStatusFor(

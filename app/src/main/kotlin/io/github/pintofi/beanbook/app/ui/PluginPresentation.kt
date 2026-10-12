@@ -19,6 +19,13 @@ sealed interface PluginStatus {
 
     /** Nothing has said either way. */
     data object Unknown : PluginStatus
+
+    /**
+     * The ledger or the engine is being reloaded, so what was last said may be out of date (B102).
+     * Right after an install the previous load still said "did not load" for a few seconds,
+     * until the engine had restarted and read the ledger again.
+     */
+    data object Checking : PluginStatus
 }
 
 /**

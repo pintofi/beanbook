@@ -14,6 +14,7 @@ import io.github.pintofi.beanbook.core.data.ProjectWorkspace
 import io.github.pintofi.beanbook.core.data.ProjectWriter
 import io.github.pintofi.beanbook.core.data.WriteJournal
 import io.github.pintofi.beanbook.core.data.WriteResult
+import io.github.pintofi.beanbook.app.mirror.MirrorHistoryEntry.Kind
 import java.io.File
 import java.time.Instant
 import kotlinx.coroutines.CoroutineScope
@@ -61,6 +62,11 @@ class MirrorController(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    private val historyStore = MirrorHistory(context.filesDir.resolve("state"))
+
+    /** The last ten things the mirror did for the open project, newest first (B102). */
+    val history: StateFlow<List<MirrorHistoryEntry>> = historyStore.entries
+
     private val _status = MutableStateFlow<MirrorStatus>(MirrorStatus.Off)
     /** What mirroring is doing right now, for a screen that says so at all times (B65). */
     val status: StateFlow<MirrorStatus> = _status.asStateFlow()
@@ -77,6 +83,7 @@ class MirrorController(
      */
     fun useProject(projectId: String) {
         settings.use(projectId)
+        historyStore.use(projectId)
         _conflicts.value = emptyList()
         _message.value = null
         _status.value = restingStatus()
@@ -137,12 +144,22 @@ class MirrorController(
                 }
                 outcome
                     .onSuccess { result ->
+                        recordHistory(result)
                         _conflicts.value = result.plan.conflicts
                         _message.value = describe(result)
                         settings.recordPass(System.currentTimeMillis())
                         _status.value = restingStatus()
                     }
                     .onFailure { failure ->
+                        historyStore.record(
+                            listOf(
+                                MirrorHistoryEntry(
+                                    System.currentTimeMillis(),
+                                    MirrorHistoryEntry.Kind.FAILED,
+                                    failure.message ?: "the folder could not be reached",
+                                ),
+                            ),
+                        )
                         Log.w(TAG, "mirror pass failed", failure)
                         _message.value =
                             "Mirroring failed: ${failure.message}. Your project is unchanged."
@@ -161,6 +178,20 @@ class MirrorController(
      * file the write protocol refused or rolled back was still counted, so "3 file(s) synced"
      * could mean none of them were.
      */
+    /** File names and what happened to them, for the Mirror page's recent activity (B102). */
+    private fun recordHistory(result: MirrorPassOutcome) {
+        val now = System.currentTimeMillis()
+        val added = buildList {
+            result.plan.pushes.forEach { add(MirrorHistoryEntry(now, Kind.SENT, it.path)) }
+            result.committed.forEach { add(MirrorHistoryEntry(now, Kind.BROUGHT_IN, it)) }
+            result.plan.actions.filterIsInstance<MirrorAction.DeleteThere>()
+                .forEach { add(MirrorHistoryEntry(now, Kind.REMOVED, it.path)) }
+            result.plan.conflicts.forEach { add(MirrorHistoryEntry(now, Kind.CONFLICT, it.path)) }
+            result.refused.forEach { add(MirrorHistoryEntry(now, Kind.FAILED, it)) }
+        }
+        historyStore.record(added)
+    }
+
     private fun describe(result: MirrorPassOutcome): String {
         val plan = result.plan
         val landed = plan.pushes.size + result.committed.size
