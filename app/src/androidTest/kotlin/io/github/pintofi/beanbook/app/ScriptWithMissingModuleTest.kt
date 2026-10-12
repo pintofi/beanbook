@@ -8,6 +8,7 @@ import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -27,6 +28,10 @@ class ScriptWithMissingModuleTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test fun aFetchedPackageReachesTheNextRunOfAScript() {
+        assumeTrue(
+            "this edition cannot fetch packages, so there is nothing to test (B99)",
+            currentPluginPolicy().allowsPackageDownload,
+        )
         val script = File("/data/local/tmp/commodities.py")
         assertTrue(
             "push the script first: adb push commodities.py /data/local/tmp/",

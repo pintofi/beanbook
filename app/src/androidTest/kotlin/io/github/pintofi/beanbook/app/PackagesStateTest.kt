@@ -19,6 +19,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -207,6 +208,10 @@ class PackagesStateTest {
      * marker is precisely the state a killed merge leaves.
      */
     @Test fun aHalfFinishedMergeIsNotReportedAsInstalled() {
+        assumeTrue(
+            "this edition cannot fetch packages, so there is nothing to merge (B99)",
+            currentPluginPolicy().allowsPackageDownload,
+        )
         val root = File(context.cacheDir, "ondemand-b37-${System.nanoTime()}")
         File(root, "pytz").apply { mkdirs() }
             .resolve("__init__.py").writeText("# half copied\n")

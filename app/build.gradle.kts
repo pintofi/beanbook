@@ -42,6 +42,15 @@ tasks.matching {
 }
 
 android {
+    // Connected tests install with every runtime permission granted (B99). The app asks for
+    // notifications on first launch (Android 13+), and that dialog sits over the first
+    // activity of a fresh install, so the first Compose test found "no compose hierarchies".
+    // The prompt itself is exercised by hand; a test run is not the place for it.
+    testOptions {
+        installation {
+            installOptions += "-g"
+        }
+    }
     // The Kotlin package tree is still `io.github.pintofi.beanbook.*` while `applicationId` is not. That
     // split is deliberate, not drift: the application id is the identity Play records and can
     // never be changed after the first publish, so it moved as soon as the organisation name

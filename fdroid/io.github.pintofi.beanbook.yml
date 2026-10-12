@@ -1,0 +1,38 @@
+# DRAFT for fdroiddata (https://gitlab.com/fdroid/fdroiddata), not submitted and not built on
+# F-Droid's servers. See docs/fdroid.md for what is unproven. Replace <owner>/<repo> with the
+# public repository once it exists, and pick the edition (see "Edition" in docs/fdroid.md).
+Categories:
+  - Money
+License: GPL-2.0-only
+AuthorName: WildeBeast2521
+SourceCode: https://github.com/<owner>/<repo>
+IssueTracker: https://github.com/<owner>/<repo>/issues
+Changelog: https://github.com/<owner>/<repo>/blob/HEAD/CHANGELOG.md
+
+AutoName: Beanbook
+
+RepoType: git
+Repo: https://github.com/<owner>/<repo>.git
+
+# The Python layer needs beancount and watchfiles cross-built for Android; the build must run
+# tools/build-wheels.sh first (pinned sdists and backends), then Gradle. Unproven on F-Droid's
+# build server: this is the step most likely to need changes.
+Builds:
+  - versionName: 0.1.0
+    versionCode: 1
+    commit: v0.1.0
+    subdir: app
+    sudo:
+      - apt-get update
+      - apt-get install -y python3.13 python3.13-venv
+    init: ../tools/build-wheels.sh --out ../wheels
+    gradle:
+      - play
+    rm:
+      - spikes
+    prebuild: sed -i 's#^beancount.wheelDir=.*#beancount.wheelDir=../wheels#' ../gradle.properties
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags
+CurrentVersion: 0.1.0
+CurrentVersionCode: 1

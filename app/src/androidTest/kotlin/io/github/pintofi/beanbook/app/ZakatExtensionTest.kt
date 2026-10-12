@@ -13,6 +13,7 @@ import java.net.URL
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -34,6 +35,10 @@ class ZakatExtensionTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test fun anInstalledExtensionAppearsInFavaOnceItsDependencyIsFetched() {
+        assumeTrue(
+            "this edition cannot fetch packages, so there is nothing to test (B99)",
+            currentPluginPolicy().allowsPackageDownload,
+        )
         val project = File(context.cacheDir, "zakat-${System.nanoTime()}").apply { mkdirs() }
         val packages = File(context.cacheDir, "zakat-packages-${System.nanoTime()}")
         val bundle = File("/data/local/tmp/beancount_zakat.zip")
