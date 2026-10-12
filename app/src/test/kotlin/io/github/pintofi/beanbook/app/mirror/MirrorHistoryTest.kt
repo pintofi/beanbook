@@ -36,4 +36,16 @@ class MirrorHistoryTest {
 
         assertEquals(emptyList<MirrorHistoryEntry>(), history.entries.value)
     }
+
+    @Test
+    fun `the same failure again is not listed twice`() {
+        val history = MirrorHistory(createTempDirectory("hist").toFile())
+        history.use("a")
+        val failed = MirrorHistoryEntry(1, MirrorHistoryEntry.Kind.FAILED, "files/accounts.beancount: refused")
+
+        history.record(listOf(failed))
+        history.record(listOf(failed.copy(atEpochMs = 2)))
+
+        assertEquals(1, history.entries.value.size)
+    }
 }
