@@ -414,6 +414,52 @@ def cancel_script(handle: str) -> None:
     _CANCELLED.add(str(handle))
 
 
+class _LiveOutput(io.StringIO):
+    """A script's output, also written as it prints to a file the app reads while it runs (B102).
+
+    The file is `beanbook-script-<handle>.live` in the temporary directory, which is the app's
+    cache folder in both processes, so no new call crosses the process boundary. Written
+    through to disk on every line break and at most every fifth of a second otherwise, and
+    removed when the script ends; the final output still comes back in the result.
+    """
+
+    def __init__(self, handle: str):
+        super().__init__()
+        self._path = None
+        self._file = None
+        self._last = 0.0
+        if handle:
+            try:
+                import tempfile
+
+                self._path = os.path.join(tempfile.gettempdir(), f"beanbook-script-{handle}.live")
+                self._file = open(self._path, "w", encoding="utf-8")
+            except OSError:
+                self._path = self._file = None
+
+    def write(self, text):
+        count = super().write(text)
+        if self._file is not None:
+            try:
+                self._file.write(text)
+                now = time.monotonic()
+                if "\n" in text or now - self._last > 0.2:
+                    self._file.flush()
+                    self._last = now
+            except (OSError, ValueError):
+                self._file = None
+        return count
+
+    def finish(self):
+        if self._file is not None:
+            with suppress(OSError):
+                self._file.close()
+        if self._path:
+            with suppress(OSError):
+                os.remove(self._path)
+        self._file = None
+
+
 def run_script(
     script_path: str,
     ledger_path: str = "",
@@ -441,9 +487,12 @@ def run_script(
     _CANCELLED.discard(handle)
 
     started = time.monotonic()
-    deadline = started + float(timeout_seconds)
+    # No deadline when timeout_seconds is 0 or less (B102): a script that is still working is
+    # not a failed script, and a fixed 30 seconds stopped one that was running correctly. It
+    # ends when it finishes, when it fails, or when the user cancels it.
+    deadline = started + float(timeout_seconds) if float(timeout_seconds) > 0 else None
     guard = None if allow_bridge else BridgeGuard().install()
-    captured = io.StringIO()
+    captured = _LiveOutput(handle)
 
     result = {
         "ok": False,
@@ -459,7 +508,7 @@ def run_script(
     def tracer(frame, event, arg):
         if handle in _CANCELLED:
             raise ScriptStopped("stopped at your request")
-        if time.monotonic() > deadline:
+        if deadline is not None and time.monotonic() > deadline:
             raise ScriptTimedOut(f"stopped after {timeout_seconds:g} seconds")
         return tracer
 
@@ -531,10 +580,13 @@ def run_script(
             guard.remove()
         elapsed = (time.monotonic() - started) * 1000
         result["duration_ms"] = round(elapsed, 1)
-        result["overran_by_ms"] = round(max(0.0, elapsed - timeout_seconds * 1000), 1)
+        result["overran_by_ms"] = (
+            round(max(0.0, elapsed - timeout_seconds * 1000), 1) if timeout_seconds > 0 else 0.0
+        )
         # Enough for a generated config file or a report, which is what scripts print; the
         # old 4000 characters cut a beangrow configuration off a tenth of the way through.
         # Said when it happens, rather than ending mid-line as if the script had.
+        captured.finish()
         output = redact(captured.getvalue(), secrets)
         if len(output) > MAX_SCRIPT_OUTPUT:
             output = (

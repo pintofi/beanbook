@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -75,8 +78,8 @@ fun ScriptRunnerScreen(
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
-                    "It is stopped after 30 seconds. A script stuck inside one call finishes " +
-                        "that call first.",
+                    "It runs until it finishes or you cancel it. A script stuck inside one " +
+                        "call finishes that call first.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -92,10 +95,14 @@ fun ScriptRunnerScreen(
                 },
             )
             WorkingBar()
-            TextButton(
+            LiveTerminal(running)
+            OutlinedButton(
                 onClick = onCancel,
-                modifier = Modifier.semantics { contentDescription = "Stop the running script" },
-            ) { Text("Stop it") }
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .semantics { contentDescription = "Cancel the running script" },
+            ) { Text("Cancel") }
         } else {
             Button(
                 onClick = onPick,
@@ -242,6 +249,51 @@ private fun ScriptTerminal(outcome: ScriptOutcome) {
                 if (lines.isEmpty() && outcome.ok) {
                     Text("(nothing printed)", style = mono, color = dim)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * The running script's output as it prints, in the same terminal box, following the end unless
+ * the person has scrolled up to read something (B102).
+ */
+@Composable
+private fun LiveTerminal(name: String) {
+    val app = androidx.compose.ui.platform.LocalContext.current.applicationContext
+        as io.github.pintofi.beanbook.app.BeancountApplication
+    val text by app.scriptRunner.live.collectAsState()
+    val ink = androidx.compose.ui.graphics.Color(0xFFE4EAE7)
+    val dim = androidx.compose.ui.graphics.Color(0xFF8A9A94)
+    val mono = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+    val scroll = rememberScrollState()
+    val following = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+    androidx.compose.runtime.LaunchedEffect(scroll.value, scroll.maxValue) {
+        // At (or near) the bottom means "follow"; anywhere else means the person is reading.
+        following.value = scroll.maxValue - scroll.value < 48
+    }
+    androidx.compose.runtime.LaunchedEffect(text) {
+        if (following.value) scroll.scrollTo(scroll.maxValue)
+    }
+    androidx.compose.foundation.layout.Box(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 96.dp, max = 360.dp)
+            .background(
+                androidx.compose.ui.graphics.Color(0xFF0D1211),
+                androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+            )
+            .padding(12.dp)
+            .semantics { contentDescription = "Output of $name so far" },
+    ) {
+        androidx.compose.foundation.text.selection.SelectionContainer {
+            Column(Modifier.verticalScroll(scroll).horizontalScroll(rememberScrollState())) {
+                Text("$ python $name", style = mono, color = dim)
+                Text(
+                    text.trimEnd().ifEmpty { "(nothing printed yet)" },
+                    style = mono,
+                    color = if (text.isEmpty()) dim else ink,
+                )
             }
         }
     }

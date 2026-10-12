@@ -110,6 +110,10 @@ class ScriptRunnerState(
     /** The name of the script now running, or null. */
     val running: StateFlow<String?> = _running.asStateFlow()
 
+    private val _live = MutableStateFlow("")
+    /** What the running script has printed so far, read from the engine's live file (B102). */
+    val live: StateFlow<String> = _live.asStateFlow()
+
     private val _outcome = MutableStateFlow<ScriptOutcome?>(null)
     val outcome: StateFlow<ScriptOutcome?> = _outcome.asStateFlow()
 
@@ -192,17 +196,40 @@ class ScriptRunnerState(
         _outcome.value = null
         _message.value = null
 
+        _live.value = ""
         scope.launch {
             val started = System.currentTimeMillis()
+            // The engine writes what the script prints to this file as it goes (B102); reading
+            // it twice a second is what makes the terminal live instead of one block at the end.
+            val liveFile = File(context.cacheDir, "beanbook-script-$id.live")
+            val poll = launch(Dispatchers.IO) {
+                var last = 0L
+                while (true) {
+                    kotlinx.coroutines.delay(LIVE_POLL_MILLIS)
+                    val size = liveFile.length()
+                    if (size != last) {
+                        last = size
+                        _live.value = runCatching { liveFile.readText().takeLast(LIVE_MAX_CHARS) }
+                            .getOrDefault(_live.value)
+                    }
+                }
+            }
             try {
-                val json = loader.runScript(
-                    scriptPath = file.absolutePath,
-                    ledgerPath = ledgerPath,
-                    timeoutSeconds = timeoutSeconds,
-                    allowBridge = policy.allowsAndroidBridge,
-                    handle = id,
-                    pluginDirs = importable(),
-                )
+                // Under a foreground service, like an install or a save, so a script that
+                // takes minutes is not stopped when the person leaves the app (B102).
+                val json = io.github.pintofi.beanbook.app.work.KeepWorking.around(
+                    context,
+                    "Running $name",
+                ) {
+                    loader.runScript(
+                        scriptPath = file.absolutePath,
+                        ledgerPath = ledgerPath,
+                        timeoutSeconds = timeoutSeconds,
+                        allowBridge = policy.allowsAndroidBridge,
+                        handle = id,
+                        pluginDirs = importable(),
+                    )
+                }
                 _outcome.value = json.fold(
                     onSuccess = { parse(name, it).also { outcome ->
                         Diagnostics.i(TAG, "script \"$name\" -> ${outcome.summary()}")
@@ -223,6 +250,8 @@ class ScriptRunnerState(
                     },
                 )
             } finally {
+                poll.cancel()
+                _live.value = ""
                 if (deleteAfterwards) file.delete()
                 // A script that fails on its first line finishes in milliseconds, and the
                 // progress bar appeared and vanished within one frame -- which reads as the
@@ -268,6 +297,12 @@ class ScriptRunnerState(
 
         /** Long enough that a run is seen to have happened; short enough not to be a wait. */
         const val MINIMUM_VISIBLE_MILLIS = 450L
-        const val DEFAULT_TIMEOUT = 30.0
+        /**
+         * No deadline (B102). A fixed 30 seconds ended a script that was still running
+         * correctly. It now ends when it finishes, when it fails, or when the person cancels.
+         */
+        const val DEFAULT_TIMEOUT = 0.0
+        const val LIVE_POLL_MILLIS = 400L
+        const val LIVE_MAX_CHARS = 200_000
     }
 }
