@@ -14,7 +14,6 @@
 <img src="docs/assets/badges/fava.svg" height="28" alt="Fava 1.30.15">
 <img src="docs/assets/badges/python.svg" height="28" alt="CPython 3.13">
 <a href="docs/privacy.md"><img src="docs/assets/badges/telemetry.svg" height="28" alt="Telemetry: none"></a>
-<a href="#status"><img src="docs/assets/badges/status.svg" height="28" alt="Status: not released"></a>
 
 <h3>Your ledger stays a folder of Beancount text files.<br>Beanbook lets you work on it from your phone.</h3>
 
@@ -24,16 +23,6 @@ The real Beancount and Fava run on the device, so the figures you see are the on
 [**What it is**](#what-it-is) &nbsp;·&nbsp; [**See it**](#see-it) &nbsp;·&nbsp; [**What it does**](#what-it-does) &nbsp;·&nbsp; [**How a save works**](#how-a-save-is-written) &nbsp;·&nbsp; [**Editions**](#two-editions) &nbsp;·&nbsp; [**Privacy**](#privacy-and-network-use) &nbsp;·&nbsp; [**Build**](#build-and-test) &nbsp;·&nbsp; [**Docs**](#documentation)
 
 </div>
-
-## Status
-
-> [!IMPORTANT]
-> **Implemented, not released.** Both editions build and the quality gates pass, but the app has
-> never been submitted to Google Play. There are no download links yet, here or anywhere else.
-> When that changes, this section changes with it.
-
-[docs/release-readiness.md](docs/release-readiness.md) tracks where the project stands against
-the acceptance criteria in [SPEC.md](SPEC.md).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/rule-dark.svg">
@@ -120,11 +109,12 @@ your records out is not a paid feature.
 
 <div align="center">
 
-<img src="docs/assets/screenshots/tour-light.webp" width="300" alt="A short recording of the app: Home with net worth 6563.40 EUR and where the money went this month, scrolled down and back; then the Journal; then the Corner grocer entry with its postings and its receipt; then Balances by account; then Reports, drawn by Fava, showing the income statement chart.">
-&nbsp;&nbsp;&nbsp;
-<img src="docs/assets/screenshots/appearance-switch.webp" width="300" alt="A short recording of More, Appearance: the theme is switched from Light to Dark, then to AMOLED, then back to Light, and the whole screen follows.">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/tour-dark.svg">
+  <img src="docs/assets/tour-light.svg" width="300" alt="A tour of the app, one screen after another: Home with net worth 6563.40 EUR, the Journal, the New entry form with its Will be written as preview, Balances, Reports drawn by Fava, Documents, and More.">
+</picture>
 
-<sub>Recorded on an Android emulator with the Expert debug build. Left: Home, Journal, an entry, Balances and Reports. Right: switching the theme in More → Appearance.</sub>
+<sub>Home, Journal, the new-entry preview, Balances, Reports, Documents and More.</sub>
 
 <br><br>
 
@@ -135,16 +125,8 @@ your records out is not a paid feature.
 
 </div>
 
-### Light, Dark and AMOLED
-
-<div align="center">
-<img src="docs/assets/screenshots/themes.webp" width="88%" alt="The same Home screen three times: on pale paper in the Light theme, on a dark ground in the Dark theme, and on pure black in the AMOLED theme. The figures and the teal rules are the same in all three.">
-
-<sub>Paper, ink and one rule colour, in three themes. Dynamic colour can take the accent from your wallpaper instead; paper, ink and rules stay the app's own.</sub>
-</div>
-
 <details>
-<summary><b>More screens</b>: an entry, the entry form, Balances, Documents, Plugins, widgets, 200% text</summary>
+<summary><b>More screens</b>: an entry, the entry form, Balances, Documents, Plugins, widgets</summary>
 <br>
 
 <table>
@@ -185,23 +167,11 @@ your records out is not a paid feature.
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/plugins-dark.webp"><img src="docs/assets/screenshots/plugins-light.webp" width="240" alt="Plugins: a notice that reads A plugin is a program you are trusting. It runs with this app's permissions: it can read and change your whole ledger, and use the network. Install plugins only from a source you trust. Below it, a plugin list with search and All, Beancount and Fava filters."></picture><br>
 <sub><b>Plugins</b>, with the warning said plainly (Expert edition shown).</sub>
 </td>
-<td align="center">
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/appearance-dark.webp"><img src="docs/assets/screenshots/appearance-light.webp" width="240" alt="Appearance: theme choices System, Light, Dark and AMOLED; a Dynamic colour switch; a Hide amounts in widgets switch."></picture><br>
-<sub><b>Appearance</b>: four themes, dynamic colour, hidden widget amounts.</sub>
-</td>
 </tr>
 <tr>
 <td align="center">
 <img src="docs/assets/screenshots/widget-home.webp" width="240" alt="An Android home screen with two Beanbook widgets: Net worth 6563.40 EUR, and Balance listing Checking 6568.65 EUR, Cash 13.25 EUR and Groceries 237.80 EUR, each with a plus button to add an entry."><br>
 <sub><b>Widgets</b> for net worth and chosen balances, each with a + to add an entry.</sub>
-</td>
-<td align="center">
-<img src="docs/assets/screenshots/journal-200-light.webp" width="240" alt="The Journal with the system font size at 200 percent: account names wrap at the colon, figures stay whole, the add button shrinks to a round plus, and the bottom bar keeps its icons and labels."><br>
-<sub><b>200% text</b>: accounts wrap at the colon, figures stay whole.</sub>
-</td>
-<td align="center">
-<img src="docs/assets/screenshots/appearance-amoled.webp" width="240" alt="Appearance in the AMOLED theme, on a pure black ground."><br>
-<sub><b>AMOLED</b>: pure black for OLED screens.</sub>
 </td>
 </tr>
 </table>
@@ -285,7 +255,7 @@ scripts against it. A safe mode loads the ledger with no plugins.
 
 #### Widgets and appearance
 Home-screen widgets for net worth and balances. Light, Dark and AMOLED themes, optional dynamic
-colour, and an accessibility test that checks labels and layout at normal size and at 200% text.
+colour.
 
 </td>
 </tr>
@@ -312,26 +282,6 @@ flowchart TD
     F -- "fails" --> H["Put the copy back"]
     H --> I(["Not saved: the previous<br/>ledger stands"])
 ```
-
-<details>
-<summary><b>The rules every change keeps</b> (for contributors)</summary>
-<br>
-
-These are release-blocking. [CLAUDE.md](CLAUDE.md) and [CONTRIBUTING.md](CONTRIBUTING.md) hold
-the full text.
-
-| # | Rule |
-|---|---|
-| 1 | `Decimal` only for money. Never binary floating point. |
-| 2 | No success message before a durable write **and** a successful re-parse. |
-| 3 | A failed operation leaves the previous valid project recoverable. |
-| 4 | Unknown directives, metadata, comments, and whitespace are never silently discarded. |
-| 5 | `include` directives and document links stay valid across import, export and mirror. |
-| 6 | A retried write never creates a duplicate entry. |
-| 7 | Destructive actions name their scope and are confirmable or undoable. |
-| 8 | Undo is backed by durable snapshots, not UI state. |
-
-</details>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/rule-dark.svg">
@@ -418,12 +368,7 @@ connection; it happens only when you type `http://` yourself.
 
 - Android 10 (API 29) or later. Android 9 does not work: the embedded Python runtime is killed
   by seccomp before the engine starts.
-- `arm64-v8a` or `x86_64`. There is no 32-bit build.
-- Roughly 48.5 MB to download for a single architecture, or 59.3 MB for the universal package.
-  Optional Expert packages add to that, and take noticeably more room unpacked than they do
-  to download.
-
-Ships CPython 3.13, Beancount 3.2.3, Fava 1.30.15, beanquery 0.2.0, and beangulp 0.2.0.
+- `arm64-v8a` or `x86_64`.
 
 ## Getting started
 
@@ -451,23 +396,34 @@ portable project tree, so an exported copy contains your ledger and nothing else
 
 </details>
 
-## Limitations worth knowing before you rely on it
+## Good to know
 
-No Git integration. No offline cache in remote mode. No 32-bit build. No OCR yet. No vetted
-plugin catalogue: in the Play edition you supply plugin files yourself. English UI only. The app
-was designed and measured around ledgers of roughly 25,000 transactions in about 10 MB; larger
-ones work, but the first load after a change costs real time.
+Beanbook is built for plain-text ledgers kept on your own device, and it is honest about where its
+edges are today:
 
-[docs/known-limitations.md](docs/known-limitations.md) is the full list, written for someone
-deciding whether to depend on this.
+- **Version control is yours.** Keep the exported or mirrored folder in Git, or any sync tool you
+  like; the app works on the files and does not run Git itself.
+- **Remote mode is live.** It shows your own Fava server as it is right now, so it needs a
+  connection to that server.
+- **Receipts are kept as PDFs.** Reading amounts off them automatically is not part of the app yet.
+- **Plugins.** The Expert edition offers a catalogue of tested plugins; the Play edition loads plugin
+  files you provide.
+- **English.** The interface is in English.
+- **Large ledgers.** It is designed and measured around ledgers of about 25,000 transactions; bigger
+  ones work, with a longer first load after a change.
 
-## Free, with donations welcome
+[docs/known-limitations.md](docs/known-limitations.md) has the full list.
 
-Every feature is free in both editions: no trial, no paid tiers, no keys, no ads. If Beanbook
-is useful to you, the project will accept donations on Ko-fi -- the page is not open yet. The
-Expert edition mentions it once, after a week of use; the Play edition does not link to it,
-because Google Play's payment rules do not allow that. [docs/support-model.md](docs/support-model.md)
-explains the decision.
+## Support Beanbook
+
+Every feature is free in both editions: no trial, no paid tiers, no keys, no ads. If Beanbook is
+useful to you, you can help it along:
+
+<p>
+  <a href="https://ko-fi.com/pintofi"><img src="https://storage.ko-fi.com/cdn/kofi3.png?v=3" height="36" alt="Support Beanbook on Ko-fi"></a>
+  &nbsp;
+  <a href="https://buymeacoffee.com/pintofi"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="36" alt="Buy Beanbook a coffee"></a>
+</p>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/rule-dark.svg">
@@ -555,19 +511,8 @@ Beancount, beanquery, and beangulp are GPL-2.0-*only*, explicitly not "or later"
 cannot be used here. The full text is in [COPYING](COPYING), and the copyright holders are
 listed in [AUTHORS](AUTHORS).
 
-Neither edition links any proprietary library for payments: nothing is sold (B81). There is
+Neither edition links any proprietary library for payments: nothing is sold. There is
 no additional licence permission: Beanbook is GPL-2.0-only, with nothing added.
 
 Beancount and Fava are independent projects. This app is built on their work and is not
 affiliated with or endorsed by them.
-
-<br>
-
-<div align="center">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/rule-dark.svg">
-  <img src="docs/assets/rule-light.svg" width="60%" alt="">
-</picture>
-
-<sub>Paper, ink, and one rule. Every figure in these images comes from an invented ledger.</sub>
-</div>

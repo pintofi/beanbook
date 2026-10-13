@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A cup with a heart, for the Ko-fi row in About. Drawn for this app; Expert edition only. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M3,7 L17,7 L17,14 A5,5 0 0,1 12,19 L8,19 A5,5 0 0,1 3,14 Z M17,9 L18.5,9 A3,3 0 0,1 18.5,15 L17,15 L17,13 L18.5,13 A1,1 0 0,0 18.5,11 L17,11 Z M10,16.4 C7.6,14.6 6.5,13.6 6.5,12.3 A1.9,1.9 0 0,1 10,11.5 A1.9,1.9 0 0,1 13.5,12.3 C13.5,13.6 12.4,14.6 10,16.4 Z"
+        android:fillType="evenOdd" />
+</vector>

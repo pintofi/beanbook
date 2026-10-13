@@ -15,6 +15,9 @@ internal object EditionFacts {
     /** Where voluntary support goes. None here, by policy. */
     val SUPPORT_URL: String? = null
 
+    /** No support pages here, by policy. */
+    val SUPPORT_LINKS: List<SupportLink> = emptyList()
+
     /** The other edition, described for people who might want it (B81). */
     val OTHER_EDITION: OtherEdition? = OtherEdition(
         name = "Expert",
