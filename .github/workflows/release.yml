@@ -92,20 +92,24 @@ jobs:
           fi
           echo "every release APK is signed"
 
-      - name: Checksums
-        # These are what the update manifest is issued against, so they go in the log and in
-        # the release body rather than being recomputed by hand later.
+      - name: Name the files and write their checksums
+        # Files are published as beanbook-<version>-<abi>.apk, copied out of Gradle's
+        # per-flavour folders. Only the Expert edition is published here; Play ships through
+        # Play. The checksums file lists exactly these names and nothing else.
         run: |
-          # Only the lines that are checksums: Gradle's own banner and warnings stay out of
-          # the file and the release body. Only the edition this workflow publishes.
-          ./gradlew :app:releaseChecksums -q | grep -E '^[0-9a-f]{64}  app-expert-' | tee checksums.txt
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir dist
+          for abi in arm64-v8a x86_64 universal; do
+            cp "app/build/outputs/apk/expert/release/app-expert-$abi-release.apk" "dist/beanbook-$VERSION-$abi.apk"
+          done
+          (cd dist && sha256sum beanbook-*.apk) | tee checksums.txt
           test -s checksums.txt
 
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            app/build/outputs/apk/expert/release/*.apk
+            dist/*.apk
             checksums.txt
           body_path: checksums.txt
           draft: true
