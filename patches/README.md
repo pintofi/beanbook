@@ -25,7 +25,7 @@ setup rewrites `LDFLAGS` after `CIBW_ENVIRONMENT` is applied, and meson's `c_lin
 `-Wl,-z,max-page-size=16384`, and that one matters on 16 KB-page devices.
 
 Worth sending upstream: it is arguably a latent bug that the extension links libpython by
-luck. See [docs/milestones/m14-part12.md](../docs/milestones/m14-part12.md).
+luck.
 
 ## `beangrow-1.0.1-no-scipy.patch` and `fava_portfolio_returns-2.7.0-no-scipy.patch`
 

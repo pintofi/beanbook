@@ -97,8 +97,8 @@ app implements or can weaken.
 
 ## 4. Money: everything free, donations welcome
 
-Decided 2026-09-14 (B81), replacing the tiers, the 30-day trial, Play Billing and the offline
-contribution keys. The full evaluation is [support-model.md](support-model.md).
+Decided 2026-09-14, replacing the tiers, the 30-day trial, Play Billing and the offline
+contribution keys.
 
 ### 4.1 The model
 
@@ -107,7 +107,7 @@ contribution keys. The full evaluation is [support-model.md](support-model.md).
 - **Donations are voluntary, through Ko-fi**, and unlock nothing. They are a way to support
   the project, not a price.
 - **The app mentions it once**, after a week of use, in the Expert edition: one dismissible
-  notice on Home. Nothing else asks. A banner in About is planned (N21).
+  notice on Home. Nothing else asks. A banner in About is planned.
 - **The Play edition names no donation page** (4.2).
 
 ### 4.2 Why the Play edition has no Ko-fi link
@@ -129,7 +129,7 @@ of any kind**, and `:verifyPlayFlavorBoundaries` fails if a Ko-fi, Buy Me a Coff
 Liberapay, PayPal or GitHub Sponsors address appears in anything compiled into it (M3).
 
 If support through Play is wanted later, the compliant route is a "support the project"
-one-time product through Google Play's own billing. That is a decision, not a default (N21).
+one-time product through Google Play's own billing. That is a decision, not a default.
 
 ### 4.3 What was removed
 

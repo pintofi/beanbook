@@ -1,0 +1,19 @@
+; An invented ledger: a few of the shapes people write.
+
+2024-01-01 pad Assets:Current:Bank Equity:Opening-Balances
+
+2024-02-01 balance Assets:Current:Bank   2,500.00 USD
+
+2024-02-01 * "Employer" "February salary" #salary ^payslip-2024-02
+  payslip: "2024-02"
+  Income:Salary                  -3,000.00 USD
+  Assets:Current:Bank
+
+2024-02-03 * "Corner Market" "Weekly groceries" #food
+  Expenses:Food:Groceries            84.50 USD
+  Assets:Current:Cash
+
+; Written by hand, with its own alignment
+2024-02-05 ! "Fuel Stop" "Pending on the card"
+    Expenses:Transport:Fuel      45 USD
+    Liabilities:Current:CreditCard

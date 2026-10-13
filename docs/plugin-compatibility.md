@@ -91,7 +91,7 @@ As of 2026-09-14, for the 35 plugins on awesome-beancount plus `beancount-interp
 | partial | 14 | some steps passed; mostly Fava extensions whose UI is not exercised, or a dependency to fetch |
 | unsupported | 2 | `autobean.truelayer` (an importer), `fava-classy-portfolio` |
 
-Runs were on desktop CPython with Beancount 3.2.3 (2026-08-28; `beancount-interpolate` 2026-09-14, which also loaded `fixtures/common-ledger` with no errors on the API 36 emulator after installing from the catalogue), and the `supported` and
+Runs were on desktop CPython with Beancount 3.2.3 (2026-08-28; `beancount-interpolate` 2026-09-14, which also loaded `the sample ledger` with no errors on the API 36 emulator after installing from the catalogue), and the `supported` and
 `needs-config` entries were loaded again on Android by `CatalogManifestTest` and
 `CatalogPluginTest`. **beangrow** is `supported` on a device through the SciPy overlay
 ([on-demand-packages.md](on-demand-packages.md), m14-part28); the old "untested (Spike 9)" rows
@@ -141,7 +141,7 @@ Plugins are **not sandboxed** — see [threat-model.md](threat-model.md) §3.2. 
 
 ---
 
-## 7. The catalogue in the app (B82)
+## 7. The catalogue in the app
 
 **More → Plugins → Plugins you can install** lists every catalogue entry: what it is, how it
 tested, its licence and any licence note.
@@ -153,7 +153,7 @@ tested, its licence and any licence note.
   (`files/catalogue/<id>/site`), so removing one never breaks another. Once installed, the same
   row turns the plugin on for the open ledger by writing its `plugin` or `fava-extension`
   directive.
-- **Play edition: listed, not installed.** Downloading code is what Play forbids (D1). The row
+- **Play edition: listed, not installed.** Downloading code is what Play forbids. The row
   says to add the plugin from a file, or to use the Expert edition.
 - **Keeping it current.** `tools/plugin-compat/catalogue.py check` compares the catalogue with
   the Plugins section of awesome-beancount's README and exits non-zero on anything new or

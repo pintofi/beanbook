@@ -105,7 +105,7 @@ be decided against; it is not a claim that the position is settled.
 MIT, BSD and X11 all require the notice to travel with the software, so "is the
 text in the APK" is a distribution question rather than bookkeeping. It is *not* the
 whole obligation: the texts sit inside nested archives in `assets/`, where no user
-can read them, and the app has no licences screen. Tracked as N17.
+can read them, and the app has no licences screen.
 
 Shipping no licence text of their own, so their notice has to come from somewhere else:
 

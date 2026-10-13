@@ -1126,7 +1126,7 @@
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
         "reason": "imports, executes and preserves every directive",
         "version": "2.5.1",
-        "on_device": "installed from the catalogue on Android (emulator API 36, Expert debug), with beancount-plugin-utils; fixtures/common-ledger, which names beancount_interpolate.depreciate, then loaded with 0 errors (2026-09-14)",
+        "on_device": "installed from the catalogue on Android (emulator API 36, Expert debug), with beancount-plugin-utils; the sample ledger, which names beancount_interpolate.depreciate, then loaded with 0 errors (2026-09-14)",
         "module": "beancount_interpolate.depreciate"
       },
       "distribution": "beancount-interpolate",

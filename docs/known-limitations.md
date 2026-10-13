@@ -1,12 +1,10 @@
 # Known limitations
 
-Required by [SPEC.md](../SPEC.md) §7 for a v1 release candidate, alongside the
-[plugin compatibility matrix](plugin-compatibility.md).
+Read it alongside the [plugin compatibility matrix](plugin-compatibility.md).
 
 This is what the app does not do, does not do well, or does differently from the desktop —
-written for someone deciding whether to rely on it, not as a defect list. Anything unfinished
-in an engineering sense lives in [pending-verification.md](pending-verification.md); anything
-here is a limitation a user can actually meet.
+written for someone deciding whether to rely on it, not as a defect list. Anything here
+is a limitation a user can actually meet.
 
 Nothing on this page is a surprise to us. That is the point of writing it down.
 
@@ -30,7 +28,7 @@ a full load every time, so those stay slow on a large ledger.
 editor for — including directives from plugins it has never heard of — survives editing,
 export and backup byte-for-byte, but is shown as raw text rather than a form.
 
-**No Git.** Not in v1. If your ledger is in a repository, the app edits the working tree and
+**No Git.** If your ledger is in a repository, the app edits the working tree and
 leaves version control to you.
 
 ---
@@ -136,11 +134,11 @@ a statement saved with the wrong extension, or none, will not be identified.
 
 **Each per-ABI APK carries both ABIs' Python assets** — about 4 MB of waste per download,
 because the ABI split does not split Chaquopy's assets. Fixing it means per-ABI builds or an
-App Bundle, which is a release-pipeline change (D3).
+App Bundle, which is a release-pipeline change.
 
 **`babel` ships all 1084 locales**, about 33 MB uncompressed. Trimming it would break Fava for
 anyone not using English, because `babel.Locale.parse` raises on a locale that is not present.
-Deliberate (D1).
+Deliberate.
 
 ---
 
@@ -151,10 +149,10 @@ widths, with a negative control that fails if the checks stop biting. Two honest
 
 - **Screen-reader traversal order is not measured.** TalkBack computes its own order,
   largely geometric, from relations that `uiautomator` does not expose. Reading order is
-  checked by hand, not by a gate (N14).
+  checked by hand, not by a gate.
 - **No blind user has used this app.** The audit is a sighted developer driving TalkBack,
   which finds missing labels and finds nothing about whether the app is *pleasant* to use
-  without sight (N5).
+  without sight.
 
 ---
 
@@ -165,21 +163,3 @@ anywhere. Diagnostics stay on the device, and secrets are kept out of logs, back
 screenshots and widget previews by design and by test.
 
 **Nothing is sold.** There is no billing SDK, purchase flow, trial or key in either edition.
-
----
-
-## Not in v1
-
-Offline cache for remote mode · two-way sync · OCR (camera and PDF ship first; OCR follows
-behind an interface with its own consent) · plugin marketplace or vetted catalog · 32-bit ABIs
-· Git integration · localization beyond English (the UI is built i18n-ready, and no
-translations exist yet) · F-Droid publication, which would need a third flavor.
-
----
-
-## Where the unfinished work is written down
-
-[pending-verification.md](pending-verification.md) is the single list of everything unproven,
-deliberately deferred, or not yet built. It is reviewed at every milestone, and nothing may be
-called verified in a release note or a store listing unless it appears there with evidence or
-does not appear there at all.

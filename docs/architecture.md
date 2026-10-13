@@ -1,6 +1,6 @@
 # Architecture
 
-Companion to [SPEC.md](../SPEC.md). Verified against upstream on **2026-08-16**.
+Verified against upstream on **2026-08-16**.
 
 ---
 
@@ -170,7 +170,7 @@ Detailed adversary analysis: [threat-model.md](threat-model.md).
 
 Rules:
 - `:core-domain` depends on nothing Android-specific and holds every invariant.
-- **No billing or payment SDK exists in any module.** Nothing is sold (B81); the Play edition
+- **No billing or payment SDK exists in any module.** Nothing is sold; the Play edition
   names no donation page.
 - Plugin/script loading is **shared** by both flavors (parity), but the loader takes a
   `PluginPolicy` supplied per flavor:

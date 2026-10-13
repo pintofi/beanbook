@@ -11,7 +11,7 @@ soon as they can be verified, and a reporter is credited unless they ask not to 
 
 ## What is in scope
 
-The rules the app holds itself to are in [CLAUDE.md](CLAUDE.md) and
+The rules the app holds itself to are in
 [docs/threat-model.md](docs/threat-model.md): loopback-only Fava with a per-process token, the
 single opt-in LAN listener (Share on Wi-Fi) behind a sign-in, a hardened WebView, fatal
 certificate errors for `https://` servers, no telemetry, and the data-safety invariants for

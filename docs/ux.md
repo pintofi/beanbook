@@ -135,7 +135,7 @@ Rotation and window resizing never lose editor state (drafts persist).
 
 Three widgets: **account balance**, **net worth / selected metric**, **quick add**.
 
-An income/expense-for-a-period widget was built and removed (B9): two figures in one small
+An income/expense-for-a-period widget was built and removed: two figures in one small
 box read as neither, and the same numbers belong on the home surface where there is room to
 label them. `WidgetSnapshot` still carries them for that reason.
 
@@ -170,7 +170,7 @@ telemetry, files stay plain text and exportable at any time.
 
 ---
 
-## 10. Support, not entitlement (B81)
+## 10. Support, not entitlement
 
 Nothing is locked, so there is no Contribute screen, no lock, no trial card and no countdown.
 The Expert edition shows one notice on Home after a week of use -- "Beanbook is free", with

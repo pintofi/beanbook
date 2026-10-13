@@ -62,3 +62,27 @@ engine-local/requirements-local.lock
 # worker JSON is a per-run artefact and is not worth versioning.
 .scratch/
 .claude/worktrees/
+
+# Local-only: planning, working notes, tooling and private fixtures (not for consumers)
+/.claude/
+/CLAUDE.md
+/PLAN.md
+/SPEC.md
+/spikes/
+/fixtures/common-ledger
+/docs/pending-verification.md
+/docs/device-audit-*.md
+/docs/release-readiness.md
+/docs/release-checklist.md
+/docs/site-brief.md
+/docs/support-model.md
+/docs/play-console.md
+/docs/github-about.md
+/docs/design-direction.md
+/docs/material-expressive.md
+/docs/content-style-guide.md
+/docs/proposals/
+/docs/milestones/
+/docs/feasibility/
+/docs/reference/
+/docs/licensing/

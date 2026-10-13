@@ -16,19 +16,19 @@ class DocumentRootsTest {
     @AfterTest
     fun cleanUp() = root.deleteRecursively().let { }
 
-    /** The common ledger the owner supplied, copied as it is, with no documents folder. */
-    private fun commonLedger(): File {
-        val fixture = File("../fixtures/common-ledger")
-        assertTrue(fixture.isDirectory, "fixtures/common-ledger is missing from the repository")
-        val project = File(root, "common")
+    /** The sample ledger, copied as it is, with no documents folder. */
+    private fun sampleLedger(): File {
+        val fixture = File("../fixtures/sample-ledger")
+        assertTrue(fixture.isDirectory, "fixtures/sample-ledger is missing from the repository")
+        val project = File(root, "sample")
         fixture.copyRecursively(project)
         File(project, "documents").deleteRecursively()
         return File(project, "main.beancount")
     }
 
     @Test
-    fun `the common ledger gets the documents folder its option names`() {
-        val main = commonLedger()
+    fun `the sample ledger gets the documents folder its option names`() {
+        val main = sampleLedger()
 
         val created = DocumentRoots.ensure(main)
 
@@ -38,7 +38,7 @@ class DocumentRootsTest {
 
     @Test
     fun `an existing folder is left alone and nothing is reported`() {
-        val main = commonLedger()
+        val main = sampleLedger()
         val folder = File(main.parentFile, "documents").apply { mkdirs() }
         File(folder, "receipt.pdf").writeText("kept")
 
@@ -48,7 +48,7 @@ class DocumentRootsTest {
 
     @Test
     fun `no ledger file changes`() {
-        val main = commonLedger()
+        val main = sampleLedger()
         val before = main.parentFile.walkTopDown().filter { it.isFile }
             .associate { it.relativeTo(main.parentFile).path to it.readBytes().toList() }
 

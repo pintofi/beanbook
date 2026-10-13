@@ -465,7 +465,7 @@ tools/build-wheels.sh --out ~/tools/wheels            # pinned sdists, pinned bu
 
 A change is done when it builds in both editions, debug and release; unit and instrumentation
 tests pass on API 29 and 36; the golden corpus round-trips byte-clean; and new screens pass the
-accessibility checks. [CLAUDE.md](CLAUDE.md) lists every command and what each one needs.
+accessibility checks. [CONTRIBUTING.md](CONTRIBUTING.md) lists the commands and what each one needs.
 
 </details>
 
@@ -491,8 +491,6 @@ For developers:
 | [docs/storage-and-backup.md](docs/storage-and-backup.md) | Workspace layout, atomic writes, SAF import and export, archives |
 | [docs/threat-model.md](docs/threat-model.md) | Assets, adversaries, mitigations, accepted risk |
 | [docs/distribution.md](docs/distribution.md) | Edition matrix, update channels, the Play payment rules |
-| [docs/design-direction.md](docs/design-direction.md) | The visual system: paper, ink, rules and folios |
-| [SPEC.md](SPEC.md) | Product scope, non-goals, acceptance criteria |
 
 ## Contributing
 

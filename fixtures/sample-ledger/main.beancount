@@ -1,0 +1,10 @@
+option "title" "Sample"
+option "operating_currency" "USD"
+option "documents" "documents"
+
+plugin "beancount.plugins.leafonly"
+
+2024-01-01 custom "fava-option" "default-file" "files/transactions.beancount"
+
+include "files/accounts.beancount"
+include "files/transactions.beancount"

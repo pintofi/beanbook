@@ -11,8 +11,8 @@ import kotlin.test.assertNull
 class DocumentLocatorTest {
 
     private val root: File = Files.createTempDirectory("locate").toFile()
-    private val project = File(root, "common").also {
-        File("../fixtures/common-ledger").copyRecursively(it)
+    private val project = File(root, "sample").also {
+        File("../fixtures/sample-ledger").copyRecursively(it)
     }
     private val receipt = File(project, "documents/Expenses/Food/Groceries/2026-09-01.receipt.abc123.pdf")
         .apply { parentFile.mkdirs(); writeText("%PDF-1.4") }

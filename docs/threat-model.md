@@ -77,7 +77,7 @@ The `play` edition removes this surface entirely.
 - No `INTERNET`-independent assumption: local mode functions with the network off, which
   is also the strongest privacy demonstration we can offer.
 
-### 3.3a Sharing on Wi-Fi (B93)
+### 3.3a Sharing on Wi-Fi
 
 The one exception to "never a LAN interface", added at the owner's request on 2026-09-27.
 Off until the user turns it on, in both editions, and a separate server from the loopback
@@ -103,7 +103,7 @@ one, which is unchanged.
 observe the network can read the pages and replay the session cookie while it is valid. The
 screen says to use it only on a trusted network and to turn it off after. HTTPS would need a
 certificate the other device trusts, which a phone on a home network cannot obtain without
-the user installing one; that is recorded in docs/pending-verification.md, not built.
+the user installing one; that is not built.
 
 ### 3.4 WebView (T5)
 
@@ -158,7 +158,7 @@ Exact version pins with lockfiles and checksums for Maven and Python wheels; a g
 SBOM and license inventory per release; wheels we cross-build ourselves are built from
 verified upstream sdists with recorded hashes and reproducible build scripts; CI runs
 dependency and secret scanning; release signing keys live outside the repository. (The entitlement signing key went with the
-keys themselves, B81.)
+keys themselves.)
 
 ### 3.8 Device loss (T9)
 
@@ -192,7 +192,7 @@ no success is reported before a durable, re-parsed write.
 **About `INTERNET`, stated plainly.** Android refuses socket creation without it —
 including a bind to `127.0.0.1` — so the app must declare `INTERNET` even in local-only
 mode, where it makes no outbound connections at all
-([measured in S4](feasibility/s4-loopback-webview.md) §1). The permission list therefore
+(measured). The permission list therefore
 overstates what the app does, and it is our job to close that gap rather than let users
 infer it: the store listing, Play Data Safety declaration, and in-app privacy screen must
 say that local mode contacts nothing, that the permission exists solely to run the
