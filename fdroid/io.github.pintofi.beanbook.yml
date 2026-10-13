@@ -1,6 +1,5 @@
 # DRAFT for fdroiddata (https://gitlab.com/fdroid/fdroiddata), not submitted and not built on
-# F-Droid's servers. See docs/fdroid.md for what is unproven. Replace pintofi/beanbook with the
-# public repository once it exists, and pick the edition (see "Edition" in docs/fdroid.md).
+# F-Droid's servers. This is the Play-flavour code path (application ID io.github.pintofi.beanbook).
 Categories:
   - Money
 License: GPL-2.0-only
@@ -13,6 +12,14 @@ AutoName: Beanbook
 
 RepoType: git
 Repo: https://github.com/pintofi/beanbook.git
+
+# Reproducible-build verification: F-Droid builds from source, compares the result with this
+# signed APK, and if they match publishes ours, so updates stay signed with the project key.
+# %v is the versionName. Release files are named beanbook-<version>-play-<abi>.apk.
+Binaries: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-play-arm64-v8a.apk
+
+# SHA-256 of the project's APK signing certificate (lowercase hex, no colons).
+AllowedAPKSigningKeys: d7039d79b2afa3ffc81aeba7bc8dbf45a73b07b94f982ca913d65028b9b2ff55
 
 # The Python layer needs beancount and watchfiles cross-built for Android; the build must run
 # tools/build-wheels.sh first (pinned sdists and backends), then Gradle. Unproven on F-Droid's
@@ -32,5 +39,5 @@ Builds:
 
 AutoUpdateMode: Version v%v
 UpdateCheckMode: Tags
-CurrentVersion: 0.1.0
+CurrentVersion: 1.0.0
 CurrentVersionCode: 1
