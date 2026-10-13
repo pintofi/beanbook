@@ -40,7 +40,7 @@ minSdk = "29"
 
 activityCompose = "1.13.0"
 lifecycle = "2.11.0"
-coreKtx = "1.19.0"
+coreKtx = "1.19.1"
 documentFile = "1.1.0"
 # CameraX for receipt capture (M8). Apache-2.0, like the rest of AndroidX: the engine runs
 # in its own process, which is what keeps that compatible with a GPL-2.0-only app
@@ -53,7 +53,7 @@ telephoto = "0.19.0"
 reorderable = "3.1.0"
 # WorkManager for scheduled backups (M9). Apache-2.0, like the rest of AndroidX.
 # 2.11.0 -> 2.11.2 on 2026-09-03, a patch release on the same minor.
-work = "2.11.2"
+work = "2.12.0"
 # Argon2id for backup encryption (M9). Apache-2.0, ~1 MB of native code across both ABIs —
 # Bouncy Castle would have been ~8 MB for the same one function.
 argon2kt = "1.6.0"
