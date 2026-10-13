@@ -15,6 +15,8 @@
 <img src="docs/assets/badges/python.svg" height="28" alt="CPython 3.13">
 <a href="docs/privacy.md"><img src="docs/assets/badges/telemetry.svg" height="28" alt="Telemetry: none"></a>
 
+<a href="https://github.com/pintofi/beanbook/releases/latest"><img src="docs/assets/badges/get-it-on-github.png" height="64" alt="Download the APK from GitHub Releases"></a>
+
 <h3>Your ledger stays a folder of Beancount text files.<br>Beanbook lets you work on it from your phone.</h3>
 
 The real Beancount and Fava run on the device, so the figures you see are the ones<br>

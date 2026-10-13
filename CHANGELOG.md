@@ -1,15 +1,14 @@
 # Changelog
 
-All notable changes to Beanbook. The format follows [Keep a Changelog](https://keepachangelog.com/);
-the project has not been released yet, so everything is under *Unreleased*.
+All notable changes to Beanbook. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [1.0.0] - 2026-10-13
 
 ### Added
 - Scripts show their output live, can be cancelled, and no longer stop after 30 seconds.
 - The Mirror page lists the last ten files and decisions.
 - A README with animated artwork, screenshots, a social preview and store images.
-- A Support row in About and a week-one notice in the Expert edition, linking to Ko-fi.
+- A Support row in About in the Expert edition, linking to Ko-fi.
 - Units, At cost and Market value on Home, Balances and the widgets, matching Fava's switch.
 - Journal filters for errors, pending and flagged entries.
 - Add forms follow the ledger's plugins (`commodity_attr`, `leafonly`, `check_commodity`).
