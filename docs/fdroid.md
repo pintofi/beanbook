@@ -52,7 +52,7 @@ Repo: https://github.com/<owner>/<repo>.git
 ## Draft recipe
 
 `fdroid/io.github.pintofi.beanbook.expert.yml` is the fdroiddata build recipe for the **Expert
-edition** (application ID `io.github.pintofi.beanbook.expert`). It points `binary` at the signed
+edition** (application ID `io.github.pintofi.beanbook.expert`). It points `Binaries` at the signed
 APK on the GitHub release and lists the project's signing certificate in
 `AllowedAPKSigningKeys`, so F-Droid can verify its own build against ours and publish the
 signed APK. It is a draft: the `init`/`prebuild` steps that cross-build the wheels have not been

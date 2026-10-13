@@ -91,7 +91,6 @@ android {
         create("expert") {
             dimension = "edition"
             applicationIdSuffix = ".expert"
-            versionNameSuffix = "-expert"
         }
     }
 
