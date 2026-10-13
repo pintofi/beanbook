@@ -167,17 +167,12 @@ your records out is not a paid feature.
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/plugins-dark.webp"><img src="docs/assets/screenshots/plugins-light.webp" width="240" alt="Plugins: a notice that reads A plugin is a program you are trusting. It runs with this app's permissions: it can read and change your whole ledger, and use the network. Install plugins only from a source you trust. Below it, a plugin list with search and All, Beancount and Fava filters."></picture><br>
 <sub><b>Plugins</b>, with the warning said plainly (Expert edition shown).</sub>
 </td>
-</tr>
-<tr>
 <td align="center">
 <img src="docs/assets/screenshots/widget-home.webp" width="240" alt="An Android home screen with two Beanbook widgets: Net worth 6563.40 EUR, and Balance listing Checking 6568.65 EUR, Cash 13.25 EUR and Groceries 237.80 EUR, each with a plus button to add an entry."><br>
 <sub><b>Widgets</b> for net worth and chosen balances, each with a + to add an entry.</sub>
 </td>
 </tr>
 </table>
-
-<sub>Captured on an Android emulator (API 36, 1080 × 1920, 420 dpi) from the Expert debug build, with the invented ledger in
-[fixtures/site-screenshots/household](fixtures/site-screenshots/household). Every name and amount in them is made up.</sub>
 
 </details>
 
@@ -366,8 +361,7 @@ connection; it happens only when you type `http://` yourself.
 
 ## Requirements
 
-- Android 10 (API 29) or later. Android 9 does not work: the embedded Python runtime is killed
-  by seccomp before the engine starts.
+- Android 10 (API 29) or later.
 - `arm64-v8a` or `x86_64`.
 
 ## Getting started
@@ -419,8 +413,8 @@ edges are today:
 Every feature is free in both editions: no trial, no paid tiers, no keys, no ads. If Beanbook is
 useful to you, you can help it along:
 
-<p>
-  <a href="https://ko-fi.com/pintofi"><img src="https://storage.ko-fi.com/cdn/kofi3.png?v=3" height="36" alt="Support Beanbook on Ko-fi"></a>
+<p align="center">
+  <a href="https://ko-fi.com/pintofi"><img src="https://storage.ko-fi.com/cdn/kofi3.png?v=3" height="64" alt="Support Beanbook on Ko-fi"></a>
 </p>
 
 <picture>
@@ -471,8 +465,6 @@ accessibility checks. [CONTRIBUTING.md](CONTRIBUTING.md) lists the commands and 
 
 ## Documentation
 
-For users:
-
 | Document | Contents |
 |---|---|
 | [docs/getting-started.md](docs/getting-started.md) | First project, importing an existing ledger, moving data, troubleshooting |
@@ -481,16 +473,6 @@ For users:
 | [docs/known-limitations.md](docs/known-limitations.md) | What the app cannot do, and why |
 | [docs/on-demand-packages.md](docs/on-demand-packages.md) | Fetching extra Python packages, Expert only |
 | [docs/plugin-compatibility.md](docs/plugin-compatibility.md) | Which plugins and extensions work, and how that was tested |
-
-For developers:
-
-| Document | Contents |
-|---|---|
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Building, testing, and the constraints a change must preserve |
-| [docs/architecture.md](docs/architecture.md) | Components, trust boundaries, process model, dependency direction |
-| [docs/storage-and-backup.md](docs/storage-and-backup.md) | Workspace layout, atomic writes, SAF import and export, archives |
-| [docs/threat-model.md](docs/threat-model.md) | Assets, adversaries, mitigations, accepted risk |
-| [docs/distribution.md](docs/distribution.md) | Edition matrix, update channels, the Play payment rules |
 
 ## Contributing
 

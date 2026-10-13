@@ -200,3 +200,12 @@ rebasable. The project does not fork upstream.
 If you are reporting a plugin or Fava extension result,
 [docs/plugin-compatibility.md](docs/plugin-compatibility.md) describes what a useful report
 contains.
+
+## Further reading
+
+| Document | Contents |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | Components, trust boundaries, process model, dependency direction |
+| [docs/storage-and-backup.md](docs/storage-and-backup.md) | Workspace layout, atomic writes, SAF import and export, archives |
+| [docs/threat-model.md](docs/threat-model.md) | Assets, adversaries, mitigations, accepted risk |
+| [docs/distribution.md](docs/distribution.md) | Edition matrix, update channels, the Play payment rules |
