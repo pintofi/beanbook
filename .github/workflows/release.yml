@@ -95,7 +95,11 @@ jobs:
       - name: Checksums
         # These are what the update manifest is issued against, so they go in the log and in
         # the release body rather than being recomputed by hand later.
-        run: ./gradlew :app:releaseChecksums | tee checksums.txt
+        run: |
+          # Only the lines that are checksums: Gradle's own banner and warnings stay out of
+          # the file and the release body. Only the edition this workflow publishes.
+          ./gradlew :app:releaseChecksums -q | grep -E '^[0-9a-f]{64}  app-expert-' | tee checksums.txt
+          test -s checksums.txt
 
       - name: Publish
         uses: softprops/action-gh-release@v2
