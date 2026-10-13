@@ -20,6 +20,7 @@ concurrency:
 jobs:
   jvm:
     name: Kotlin unit tests + boundary gate
+    needs: wheels
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +39,19 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-wheels
+          path: wheels
+
+      - name: Pin the cross-built wheels
+        # Gradle configures the embedded-engine module in every task, and that needs the
+        # generated lock for the two wheels built in the wheels job.
+        run: |
+          WHEELS="$GITHUB_WORKSPACE/wheels"
+          python3 tools/lock-python.py --refresh-local --wheel-dir "$WHEELS"
+          echo "BCA_WHEEL_DIR=$WHEELS" >> "$GITHUB_ENV"
+
       - name: Unit tests
         # Every module with tests, not two of them. This ran :core-domain and
         # :core-engine only, so :core-data and :engine-remote — the tests between
@@ -45,7 +59,7 @@ jobs:
         # could be loaded at all.
         run: >-
           ./gradlew :core-domain:test :core-data:test :core-engine:test :app:testPlayDebugUnitTest
-          :engine-remote:test
+          :engine-remote:test -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
 
       - name: Reproducible Python bytecode
         # Hash-based .pyc rather than timestamp-based, so two builds of the same commit are
@@ -57,10 +71,10 @@ jobs:
         # Static analysis across every module. It earned its place on the first run: an
         # accessibility helper written in M6 and never wired up, so every amount was
         # announced as raw text (docs/milestones/m14-part16.md).
-        run: ./gradlew detekt
+        run: ./gradlew detekt -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
 
       - name: Play flavor boundaries
-        run: ./gradlew :app:verifyPlayFlavorBoundaries
+        run: ./gradlew :app:verifyPlayFlavorBoundaries -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
 
   workflows:
     name: Workflows are valid
@@ -227,6 +241,10 @@ jobs:
       - name: Android SDK command-line tools
         if: steps.cache.outputs.cache-hit != 'true'
         uses: android-actions/setup-android@v3
+        with:
+          # The action's default also installs the legacy "tools" package, which the SDK
+          # manager no longer offers; cibuildwheel installs the NDK itself.
+          packages: ''
 
       - name: Rust with the Android targets
         if: steps.cache.outputs.cache-hit != 'true'
