@@ -19,14 +19,9 @@ internal object EditionFacts {
      */
     val SUPPORT_URL: String? = "https://ko-fi.com/pintofi"
 
-    /** The support pages shown in About, in order (Ko-fi and Buy Me a Coffee). */
+    /** The support pages shown in About, in order (Ko-fi). */
     val SUPPORT_LINKS: List<SupportLink> = listOf(
         SupportLink("Ko-fi", "https://ko-fi.com/pintofi", io.github.pintofi.beanbook.app.R.drawable.ic_support_kofi),
-        SupportLink(
-            "Buy Me a Coffee",
-            "https://buymeacoffee.com/pintofi",
-            io.github.pintofi.beanbook.app.R.drawable.ic_support_bmc,
-        ),
     )
 
     /** This is the edition with everything; there is nothing to point at. */

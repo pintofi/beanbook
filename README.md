@@ -421,8 +421,6 @@ useful to you, you can help it along:
 
 <p>
   <a href="https://ko-fi.com/pintofi"><img src="https://storage.ko-fi.com/cdn/kofi3.png?v=3" height="36" alt="Support Beanbook on Ko-fi"></a>
-  &nbsp;
-  <a href="https://buymeacoffee.com/pintofi"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="36" alt="Buy Beanbook a coffee"></a>
 </p>
 
 <picture>
