@@ -38,7 +38,7 @@ fetcher, including what it costs in storage.
 
 Both editions are free, with every feature and nothing to unlock: no trial, no tiers, no keys.
 If Beanbook is useful to you and you would like to help it along, the project accepts
-donations on Ko-fi. The Expert edition mentions that once, after a week of use; the Play
+donations on Ko-fi. The Expert edition links to it from About; the Play
 edition does not link to it, because Google Play's rules on payments do not allow it
 ([distribution.md 4.2](distribution.md)). The page is
 [ko-fi.com/pintofi](https://ko-fi.com/pintofi).

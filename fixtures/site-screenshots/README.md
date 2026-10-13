@@ -6,7 +6,7 @@ The two PDFs under `household/documents/` are generated placeholders, not real r
 
 ## Recapturing
 
-The published set was captured on 2026-09-19 from the Expert debug build of commit `1b791f0`
+The published set was captured on 2026-10-13 from the Expert debug build
 on the `s1_api36` emulator: 1080 x 1920, 420 dpi, font scale 1.0, en-US, portrait.
 
 1. Install the Expert debug build and clear its data (`adb shell pm clear <package>`).
