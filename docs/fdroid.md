@@ -51,10 +51,10 @@ Repo: https://github.com/<owner>/<repo>.git
 
 ## Draft recipe
 
-`fdroid/io.github.pintofi.beanbook.yml` is the fdroiddata build recipe, written for the Play
-code path (no native package installs, no code fetched from the network), which is the
-edition F-Droid is least likely to object to. It is a draft: the `init`/`prebuild` steps that
-build the cross-built wheels have not been run on F-Droid's infrastructure, and `<owner>/<repo>`
-is a placeholder until the public repository is named. Note the Play edition's application ID
-(`io.github.pintofi.beanbook`) is the same as Google Play's, so a user cannot update from one
-store to the other (different signing keys); the Expert edition uses `.expert`.
+`fdroid/io.github.pintofi.beanbook.expert.yml` is the fdroiddata build recipe for the **Expert
+edition** (application ID `io.github.pintofi.beanbook.expert`). It points `binary` at the signed
+APK on the GitHub release and lists the project's signing certificate in
+`AllowedAPKSigningKeys`, so F-Droid can verify its own build against ours and publish the
+signed APK. It is a draft: the `init`/`prebuild` steps that cross-build the wheels have not been
+run on F-Droid's infrastructure, and the build is not yet shown to be reproducible. Expert can
+install Python packages and run user scripts when the user asks; say so to the maintainers.

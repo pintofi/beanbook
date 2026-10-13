@@ -94,18 +94,13 @@ jobs:
 
       - name: Name the files and write their checksums
         # Files are published as beanbook-<version>-<abi>.apk, copied out of Gradle's
-        # per-flavour folders. Expert is the main download; the Play-flavour files are there for F-Droid's
-        # verification (Play itself ships through Play). The checksums file lists exactly these names and nothing else.
+        # per-flavour folders. Only the Expert edition is published here (it is also what F-Droid verifies
+        # against); Play ships through Play. The checksums file lists exactly these names and nothing else.
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           mkdir dist
           for abi in arm64-v8a x86_64 universal; do
             cp "app/build/outputs/apk/expert/release/app-expert-$abi-release.apk" "dist/beanbook-$VERSION-$abi.apk"
-          done
-          # The Play-flavour APKs are attached too: F-Droid's reproducible-build check
-          # compares its own build against the signed Play-flavour APK published here.
-          for abi in arm64-v8a x86_64 universal; do
-            cp "app/build/outputs/apk/play/release/app-play-$abi-release.apk" "dist/beanbook-$VERSION-play-$abi.apk"
           done
           (cd dist && sha256sum beanbook-*.apk) | tee checksums.txt
           test -s checksums.txt

@@ -1,5 +1,6 @@
 # DRAFT for fdroiddata (https://gitlab.com/fdroid/fdroiddata), not submitted and not built on
-# F-Droid's servers. This is the Play-flavour code path (application ID io.github.pintofi.beanbook).
+# F-Droid's servers. This is the Expert edition (application ID io.github.pintofi.beanbook.expert);
+# its versionName carries an "-expert" suffix, the tag does not.
 Categories:
   - Money
 License: GPL-2.0-only
@@ -13,10 +14,11 @@ AutoName: Beanbook
 RepoType: git
 Repo: https://github.com/pintofi/beanbook.git
 
-# Reproducible-build verification: F-Droid builds from source, compares the result with this
-# signed APK, and if they match publishes ours, so updates stay signed with the project key.
-# %v is the versionName. Release files are named beanbook-<version>-play-<abi>.apk.
-Binaries: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-play-arm64-v8a.apk
+# Reproducible-build verification: F-Droid builds from source, compares the result with the
+# signed APK named in each build's `binary`, and if they match publishes ours, so updates stay
+# signed with the project key. The versionName ("1.0.0-expert") differs from the tag and the
+# release file name ("v1.0.0", "beanbook-1.0.0-arm64-v8a.apk"), so a top-level Binaries template
+# with %v cannot name the file; each build states its URL.
 
 # SHA-256 of the project's APK signing certificate (lowercase hex, no colons).
 AllowedAPKSigningKeys: d7039d79b2afa3ffc81aeba7bc8dbf45a73b07b94f982ca913d65028b9b2ff55
@@ -25,19 +27,20 @@ AllowedAPKSigningKeys: d7039d79b2afa3ffc81aeba7bc8dbf45a73b07b94f982ca913d65028b
 # tools/build-wheels.sh first (pinned sdists and backends), then Gradle. Unproven on F-Droid's
 # build server: this is the step most likely to need changes.
 Builds:
-  - versionName: 1.0.0
+  - versionName: 1.0.0-expert
     versionCode: 1
     commit: v1.0.0
+    binary: https://github.com/pintofi/beanbook/releases/download/v1.0.0/beanbook-1.0.0-arm64-v8a.apk
     subdir: app
     sudo:
       - apt-get update
       - apt-get install -y python3.13 python3.13-venv
     init: ../tools/build-wheels.sh --out ../wheels
     gradle:
-      - play
+      - expert
     prebuild: sed -i 's#^beancount.wheelDir=.*#beancount.wheelDir=../wheels#' ../gradle.properties
 
-AutoUpdateMode: Version v%v
+AutoUpdateMode: None
 UpdateCheckMode: Tags
-CurrentVersion: 1.0.0
+CurrentVersion: 1.0.0-expert
 CurrentVersionCode: 1
