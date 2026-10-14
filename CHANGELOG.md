@@ -2,6 +2,11 @@
 
 All notable changes to Beanbook. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+- Pages shared on Wi-Fi are read-only: a signed-in browser can no longer save through Fava's editor.
+
 ## [1.0.0] - 2026-10-13
 
 ### Added
