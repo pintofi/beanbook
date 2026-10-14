@@ -67,4 +67,4 @@ to install the NDK. `tools/build-wheels.sh` therefore also accepts an NDK 27 sup
 recipe installs `rustup` and runs `rustup default stable` so the Android standard library can be
 added for `watchfiles`. The NDK path was checked locally with `beancount`; the Rust half, and the
 whole recipe, are unproven on F-Droid until its build runs. The fix is in the build script, so it
-needs a tag that contains it: `commit` in the recipe must point at a release made after it.
+is in the v1.0.0 tag, which the recipe pins by commit.
