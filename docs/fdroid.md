@@ -58,3 +58,13 @@ APK on the GitHub release and lists the project's signing certificate in
 signed APK. It is a draft: the `init`/`prebuild` steps that cross-build the wheels have not been
 run on F-Droid's infrastructure, and the build is not yet shown to be reproducible. Expert can
 install Python packages and run user scripts when the user asks; say so to the maintainers.
+
+### Building the wheels on F-Droid's server
+
+F-Droid's SDK has no Google `cmdline-tools`, which is what the Android CPython toolchain uses
+to install the NDK. `tools/build-wheels.sh` therefore also accepts an NDK 27 supplied through
+`ANDROID_NDK_HOME` (the recipe's `ndk:` line) and links it into a private SDK directory. The
+recipe installs `rustup` and runs `rustup default stable` so the Android standard library can be
+added for `watchfiles`. The NDK path was checked locally with `beancount`; the Rust half, and the
+whole recipe, are unproven on F-Droid until its build runs. The fix is in the build script, so it
+needs a tag that contains it: `commit` in the recipe must point at a release made after it.

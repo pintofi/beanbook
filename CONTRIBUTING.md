@@ -22,7 +22,7 @@ not "or later", and they run in-process, so the combined work carries the same t
 - **JDK 21.** The Kotlin toolchain is pinned to 21; the app compiles against Java 17 bytecode.
 - **Android SDK** with `compileSdk` 37. That platform package is named `platforms;android-37.0`
   rather than `android-37`, which trips people up.
-- **Gradle 9.7.0**, via the wrapper in this repository. Use `./gradlew`.
+- **Gradle 9.8.1**, via the wrapper in this repository. Use `./gradlew`.
 - **A host CPython 3.13.** Chaquopy runs pip with it at build time. It is a build tool, not the
   interpreter that ships in the APK.
 - **The two cross-built wheels**, `beancount` and `watchfiles`. Neither publishes an Android

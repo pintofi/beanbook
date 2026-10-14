@@ -52,15 +52,45 @@ fi
 cbw="$venv/bin/cibuildwheel"
 echo "cibuildwheel: $("$venv/bin/pip" show cibuildwheel | awk '/^Version:/{print $2}')"
 
-# cibuildwheel installs the NDK through the SDK's own sdkmanager, so it needs a real SDK
-# to install it into. A GitHub runner image already has one; a laptop may not, and the
-# failure without this check is an exit-127 from a generated shell script four levels down.
+# cibuildwheel's Android support sources CPython's android-env.sh, which wants the NDK at
+# $ANDROID_HOME/ndk/<ndk_version> and, if it is missing, installs it with Google's
+# cmdline-tools sdkmanager. Three situations, in the order they are tried:
+#   1. the NDK is already at that path (a developer machine, a GitHub runner image);
+#   2. there is a real sdkmanager, which will install it;
+#   3. neither, but an NDK is supplied through ANDROID_NDK_HOME / ANDROID_NDK_ROOT /
+#      ANDROID_NDK. That is the F-Droid build server, whose SDK has no cmdline-tools but which
+#      installs the NDK the recipe asks for. It is linked into a private SDK directory, because
+#      the system one may not be writable and nothing here should modify it.
+ndk_version="27.3.13750724"
 sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-if [ -z "$sdk" ] || [ ! -x "$sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
-    echo "::error::no Android SDK command-line tools at \${ANDROID_HOME}/cmdline-tools/latest" >&2
-    echo "  ANDROID_HOME=${sdk:-(unset)}" >&2
-    echo "  cibuildwheel installs the NDK with sdkmanager and cannot proceed without it." >&2
-    exit 1
+if [ -n "$sdk" ] && [ -d "$sdk/ndk/$ndk_version" ]; then
+    :
+elif [ -n "$sdk" ] && [ -x "$sdk/cmdline-tools/latest/bin/sdkmanager" ]; then
+    :
+else
+    ndk_home="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-${ANDROID_NDK:-}}}"
+    if [ -z "$ndk_home" ] || [ ! -d "$ndk_home/toolchains/llvm/prebuilt" ]; then
+        echo "::error::no Android NDK, and no sdkmanager to install one" >&2
+        echo "  ANDROID_HOME=${sdk:-(unset)}" >&2
+        echo "  Either have the NDK at \${ANDROID_HOME}/ndk/$ndk_version, install the SDK" >&2
+        echo "  command-line tools at \${ANDROID_HOME}/cmdline-tools/latest, or point" >&2
+        echo "  ANDROID_NDK_HOME at an NDK 27." >&2
+        exit 1
+    fi
+    ndk_rev="$(sed -n 's/^Pkg.Revision *= *//p' "$ndk_home/source.properties" 2>/dev/null || true)"
+    case "$ndk_rev" in
+        27.*) ;;
+        *) echo "::error::the NDK at $ndk_home is revision '${ndk_rev:-unknown}'; the Android CPython toolchain is for NDK 27" >&2
+           exit 1 ;;
+    esac
+    if [ "$ndk_rev" != "$ndk_version" ]; then
+        echo "note: NDK $ndk_rev used where CPython's android-env.sh names $ndk_version"
+    fi
+    sdk="$work/android-sdk"
+    rm -rf "$sdk"
+    mkdir -p "$sdk/ndk"
+    ln -s "$ndk_home" "$sdk/ndk/$ndk_version"
+    echo "using the NDK at $ndk_home through a private SDK directory"
 fi
 export ANDROID_HOME="$sdk" ANDROID_SDK_ROOT="$sdk"
 echo "android sdk: $sdk"
