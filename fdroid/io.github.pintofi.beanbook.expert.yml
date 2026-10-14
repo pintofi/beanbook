@@ -21,8 +21,9 @@ Builds:
     subdir: app
     sudo:
       - apt-get update
-      - apt-get install -y python3.13 python3.13-venv
-    init: ../tools/build-wheels.sh --out ../wheels
+      - apt-get install -y python3.13 python3.13-venv rustup
+    ndk: r27c
+    init: rustup default stable && ../tools/build-wheels.sh --out ../wheels
     gradle:
       - expert
     prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
