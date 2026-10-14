@@ -23,9 +23,9 @@ jobs:
     needs: wheels
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           distribution: temurin
           java-version: '21'
@@ -33,13 +33,13 @@ jobs:
       - name: Set up Python 3.13 for Chaquopy's pip
         # Chaquopy needs a host interpreter matching the embedded runtime's minor version
         # (Phase 0 finding).
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.13'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: android-wheels
           path: wheels
@@ -80,7 +80,7 @@ jobs:
     name: Workflows are valid
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Every workflow parses and has runnable jobs
         # verify.yml was malformed from the day it was written and nobody noticed for
         # thirteen milestones: GitHub never loaded it, so none of these gates ever ran.
@@ -93,7 +93,7 @@ jobs:
     name: Secret and TLS-bypass scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: No trustAll TLS anywhere in the repository
         # CLAUDE.md, non-negotiable: certificate errors are fatal and no trustAll code may
@@ -223,8 +223,8 @@ jobs:
     name: Cross-build the Android wheels
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.13'
 
@@ -233,14 +233,14 @@ jobs:
         # build script. Change any of the three and they are rebuilt; change nothing and a
         # runner spends no time on the NDK download.
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: wheels
           key: android-wheels-${{ hashFiles('engine-local/wheels.lock', 'engine-local/build-backends.lock', 'tools/build-wheels.sh') }}
 
       - name: Android SDK command-line tools
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
         with:
           # The action's default also installs the legacy "tools" package, which the SDK
           # manager no longer offers; cibuildwheel installs the NDK itself.
@@ -259,7 +259,7 @@ jobs:
         # Rust panic metadata and maturin's SBOM (docs/milestones/m14-part8.md).
         run: python3 tools/check-build-paths.py wheels/*.whl
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: android-wheels
           path: wheels/*.whl
@@ -270,16 +270,16 @@ jobs:
     needs: wheels
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           distribution: temurin
           java-version: '21'
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.13'
-      - uses: gradle/actions/setup-gradle@v4
-      - uses: actions/download-artifact@v8
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: android-wheels
           path: wheels
@@ -312,17 +312,17 @@ jobs:
     needs: wheels
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           distribution: temurin
           java-version: '21'
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.13'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: android-wheels
           path: wheels
