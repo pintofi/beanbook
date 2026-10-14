@@ -10,7 +10,6 @@ AutoName: Beanbook
 
 RepoType: git
 Repo: https://github.com/pintofi/beanbook.git
-
 Binaries: 
   https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
 
@@ -21,7 +20,7 @@ Builds:
     subdir: app
     sudo:
       - apt-get update
-      - apt-get install -y python3.13 python3.13-venv rustup m4
+      - apt-get install -y python3.13 python3.13-venv rustup m4 gcc
     init: rustup default stable && ../tools/build-wheels.sh --out ../wheels
     gradle:
       - expert
