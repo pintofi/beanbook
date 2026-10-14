@@ -17,7 +17,7 @@ Binaries:
 Builds:
   - versionName: 1.0.0
     versionCode: 1
-    commit: d32babf73bbb8b9ab47401fd58ee80fd88111cc3
+    commit: fcfdc5de9fbba1702fb3c179160c1ea619e0a2b5
     subdir: app
     sudo:
       - apt-get update
