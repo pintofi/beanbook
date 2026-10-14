@@ -240,7 +240,7 @@ jobs:
 
       - name: Android SDK command-line tools
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           # The action's default also installs the legacy "tools" package, which the SDK
           # manager no longer offers; cibuildwheel installs the NDK itself.
