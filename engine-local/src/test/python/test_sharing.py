@@ -87,6 +87,17 @@ class LoginGateTest(unittest.TestCase):
         self.assertTrue(status.startswith("200"))
         self.assertEqual(b"the ledger", body)
 
+    def test_a_signed_in_browser_can_read_but_not_write(self):
+        cookie = self.session_cookie()
+        for method in ("POST", "PUT", "DELETE", "PATCH"):
+            status, headers, body = self.call("/ledger/api/source", method=method, cookie=cookie, body=b"{}")
+            self.assertTrue(status.startswith("405"), (method, status))
+            self.assertEqual("GET, HEAD, OPTIONS", headers["Allow"])
+            self.assertNotIn(b"the ledger", body)
+        for method in ("GET", "HEAD", "OPTIONS"):
+            status, _, _ = self.call("/ledger/api/changed", method=method, cookie=cookie)
+            self.assertTrue(status.startswith("200"), (method, status))
+
     def test_the_session_cookie_is_http_only_and_same_site_strict(self):
         _, headers, _ = self.sign_in()
         self.assertIn("HttpOnly", headers["Set-Cookie"])

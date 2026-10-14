@@ -31,7 +31,7 @@ What is true today (2026-10-11):
   fetches Python packages from the network only when the user asks, and runs user scripts.
   Which one F-Droid accepts is for its maintainers to say. `docs/distribution.md` §5 had this
   as "revisit after v1".
-- **Reproducible build / signing.** The app signing key is offline (release-checklist.md).
+- **Reproducible build / signing.** The app signing key is a repository secret used by the release workflow, with an offline backup.
   F-Droid can sign with its own key, or verify a reproducible build against ours; the build
   is not yet shown to be reproducible.
 

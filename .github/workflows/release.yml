@@ -1,9 +1,10 @@
 # Builds and publishes a release, on a tag.
 #
-# What this does NOT do is sign the update manifest. That needs the Ed25519 private key, and
-# a key CI can use is a key anyone who can change a workflow file can use. CI publishes the
-# artifacts and their checksums; a person issues the manifest offline with `issue-update.sh`
-# and attaches it afterwards (docs/release-checklist.md).
+# The APKs are signed here with the project key, which is held as repository secrets
+# (BCA_KEYSTORE_BASE64 and friends). A key CI can use is a key anyone who can change a workflow
+# file can use, so this file, the actions it runs (pinned to commit hashes) and the main
+# branch are what to protect. The workflow publishes a draft release and its checksums;
+# a person reads them and publishes the release.
 name: Release
 
 on:

@@ -47,20 +47,24 @@ VPN, is never inferred or substituted, and is named as unencrypted on screen bef
 connect.
 
 **Local mode makes no network requests at all.** Fava is bound to `127.0.0.1` on an ephemeral
-port behind a per-process token.
+port behind a per-process token. The one exception to "nothing listens on the network" is
+Share on Wi-Fi, which is off until you turn it on, answers only private addresses behind a
+sign-in, and shows a notification while it runs (see [threat-model.md](threat-model.md) §3.3a).
 
 ---
 
 ## Editions
 
-Both editions have the same features, including plugins and Fava extensions. Three
-differences exist, all forced by Play policy:
+Both editions have the same features, including plugins and Fava extensions. Two
+differences exist, both forced by Play policy:
 
 | | Play | Expert |
 |---|---|---|
 | Plugins with native code (`.so`) | refused | allowed |
 | Java/Android bridge inside user plugin code | withheld | available |
-| Self-update | none | signed, user-initiated |
+
+Neither edition updates itself: Play updates through Play, and the Expert APK is replaced by
+installing a newer signed file.
 
 **beangrow works, in the Expert edition, with its dependencies fetched on demand.** It needs
 numpy, pandas, matplotlib and protobuf — a 37 MB download that occupies about 143 MB once unpacked, which does not belong in every install — so

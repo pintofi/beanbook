@@ -259,9 +259,9 @@ apply(from = "$rootDir/gradle/play-boundaries.gradle.kts")
  * used to feed `issue-update.sh` as well, which signed an update manifest for the in-app
  * self-updater; that updater is gone (`UpdateSection`), so this task now has one purpose.
  *
- * Nothing is signed here on purpose. The signing key lives outside this repository and does
- * not belong in CI secrets: a key that CI can use is a key that anyone who can change a
- * workflow file can use. CI publishes the artifacts and their checksums; a person signs.
+ * Nothing is signed by this task. The release workflow signs the APKs with the project key,
+ * which is held as repository secrets (never in the repository); this task only reports what
+ * was built.
  */
 tasks.register("releaseChecksums") {
     group = "publishing"
