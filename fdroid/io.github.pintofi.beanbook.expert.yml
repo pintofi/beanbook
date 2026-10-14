@@ -1,9 +1,7 @@
-# DRAFT for fdroiddata (https://gitlab.com/fdroid/fdroiddata), not submitted and not built on
-# F-Droid's servers. This is the Expert edition (application ID io.github.pintofi.beanbook.expert).
 Categories:
-  - Money
+  - Finance Manager
 License: GPL-2.0-only
-AuthorName: WildeBeast2521
+AuthorName: pintofi
 SourceCode: https://github.com/pintofi/beanbook
 IssueTracker: https://github.com/pintofi/beanbook/issues
 Changelog: https://github.com/pintofi/beanbook/blob/HEAD/CHANGELOG.md
@@ -13,21 +11,13 @@ AutoName: Beanbook
 RepoType: git
 Repo: https://github.com/pintofi/beanbook.git
 
-# Reproducible-build verification: F-Droid builds from source, compares the result with this
-# signed APK, and if they match publishes ours, so updates stay signed with the project key.
-# %v is the versionName. Release files are named beanbook-<version>-<abi>.apk.
-Binaries: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
+Binaries:
+  https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
 
-# SHA-256 of the project's APK signing certificate (lowercase hex, no colons).
-AllowedAPKSigningKeys: d7039d79b2afa3ffc81aeba7bc8dbf45a73b07b94f982ca913d65028b9b2ff55
-
-# The Python layer needs beancount and watchfiles cross-built for Android; the build must run
-# tools/build-wheels.sh first (pinned sdists and backends), then Gradle. Unproven on F-Droid's
-# build server: this is the step most likely to need changes.
 Builds:
   - versionName: 1.0.0
     versionCode: 1
-    commit: v1.0.0
+    commit: d32babf73bbb8b9ab47401fd58ee80fd88111cc3
     subdir: app
     sudo:
       - apt-get update
@@ -35,9 +25,12 @@ Builds:
     init: ../tools/build-wheels.sh --out ../wheels
     gradle:
       - expert
-    prebuild: sed -i 's#^beancount.wheelDir=.*#beancount.wheelDir=../wheels#' ../gradle.properties
+    prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
 
-AutoUpdateMode: Version v%v
+# SHA-256 of the project's APK signing certificate (lowercase hex, no colons).
+AllowedAPKSigningKeys: d7039d79b2afa3ffc81aeba7bc8dbf45a73b07b94f982ca913d65028b9b2ff55
+
+AutoUpdateMode: Version
 UpdateCheckMode: Tags
 CurrentVersion: 1.0.0
 CurrentVersionCode: 1

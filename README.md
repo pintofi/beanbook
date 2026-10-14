@@ -487,9 +487,8 @@ Security reports go through [SECURITY.md](SECURITY.md).
 
 GPL-2.0-only.
 
-Beancount, beanquery, and beangulp are GPL-2.0-*only*, explicitly not "or later". GPLv3 code
-cannot be used here. The full text is in [COPYING](COPYING), and the copyright holders are
-listed in [AUTHORS](AUTHORS).
+The full text is in [COPYING](COPYING), and the copyright holders are listed in
+[AUTHORS](AUTHORS).
 
 Neither edition links any proprietary library for payments: nothing is sold. There is
 no additional licence permission: Beanbook is GPL-2.0-only, with nothing added.
