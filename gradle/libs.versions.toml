@@ -11,7 +11,7 @@
 # of an undocumented pairing is a subtle packaging bug in an accounting app rather than a
 # red build. Raise this when Chaquopy documents the wider range.
 agp = "9.2.0"
-kotlin = "2.4.10"
+kotlin = "2.4.21"
 # Current AndroidX and Compose require compileSdk 37. The SDK package is named
 # "platforms;android-37.0", not "platforms;android-37" - see docs/feasibility/m1.md.
 composeBom = "2026.08.00"
