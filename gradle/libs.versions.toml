@@ -14,7 +14,7 @@ agp = "9.2.0"
 kotlin = "2.4.21"
 # Current AndroidX and Compose require compileSdk 37. The SDK package is named
 # "platforms;android-37.0", not "platforms;android-37" - see docs/feasibility/m1.md.
-composeBom = "2026.08.00"
+composeBom = "2026.09.00"
 # Material 3 is pinned above the BOM (which carries 1.4.0) for the Expressive components --
 # MaterialExpressiveTheme, MotionScheme, ButtonGroup, LoadingIndicator, MaterialShapes --
 # none of which 1.4.0 contains (docs/material-expressive.md). Apache-2.0 AndroidX like the
