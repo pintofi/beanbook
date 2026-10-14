@@ -263,6 +263,10 @@ colour.
 Every change, from the entry form, the file editor or a delete, takes the same path. Success is
 reported only at the end, after Beancount has read the ledger back.
 
+The one exception is the editor inside Fava's own pages in Reports: Fava saves those itself, with
+its own check that the file has not changed underneath it, and the app re-reads the ledger
+afterwards. Those saves get no snapshot or Undo.
+
 ```mermaid
 flowchart TD
     subgraph before["Before anything changes"]

@@ -94,13 +94,17 @@ one, which is unchanged.
 - A signed-in browser holds a random 256-bit session id in an `HttpOnly`,
   `SameSite=Strict` cookie; sessions expire after 12 idle hours, are capped at 32, and all
   end when sharing stops. `SameSite=Strict` is the CSRF defence.
+- Read-only: a signed-in browser may use `GET`, `HEAD` and `OPTIONS` only. Fava's saves are
+  `PUT`, `POST` and `DELETE`, and are refused with `405`, so the shared pages cannot change
+  the ledger.
 - Five wrong attempts from one address lock that address out for a minute, doubling each
   time up to a day.
 - A foreground service with a notification naming the address and offering Stop runs for
   exactly as long as sharing is on; the engine is kept running in the background only then.
 
 **Residual risk, accepted and said on screen:** the connection is plain HTTP. Anyone who can
-observe the network can read the pages and replay the session cookie while it is valid. The
+observe the network can read the pages and replay the session cookie while it is valid (to
+read; the shared pages cannot write). The
 screen says to use it only on a trusted network and to turn it off after. HTTPS would need a
 certificate the other device trusts, which a phone on a home network cannot obtain without
 the user installing one; that is not built.
@@ -157,8 +161,7 @@ and never handed to a component with elevated privileges.
 Exact version pins with lockfiles and checksums for Maven and Python wheels; a generated
 SBOM and license inventory per release; wheels we cross-build ourselves are built from
 verified upstream sdists with recorded hashes and reproducible build scripts; CI runs
-dependency and secret scanning; release signing keys live outside the repository. (The entitlement signing key went with the
-keys themselves.)
+dependency and secret scanning; the release signing key is stored as encrypted repository secrets and used only by the tag-triggered release workflow, whose actions are pinned to commit hashes and whose branch is protected; an offline backup of the keystore is kept by the maintainer. Anyone who can change a workflow file could use the key, which is why the workflow, its actions and the branch are the things to protect.
 
 ### 3.8 Device loss (T9)
 

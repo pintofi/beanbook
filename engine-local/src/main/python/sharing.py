@@ -39,6 +39,9 @@ SESSION_COOKIE = "bb_session"
 LOGIN_PATH = "/__beanbook/login"
 LOGOUT_PATH = "/__beanbook/logout"
 
+# The only methods a signed-in browser may use. Everything else could change the ledger.
+READ_METHODS = ("GET", "HEAD", "OPTIONS")
+
 # How long a sign-in lasts without being used, and how many can be open at once.
 SESSION_IDLE_SECONDS = 12 * 60 * 60
 MAX_SESSIONS = 32
@@ -119,6 +122,18 @@ class LoginGate:
             self._end_session(environ)
             return self._redirect(start_response, LOGIN_PATH, clear=True)
         if self._session(environ):
+            # What is shared is a view of the ledger, not a way to change it. Fava's editor and
+            # add form save with PUT, POST and DELETE; those saves would reach the file through
+            # Fava's own code, without the snapshot, undo and re-parse the app's writer gives
+            # every other change. So a signed-in browser can read, and cannot write.
+            if environ.get("REQUEST_METHOD", "GET") not in READ_METHODS:
+                self.refused += 1
+                return self._plain(
+                    start_response,
+                    "405 Method Not Allowed",
+                    "This page is shared read-only. Make changes in the app.",
+                    [("Allow", "GET, HEAD, OPTIONS")],
+                )
             return self._app(environ, start_response)
         self.refused += 1
         if environ.get("REQUEST_METHOD", "GET") == "GET" and "text/html" in environ.get("HTTP_ACCEPT", ""):
@@ -226,9 +241,12 @@ class LoginGate:
     # -- responses ----------------------------------------------------------------------
 
     @staticmethod
-    def _plain(start_response, status, text):
+    def _plain(start_response, status, text, extra=()):
         body = text.encode("utf-8")
-        start_response(status, [("Content-Type", "text/plain; charset=utf-8"), ("Content-Length", str(len(body)))])
+        start_response(
+            status,
+            [("Content-Type", "text/plain; charset=utf-8"), ("Content-Length", str(len(body))), *extra],
+        )
         return [body]
 
     @staticmethod

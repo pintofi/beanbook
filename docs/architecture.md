@@ -105,7 +105,6 @@ project is:
 | B4 | WebView ↔ loopback Fava | both | Origin allowlist, per-process bearer token, no file access, no JS bridge |
 | B5 | App ↔ remote Fava | both | HTTPS only, strict cert validation, no bypass path in any build |
 | B6 | Engine ↔ user plugin code (expert) | in | **Not a security boundary** — same process, same privileges. Documented as such. |
-| B7 | Update artifact ↔ installer (expert) | in | Signature + checksum verification before `PackageInstaller`; never silent |
 
 Detailed adversary analysis: [threat-model.md](threat-model.md).
 
