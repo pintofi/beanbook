@@ -43,6 +43,13 @@ tasks.matching {
 }
 
 android {
+    // AGP adds an encrypted "dependency metadata" block to the APK signing block, for Google
+    // Play. It is opaque to anyone else, F-Droid's scanner rejects it, and nothing here uses it.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
     // Connected tests install with every runtime permission granted (B99). The app asks for
     // notifications on first launch (Android 13+), and that dialog sits over the first
     // activity of a fresh install, so the first Compose test found "no compose hierarchies".
