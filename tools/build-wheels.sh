@@ -124,8 +124,15 @@ echo "android sdk: $sdk"
 
 # watchfiles is PyO3/maturin. A distribution rust package ships only the host standard
 # library; the Android `std` comes from `rustup target add` and nothing else (s3).
+#
+# The compiler version is pinned, because a different rustc produces a different binary and
+# the wheels are meant to be byte-for-byte reproducible (docs/fdroid.md). Whatever "stable" is
+# on the day would make two builds of the same sources differ.
+rust_version="1.99.0"
 if command -v rustup >/dev/null 2>&1; then
-    rustup target add aarch64-linux-android x86_64-linux-android >/dev/null
+    rustup toolchain install "$rust_version" --profile minimal \
+        --target aarch64-linux-android --target x86_64-linux-android >/dev/null
+    export RUSTUP_TOOLCHAIN="$rust_version"
     echo "rust: $(rustc --version)"
 else
     echo "warning: no rustup on PATH — the watchfiles build will fail" >&2
@@ -189,6 +196,39 @@ FETCH
     tar -xzf "$tarball" -C "$work"
 }
 
+# --- making two builds of the same sources produce the same bytes ----------------------
+# What differed between two builds, traced byte by byte, was: the timestamps in the wheel's zip
+# entries and in the SBOM maturin writes, the SBOM's random serial number, the GNU build-id of
+# beancount's extension module, and the random eight characters of cibuildwheel's temporary
+# directory, which the extension records in its RUNPATH. No compiled code differed.
+#
+# - A fixed SOURCE_DATE_EPOCH, not the commit time: the wheels depend on the pinned sources
+#   and tools, not on which commit happens to ask for them.
+# - Temporary directory names that count rather than roll dice, for cibuildwheel and
+#   everything it starts (a sitecustomize on PYTHONPATH).
+# - The patch to beancount's meson.build drops the build-id.
+wheel_epoch=1767225600
+determinism="$work/determinism"
+rm -rf "$determinism"
+mkdir -p "$determinism"
+cat > "$determinism/sitecustomize.py" <<'PY'
+import itertools
+import tempfile
+
+_counter = itertools.count(1)
+
+
+class _Names:
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return "%08x" % next(_counter)
+
+
+tempfile._name_sequence = _Names()
+PY
+
 # --- build -------------------------------------------------------------------------
 built=0
 while read -r name version want; do
@@ -221,6 +261,7 @@ while read -r name version want; do
 
     say "cross-building $name $version for $archs"
     ( cd "$work/$name-$version"
+      SOURCE_DATE_EPOCH="$wheel_epoch" PYTHONPATH="$determinism" \
       CIBW_BUILD="cp313-*" "$cbw" --platform android \
           --archs "$archs" --output-dir "$out" )
     built=$((built + 1))

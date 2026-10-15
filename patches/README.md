@@ -16,7 +16,8 @@ has to be linked, and every extension Chaquopy itself ships does link it.
 Meson's inference gave different answers on two machines with identical NDK, CPython, meson,
 meson-python, cibuildwheel and pkgconf: a laptop linked libpython by absolute path, a GitHub
 runner emitted no library and the build failed with every Python symbol undefined. The patch
-says what the module needs instead of relying on the guess. It is the same dependency
+says what the module needs instead of relying on the guess. It also passes `-Wl,--build-id=none`: the GNU build-id is a hash of the output that
+differs on every build, and dropping it is what lets two builds produce the same bytes. It is the same dependency
 upstream already uses a few lines below, for its test executable.
 
 Not fixed in the environment instead, because neither route works: cibuildwheel's Android
