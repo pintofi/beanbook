@@ -11,7 +11,7 @@ AutoName: Beanbook
 RepoType: git
 Repo: https://github.com/pintofi/beanbook.git
 Binaries: 
-  https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
+  https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-universal.apk
 
 Builds:
   - versionName: 1.0.0
@@ -24,6 +24,7 @@ Builds:
     init: rustup default stable && ../tools/build-wheels.sh --out ../wheels
     gradle:
       - expert
+    output: build/outputs/apk/expert/release/*universal*.apk
     prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
     ndk: r27c
 
