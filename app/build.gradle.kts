@@ -1,3 +1,4 @@
+import java.util.TreeMap
 import java.security.MessageDigest
 import java.util.Properties
 plugins {
@@ -295,5 +296,34 @@ tasks.register("releaseChecksums") {
             val signed = if ("unsigned" in apk.name) " (UNSIGNED)" else ""
             logger.lifecycle("$hex  ${apk.name}$signed")
         }
+    }
+}
+
+/**
+ * Chaquopy writes `assets/chaquopy/build.json`, a map from file name to hash, in whatever order
+ * the build machine's filesystem lists the files. The content is the same on every machine and
+ * the bytes are not, which makes the APK impossible to reproduce on a second machine (F-Droid
+ * builds ours and compares). Rewrite the file with its keys sorted, after the assets are merged
+ * and before they are packaged. The content is unchanged; only the order is fixed.
+ */
+fun sortedJsonKeys(value: Any?): Any? = when (value) {
+    is Map<*, *> -> TreeMap<String, Any?>().also { sorted ->
+        value.forEach { (key, inner) -> sorted[key as String] = sortedJsonKeys(inner) }
+    }
+    is List<*> -> value.map { sortedJsonKeys(it) }
+    else -> value
+}
+
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    doLast {
+        fileTree(layout.buildDirectory.dir("intermediates/assets"))
+            .matching { include("**/chaquopy/build.json") }
+            .forEach { file ->
+                val parsed = groovy.json.JsonSlurper().parse(file)
+                val text = groovy.json.JsonOutput.prettyPrint(
+                    groovy.json.JsonOutput.toJson(sortedJsonKeys(parsed)),
+                )
+                file.writeText(text + "\n")
+            }
     }
 }
