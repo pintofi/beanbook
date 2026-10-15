@@ -39,6 +39,33 @@ work="$(cd "$work" && pwd)"
 
 say() { printf '\n=== %s\n' "$*"; }
 
+# --- the host this runs on ----------------------------------------------------------
+# Everything the build needs from the machine itself, checked together, so a missing package
+# is reported once with all of its friends instead of one failure per attempt. Debian package
+# names are given because the F-Droid build server is Debian; other systems have equivalents.
+missing=()
+need() { command -v "$1" >/dev/null 2>&1 || missing+=("$2 (provides '$1')"); }
+
+need python3 python3
+python3 -c 'import venv, ensurepip' >/dev/null 2>&1 || missing+=("python3-venv (python3 -m venv does not work)")
+need m4 m4                      # the bison and flex wheels shell out to it
+need cc gcc                     # Rust compiles its build scripts for this machine
+need rustup rustup              # watchfiles: the Android standard library comes from rustup
+
+# A C compiler is not enough: linking a program needs the C library's start files and libc.
+if command -v cc >/dev/null 2>&1; then
+    probe="$(mktemp -d)"
+    printf 'int main(void){return 0;}\n' > "$probe/p.c"
+    cc "$probe/p.c" -o "$probe/p" >/dev/null 2>&1 || missing+=("libc6-dev (cc cannot link a C program: Scrt1.o, crti.o, -lc)")
+    rm -rf "$probe"
+fi
+
+if [ "${#missing[@]}" -gt 0 ]; then
+    echo "::error::this machine lacks what the wheel build needs:" >&2
+    printf '  - %s\n' "${missing[@]}" >&2
+    exit 1
+fi
+
 # --- the build tools ---------------------------------------------------------------
 # cibuildwheel goes in its own venv so this never depends on what happens to be
 # installed system-wide, which is the whole point of the exercise.
