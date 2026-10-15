@@ -2,12 +2,7 @@
 
 All notable changes to Beanbook. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
-
-### Fixed
-- Pages shared on Wi-Fi are read-only: a signed-in browser can no longer save through Fava's editor.
-
-## [1.0.0] - 2026-10-13
+## [1.0.0] - 2026-10-15
 
 ### Added
 - Scripts show their output live, can be cancelled, and no longer stop after 30 seconds.
@@ -22,6 +17,7 @@ All notable changes to Beanbook. The format follows [Keep a Changelog](https://k
 - The Bound Ledger redesign on Material 3 Expressive, built for 200% text, landscape and tablets.
 
 ### Fixed
+- Pages shared on Wi-Fi are read-only: a signed-in browser can no longer save through Fava's editor.
 - Reports no longer flashes the browser error page when the local server is a moment late; the loading cover stays and the load is retried.
 - The SciPy-free overlay for `fava_portfolio_returns` was missing from every build (Android drops asset folders starting with an underscore); it ships now.
 - Entries are written followed by a blank line, and deleting one removes it, as Fava does.
