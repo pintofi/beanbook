@@ -1,6 +1,6 @@
 --- a/meson.build
 +++ b/meson.build
-@@ -241,6 +241,10 @@
+@@ -241,6 +241,13 @@
      'beancount/parser/tokens.c',
      lexer_c,
      grammar_c,
@@ -8,6 +8,9 @@
 +    # libpython. Without this, meson only adds it when it happens to infer that the target
 +    # needs it -- which it does on some machines and not others, from identical toolchains.
 +    dependencies: [py.dependency(embed: true)],
++    # No GNU build-id: it is a hash of the output and differs from run to run, which makes the
++    # wheel impossible to reproduce byte for byte. The debug symbols it would name are stripped.
++    link_args: ['-Wl,--build-id=none'],
      install: true,
      subdir: 'beancount/parser',
  )
