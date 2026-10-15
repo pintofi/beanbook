@@ -20,7 +20,7 @@ Builds:
     subdir: app
     sudo:
       - apt-get update
-      - apt-get install -y python3.13 python3.13-venv rustup m4 gcc
+      - apt-get install -y python3.13 python3.13-venv rustup m4 gcc libc6-dev
     init: rustup default stable && ../tools/build-wheels.sh --out ../wheels
     gradle:
       - expert
