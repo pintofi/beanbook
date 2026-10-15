@@ -68,3 +68,14 @@ recipe installs `rustup` and runs `rustup default stable` so the Android standar
 added for `watchfiles`. The NDK path was checked locally with `beancount`; the Rust half, and the
 whole recipe, are unproven on F-Droid until its build runs. The fix is in the build script, so it
 is in the v1.0.0 tag, which the recipe pins by commit.
+
+### Reproducible wheels
+
+The wheels are byte-for-byte reproducible, which is what F-Droid's `Binaries` check needs.
+`tools/build-wheels.sh` fixes `SOURCE_DATE_EPOCH`, makes cibuildwheel's temporary directory names
+count instead of being random, drops the GNU build-id from beancount's extension (a patch), and
+pins the Rust compiler. The NDK is r27d (27.3.13750724), the same as the release build. Checked
+2026-10-15: two builds on one machine, and a build on a second machine against the wheels
+GitHub's runner built, are identical for all four wheels. An unsigned universal APK built from
+those wheels in two different checkout paths is identical too. Not yet checked against
+F-Droid's own build.

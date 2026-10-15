@@ -21,12 +21,12 @@ Builds:
     sudo:
       - apt-get update
       - apt-get install -y python3.13 python3.13-venv rustup m4 gcc libc6-dev
-    init: rustup default stable && ../tools/build-wheels.sh --out ../wheels
+    init: ../tools/build-wheels.sh --out ../wheels
     gradle:
       - expert
     output: build/outputs/apk/expert/release/*universal*.apk
     prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
-    ndk: r27c
+    ndk: r27d
 
 # SHA-256 of the project's APK signing certificate (lowercase hex, no colons).
 AllowedAPKSigningKeys: d7039d79b2afa3ffc81aeba7bc8dbf45a73b07b94f982ca913d65028b9b2ff55
