@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest something new or a change to how the app works.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Beanbook keeps your ledger as plain Beancount text on your phone: no account, no telemetry, no ads, and no network use in local mode. Ideas that need any of these cannot be accepted. Please look at the [roadmap](https://github.com/pintofi/beanbook/blob/main/ROADMAP.md) first.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to do
+      description: The situation, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: How you picture it working. Rough is fine.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do now instead

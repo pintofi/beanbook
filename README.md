@@ -485,7 +485,7 @@ accessibility checks. [CONTRIBUTING.md](CONTRIBUTING.md) lists the commands and 
 Bug reports and patches are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the build,
 which needs a little more than a checkout because of the embedded Python runtime, and the
 boundaries a change has to keep: the data invariants, the edition split, and the licence.
-Security reports go through [SECURITY.md](SECURITY.md).
+Security reports go through [SECURITY.md](SECURITY.md). What is planned is in [ROADMAP.md](ROADMAP.md).
 
 ## Licence
 

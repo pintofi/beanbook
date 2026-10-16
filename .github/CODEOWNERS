@@ -1,0 +1,9 @@
+# The owner reviews everything; the areas below are the ones where a mistake costs user data or
+# the release pipeline, so they are listed explicitly.
+*                                   @WildeBeast2521
+/core-domain/                       @WildeBeast2521
+/core-data/                         @WildeBeast2521
+/engine-local/src/main/python/writer.py   @WildeBeast2521
+/engine-local/src/main/python/sharing.py  @WildeBeast2521
+/.github/workflows/                 @WildeBeast2521
+/gradle/play-boundaries.gradle.kts  @WildeBeast2521

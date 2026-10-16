@@ -1,0 +1,27 @@
+changelog:
+  exclude:
+    labels:
+      - dependencies
+  categories:
+    - title: Data safety
+      labels:
+        - safety
+    - title: Fixes
+      labels:
+        - bug
+    - title: New
+      labels:
+        - enhancement
+    - title: Accessibility
+      labels:
+        - accessibility
+    - title: Translations
+      labels:
+        - l10n
+    - title: Under the hood
+      labels:
+        - tech-debt
+        - performance
+    - title: Other changes
+      labels:
+        - "*"

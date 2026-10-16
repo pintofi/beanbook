@@ -1,0 +1,66 @@
+name: Bug report
+description: Something in the app does not work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting this. Please do not attach your ledger, backups, exports or screenshots that show your own accounts. If data is needed to show the problem, make up a small example instead. Security problems go through the [security policy](https://github.com/pintofi/beanbook/security/policy), not here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected to see instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The shortest list of taps that makes it happen.
+      placeholder: |
+        1. Open Journal
+        2. Tap an entry, then Edit
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version and edition
+      description: More › About shows both.
+      placeholder: 1.0.0, Expert
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: Pixel 8, Android 15
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Local project or remote Fava server
+      options:
+        - "Local project"
+        - "Remote Fava server"
+        - "Not sure"
+    validations:
+      required: true
+  - type: dropdown
+    id: data-loss
+    attributes:
+      label: Was any ledger data lost or changed unexpectedly?
+      options:
+        - "No"
+        - "Yes"
+        - "Not sure"
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Plugins or extensions in use, how often it happens, or a diagnostics export with personal data removed (More › Diagnostics).
