@@ -101,4 +101,17 @@ class CommodityDetailsTest {
         val problem = draft.validate().filterIsInstance<DraftProblem.UnreadableDetails>().single()
         assertEquals("Assets:Broker", problem.account)
     }
+
+    @Test fun `a cost written with thousands separators is read, as Beancount reads it`() {
+        val per = CommodityDetails.parse("{1,250.00 USD}")
+        assertEquals(amount("12500.00", "USD"), per.weight(amount("10", "ACME")))
+
+        val total = CommodityDetails.parse("{{1,250.00 USD}}")
+        assertEquals(amount("1250.00", "USD"), total.weight(amount("10", "ACME")))
+    }
+
+    @Test fun `misplaced separators are not a number`() {
+        assertIs<CommodityDetails.Unreadable>(CommodityDetails.parse("{12,50 USD}"))
+        assertIs<CommodityDetails.Unreadable>(CommodityDetails.parse("{1,25,000 USD}"))
+    }
 }

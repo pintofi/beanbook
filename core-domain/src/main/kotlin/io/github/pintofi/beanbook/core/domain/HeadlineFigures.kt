@@ -3,11 +3,11 @@ package io.github.pintofi.beanbook.core.domain
 import java.math.BigDecimal
 
 /**
- * A figure of several commodities, cut down to what a headline can hold (design-direction §5).
+ * A figure of several commodities, cut down to what a headline can hold.
  *
  * In Units, a ledger holding twenty commodities has a net worth of twenty lines, and Home set
  * all of them in its largest type: one headline taller than the screen, with the rest of Home
- * below the fold (device audit 2026-10-10). A headline is for the glance; the full list belongs
+ * below the fold. A headline is for the glance; the full list belongs
  * in Balances, one tap away. So a headline shows [max] lines and says how many it left out.
  *
  * **Which lines.** The operating currencies first, in the order the file declares them --

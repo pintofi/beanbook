@@ -3,7 +3,7 @@ package io.github.pintofi.beanbook.core.domain
 import java.math.BigDecimal
 
 /**
- * Account balances over only the entries that carry some tags or links (B78).
+ * Account balances over only the entries that carry some tags or links.
  *
  * Fava's filter bar narrows its reports with `#tag` and `^link`, and the journal here already
  * finds entries that way; the balances screen could not. This totals the postings of the

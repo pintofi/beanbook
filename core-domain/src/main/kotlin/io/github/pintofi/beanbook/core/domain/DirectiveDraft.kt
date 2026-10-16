@@ -3,7 +3,7 @@ package io.github.pintofi.beanbook.core.domain
 /**
  * The non-transaction directives, as the UI composes them.
  *
- * SPEC.md §2.1 requires editors for *all* supported directive types, not just
+ * A ledger needs editors for *all* the directive types it uses, not just
  * transactions: a ledger where you can add a payment but not open the account it pays from
  * is not a usable ledger. Each type renders itself and validates itself, sharing
  * [BeancountText] so quoting and account rules cannot drift apart.

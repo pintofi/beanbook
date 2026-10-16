@@ -22,7 +22,6 @@ object BeancountText {
     /** Metadata keys are lower-case and may not start with a digit. */
     val META_KEY = Regex("""[a-z][A-Za-z0-9\-_]*""")
 
-    /** Beancount strings are double-quoted; quotes and backslashes must be escaped. */
     /**
      * The `document` directive naming [path], and its own metadata, removed from [source].
      *
@@ -176,55 +175,7 @@ object BeancountText {
     }
 
     /**
-     * Whether [source] already tells the ledger to load [module] (B60).
-     *
-     * Installing a plugin puts its files where Beancount can find them; it does **not** make
-     * the ledger use one. That takes a directive in the file -- `plugin "module"` for a
-     * Beancount plugin, `custom "fava-extension" "module"` for a Fava extension -- and the app
-     * never wrote either, so an installed, enabled plugin did nothing and there was nothing on
-     * screen to say why.
-     */
-    fun hasPluginDirective(source: String, module: String, extension: Boolean): Boolean =
-        directiveRegex(module, extension).containsMatchIn(source)
-
-    /** [source] with the directive loading [module] added, or null when it is already there. */
-    fun withPluginDirective(source: String, module: String, extension: Boolean): String? {
-        if (hasPluginDirective(source, module, extension)) return null
-        val line = if (extension) {
-            "2000-01-01 custom \"fava-extension\" \"$module\""
-        } else {
-            "plugin \"$module\""
-        }
-        // Directives of this kind belong at the top of a file, before the entries they act
-        // on: Beancount applies a plugin to everything loaded after it is named, and Fava
-        // reads its extensions from the whole file but a person reads them from the head.
-        val lines = source.lines().toMutableList()
-        val insertAt = lines.indexOfLast { existing ->
-            val head = existing.trimStart()
-            head.startsWith("option ") || head.startsWith("plugin ")
-        }
-        return if (insertAt >= 0) {
-            lines.add(insertAt + 1, line)
-            lines.joinToString("\n")
-        } else {
-            line + "\n\n" + source
-        }
-    }
-
-    /** [source] with the directive loading [module] removed, or null when there was none. */
-    fun withoutPluginDirective(source: String, module: String, extension: Boolean): String? {
-        val pattern = directiveRegex(module, extension)
-        var removed = false
-        val kept = source.lines().filter { line ->
-            val matches = pattern.matches(line.trim())
-            if (matches) removed = true
-            !matches
-        }
-        return if (removed) kept.joinToString("\n") else null
-    }
-
-    /**
-     * The folders `option "documents"` names in [source], as written (B79).
+     * The folders `option "documents"` names in [source], as written.
      *
      * Only the top-level file is worth reading: Beancount takes options from the file it was
      * asked to load and ignores them in included files. An option commented out with `;` does
@@ -239,17 +190,8 @@ object BeancountText {
     private val DOCUMENTS_OPTION =
         Regex("""^[ \t]*option[ \t]+"documents"[ \t]+"((?:[^"\\]|\\.)*)"""", RegexOption.MULTILINE)
 
-    private fun directiveRegex(module: String, extension: Boolean): Regex {
-        val quoted = Regex.escape(module)
-        return if (extension) {
-            Regex("""^\s*${DATE.pattern}\s+custom\s+"fava-extension"\s+"$quoted"\s*$""", RegexOption.MULTILINE)
-        } else {
-            Regex("""^\s*plugin\s+"$quoted"(\s+".*")?\s*$""", RegexOption.MULTILINE)
-        }
-    }
-
     /**
-     * [source] with any `document:` metadata naming [path] removed (B57).
+     * [source] with any `document:` metadata naming [path] removed.
      *
      * A receipt attached while entering a transaction is a **metadata line on that
      * transaction**, not a `document` directive — `fava.plugins.link_documents` reads
@@ -389,6 +331,7 @@ object BeancountText {
         return tokens.sortedBy { it.start }
     }
 
+    /** Beancount strings are double-quoted; quotes and backslashes must be escaped. */
     fun quote(value: String): String =
         "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
@@ -400,7 +343,7 @@ object BeancountText {
 
     /**
      * Removes the 1-based lines [startLine]..[endLine] and the one blank line that set the
-     * entry apart from the next, as Fava does (B101).
+     * entry apart from the next, as Fava does.
      *
      * Every entry is written followed by one blank line, so that line goes with it: the blank
      * line after the entry, or, for an entry that has none (the last in a file written by hand),

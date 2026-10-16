@@ -1,7 +1,7 @@
 package io.github.pintofi.beanbook.core.domain
 
 /**
- * Which entry an error is about (B64).
+ * Which entry an error is about.
  *
  * A ledger's errors were a list at the top of the screen and nothing more: "Transaction does
  * not balance: (-1.00 USD)" named a file and a line, and the entry it was about sat somewhere

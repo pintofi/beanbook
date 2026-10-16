@@ -4,7 +4,7 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 /**
- * The window a spending card covers, and the one before it to compare against (B71).
+ * The window a spending card covers, and the one before it to compare against.
  *
  * Offered rather than fixed: "this month" is the wrong question on the 1st, when it holds one
  * day and last month holds thirty; and somebody who reconciles quarterly wants a year. The
@@ -43,7 +43,7 @@ enum class SpendingPeriod(val label: String, val shortLabel: String) {
     }
 }
 
-/** One category and what it took, this period and last (B71). */
+/** One category and what it took, this period and last. */
 data class CategorySpend(
     val account: String,
     val amount: Amount,
@@ -62,7 +62,7 @@ data class CategorySpend(
 }
 
 /**
- * Where the money went, by category, against the period before (B71).
+ * Where the money went, by category, against the period before.
  *
  * The Journal lists entries; this totals them, which is the question the Journal cannot
  * answer without a person adding numbers up by eye.
@@ -91,7 +91,7 @@ data class SpendingReport(
 }
 
 /**
- * What the app knows needs a person, in one place (B71).
+ * What the app knows needs a person, in one place.
  *
  * Every one of these already existed and was on a different screen: errors on the Journal,
  * unfiled documents in Organize, a mirror waiting on a decision under More. A home screen
@@ -106,7 +106,7 @@ data class AttentionItem(
     enum class Destination { JOURNAL, DOCUMENTS, MIRROR, PLUGINS }
 }
 
-/** The computations behind the home cards. Pure, so the arithmetic is testable (B71). */
+/** The computations behind the home cards. Pure, so the arithmetic is testable. */
 object HomeInsights {
 
     /** How deep a category is: `Expenses:Food:Coffee` counts under `Expenses:Food`. */
@@ -145,7 +145,7 @@ object HomeInsights {
             }
             entry.postings.forEach { posting ->
                 if (!posting.account.startsWith("$root:") && posting.account != root) return@forEach
-                // On the chosen basis (B95): units as written, the cost they were bought at,
+                // On the chosen basis: units as written, the cost they were bought at,
                 // or their value at the latest price in the operating currency.
                 val amount = valuation.ofPosting(posting, book, operating) ?: return@forEach
                 val category = category(posting.account)
@@ -240,7 +240,7 @@ object HomeInsights {
                 destination = AttentionItem.Destination.JOURNAL,
             )
         }
-        // Fava extensions that do not import (B97): Fava lists them only on its own Errors page,
+        // Fava extensions that do not import: Fava lists them only on its own Errors page,
         // so the ledger read as healthy while a report page it names was missing.
         val failedExtensions = ledger.extensionHealth.filterValues { it != null }.keys.sorted()
         if (failedExtensions.isNotEmpty()) {

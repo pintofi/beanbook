@@ -36,7 +36,7 @@ data class AccountNode(
     fun names(): List<String> = listOf(name) + children.flatMap { it.names() }
 }
 
-/** Builds the account tree Balances draws (B46). */
+/** Builds the account tree Balances draws. */
 object AccountTree {
 
     /**

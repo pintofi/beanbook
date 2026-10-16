@@ -1,14 +1,7 @@
 package io.github.pintofi.beanbook.core.domain
 
 /**
- * A parsed ledger, as the UI sees it.
- *
- * Everything here comes from Beancount itself — the app computes no accounting facts of
- * its own. Amounts arrive as [Amount] (decimal), never as numbers that have been through
- * a `Double` (invariant 1).
- */
-/**
- * What this file calls its five trees (B70).
+ * What this file calls its five trees.
  *
  * Beancount lets a ledger rename them -- `option "name_expenses" "Ausgaben"` -- and everything
  * downstream of that is a prefix match: the Balances headings, the home totals, which accounts
@@ -32,6 +25,13 @@ data class AccountNames(
     }
 }
 
+/**
+ * A parsed ledger, as the UI sees it.
+ *
+ * Everything here comes from Beancount itself — the app computes no accounting facts of
+ * its own. Amounts arrive as [Amount] (decimal), never as numbers that have been through
+ * a `Double` (invariant 1).
+ */
 data class LedgerSnapshot(
     val title: String?,
     val operatingCurrencies: List<String>,
@@ -46,29 +46,29 @@ data class LedgerSnapshot(
      * Commodities the ledger *declares*, which is not the same as the ones it holds.
      *
      * The engine has always reported these and `LedgerReader` discarded them, so a commodity
-     * you had declared but not yet used could not be picked in the Add form (B6).
+     * you had declared but not yet used could not be picked in the Add form.
      */
     val commodities: List<String> = emptyList(),
-    /** The `document` directives the ledger declares, with absolute paths (B18). */
+    /** The `document` directives the ledger declares, with absolute paths. */
     val documents: List<DocumentDirective> = emptyList(),
     /**
-     * How this file asks its figures to be shown (B59): decimal places per commodity,
+     * How this file asks its figures to be shown: decimal places per commodity,
      * thousands separators, and what it considers close enough to balance.
      */
     val format: LedgerFormat = LedgerFormat.PLAIN,
-    /** What this file calls Assets, Liabilities, Equity, Income and Expenses (B70). */
+    /** What this file calls Assets, Liabilities, Equity, Income and Expenses. */
     val accountNames: AccountNames = AccountNames.DEFAULT,
-    /** The folders `option "documents"` names, as the file writes them (B70). */
+    /** The folders `option "documents"` names, as the file writes them. */
     val documentRoots: List<String> = emptyList(),
-    /** Metadata keys the `commodity_attr` plugin requires on each commodity (B94). */
+    /** Metadata keys the `commodity_attr` plugin requires on each commodity. */
     val commodityAttributes: List<String> = emptyList(),
-    /** The latest price of each priced pair, for converting what the app adds up itself (B95). */
+    /** The latest price of each priced pair, for converting what the app adds up itself. */
     val rates: List<PriceRate> = emptyList(),
-    /** The plugins the ledger turns on, in order, with the configuration each was given (B95). */
+    /** The plugins the ledger turns on, in order, with the configuration each was given. */
     val plugins: List<LedgerPlugin> = emptyList(),
     /**
      * The Fava extensions the ledger names, each with why it cannot be imported, or null when
-     * it can (B97). Fava shows a failed extension only on its own Errors page.
+     * it can. Fava shows a failed extension only on its own Errors page.
      */
     val extensionHealth: Map<String, String?> = emptyMap(),
 ) {
@@ -107,7 +107,7 @@ data class LedgerSnapshot(
 }
 
 /**
- * One account's balance, in the three forms a holding actually has (B14).
+ * One account's balance, in the three forms a holding actually has.
  *
  * Ten shares, what they cost, and what they are worth are three different answers, and a
  * ledger that can only give the first cannot answer the question people open the app to ask.
@@ -156,7 +156,7 @@ data class JournalEntry(
 
     /**
      * Documents this entry links to, by the convention `fava.plugins.link_documents` uses
-     * (B17): a `document` metadata key whose value is a path.
+     *: a `document` metadata key whose value is a path.
      *
      * A list because a transaction can carry several, and because the singular key name
      * would otherwise suggest the app only ever looks at one.
@@ -166,7 +166,7 @@ data class JournalEntry(
             .values.filter { it.isNotBlank() }.toList()
 
     /**
-     * Whether every word of [query] appears somewhere in this entry (B53).
+     * Whether every word of [query] appears somewhere in this entry.
      *
      * Every word, not the whole string: "coff bank" finds the coffee paid from the bank
      * account, which is how people actually remember a transaction — two fragments, neither
@@ -227,7 +227,7 @@ data class DocumentDirective(
 }
 
 /**
- * What a lot was acquired at: the figure, and what identifies the lot (B63).
+ * What a lot was acquired at: the figure, and what identifies the lot.
  *
  * Beancount books this before the app sees it, so a cost written in the file as a label or a
  * partial spec -- `{"avcoassf"}` -- arrives here as the whole thing: the number, the currency,
