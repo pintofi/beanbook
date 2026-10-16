@@ -30,6 +30,7 @@ Area `data` of [#16](https://github.com/pintofi/beanbook/issues/16). Method and 
 | `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/WidgetCache.kt` | 1 2 5 | D-14 | WidgetCacheTest, MultiCurrencyWidgetTest, ReviewHardeningTest |
 | `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/WidgetLink.kt` | 3 | none | WidgetLinkTest: a project id from an intent is honoured only if it exists |
 | `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/WriteJournal.kt` | 1 2 3 | D-3, D-4 | ProjectWriterTest, WriteProtocolHardeningTest (a clock that goes backwards; a damaged or missing saved copy is not restored over an intact ledger) |
+| `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/Durable.kt` | 1 2 | D-3 | new file; exercised by every write through `WriteJournal`, `ProjectWriter` and `DocumentStore`. Power loss cannot be simulated here: flushing is verified by reading, not by test |
 
 `./gradlew :core-data:test`: 283 tests, 0 failures (256 before this review). `:core-domain:test`, `:core-engine:test`, `:engine-remote:test`, `:app:testPlayDebugUnitTest` and `detekt` pass too.
 
