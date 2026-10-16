@@ -69,12 +69,13 @@ class BackupArchiveTest {
     }
 
     @Test
-    fun `runtime state and the entitlement key never travel in a backup`() {
+    fun `runtime state never travels in a backup, and a file merely called key does`() {
         // Anything of this kind that finds its way into a project tree must still be left out.
         val project = workspace.projectDir("p")
         File(project, ".cache/parse.cache").apply { parentFile.mkdirs() }.writeText("cache")
         File(project, ".journal/write.wal").apply { parentFile.mkdirs() }.writeText("journal")
-        File(project, "entitlement").writeText("tier 3")
+        // The person's own file, which a name-based exclusion used to leave out without a word.
+        File(project, "key").writeText("theirs")
         File(project, "main.beancount.tmp").writeText("half a write")
 
         val manifest = assertNotNull(archives.peek(writeArchive()))
@@ -82,7 +83,7 @@ class BackupArchiveTest {
         val paths = manifest.files.map { it.path }
         assertFalse(paths.any { it.contains(".cache") }, paths.toString())
         assertFalse(paths.any { it.contains(".journal") }, paths.toString())
-        assertFalse(paths.contains("entitlement"), "a key must never be in a backup")
+        assertTrue(paths.contains("key"), "a file the person called key was left out of the backup")
         assertFalse(paths.any { it.endsWith(".tmp") }, paths.toString())
     }
 

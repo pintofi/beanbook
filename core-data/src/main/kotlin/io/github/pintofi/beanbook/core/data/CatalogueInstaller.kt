@@ -5,7 +5,7 @@ import java.security.MessageDigest
 import java.util.zip.ZipInputStream
 
 /**
- * Installs catalogue plugins one by one, each in a folder of its own (B82).
+ * Installs catalogue plugins one by one, each in a folder of its own.
  *
  * `<root>/<id>/site` holds the plugin's code *and* the Python packages it needs, so removing
  * one plugin is deleting one folder: nothing it brought is shared with another plugin, and
@@ -14,7 +14,7 @@ import java.util.zip.ZipInputStream
  *
  * This class does the part that is the same everywhere -- verify the archive, take the code out
  * of it, record what is installed, remove it. Downloading is not here: it is the Expert
- * edition's to do, and the Play edition never downloads code (CLAUDE.md, D1).
+ * edition's to do, and the Play edition never downloads code.
  */
 class CatalogueInstaller(private val root: File) {
 

@@ -5,7 +5,7 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
 /**
- * The stored form of the password for sharing on Wi-Fi (B93).
+ * The stored form of the password for sharing on Wi-Fi.
  *
  * `pbkdf2_sha256$<iterations>$<salt hex>$<hash hex>` -- the format the engine's `sharing.py`
  * checks a sign-in against, so the password itself never has to leave the app process or be
@@ -13,7 +13,12 @@ import javax.crypto.spec.PBEKeySpec
  */
 object SharingPassword {
 
-    /** Slow on purpose: it is what makes a copied hash expensive to guess. */
+    /**
+     * Slow on purpose: it is what makes a copied hash expensive to guess. Below OWASP's current
+     * figure for PBKDF2-HMAC-SHA256 (600,000), because this runs where the password is set and
+     * has not been measured on a slow phone; a stored hash carries its own count, so raising it
+     * later changes only passwords set after that.
+     */
     const val ITERATIONS = 150_000
 
     fun hash(password: CharArray, salt: ByteArray = randomSalt(), iterations: Int = ITERATIONS): String {

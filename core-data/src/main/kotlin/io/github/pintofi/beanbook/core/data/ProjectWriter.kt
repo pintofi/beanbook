@@ -5,13 +5,11 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.file.StandardOpenOption
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
-/**
- * Re-parses a project after a write. Implemented by the engine module; injected here so
- * the whole protocol is testable on the JVM without Python.
- */
 /**
  * The ledger could not be checked, which is not the same as the ledger being wrong.
  *
@@ -23,6 +21,10 @@ import kotlinx.coroutines.sync.withLock
  */
 class LedgerUnavailable(message: String) : Exception(message)
 
+/**
+ * Re-parses a project after a write. Implemented by the engine module; injected here so
+ * the whole protocol is testable on the JVM without Python.
+ */
 fun interface LedgerValidator {
     /**
      * @return the errors Beancount reports, or a failure if the ledger could not be
@@ -37,7 +39,7 @@ fun interface LedgerValidator {
  * This distinction exists because Beancount **never fails to parse**: it reports errors
  * and carries on, returning zero entries for unparseable input. So "could not parse" is
  * almost never the signal — the signal is *new errors that were not there before*
- * (measured on device, docs/milestones/m4.md).
+ *.
  */
 enum class ErrorPolicy {
     /**
@@ -66,14 +68,14 @@ sealed interface WriteResult {
 }
 
 /**
- * The write protocol from CLAUDE.md, in one place:
+ * The write protocol, in one place:
  *
  * ```
  * lock → snapshot → journal intent → tmp write + fsync → atomic rename
  *      → re-parse → commit → then report success
  * ```
  *
- * Every release-blocking invariant in SPEC.md §5 is enforced here rather than by
+ * Every release-blocking data invariant (see the README, "How a save is written") is enforced here rather than by
  * convention, and each has a named test in ProjectWriterTest.
  */
 class ProjectWriter(
@@ -82,7 +84,7 @@ class ProjectWriter(
     private val validator: LedgerValidator,
     private val undoDepth: Int = WriteJournal.DEFAULT_UNDO_DEPTH,
     /**
-     * Told what each write did, for the app's own log (B62).
+     * Told what each write did, for the app's own log.
      *
      * A line rather than a callback with structure: whoever reads it is a person trying to
      * work out what happened to their ledger, and "replace main.beancount op=edit-entry ->
@@ -92,7 +94,7 @@ class ProjectWriter(
     private val observer: (String) -> Unit = {},
     /**
      * Told when a write starts (`true`) and when it has finished (`false`), whatever its
-     * outcome (B93).
+     * outcome.
      *
      * For the app's file watcher, which reloads the ledger when something *else* changes a
      * file. Without this every save also looked like an outside edit, and the engine parsed
@@ -159,7 +161,7 @@ class ProjectWriter(
             projectId = projectId,
             file = file,
             // Every entry is followed by one blank line, as Fava writes them, so the next entry
-            // is already set apart and a delete can take that line with it (B101).
+            // is already set apart and a delete can take that line with it.
             newContent = (existing + separator + text.trimEnd() + "\n\n").toByteArray(Charsets.UTF_8),
             expectedSha = if (file.isFile) WriteJournal.sha256(file) else "",
             operation = operation,
@@ -169,7 +171,7 @@ class ProjectWriter(
 
     /**
      * Tells the observer what a write did, in one line and without the ledger's content
-     * (B62).
+     *.
      *
      * The file's **name**, never its text, and the reason a write was refused or rolled back,
      * which is the app's own words rather than the user's data. A log that carried what was
@@ -256,6 +258,25 @@ class ProjectWriter(
             rollbackOnNewErrors = policy == ErrorPolicy.ROLLBACK_ON_NEW_ERRORS,
         )
 
+        // From here the write is on its way to the ledger, and it has to be finished: either
+        // committed after the re-parse or put back. A caller that is cancelled in the middle
+        // (the screen closed, the activity recreated while the engine is still checking) must
+        // not leave a changed file behind with nothing deciding what becomes of it, so nothing
+        // after the intent is recorded can be cancelled.
+        return withContext(NonCancellable) {
+            complete(record, file, newContent, policy, baseline, baselineMessages)
+        }
+    }
+
+    private suspend fun complete(
+        record: WriteJournal.Record,
+        file: File,
+        newContent: ByteArray,
+        policy: ErrorPolicy,
+        baseline: Int,
+        baselineMessages: List<String>,
+    ): WriteResult {
+        val projectId = record.projectId
         return try {
             writeAtomically(file, newContent)
             journal.markRenamed(record)
@@ -302,7 +323,7 @@ class ProjectWriter(
                         if (it == 1) "it would add 1 error to your ledger" else "it would add $it errors to your ledger"
                     },
                     // What this write added, not the whole list: a ledger that already had
-                    // errors would otherwise name them as though the new entry caused them (B96).
+                    // errors would otherwise name them as though the new entry caused them.
                     errors = newErrors(errors, baselineMessages, errors.size - baseline),
                 )
             }
@@ -319,17 +340,11 @@ class ProjectWriter(
     }
 
     /**
-     * Undo: restores the snapshot of the most recent committed write.
-     *
-     * Backed by durable snapshots, not UI state (invariant 8), so it survives process
-     * death.
-     */
-    /**
      * Undoes the write [txnId] **only if it is still the latest**.
      *
      * An "Undo" shown after a save must not undo something else: a mirror pass or another
      * edit may have committed since, and restoring the older snapshot would silently discard
-     * that too (B97). Refused, with nothing changed, when anything came after.
+     * that too. Refused, with nothing changed, when anything came after.
      */
     suspend fun undoIfLatest(projectId: String, txnId: String): WriteResult {
         val latest = lock.withLock { journal.committed(projectId).firstOrNull()?.txnId }
@@ -339,6 +354,12 @@ class ProjectWriter(
         return undoLast(projectId)
     }
 
+    /**
+     * Undo: restores the snapshot of the most recent committed write.
+     *
+     * Backed by durable snapshots, not UI state (invariant 8), so it survives process
+     * death.
+     */
     suspend fun undoLast(projectId: String): WriteResult = lock.withLock {
         val last = journal.committed(projectId).firstOrNull()
             ?: return WriteResult.Refused("nothing to undo")
@@ -348,22 +369,25 @@ class ProjectWriter(
             "undo:${last.operation}",
             last.filesBefore.keys.map { File(workspace.projectDir(projectId), it) },
         )
-        journal.restoreSnapshot(last)
-        journal.markRenamed(record)
+        // Not cancellable once the snapshot is being put back, for the reason a write is not.
+        withContext(NonCancellable) {
+            journal.restoreSnapshot(last)
+            journal.markRenamed(record)
 
-        val validation = validator.validate(workspace.mainFile(projectId).absolutePath)
-        return if (validation.isFailure) {
-            // Undoing produced an unparseable ledger: put it back and say so.
-            journal.restoreSnapshot(record)
-            journal.markRolledBack(record)
-            WriteResult.RolledBack(
-                "undoing it would leave a ledger Beancount cannot read",
-                listOfNotNull(validation.exceptionOrNull()?.message),
-            )
-        } else {
-            journal.markRolledBack(last)
-            journal.commit(record)
-            WriteResult.Committed(record.txnId, validation.getOrDefault(emptyList()))
+            val validation = validator.validate(workspace.mainFile(projectId).absolutePath)
+            if (validation.isFailure) {
+                // Undoing produced an unparseable ledger: put it back and say so.
+                journal.restoreSnapshot(record)
+                journal.markRolledBack(record)
+                WriteResult.RolledBack(
+                    "undoing it would leave a ledger Beancount cannot read",
+                    listOfNotNull(validation.exceptionOrNull()?.message),
+                )
+            } else {
+                journal.markRolledBack(last)
+                journal.commit(record)
+                WriteResult.Committed(record.txnId, validation.getOrDefault(emptyList()))
+            }
         }
     }
 
@@ -386,9 +410,15 @@ class ProjectWriter(
             val errors = validation.getOrNull()
 
             // The same judgement a completed write would have made, using the baseline
-            // recorded before the process died.
-            val keep = errors != null &&
-                (!record.rollbackOnNewErrors || errors.size <= record.baselineErrors)
+            // recorded before the process died. That includes the engine being unreachable:
+            // a write the user typed is kept and reported as unchecked, exactly as it is when
+            // the process does not die, and only a generated write is given up.
+            val unchecked = validation.exceptionOrNull() is LedgerUnavailable
+            val keep = if (record.rollbackOnNewErrors) {
+                errors != null && errors.size <= record.baselineErrors
+            } else {
+                errors != null || unchecked
+            }
 
             if (keep) {
                 journal.commit(record)
@@ -417,11 +447,7 @@ class ProjectWriter(
         file.parentFile?.mkdirs()
         val tmp = File(file.parentFile, "${file.name}.tmp")
 
-        FileOutputStream(tmp).use { out ->
-            out.write(content)
-            out.flush()
-            out.fd.sync()
-        }
+        Durable.writeBytes(tmp, content)
         if (!tmp.renameTo(file)) {
             tmp.delete()
             throw IOException("could not rename ${tmp.name} onto ${file.name}")

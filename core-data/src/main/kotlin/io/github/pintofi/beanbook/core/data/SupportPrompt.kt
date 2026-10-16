@@ -5,7 +5,7 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * When to mention, once, that the project accepts donations (B81).
+ * When to mention, once, that the project accepts donations.
  *
  * Beanbook is free: no trial, no tiers, no keys. The only thing it asks is nothing, and after a
  * week of use it says -- once -- that people who find it useful can support it. A week because

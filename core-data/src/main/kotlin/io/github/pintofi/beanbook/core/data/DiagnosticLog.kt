@@ -1,10 +1,10 @@
 package io.github.pintofi.beanbook.core.data
 
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
-import java.util.TimeZone
 
 /** How serious an entry is. Ordered, so a reader can be filtered to what went wrong. */
 enum class LogLevel { DEBUG, INFO, WARN, ERROR }
@@ -17,17 +17,18 @@ data class LogEntry(
     val message: String,
 ) {
     /** `2026-09-09 11:44:02.123 W/EngineManager: message` — the shape a person can scan. */
-    fun render(): String = "${TIMESTAMP.format(Date(atEpochMs))} ${level.name.first()}/$tag: $message"
+    fun render(): String =
+        "${TIMESTAMP.format(Instant.ofEpochMilli(atEpochMs).atZone(ZoneId.systemDefault()))} " +
+            "${level.name.first()}/$tag: $message"
 
     private companion object {
-        val TIMESTAMP = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).apply {
-            timeZone = TimeZone.getDefault()
-        }
+        /** Thread-safe, unlike `SimpleDateFormat`, which this log is written from many threads with. */
+        val TIMESTAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
     }
 }
 
 /**
- * The app's own log, kept on the device so a person can say what happened (B62).
+ * The app's own log, kept on the device so a person can say what happened.
  *
  * There was no log at all: a user who met a bug had nothing to send, and nothing to read
  * themselves. `android.util.Log` writes to a buffer that is gone by the time anyone asks, and
@@ -39,7 +40,7 @@ data class LogEntry(
  *
  * **Redaction happens on the way in, not on the way out.** A secret that reaches the file is
  * a secret in every copy of it: in a backup, in a share sheet, in a screenshot of this
- * screen. CLAUDE.md's rule is "no secrets in logs", and the only way to keep it is for the
+ * screen. The rule is "no secrets in logs", and the only way to keep it is for the
  * unredacted string never to be written.
  */
 class DiagnosticLog(
@@ -108,9 +109,14 @@ class DiagnosticLog(
             // The engine's per-process token. It authenticates every request to the local
             // Fava, so it is the one string in this app that is worth anything to anybody.
             Regex("""bca_token=[A-Za-z0-9+/=_-]+""") to "bca_token=<redacted>",
-            Regex("""(?i)\b(authorization|cookie)\s*[:=]\s*\S+""") to "$1: <redacted>",
-            // Anything the user typed as a secret, however it was labelled.
-            Regex("""(?i)\b(pass(word|phrase)|secret|token|api[_-]?key)\s*[:=]\s*\S+""") to "$1=<redacted>",
+            // The whole value, scheme included: `Authorization: Bearer <token>` is two words and
+            // the second is the secret. A cookie header is a list, so the rest of the line goes.
+            Regex("""(?i)\b(authorization)\s*[:=]\s*(?:(?:bearer|basic|token|digest)\s+)?\S+""") to "$1: <redacted>",
+            Regex("""(?i)\b(set-cookie|cookie)\s*[:=]\s*[^\r\n]+""") to "$1: <redacted>",
+            // What the user typed as a secret, however it was labelled. A passphrase can be
+            // several words, so for those the rest of the line goes; a token is one.
+            Regex("""(?i)\b(pass(?:word|phrase)|secret)\s*[:=]\s*[^\r\n]+""") to "$1=<redacted>",
+            Regex("""(?i)\b(token|api[_-]?key)\s*[:=]\s*\S+""") to "$1=<redacted>",
             // Basic auth inside a URL, which is a password in a string that looks like a path.
             Regex("""://[^/\s:@]+:[^/\s@]+@""") to "://<redacted>@",
             // A home directory names a person. Upstream tracebacks carry them.

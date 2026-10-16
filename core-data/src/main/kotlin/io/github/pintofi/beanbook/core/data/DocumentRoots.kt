@@ -4,7 +4,7 @@ import io.github.pintofi.beanbook.core.domain.BeancountText
 import java.io.File
 
 /**
- * Makes sure every folder `option "documents"` names exists (B79).
+ * Makes sure every folder `option "documents"` names exists.
  *
  * Beancount's `beancount.ops.documents` plugin reports *"Document root '…' does not exist"*
  * for a named folder that is not on disk, and Fava shows the same error on every page. A

@@ -10,6 +10,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
 
 class RestorePlanTest {
 
@@ -138,6 +139,23 @@ class RestorePlanTest {
         val staged = assertIs<RestoreStaged.Ready>(plan.stage("p", archive))
 
         assertTrue(staged.diff.isEmpty, staged.diff.describe())
+    }
+
+    @Test
+    fun `undo after a restore cannot put the old project's files back over the restored ones`() = runBlocking {
+        val archive = backup()
+        // A write made before the restore, so there is something Undo could restore.
+        val valid = LedgerValidator { Result.success(emptyList()) }
+        val writer = ProjectWriter(workspace, WriteJournal(workspace), valid)
+        val transactions = projectFile("files/transactions.beancount")
+        val written = writer.append("p", transactions, "2026-08-25 note Assets:Cash \"before the restore\"")
+        assertIs<WriteResult.Committed>(written)
+
+        val staged = assertIs<RestoreStaged.Ready>(plan.stage("p", archive))
+        plan.activate("p", staged.staging, now)
+
+        assertIs<WriteResult.Refused>(writer.undoLast("p"), "the history of the replaced project is gone")
+        assertFalse(transactions.readText().contains("before the restore"), "the restored file is untouched")
     }
 }
 

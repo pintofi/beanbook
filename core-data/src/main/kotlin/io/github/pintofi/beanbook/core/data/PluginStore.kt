@@ -107,7 +107,7 @@ class PluginStore(private val projectRoot: File) {
         // The index can go between the check and the read -- a project deleted while the
         // plugin list refreshes in the background. No index is no plugins, which is what the
         // check above already answers; it must not be an uncaught exception on an IO thread,
-        // which ends the app's process (B88: it did, in PackagesStateTest on API 29).
+        // which ends the app's process (it did, in PackagesStateTest on API 29).
         val text = try {
             indexFile.readText()
         } catch (gone: java.io.FileNotFoundException) {

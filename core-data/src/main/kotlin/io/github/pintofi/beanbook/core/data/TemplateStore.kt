@@ -23,7 +23,7 @@ import java.math.BigDecimal
  * ```
  *
  * Amounts are stored as the text the user typed and read back with [BigDecimal], so a
- * template never launders a number through a binary float (CLAUDE.md, invariant 1).
+ * template never launders a number through a binary float.
  */
 class TemplateStore(private val workspace: ProjectWorkspace) {
 
@@ -107,7 +107,7 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
         }
 
         // Written whole and renamed into place: a process death mid-save leaves the previous
-        // set intact rather than half a file (CLAUDE.md, write protocol).
+        // set intact rather than half a file.
         val tmp = File(file.parentFile, "${file.name}.tmp")
         tmp.writeText(text)
         if (!tmp.renameTo(file)) {
@@ -156,6 +156,7 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
             .replace("\\", "\\\\")
             .replace("\t", "\\t")
             .replace("\n", "\\n")
+            .replace("\r", "\\r")
 
         fun unescape(value: String): String {
             val out = StringBuilder(value.length)
@@ -166,6 +167,7 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
                     when (val next = value[index + 1]) {
                         't' -> out.append('\t')
                         'n' -> out.append('\n')
+                        'r' -> out.append('\r')
                         '\\' -> out.append('\\')
                         else -> out.append(char).append(next)
                     }
