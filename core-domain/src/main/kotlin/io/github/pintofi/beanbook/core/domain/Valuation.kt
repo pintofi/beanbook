@@ -4,7 +4,7 @@ import java.math.BigDecimal
 import java.math.MathContext
 
 /**
- * Which of a holding's three figures to show, everywhere in the app (B95).
+ * Which of a holding's three figures to show, everywhere in the app.
  *
  * The same three choices Fava offers at the top right of its reports, with the same meaning:
  * - [UNITS]: the exact units of every commodity, nothing converted.

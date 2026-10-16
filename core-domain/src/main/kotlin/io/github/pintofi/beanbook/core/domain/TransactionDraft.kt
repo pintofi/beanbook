@@ -18,7 +18,7 @@ data class PostingDraft(
     val account: String,
     val amount: Amount? = null,
     /**
-     * What these units were acquired at, written `{...}` (B63).
+     * What these units were acquired at, written `{...}`.
      *
      * A holding is units *and* the lot they belong to. Dropping the cost turns a fund bought
      * at 400 and one bought at 103 into the same line, and turns the gain on a sale into a
@@ -29,7 +29,7 @@ data class PostingDraft(
     val price: Amount? = null,
     val comment: String? = null,
     /**
-     * Keys describing this leg of the transaction rather than the whole event (B16).
+     * Keys describing this leg of the transaction rather than the whole event.
      *
      * Beancount distinguishes the two, and so does this: an invoice number against one
      * account, or a document linked to one side of a transfer, is not a statement about the
@@ -37,7 +37,7 @@ data class PostingDraft(
      */
     val metadata: Map<String, String> = emptyMap(),
     /**
-     * The rest of the line after the units, as typed: a lot, a price, or both (B77).
+     * The rest of the line after the units, as typed: a lot, a price, or both.
      *
      * Written into the file exactly as entered, to the right of the amount and commodity. When
      * set it takes the place of [cost] and [price] in the text; they stay for the drafts that
@@ -85,7 +85,7 @@ data class TransactionDraft(
     /**
      * Problems that must be resolved before this can be written.
      *
-     * @param format the open ledger's own rules (B59). `option "inferred_tolerance_default"`
+     * @param format the open ledger's own rules. `option "inferred_tolerance_default"`
      *   is what *the file* calls close enough to balance, and an app deciding that for itself
      *   is an app disagreeing with the ledger it is showing.
      */
@@ -94,7 +94,7 @@ data class TransactionDraft(
         /**
          * The accounts the ledger has opened, or null when that is not known or does not
          * matter (a ledger with `auto_accounts`). A posting to any other account is an error
-         * Beancount reports for the whole ledger, so it is refused here, before the write (B96).
+         * Beancount reports for the whole ledger, so it is refused here, before the write.
          */
         openAccounts: Set<String>? = null,
     ): List<DraftProblem> {
@@ -139,12 +139,12 @@ data class TransactionDraft(
         if (elided == 0 && postings.isNotEmpty() && !unweighable) {
             val weights = postings.mapNotNull { it.weight() }
             val residuals = Balance.of(weights).residuals()
-            val inferred = Balance.toleranceFor(weights)
-            if (residuals.any { residual ->
-                    val tolerance = format.toleranceFor(residual.currency) ?: inferred
-                    residual.number.abs() > tolerance
-                }
-            ) {
+            val tolerances = Tolerances.infer(
+                postings.mapNotNull { it.amount },
+                format.tolerances,
+                format.toleranceMultiplier,
+            )
+            if (residuals.any { it.number.abs() > tolerances.forCurrency(it.currency) }) {
                 problems += DraftProblem.DoesNotBalance(residuals)
             }
         }
@@ -194,7 +194,7 @@ data class TransactionDraft(
                 builder.append(left).append(" ".repeat(padding)).append(right)
                 // After the aligned amount, in the order Beancount reads them: what the units
                 // were held at, then what they were exchanged at. Typed details go in as they
-                // were typed (B77).
+                // were typed.
                 val typed = posting.details?.trim()?.takeIf { it.isNotEmpty() }
                 if (typed != null) {
                     builder.append(' ').append(typed)
@@ -227,7 +227,7 @@ data class TransactionDraft(
         private fun quote(value: String): String = BeancountText.quote(value)
 
         /**
-         * An entry already in the ledger, as a draft that can be entered again (B11).
+         * An entry already in the ledger, as a draft that can be entered again.
          *
          * [today] rather than the entry's own date, and that is the point: a clone is a *new*
          * transaction -- this month's rent, not a second copy of last month's. Carrying the
@@ -274,7 +274,7 @@ sealed interface DraftProblem {
     data class PathOutsideProject(val path: String) : DraftProblem
     data object MissingAmount : DraftProblem
 
-    /** A posting's commodity details that Beancount could not read (B77). */
+    /** A posting's commodity details that Beancount could not read. */
     data class UnreadableDetails(val account: String, val reason: String) : DraftProblem
 
     /** Wording the user sees. Says what is wrong, never "invalid input". */
@@ -311,17 +311,17 @@ data class LedgerVocabulary(
      * What a new posting should be denominated in: the ledger's operating currency.
      *
      * It used to be whichever commodity sorted first, so a PKR ledger holding a little USD
-     * offered "EUR" or "USD" by default and every entry had to be corrected (B5).
+     * offered "EUR" or "USD" by default and every entry had to be corrected.
      */
     val defaultCurrency: String? = null,
     val tags: List<String>,
-    /** Links already used in the ledger, for the link field to offer back (B77). */
+    /** Links already used in the ledger, for the link field to offer back. */
     val links: List<String> = emptyList(),
     /** Newest first, for offering back what was used last time. */
     val recentEntries: List<JournalEntry> = emptyList(),
-    /** What the ledger's `commodity_attr` plugin requires of a commodity directive (B94). */
+    /** What the ledger's `commodity_attr` plugin requires of a commodity directive. */
     val commodityAttributes: List<String> = emptyList(),
-    /** Accounts the ledger has opened; null where any name is acceptable (B96). */
+    /** Accounts the ledger has opened; null where any name is acceptable. */
     val openAccounts: Set<String>? = null,
 ) {
     fun accountsMatching(prefix: String): List<String> = match(accounts, prefix)
@@ -353,12 +353,12 @@ data class LedgerVocabulary(
     companion object {
         // The strip these fill scrolls horizontally, so this caps rendering cost rather than
         // hiding matches. At 12 a ledger with forty shops silently offered a third of them,
-        // which reads as the app not knowing the payee (B7).
+        // which reads as the app not knowing the payee.
         const val SUGGESTION_LIMIT = 60
 
         fun from(snapshot: LedgerSnapshot): LedgerVocabulary = LedgerVocabulary(
             // `leafonly` makes a posting to an account that has sub-accounts an error, so the
-            // form does not offer one (B95). The same list is used for every directive.
+            // form does not offer one. The same list is used for every directive.
             accounts = snapshot.accounts.map { it.name }.distinct().sorted().let { names ->
                 if (snapshot.hasPlugin("beancount.plugins.leafonly")) {
                     names.filterNot { name -> names.any { it.startsWith("$name:") } }

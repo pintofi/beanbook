@@ -1,6 +1,6 @@
 package io.github.pintofi.beanbook.core.domain
 
-/** What the ledger and the filesystem together say about one document (B18). */
+/** What the ledger and the filesystem together say about one document. */
 enum class DocumentStatus {
     /** On disk, and a `document` directive files it under an account. */
     FILED,
@@ -26,7 +26,7 @@ data class DocumentRow(
     val date: String? = null,
     /**
      * Entries that attach this document as metadata, described as a person would name them
-     * (B57).
+     *.
      *
      * A receipt attached while entering a transaction is a `document:` key on that entry, not
      * a `document` directive, so the folder-versus-directives reconciliation below called it
@@ -39,17 +39,10 @@ data class DocumentRow(
      *
      * Beancount turns a dated file in an account folder into a `document` directive of its
      * own. Nothing in the ledger says so, so unlinking cannot remove it, and saying "Filed
-     * under ..." promised a link the file did not have (B92).
+     * under ..." promised a link the file did not have.
      */
     val filedByFolder: Boolean = false,
 ) {
-    /**
-     * One line saying where this document stands, for the row under its name.
-     *
-     * Each status is worded as what the user would do about it, not as a category name: an
-     * unfiled document is work left to do, and a missing one is a link that no longer
-     * resolves, which is what invariant 5 exists to surface.
-     */
     /**
      * Whether anything written in the ledger refers to this file.
      *
@@ -59,6 +52,13 @@ data class DocumentRow(
     val linked: Boolean
         get() = attachedTo.isNotEmpty() || (status != DocumentStatus.UNFILED && !filedByFolder)
 
+    /**
+     * One line saying where this document stands, for the row under its name.
+     *
+     * Each status is worded as what the user would do about it, not as a category name: an
+     * unfiled document is work left to do, and a missing one is a link that no longer
+     * resolves, which is what invariant 5 exists to surface.
+     */
     val summary: String
         get() = when {
             status == DocumentStatus.MISSING ->
@@ -91,7 +91,7 @@ object DocumentIndex {
         onDisk: List<String>,
         directives: List<DocumentDirective>,
         /**
-         * Entries that attach a document as metadata, keyed by the path they name (B57).
+         * Entries that attach a document as metadata, keyed by the path they name.
          * The Add form writes those; nothing here would otherwise know about them.
          */
         attachments: Map<String, List<String>> = emptyMap(),
@@ -103,7 +103,7 @@ object DocumentIndex {
         fun relativise(absolute: String) =
             if (absolute.startsWith(base)) absolute.removePrefix(base) else absolute
 
-        // One row per document and account (B89). With `option "documents"`, Beancount finds a
+        // One row per document and account. With `option "documents"`, Beancount finds a
         // filed PDF in the folder and reports it as a Document entry of its own, beside the
         // directive that filed it: the same file, the same account, twice -- and every scan
         // showed up twice in Organize.

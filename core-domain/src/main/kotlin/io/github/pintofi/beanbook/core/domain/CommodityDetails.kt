@@ -1,10 +1,9 @@
 package io.github.pintofi.beanbook.core.domain
 
 import java.math.BigDecimal
-import java.math.MathContext
 
 /**
- * What a posting says about its commodity after the amount: the lot and the price (B77).
+ * What a posting says about its commodity after the amount: the lot and the price.
  *
  * In a Beancount file these are written on the same line, to the right of the units:
  *
@@ -55,15 +54,6 @@ sealed interface CommodityDetails {
             totalPrice?.let { return Amount(it.number.multiply(BigDecimal(units.number.signum())), it.currency) }
             return units
         }
-
-        /** Per-unit cost and price, for the parts of the app that still store them that way. */
-        fun cost(units: Amount?): Cost? = when {
-            costPerUnit != null -> Cost(costPerUnit)
-            totalCost != null && units != null && units.number.signum() != 0 -> Cost(
-                Amount(totalCost.number.divide(units.number.abs(), MathContext.DECIMAL64), totalCost.currency),
-            )
-            else -> null
-        }
     }
 
     /** Text that is not a lot or a price Beancount would accept. */
@@ -73,7 +63,8 @@ sealed interface CommodityDetails {
 
     companion object {
 
-        private val NUMBER = Regex("""-?\d+(\.\d+)?""")
+        /** A number as Beancount reads it: digits, optionally grouped by commas, optionally decimals. */
+        private val NUMBER = Regex("""-?(\d{1,3}(,\d{3})+|\d+)(\.\d+)?""")
 
         /** `{12.50 USD, 2025-01-01, "label"}` or `{{125 USD}}`, then `@ 13 USD` or `@@ 130 USD`. */
         fun parse(text: String): CommodityDetails {
@@ -131,17 +122,30 @@ sealed interface CommodityDetails {
             if (pieces.size != 2) return null
             val (number, commodity) = pieces
             if (!NUMBER.matches(number) || !BeancountText.CURRENCY.matches(commodity)) return null
-            return Amount(BigDecimal(number), commodity)
+            return Amount(BigDecimal(number.replace(",", "")), commodity)
         }
+
+        /**
+         * Whether the comma at [at] is inside a number such as `1,250.00`, which Beancount reads
+         * as one figure, rather than the comma between the parts of a lot. A separator has a digit
+         * directly before it and exactly three directly after, with no space either side.
+         */
+        private fun isThousandsSeparator(text: String, at: Int): Boolean =
+            at > 0 && text[at - 1].isDigit() &&
+                (at + 1..at + 3).all { it < text.length && text[it].isDigit() } &&
+                (at + 4 >= text.length || !text[at + 4].isDigit())
 
         private fun splitOutsideQuotes(text: String): List<String> {
             val parts = mutableListOf<String>()
             val current = StringBuilder()
             var quoted = false
-            for (ch in text) {
+            for ((at, ch) in text.withIndex()) {
                 when {
                     ch == '"' -> { quoted = !quoted; current.append(ch) }
-                    ch == ',' && !quoted -> { parts += current.toString(); current.clear() }
+                    ch == ',' && !quoted && !isThousandsSeparator(text, at) -> {
+                        parts += current.toString()
+                        current.clear()
+                    }
                     else -> current.append(ch)
                 }
             }

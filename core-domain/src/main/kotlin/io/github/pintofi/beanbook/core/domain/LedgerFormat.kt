@@ -4,7 +4,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 /**
- * How a ledger asks its own figures to be shown (B59).
+ * How a ledger asks its own figures to be shown.
  *
  * Beancount works this out from the file: the **display context** records how many decimal
  * places each commodity is actually written to, and `option "render_commas"` says whether
@@ -24,10 +24,12 @@ data class LedgerFormat(
     val groupThousands: Boolean = false,
     /** Decimal places per commodity, as the file writes them. */
     val precision: Map<String, Int> = emptyMap(),
-    /** `option "inferred_tolerance_default"`, per commodity. */
+    /** `option "inferred_tolerance_default"`, per commodity, with `*` for any other. */
     val tolerances: Map<String, BigDecimal> = emptyMap(),
+    /** `option "tolerance_multiplier"`: how much of the last decimal place counts as close enough. */
+    val toleranceMultiplier: BigDecimal = Tolerances.DEFAULT_MULTIPLIER,
     /**
-     * What separates thousands and what separates the decimal, as this ledger asks (B67).
+     * What separates thousands and what separates the decimal, as this ledger asks.
      *
      * Fava's `locale` option decides both, and its rule is worth stating because it is not
      * the obvious one: `render_commas` alone means the locale `en` -- 1,234.56 -- while
@@ -38,7 +40,7 @@ data class LedgerFormat(
     val groupSeparator: Char = ',',
     val decimalSeparator: Char = '.',
     /**
-     * Fava's `invert-income-liabilities-equity` (B67).
+     * Fava's `invert-income-liabilities-equity`.
      *
      * Income, liabilities and equity carry credit balances, which in double entry are
      * negative. Fava can show them the way a person reads them -- income as a positive
@@ -51,7 +53,7 @@ data class LedgerFormat(
     /** Fava's `indent`: how far a posting is indented in a file this app writes. */
     val indent: Int = DEFAULT_INDENT,
     /**
-     * Which trees the inversion applies to, under this file's own names for them (B70).
+     * Which trees the inversion applies to, under this file's own names for them.
      *
      * Beancount's `name_income` and friends rename the roots, so the three to turn around are
      * whatever *this* ledger calls income, liabilities and equity -- not the English words.
@@ -108,9 +110,6 @@ data class LedgerFormat(
     /** Whether [account] is one of the three trees Fava's option turns around. */
     fun isInverted(account: String): Boolean =
         invertedRoots.any { account == it || account.startsWith("$it:") }
-
-    /** What this ledger calls close enough to balance, for [currency]. */
-    fun toleranceFor(currency: String): BigDecimal? = tolerances[currency]
 
     /** The decimal point moved to where this ledger puts it, when thousands are not grouped. */
     private fun pointed(plain: String): String =

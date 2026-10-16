@@ -1,14 +1,7 @@
 package io.github.pintofi.beanbook.core.domain
 
 /**
- * One captured page, before it becomes part of a PDF.
- *
- * [source] identifies the original image and never changes: rotating or reordering a page
- * edits this description, not the file the camera wrote. The original is preserved until the
- * user explicitly discards it (SPEC.md, J3).
- */
-/**
- * How a page is rendered (B58).
+ * How a page is rendered.
  *
  * A domain enum rather than the scanner module's own: `:core-domain` is pure Kotlin and must
  * not learn about OpenCV, and the page model is what the PDF assembler reads. The app maps
@@ -25,6 +18,13 @@ enum class PageStyle {
     GREYSCALE,
 }
 
+/**
+ * One captured page, before it becomes part of a PDF.
+ *
+ * [source] identifies the original image and never changes: rotating or reordering a page
+ * edits this description, not the file the camera wrote. The original is preserved until the
+ * user explicitly discards it.
+ */
 data class CapturedPage(
     val source: String,
     /** Clockwise, in degrees; always one of 0, 90, 180, 270. */
@@ -38,7 +38,7 @@ data class CapturedPage(
      */
     val crop: CropQuad? = null,
     /**
-     * How this page is rendered when the document is assembled (B58).
+     * How this page is rendered when the document is assembled.
      *
      * Per page, not per session: a batch is often one printed page and one handwritten
      * receipt, and forcing both through the same treatment makes one of them unreadable.
@@ -107,7 +107,7 @@ data class CapturedPages(val pages: List<CapturedPage> = emptyList()) {
         if (index in pages.indices) CapturedPages(pages.filterIndexed { i, _ -> i != index })
         else this
 
-    /** The pages with one page rendered differently (B58). */
+    /** The pages with one page rendered differently. */
     fun restyle(index: Int, style: PageStyle): CapturedPages = replace(index) { it.styledAs(style) }
 
     /** The pages with one page's crop set, or cleared when [quad] is null. */

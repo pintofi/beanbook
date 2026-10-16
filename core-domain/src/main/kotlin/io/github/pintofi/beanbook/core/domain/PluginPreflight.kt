@@ -1,6 +1,7 @@
 package io.github.pintofi.beanbook.core.domain
 
 import java.io.File
+import java.io.InputStream
 import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.zip.ZipFile
@@ -108,17 +109,19 @@ object PluginPreflight {
     }
 
     private fun scanSourceFile(file: File): PluginScan {
-        val text = file.readText()
+        // A source file is read whole to look for imports, so it gets the same ceiling as
+        // everything else: a multi-gigabyte "plugin.py" is refused unread, not loaded into memory.
+        val tooLarge = file.length() > MAX_UNCOMPRESSED_BYTES
         return PluginScan(
             name = file.name,
             kind = PluginKind.SOURCE_FILE,
-            sha256 = sha256(file.readBytes()),
+            sha256 = sha256(file),
             sizeBytes = file.length(),
             pythonModules = listOf(file.name),
             nativeLibraries = emptyList(),
-            bridgeImports = bridgeImportsIn(file.name, text),
+            bridgeImports = if (tooLarge) emptyList() else bridgeImportsIn(file.name, file.readText()),
             unsafePaths = emptyList(),
-            truncated = false,
+            truncated = tooLarge,
         )
     }
 
@@ -191,10 +194,12 @@ object PluginPreflight {
                 }
 
                 // entry.size is what the archive claims; read against the real thing so a
-                // lying header cannot buy a bigger read.
-                val bytes = zip.getInputStream(entry).use { it.readBytes() }
+                // lying header cannot buy a bigger read. The read itself is bounded too: an
+                // entry that expands past what is left of the budget is abandoned as soon as it
+                // is seen to, not read to the end and measured afterwards.
+                val bytes = zip.getInputStream(entry).use { readAtMost(it, MAX_UNCOMPRESSED_BYTES - total) }
+                if (bytes == null) { truncated = true; break }
                 total += bytes.size
-                if (total > MAX_UNCOMPRESSED_BYTES) { truncated = true; break }
 
                 when {
                     NATIVE_SUFFIXES.any { name.endsWith(it, ignoreCase = true) } -> native += name
@@ -209,7 +214,7 @@ object PluginPreflight {
         return PluginScan(
             name = file.name,
             kind = PluginKind.ARCHIVE,
-            sha256 = sha256(file.readBytes()),
+            sha256 = sha256(file),
             sizeBytes = file.length(),
             pythonModules = modules.sorted(),
             nativeLibraries = native.sorted(),
@@ -255,6 +260,40 @@ object PluginPreflight {
 
     private fun isBridge(module: String): Boolean =
         BRIDGE_MODULES.any { module == it || module.startsWith("$it.") }
+
+    /**
+     * Up to [limit] bytes of [input], or null as soon as it is seen to hold more, without
+     * reading on. The point is that the cost of refusing a hostile archive does not grow with
+     * the archive.
+     */
+    internal fun readAtMost(input: InputStream, limit: Long): ByteArray? {
+        val out = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(BUFFER_BYTES)
+        var total = 0L
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) return out.toByteArray()
+            total += read
+            if (total > limit) return null
+            out.write(buffer, 0, read)
+        }
+    }
+
+    private const val BUFFER_BYTES = 64 * 1024
+
+    /** Streamed, so hashing a large file does not need it in memory. */
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(BUFFER_BYTES)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
 
     private fun sha256(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes)

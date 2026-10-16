@@ -9,7 +9,7 @@ import java.math.BigDecimal
  * character. `WidgetCache` computed and formatted them privately, with a comment warning that
  * doing it anywhere else is "how two places start disagreeing about what a number looks like";
  * adding a second screen is exactly that risk, so the computation moved here instead of being
- * copied (B10).
+ * copied.
  *
  * Strings rather than numbers, deliberately: a widget runs in the launcher's process with no
  * access to the app's formatting, so the one formatter has to produce the final text.
@@ -32,7 +32,7 @@ data class LedgerSummary(
     companion object {
 
         fun of(ledger: LedgerSnapshot, valuation: Valuation = Valuation.VALUE): LedgerSummary {
-            // Rendered the way the file asks (B59): its own decimal places and its own
+            // Rendered the way the file asks: its own decimal places and its own
             // thousands separators, rather than whatever scale the arithmetic produced.
             val format = ledger.format
             val totals = totals(ledger, valuation)
@@ -90,7 +90,7 @@ data class LedgerSummary(
          * One currency per line.
          *
          * Joined with two spaces a multi-currency figure became a run-on inside a widget's
-         * single `TextView`, unreadable at the glance a widget gets (B3).
+         * single `TextView`, unreadable at the glance a widget gets.
          */
         fun format(
             amounts: List<Amount>,
@@ -110,6 +110,6 @@ data class LedgerSummary(
  * The journal arrives newest first — the engine reports the last window of entries in file
  * order and the reader reverses it — so this is a `take`, not a `takeLast`. The home screen
  * used `takeLast(count).asReversed()`, which on an already-reversed list returns the oldest
- * entries in the ledger under a heading that says "Recent" (D9).
+ * entries in the ledger under a heading that says "Recent".
  */
 fun LedgerSnapshot.recentEntries(count: Int): List<JournalEntry> = journal.take(count)
