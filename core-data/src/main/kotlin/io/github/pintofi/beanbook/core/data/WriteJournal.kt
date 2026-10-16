@@ -1,6 +1,7 @@
 package io.github.pintofi.beanbook.core.data
 
 import java.io.File
+import java.io.IOException
 import java.security.MessageDigest
 
 /**
@@ -19,7 +20,11 @@ import java.security.MessageDigest
  * `state` is written last and replaced atomically, so its presence and content are the
  * only things recovery has to trust.
  */
-class WriteJournal(private val workspace: ProjectWorkspace) {
+class WriteJournal(
+    private val workspace: ProjectWorkspace,
+    /** Milliseconds since the epoch; a parameter so a test can make the clock go backwards. */
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
 
     enum class State { INTENT, RENAMED, COMMITTED, ROLLEDBACK }
 
@@ -47,7 +52,7 @@ class WriteJournal(private val workspace: ProjectWorkspace) {
         baselineErrors: Int = 0,
         rollbackOnNewErrors: Boolean = true,
     ): Record {
-        val txnId = "%013d-%s".format(System.currentTimeMillis(), randomSuffix())
+        val txnId = "%013d-%s".format(nextTimestamp(projectId), randomSuffix())
         val dir = journalDir(projectId, txnId).apply { mkdirs() }
         val projectDir = workspace.projectDir(projectId)
 
@@ -56,20 +61,27 @@ class WriteJournal(private val workspace: ProjectWorkspace) {
             relative to if (file.isFile) sha256(file) else ""
         }
 
-        // Snapshot before anything is touched: this is what rollback and undo restore.
+        // Snapshot before anything is touched: this is what rollback and undo restore. Flushed to
+        // storage, with the folders that name it: the ledger is replaced only after this, and a
+        // snapshot that was never flushed can be empty after a power loss, which would turn a
+        // rollback into the loss it exists to prevent.
         val snapshotDir = snapshotDir(projectId, txnId).apply { mkdirs() }
         files.filter { it.isFile }.forEach { file ->
             val target = File(snapshotDir, file.relativeTo(projectDir).path)
-            target.parentFile?.mkdirs()
-            file.copyTo(target, overwrite = true)
+            Durable.copy(file, target)
+            Durable.syncDirectory(target.parentFile)
         }
+        Durable.syncDirectory(snapshotDir)
+        Durable.syncDirectory(snapshotDir.parentFile)
 
-        File(dir, OP).writeText(operation)
-        File(dir, BASELINE).writeText("$baselineErrors ${if (rollbackOnNewErrors) "rollback" else "keep"}")
-        File(dir, FILES).writeText(
-            before.entries.joinToString("\n") { (path, sha) -> "$sha $path" }
+        Durable.writeText(File(dir, OP), operation)
+        Durable.writeText(File(dir, BASELINE), "$baselineErrors ${if (rollbackOnNewErrors) "rollback" else "keep"}")
+        Durable.writeText(
+            File(dir, FILES),
+            before.entries.joinToString("\n") { (path, sha) -> "$sha $path" },
         )
         writeState(dir, State.INTENT)
+        Durable.syncDirectory(dir.parentFile)
 
         return Record(
             projectId = projectId,
@@ -117,23 +129,64 @@ class WriteJournal(private val workspace: ProjectWorkspace) {
     fun restoreSnapshot(record: Record) {
         val projectDir = workspace.projectDir(record.projectId)
         val snapshot = snapshotDir(record.projectId, record.txnId)
-
         record.filesBefore.forEach { (relative, shaBefore) ->
-            val live = File(projectDir, relative)
-            val saved = File(snapshot, relative)
-            when {
-                saved.isFile -> {
-                    live.parentFile?.mkdirs()
-                    // Restore through a temp file so a crash mid-restore cannot leave a
-                    // truncated ledger behind.
-                    val tmp = File(live.parentFile, "${live.name}.restore")
-                    saved.copyTo(tmp, overwrite = true)
-                    tmp.renameTo(live)
-                }
-                // The file did not exist before this write, so undoing means removing it.
-                shaBefore.isEmpty() -> live.delete()
-            }
+            restoreOne(File(projectDir, relative), File(snapshot, relative), relative, shaBefore)
         }
+    }
+
+    private fun restoreOne(live: File, saved: File, relative: String, shaBefore: String) {
+        if (!saved.isFile) {
+            removeOrFail(live, relative, shaBefore)
+            return
+        }
+        requireIntact(saved, relative, shaBefore)
+        putBack(saved, live, relative)
+    }
+
+    /**
+     * The file did not exist before this write, so undoing means removing it. If it did exist
+     * and the copy that was taken is gone, nothing can be restored, and saying otherwise would be
+     * a false claim about the user's ledger.
+     */
+    private fun removeOrFail(live: File, relative: String, shaBefore: String) {
+        if (shaBefore.isNotEmpty()) {
+            throw IOException("the saved copy of $relative is missing, so it cannot be restored")
+        }
+        live.delete()
+    }
+
+    /**
+     * The saved copy has to be exactly what was saved. A truncated or altered one would replace
+     * a ledger that is intact with one that is not, and say it had put things back.
+     */
+    private fun requireIntact(saved: File, relative: String, shaBefore: String) {
+        if (shaBefore.isNotEmpty() && sha256(saved) != shaBefore) {
+            throw IOException("the saved copy of $relative is damaged, so it was not restored")
+        }
+    }
+
+    /** Through a temp file, so a crash mid-restore cannot leave a truncated ledger behind. */
+    private fun putBack(saved: File, live: File, relative: String) {
+        live.parentFile?.mkdirs()
+        val tmp = File(live.parentFile, "${live.name}.restore")
+        Durable.copy(saved, tmp)
+        if (!tmp.renameTo(live)) {
+            tmp.delete()
+            throw IOException("could not put $relative back")
+        }
+        Durable.syncDirectory(live.parentFile)
+    }
+
+    /**
+     * Forgets the whole history of [projectId]: every record and every snapshot.
+     *
+     * For when the project's files have been replaced wholesale (a restore). The saved copies
+     * describe the project as it was before, and Undo would put them back over what is there now.
+     * Not for general use: an interrupted write is what [pending] and recovery are for.
+     */
+    fun forget(projectId: String) {
+        journalRoot(projectId).deleteRecursively()
+        workspace.snapshotsDir.resolve(projectId).deleteRecursively()
     }
 
     /** Drops records older than [keep], oldest first. Snapshots are the undo depth. */
@@ -141,7 +194,7 @@ class WriteJournal(private val workspace: ProjectWorkspace) {
         // Terminal records only. Sorting every directory by name and deleting the oldest
         // could take an INTENT or RENAMED record -- a write that was interrupted and has not
         // been recovered yet -- and its snapshot with it, which is the one thing recovery
-        // needs (R9).
+        // needs.
         val all = journalRoot(projectId).listFiles()
             ?.filter { it.isDirectory }
             ?.filter { dir ->
@@ -184,10 +237,28 @@ class WriteJournal(private val workspace: ProjectWorkspace) {
     }
 
     private fun writeState(dir: File, state: State) {
-        // Write then rename: a reader never sees a partially written state file.
+        // Write, flush, rename, flush the folder: a reader never sees a partially written state
+        // file, and the state it sees is the one that survives a power loss.
         val tmp = File(dir, "$STATE.tmp")
-        tmp.writeText(state.name)
-        tmp.renameTo(File(dir, STATE))
+        Durable.writeText(tmp, state.name)
+        if (!tmp.renameTo(File(dir, STATE))) throw IOException("could not record the state of the write")
+        Durable.syncDirectory(dir)
+    }
+
+    /**
+     * The timestamp part of the next transaction id.
+     *
+     * Ids sort by name, and the undo stack, recovery and pruning all trust that order. The
+     * wall clock can go backwards (a manual change, a dead battery that resets it to the
+     * epoch), and a write made after that would sort *before* older ones: Undo would then
+     * restore the wrong snapshot. So an id is never earlier than the latest one that exists.
+     */
+    private fun nextTimestamp(projectId: String): Long {
+        val latest = journalRoot(projectId).listFiles().orEmpty()
+            .mapNotNull { it.name.substringBefore('-').toLongOrNull() }
+            .maxOrNull() ?: Long.MIN_VALUE
+        val now = clock()
+        return if (now > latest) now else latest + 1
     }
 
     private fun journalRoot(projectId: String): File =

@@ -7,7 +7,7 @@ import java.util.Locale
  * What the project picker shows. Deliberately cheap to produce: no engine, no parse.
  *
  * Opening the picker must never wait on Python — a cold engine start costs seconds
- * (docs/milestones/m3.md), and a list of projects is a filesystem question.
+ *, and a list of projects is a filesystem question.
  */
 data class ProjectSummary(
     val id: String,
@@ -76,11 +76,10 @@ class ProjectRegistry(
         if (!main.isFile) return null
         return main.useLines { lines ->
             lines.take(TITLE_SCAN_LINES)
-                .firstOrNull { it.trimStart().startsWith("option \"title\"") }
-                ?.substringAfter("option \"title\"")
-                ?.trim()
-                ?.removeSurrounding("\"")
-                ?.replace("\\\"", "\"")
+                .mapNotNull { TITLE_OPTION.find(it)?.groupValues?.get(1) }
+                .firstOrNull()
+                // The two escapes Beancount's strings have (a quote and a backslash), in one pass.
+                ?.let { ESCAPE.replace(it) { match -> match.groupValues[1] } }
                 ?.takeIf { it.isNotBlank() }
         }
     }
@@ -119,6 +118,10 @@ class ProjectRegistry(
 
     companion object {
         private const val TITLE_SCAN_LINES = 50
+
+        /** `option "title" "..."`, with whatever follows it (a comment, trailing spaces) ignored. */
+        private val ESCAPE = Regex("""\\(.)""")
+        private val TITLE_OPTION = Regex("""^\s*option\s+"title"\s+"((?:[^"\\]|\\.)*)"""")
 
         /**
          * Turns a user's title into a directory name. Project ids are validated strictly by

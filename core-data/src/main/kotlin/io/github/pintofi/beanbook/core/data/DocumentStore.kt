@@ -9,7 +9,8 @@ import java.time.LocalDate
  *
  * Documents live in the project rather than beside it because a ledger that refers to a
  * receipt has to keep referring to it after an export, a backup or a move to another device
- * (CLAUDE.md, invariant 5). Exporting a project therefore carries the receipts with it.
+ * (document links stay valid across export, backup and mirror). Exporting a project
+ * therefore carries the receipts with it.
  *
  * Writes go through the same discipline as everything else that must survive a process
  * death: whole file to a temporary name, then an atomic rename into place. A half-written
@@ -37,9 +38,9 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
         date: LocalDate,
         content: ByteArray,
         extension: String = "pdf",
-        /** What the user called it, if anything (B57). Sanitised by `DocumentName`. */
+        /** What the user called it, if anything. Sanitised by `DocumentName`. */
         label: String? = null,
-        /** Attached to an entry, so kept out of the account folders (B92). */
+        /** Attached to an entry, so kept out of the account folders. */
         attached: Boolean = false,
     ): Stored {
         var name = DocumentName.forContent(account, date, content, extension, label, attached)
@@ -59,8 +60,12 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
 
             target.parentFile?.mkdirs()
             val tmp = File(target.parentFile, "${target.name}.part")
-            tmp.writeBytes(content)
+            // Flushed before it is named, and the folder after: the entry that links to this
+            // document is written next, and a link to a file that came back empty after a power
+            // loss is a broken link the user finds months later.
+            Durable.writeBytes(tmp, content)
             check(tmp.renameTo(target)) { "could not put the document in place: ${name.relativePath}" }
+            Durable.syncDirectory(target.parentFile)
             return Stored(name.relativePath, alreadyExisted = false)
         }
     }
@@ -71,11 +76,10 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
     fun exists(projectId: String, relativePath: String): Boolean =
         resolve(projectId, relativePath)?.isFile == true
 
-    /** Every document in the project, as project-relative paths, oldest name first. */
     /**
-     * Every document this project holds, relative to it.
+     * Every document this project holds, relative to it, in name order.
      *
-     * [extraRoots] are the folders `option "documents"` names (B70). Beancount reads those
+     * [extraRoots] are the folders `option "documents"` names. Beancount reads those
      * as well as anything a `document` directive points at, so a file in one of them is filed
      * as far as the ledger is concerned -- and a screen that listed only its own folder called
      * it missing. They are resolved against the project and ignored when they lead outside it,
@@ -85,7 +89,7 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
         val root = workspace.projectDir(projectId)
         val folders = (listOf(DocumentName.ROOT) + extraRoots)
             .map { File(root, it) }
-            .filter { it.isDirectory && it.canonicalPath.startsWith(root.canonicalPath) }
+            .filter { it.isDirectory && isInside(it, root) }
             .distinctBy { it.canonicalPath }
         return folders
             .flatMap { folder ->
@@ -109,17 +113,22 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
         if (!file.isFile) return false
         val deleted = file.delete()
         // Tidy the account directory when it empties, so the tree does not fill with husks;
-        // never touch documents/ itself, which is part of the project's shape.
+        // never touch documents/ itself, which is part of the project's shape, and never a
+        // folder outside it: a document kept in another folder that `option "documents"` names
+        // is in a folder the person made and named, and an empty one is theirs to remove.
+        val documentsRoot = File(workspace.projectDir(projectId), DocumentName.ROOT).canonicalFile
         var parent = file.parentFile
-        val documentsRoot = File(workspace.projectDir(projectId), DocumentName.ROOT)
-        while (parent != null && parent != documentsRoot && parent.isDirectory &&
-            parent.list()?.isEmpty() == true
-        ) {
+        while (parent != null && isEmptyFolderUnder(parent, documentsRoot)) {
             parent.delete()
             parent = parent.parentFile
         }
         return deleted
     }
+
+    /** An empty folder strictly inside [documentsRoot], which is the only kind a delete tidies. */
+    private fun isEmptyFolderUnder(folder: File, documentsRoot: File): Boolean =
+        folder != documentsRoot && isInside(folder, documentsRoot) &&
+            folder.isDirectory && folder.list()?.isEmpty() == true
 
     /**
      * Resolves a project-relative path, refusing anything that leaves the project.
@@ -131,8 +140,17 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
     private fun resolve(projectId: String, relativePath: String): File? {
         val root = workspace.projectDir(projectId).canonicalFile
         val candidate = File(root, relativePath).canonicalFile
-        val inside = candidate.path == root.path ||
-            candidate.path.startsWith(root.path + File.separator)
-        return candidate.takeIf { inside }
+        return candidate.takeIf { isInside(candidate, root) }
+    }
+
+    /**
+     * Whether [file] is [root] or somewhere under it. Compared on whole path segments: a plain
+     * prefix test says the folder of a project called `proj2` is inside the project called
+     * `proj`, and a ledger could then name another project's documents as its own.
+     */
+    private fun isInside(file: File, root: File): Boolean {
+        val path = file.canonicalFile.path
+        val base = root.canonicalFile.path
+        return path == base || path.startsWith(base + File.separator)
     }
 }

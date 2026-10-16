@@ -61,6 +61,12 @@ class DraftStore(private val workspace: ProjectWorkspace) {
             .map { it.relativeTo(workspace.draftsDir.resolve(projectId)).path.removeSuffix(".draft") }
             .toList()
 
-    private fun draftFile(projectId: String, relativePath: String): File =
-        workspace.draftsDir.resolve(projectId).resolve("$relativePath.draft")
+    private fun draftFile(projectId: String, relativePath: String): File {
+        val base = workspace.draftsDir.resolve(projectId).canonicalFile
+        val file = base.resolve("$relativePath.draft").canonicalFile
+        // The path is a ledger file's name, which can come from an include in a project that was
+        // imported. A draft is written wherever this says, so it has to stay in the drafts folder.
+        require(file.path.startsWith(base.path + File.separator)) { "not a path inside the project: $relativePath" }
+        return file
+    }
 }

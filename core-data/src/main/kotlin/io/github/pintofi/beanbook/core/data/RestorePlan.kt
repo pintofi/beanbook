@@ -109,7 +109,8 @@ class RestorePlan(private val workspace: ProjectWorkspace) {
      *
      * The previous project is renamed aside, not deleted — the user prunes it when they are
      * satisfied. If the second rename fails, the first is undone, so the project is never
-     * left missing.
+     * left missing. The undo history is cleared, because it describes the project that was
+     * set aside.
      *
      * @return the directory holding the previous version.
      */
@@ -128,6 +129,10 @@ class RestorePlan(private val workspace: ProjectWorkspace) {
             keptAside.renameTo(live)
             error("could not put the restored project in place")
         }
+        // The restored files are not the ones the saved copies were taken from. Undo would
+        // put an older copy back over them, so the history belongs to the project that was
+        // set aside, and the restored one starts with none.
+        WriteJournal(workspace).forget(projectId)
         return keptAside
     }
 
@@ -176,14 +181,9 @@ data class BackupRetention(
     fun expired(archives: List<Archive>, now: Instant): List<Archive> {
         if (archives.isEmpty()) return emptyList()
         val newestFirst = archives.sortedByDescending { it.createdAt }
-        val kept = newestFirst.take(maxOf(keepCount, 1)).toMutableList()
-        val rest = newestFirst.drop(kept.size)
-
-        val (stillFresh, tooOld) = rest.partition {
-            Duration.between(it.createdAt, now) <= keepFor
-        }
-        kept += stillFresh
-        return tooOld
+        // The newest few are always kept, however old; age only removes what is beyond them.
+        val rest = newestFirst.drop(maxOf(keepCount, 1))
+        return rest.filter { Duration.between(it.createdAt, now) > keepFor }
     }
 
     fun keep(archives: List<Archive>, now: Instant): List<Archive> =

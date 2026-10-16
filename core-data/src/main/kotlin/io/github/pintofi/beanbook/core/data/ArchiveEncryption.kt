@@ -77,10 +77,30 @@ sealed interface ArchiveEncryption {
         const val SALT_BYTES = 16
         const val NONCE_BYTES = 12
 
+        /** Ceilings on what an archive may ask the derivation to spend. The defaults are far below. */
+        const val MAX_ITERATIONS = 64
+        const val MAX_MEMORY_KIB = 1024 * 1024
+        const val MIN_MEMORY_KIB = 8
+        const val MAX_PARALLELISM = 16
+        const val MIN_SALT_BYTES = 8
+        const val MAX_SALT_BYTES = 64
+
         fun fromJson(value: Json?): ArchiveEncryption? = when (value) {
             null -> None
             is Json.Str -> if (value.value == NONE) None else null
-            is Json.Obj -> Encrypted(
+            is Json.Obj -> parameters(value)
+            else -> null
+        }
+
+        /**
+         * The manifest is not secret and not authenticated, so what it says about how to derive a
+         * key is a request from whoever made the archive. Read as one: an archive that asks for
+         * a few gigabytes of memory, or billions of passes, to open itself is a way to make the
+         * app run out of memory, and a different cipher or derivation than the ones this reads is
+         * an archive this cannot open, whatever it claims.
+         */
+        private fun parameters(value: Json.Obj): Encrypted? {
+            val encrypted = Encrypted(
                 kdf = value.string("kdf") ?: return null,
                 salt = decode(value.string("salt") ?: return null) ?: return null,
                 nonce = decode(value.string("nonce") ?: return null) ?: return null,
@@ -89,7 +109,14 @@ sealed interface ArchiveEncryption {
                 parallelism = value.long("parallelism")?.toInt() ?: return null,
                 cipher = value.string("cipher") ?: CIPHER,
             )
-            else -> null
+            val acceptable = encrypted.cipher == CIPHER &&
+                encrypted.kdf == ARGON2ID &&
+                encrypted.nonce.size == NONCE_BYTES &&
+                encrypted.salt.size in MIN_SALT_BYTES..MAX_SALT_BYTES &&
+                encrypted.iterations in 1..MAX_ITERATIONS &&
+                encrypted.memoryKib in MIN_MEMORY_KIB..MAX_MEMORY_KIB &&
+                encrypted.parallelism in 1..MAX_PARALLELISM
+            return encrypted.takeIf { acceptable }
         }
 
         fun encode(bytes: ByteArray): String =

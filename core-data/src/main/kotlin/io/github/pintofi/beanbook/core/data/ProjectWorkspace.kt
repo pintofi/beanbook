@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.core.data
 
+import io.github.pintofi.beanbook.core.domain.BeancountText
 import java.io.File
 import java.time.LocalDate
 
@@ -13,7 +14,7 @@ import java.time.LocalDate
  * ```
  * <root>/projects/<id>/     canonical portable project tree
  * <root>/snapshots/<id>/    pre-write snapshots (M4)
- * <root>/journal/<id>.wal   write-ahead journal (M4)
+ * <root>/journal/<id>/      write-ahead journal, one folder per write
  * <root>/drafts/<id>/       unsaved editor buffers
  * <root>/templates/<id>     named entry templates
  * <root>/cache/<id>/        parse and widget caches, never backed up
@@ -41,7 +42,11 @@ class ProjectWorkspace(private val root: File) {
 
     fun listProjects(): List<String> =
         projectsDir.listFiles()
-            ?.filter { it.isDirectory && it.resolve(MAIN_FILE).isFile }
+            // Only names that are project ids. The folder also holds what a restore, an import
+            // and a project being created leave beside a project (`<id>.previous-<time>`,
+            // `<id>.restoring`, `<id>.importing`, `.creating-<id>`), each with a ledger inside,
+            // and none of them is a project the picker may offer or open.
+            ?.filter { it.isDirectory && isValidId(it.name) && it.resolve(MAIN_FILE).isFile }
             ?.map { it.name }
             ?.sorted()
             .orEmpty()
@@ -64,17 +69,31 @@ class ProjectWorkspace(private val root: File) {
     ): File {
         val dir = projectDir(id)
         require(!dir.exists()) { "project already exists: $id" }
-
-        listOf("files", "documents", "prices", "scripts", "plugins").forEach {
-            dir.resolve(it).mkdirs()
+        // The currency goes into several lines of Beancount as written, so it has to be one.
+        require(BeancountText.CURRENCY.matches(operatingCurrency)) {
+            "not a commodity name: $operatingCurrency"
         }
 
-        dir.resolve(MAIN_FILE).writeText(mainTemplate(title, operatingCurrency))
-        dir.resolve("files/accounts.beancount").writeText(accountsTemplate(today, operatingCurrency))
-        dir.resolve("files/transactions.beancount").writeText(TRANSACTIONS_TEMPLATE)
-        dir.resolve("files/commodities.beancount").writeText(
-            commoditiesTemplate(today, operatingCurrency)
-        )
+        // Built beside the project and moved into place, so a crash part-way through leaves
+        // nothing that looks like a project and nothing that stops the id being used again.
+        // A leading dot is not a valid project id, so this name cannot be a real project's.
+        val building = projectsDir.resolve("$BUILDING_PREFIX$id")
+        building.deleteRecursively()
+        try {
+            listOf("files", "documents", "prices", "scripts", "plugins").forEach {
+                building.resolve(it).mkdirs()
+            }
+            building.resolve(MAIN_FILE).writeText(mainTemplate(title, operatingCurrency))
+            building.resolve("files/accounts.beancount")
+                .writeText(accountsTemplate(today, operatingCurrency))
+            building.resolve("files/transactions.beancount").writeText(TRANSACTIONS_TEMPLATE)
+            building.resolve("files/commodities.beancount")
+                .writeText(commoditiesTemplate(today, operatingCurrency))
+            check(building.renameTo(dir)) { "could not put the new project in place: $id" }
+        } catch (failure: Throwable) {
+            building.deleteRecursively()
+            throw failure
+        }
 
         return mainFile(id)
     }
@@ -83,6 +102,8 @@ class ProjectWorkspace(private val root: File) {
      * Project ids become directory names, so they are validated rather than trusted:
      * no traversal, no separators, no hidden files, no reserved names.
      */
+    private fun isValidId(id: String): Boolean = runCatching { requireValidId(id) }.isSuccess
+
     private fun requireValidId(id: String): String {
         require(id.isNotBlank()) { "project id must not be blank" }
         require(id.length <= MAX_ID_LENGTH) { "project id too long" }
@@ -94,19 +115,24 @@ class ProjectWorkspace(private val root: File) {
         return id
     }
 
-    private fun mainTemplate(title: String, currency: String): String = """
-        ; ${title}
+    private fun mainTemplate(rawTitle: String, currency: String): String {
+        // One line: it is a comment and a single option string, and a project picker that reads
+        // the title line by line would otherwise find half of it.
+        val title = rawTitle.replace(Regex("[\\r\\n]+"), " ").trim()
+        return """
+        ; $title
         ;
         ; This file is plain text and yours to edit, here or on a desktop. The app never
         ; rewrites parts of it that you did not change.
 
-        option "title" "${title.replace("\"", "\\\"")}"
+        option "title" ${BeancountText.quote(title)}
         option "operating_currency" "$currency"
 
         include "files/commodities.beancount"
         include "files/accounts.beancount"
         include "files/transactions.beancount"
     """.trimIndent() + "\n"
+    }
 
     private fun accountsTemplate(today: LocalDate, currency: String): String = """
         ; Accounts must be opened before they are used.
@@ -127,6 +153,7 @@ class ProjectWorkspace(private val root: File) {
     companion object {
         const val MAIN_FILE = "main.beancount"
         private const val MAX_ID_LENGTH = 64
+        private const val BUILDING_PREFIX = ".creating-"
         private val RESERVED_IDS = setOf(".", "..")
 
         private val TRANSACTIONS_TEMPLATE = """

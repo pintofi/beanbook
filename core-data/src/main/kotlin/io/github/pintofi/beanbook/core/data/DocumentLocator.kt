@@ -3,7 +3,7 @@ package io.github.pintofi.beanbook.core.data
 import java.io.File
 
 /**
- * Finds the file a ledger's document reference means (B79).
+ * Finds the file a ledger's document reference means.
  *
  * A reference is not a path the app can simply join to the project. Beancount and Fava accept
  * three kinds, and a ledger mixes them:

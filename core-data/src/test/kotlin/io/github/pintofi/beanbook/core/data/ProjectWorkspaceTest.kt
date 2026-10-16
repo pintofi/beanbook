@@ -95,4 +95,56 @@ class ProjectWorkspaceTest {
         assertTrue(workspace.exists("one"))
         assertFalse(workspace.exists("not-a-project"))
     }
+
+    @Test
+    fun `what a restore or an import leaves beside a project is not offered as a project`() {
+        workspace.createProject("p", title = "T")
+        // The folders a restore, an import and a creation leave next to a project, each holding
+        // a ledger. A restore keeps its rollback point for good.
+        listOf("p.previous-1700000000000", "p.restoring", "p.importing", ".creating-q").forEach {
+            workspace.projectsDir.resolve(it).apply { mkdirs() }.resolve("main.beancount").writeText("; x\n")
+        }
+
+        assertEquals(listOf("p"), workspace.listProjects())
+        // The picker reads a summary of each, which refuses a name that is not a project id.
+        assertEquals(
+            listOf("p"),
+            ProjectRegistry(workspace, root.resolve("state")).summaries().map { it.id },
+        )
+    }
+
+    @Test
+    fun `a project whose creation was interrupted does not block creating it again`() {
+        workspace.projectsDir.resolve(".creating-p/files").mkdirs()
+        workspace.projectsDir.resolve(".creating-p/main.beancount").writeText("; half\n")
+
+        val main = workspace.createProject("p", title = "T")
+
+        assertTrue(main.isFile)
+        assertFalse(workspace.projectsDir.resolve(".creating-p").exists())
+    }
+
+    @Test
+    fun `a title with a quote, a backslash or a line break cannot break the ledger it names`() {
+        val main = workspace.createProject("t", title = "Smith \"home\" \\ books\nsecond line")
+
+        val lines = main.readLines()
+        // The comment and the option are each one line, and the option is one string with its
+        // quote and backslash escaped.
+        assertEquals("; Smith \"home\" \\ books second line", lines[0])
+        assertEquals(
+            "option \"title\" \"Smith \\\"home\\\" \\\\ books second line\"",
+            lines.first { it.startsWith("option \"title\"") },
+        )
+        val shown = ProjectRegistry(workspace, root.resolve("state")).summarise("t").title
+        assertEquals("Smith \"home\" \\ books second line", shown)
+    }
+
+    @Test
+    fun `a commodity that is not one is refused before anything is written`() {
+        assertFailsWith<IllegalArgumentException> {
+            workspace.createProject("c", operatingCurrency = "usd\n2020-01-01 close Assets:Cash")
+        }
+        assertFalse(workspace.projectDir("c").exists())
+    }
 }
