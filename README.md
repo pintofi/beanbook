@@ -414,6 +414,27 @@ edges are today:
 
 [docs/known-limitations.md](docs/known-limitations.md) has the full list.
 
+## Roadmap
+
+What is planned, as a checklist. Each line is an issue; [ROADMAP.md](ROADMAP.md) has the reasoning
+and the status of every item.
+
+- [x] **1.0**: local Beancount and Fava on the phone, entry forms, documents and scanning, backup,
+      mirror, remote Fava, plugins and extensions, Share on Wi-Fi
+- [ ] **1.1 Trust and polish** (now)
+  - [ ] Review every file in the repository: 1 of 15 areas done ([#16](https://github.com/pintofi/beanbook/issues/16))
+  - [ ] Fava's own editor saves outside the app's write protocol ([#17](https://github.com/pintofi/beanbook/issues/17))
+  - [ ] TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18))
+  - [ ] Instrumentation tests in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19))
+  - [ ] Screenshot tests, light and dark, 200% text ([#20](https://github.com/pintofi/beanbook/issues/20))
+  - [ ] User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21))
+  - [ ] Reproducible wheels and APK checked in CI ([#22](https://github.com/pintofi/beanbook/issues/22))
+- [ ] **1.2 Capture**: add an entry from shared text, photos and PDFs ([#23](https://github.com/pintofi/beanbook/issues/23)); a Quick Settings tile and shortcut ([#24](https://github.com/pintofi/beanbook/issues/24)); templates and recurring reminders ([#25](https://github.com/pintofi/beanbook/issues/25))
+- [ ] **1.3 Reconcile and import**: a reconcile screen ([#26](https://github.com/pintofi/beanbook/issues/26)); bank statements on the phone ([#27](https://github.com/pintofi/beanbook/issues/27)); Syncthing conflict files ([#28](https://github.com/pintofi/beanbook/issues/28))
+- [ ] **1.4 Reach**: a send queue for a remote Fava ([#29](https://github.com/pintofi/beanbook/issues/29)); price updates on request ([#30](https://github.com/pintofi/beanbook/issues/30)); translations ([#31](https://github.com/pintofi/beanbook/issues/31))
+
+Not planned: two-way sync and embedded Git, cloud OCR or text AI, accounts, analytics and ads.
+
 ## Support Beanbook
 
 Every feature is free in both editions: no trial, no paid tiers, no keys, no ads. If Beanbook is
