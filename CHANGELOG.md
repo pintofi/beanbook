@@ -2,6 +2,20 @@
 
 All notable changes to Beanbook. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+- The entry form no longer refuses an entry Beancount accepts: the balance check now follows Beancount's own per-currency tolerance rule, including `inferred_tolerance_default`.
+- The project picker no longer fails after restoring a backup.
+- A save that is interrupted by the screen closing is finished or put back, never left undecided; after a crash, a raw edit you typed is kept even if the engine is down at the next start.
+- Undo after restoring a backup can no longer put the old project's files back over the restored ones, and Undo stays in order if the device clock is reset.
+- A snapshot taken before a write is flushed to storage before the ledger is replaced, and a damaged one is never restored over an intact ledger.
+- Checking a backup is bounded in memory, and a backup archive can no longer ask the app to spend gigabytes deriving its key.
+- Files you named `key` are included in backups and the mirror.
+- Diagnostics redact `Authorization: Bearer` tokens, cookies and whole passphrases, and no longer risk a crash when logged from several threads.
+- A ledger cannot list another project's documents by naming a folder with a shared prefix.
+- Typed lots accept thousands separators, as Beancount does.
+
 ## [1.0.0] - 2026-10-15
 
 ### Added

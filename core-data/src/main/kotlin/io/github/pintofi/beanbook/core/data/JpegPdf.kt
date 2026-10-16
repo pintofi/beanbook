@@ -3,7 +3,7 @@ package io.github.pintofi.beanbook.core.data
 import java.io.ByteArrayOutputStream
 
 /**
- * A PDF whose pages are JPEG photographs, written directly (B79).
+ * A PDF whose pages are JPEG photographs, written directly.
  *
  * Android's `PdfDocument` draws a bitmap into the page as raw pixels and deflates them, so a
  * photographed receipt was stored far larger than its JPEG -- and every page was a pixel per

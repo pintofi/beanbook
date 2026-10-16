@@ -135,8 +135,9 @@ sealed interface ArchiveProblem {
  *    and every checksum *before* live data is touched. An archive that fails any of those
  *    leaves the device exactly as it was.
  *  * **Back up the project, not the machinery.** Caches, the write journal, snapshots,
- *    drafts, mirror state and the entitlement key are excluded: they are this device's
- *    runtime state, and a key in a backup is a key in someone else's hands.
+ *    drafts and mirror state are excluded: they are this device's runtime state, and what
+ *    is left out is only ever that. A file is never left out because of what the person
+ *    happened to call it.
  */
 class BackupArchive(private val workspace: ProjectWorkspace) {
 
@@ -260,16 +261,21 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         val listed = manifest.files.associateBy { it.path }
 
         manifest.files.forEach { entry ->
-            val bytes = payload.read(entry.path)
-            if (bytes == null) {
+            val stream = payload.open(entry.path)
+            if (stream == null) {
                 problems += ArchiveProblem.MissingFile(entry.path)
                 return@forEach
             }
-            if (bytes.size.toLong() != entry.size) {
-                problems += ArchiveProblem.SizeMismatch(entry.path, entry.size, bytes.size.toLong())
+            // Streamed, and never past one byte beyond what the manifest says. An archive is
+            // not trusted until it has been checked, so checking it must not be a way to make
+            // the app allocate whatever the archive likes: an entry that claims to be small and
+            // is not is refused after reading one byte too many, not after reading all of it.
+            val (read, sha) = stream.use { hashAtMost(it, entry.size + 1) }
+            if (read != entry.size) {
+                problems += ArchiveProblem.SizeMismatch(entry.path, entry.size, read)
                 return@forEach
             }
-            if (sha256(bytes) != entry.sha256) {
+            if (sha != entry.sha256) {
                 problems += ArchiveProblem.ChecksumMismatch(entry.path)
             }
         }
@@ -308,7 +314,13 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                     destination.canonicalPath.startsWith(target.canonicalFile.path + File.separator),
                 ) { "refusing to write outside the restore target: ${entry.path}" }
                 destination.parentFile?.mkdirs()
-                destination.writeBytes(payload.read(entry.path) ?: error("missing ${entry.path}"))
+                val stream = payload.open(entry.path) ?: error("missing ${entry.path}")
+                destination.outputStream().use { out ->
+                    stream.use { input ->
+                        val copied = input.copyTo(out)
+                        check(copied == entry.size) { "${entry.path} changed while it was being restored" }
+                    }
+                }
             }
             emptyList()
         }
@@ -318,7 +330,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
 
     /** The project files inside an archive, however they happen to be stored. */
     private interface Payload {
-        fun read(path: String): ByteArray?
+        fun open(path: String): InputStream?
         fun names(): Set<String>
     }
 
@@ -370,7 +382,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                         // archive can sit anywhere the user picked -- a Downloads folder, a
                         // synced folder, external storage -- and writing the whole decrypted
                         // project next to it put every account name and amount somewhere the
-                        // user did not choose, for as long as the verify took (R8).
+                        // user did not choose, for as long as the verify took.
                         //
                         // The temporary file is about `ZipFile`, which needs random access;
                         // the plaintext is already fully in memory above, so this is not the
@@ -392,9 +404,8 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
     }
 
     private fun plainPayload(zip: ZipFile) = object : Payload {
-        override fun read(path: String): ByteArray? =
-            zip.getEntry(BackupManifest.PROJECT_PREFIX + path)
-                ?.let { zip.getInputStream(it).readBytes() }
+        override fun open(path: String): InputStream? =
+            zip.getEntry(BackupManifest.PROJECT_PREFIX + path)?.let { zip.getInputStream(it) }
 
         override fun names(): Set<String> =
             zip.entries().asSequence()
@@ -406,8 +417,8 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
     }
 
     private fun innerPayload(zip: ZipFile) = object : Payload {
-        override fun read(path: String): ByteArray? =
-            zip.getEntry(path)?.let { zip.getInputStream(it).readBytes() }
+        override fun open(path: String): InputStream? =
+            zip.getEntry(path)?.let { zip.getInputStream(it) }
 
         override fun names(): Set<String> =
             zip.entries().asSequence().filterNot { it.isDirectory }.map { it.name }.toSet()
@@ -424,17 +435,34 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
          * anything that finds its way in.
          */
         private val EXCLUDED_DIRECTORIES = setOf(".journal", ".snapshots", ".drafts", ".cache")
-        private val EXCLUDED_NAMES = setOf("mirror-state", "entitlement", "key")
+        private val EXCLUDED_NAMES = setOf("mirror-state")
 
         fun isExcluded(relativePath: String): Boolean {
             val segments = relativePath.split('/')
             if (segments.any { it in EXCLUDED_DIRECTORIES }) return true
             if (segments.last() in EXCLUDED_NAMES) return true
-            // Beancount's load cache (B89): rebuilt on every load, so mirroring or backing it
-            // up produced a new conflict every time and restored nothing worth having.
+            // Beancount's load cache: rebuilt on every load, so mirroring or backing it up
+            // produced a new conflict every time and restored nothing worth having.
             if (segments.last().endsWith(".picklecache")) return true
             // Temporary files from an interrupted write; the real file is beside them.
             return segments.last().endsWith(".tmp") || segments.last().endsWith(".part")
+        }
+
+        /**
+         * Reads up to [limit] bytes of [input] and returns how many there were and their
+         * SHA-256, holding nothing in memory but one buffer.
+         */
+        internal fun hashAtMost(input: InputStream, limit: Long): Pair<Long, String> {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val buffer = ByteArray(64 * 1024)
+            var total = 0L
+            while (total < limit) {
+                val read = input.read(buffer, 0, minOf(buffer.size.toLong(), limit - total).toInt())
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+                total += read
+            }
+            return total to digest.digest().toHex()
         }
 
         fun sha256(file: File): String = file.inputStream().use { sha256(it) }

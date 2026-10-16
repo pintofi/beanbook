@@ -82,7 +82,6 @@ class PluginSafeMode(projectRoot: File) {
             if (value) safeModeFile.writeText("on") else safeModeFile.delete()
         }
 
-    /** The plugins that should actually load right now. */
     /**
      * The plugins that may be handed to the engine.
      *
@@ -94,7 +93,7 @@ class PluginSafeMode(projectRoot: File) {
      *
      * `verify` already computed this and nothing consulted it. Now the load gate does: a
      * plugin whose contents no longer match what was installed is held back until the user
-     * installs it again, which is the point at which a policy gets to judge it (R4).
+     * installs it again, which is the point at which a policy gets to judge it.
      */
     fun pluginsToLoad(store: PluginStore): List<InstalledPlugin> =
         if (isSafeMode) {

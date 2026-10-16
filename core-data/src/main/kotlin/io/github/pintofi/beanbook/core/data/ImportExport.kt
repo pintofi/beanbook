@@ -70,6 +70,13 @@ sealed interface ImportProblem {
     data class SuspiciousCompression(override val path: String, val ratio: Long) : ImportProblem
     data class ReservedName(override val path: String) : ImportProblem
 
+    /**
+     * The project's root ledger has another name, and a different file is already called
+     * `main.beancount`. The importer points the app at `main.beancount`, so it cannot make a
+     * copy of the real root there without replacing that file.
+     */
+    data class MainFileTaken(override val path: String) : ImportProblem
+
     /** Describes the problem in the words the user sees. */
     fun describe(): String = when (this) {
         is PathTraversal -> "\"$path\" tries to escape the project folder"
@@ -83,6 +90,9 @@ sealed interface ImportProblem {
         is TooManyEntries -> "the archive contains $count files"
         is SuspiciousCompression -> "\"$path\" expands ${ratio}x, which looks like a zip bomb"
         is ReservedName -> "\"$path\" is a reserved name"
+        is MainFileTaken ->
+            "\"$path\" is already in this project, and it is not the root ledger. Rename it " +
+                "and import again"
     }
 }
 
@@ -120,7 +130,13 @@ class ProjectImporter(
 
         val entries = source.entries().filterNot { it.isDirectory }
         if (entries.size > limits.maxEntries) {
-            problems += ImportProblem.TooManyEntries("<archive>", entries.size)
+            // Refused as a whole, without going through every entry: the cost of saying no to a
+            // hostile archive must not grow with the archive.
+            return ImportPlan(
+                files = emptyList(),
+                problems = listOf(ImportProblem.TooManyEntries("<archive>", entries.size)),
+                ledgerCandidates = emptyList(),
+            )
         }
 
         for (entry in entries) {
@@ -247,12 +263,18 @@ class ProjectImporter(
             // graph can be read, which is the only way to tell a root from a file some other
             // ledger pulls in. Whole tree still imported: a `document` directive's target and
             // a file not yet included are part of the project and would be lost by taking
-            // only what the root reaches (B22).
+            // only what the root reaches.
             val main = preferredMain ?: chooseRoot(staging, plan.ledgerCandidates)
 
             // The imported project keeps its own shape; only the root file is normalised,
             // because Fava must be pointed at one file.
             if (main != ProjectWorkspace.MAIN_FILE) {
+                if (File(staging, ProjectWorkspace.MAIN_FILE).exists()) {
+                    staging.deleteRecursively()
+                    return ImportResult.Rejected(
+                        listOf(ImportProblem.MainFileTaken(ProjectWorkspace.MAIN_FILE)),
+                    )
+                }
                 File(staging, main).copyTo(File(staging, ProjectWorkspace.MAIN_FILE))
             }
 
@@ -279,7 +301,7 @@ class ProjectImporter(
      * This is a *name* heuristic and nothing more: main.beancount, then shallower paths,
      * then alphabetical. It cannot tell a root from an included file, because planning
      * happens before extraction and reading archive entries here would decompress content
-     * before the size checks that make decompressing it safe (R3).
+     * before the size checks that make decompressing it safe.
      *
      * The actual root is chosen after extraction by [chooseRoot], which can read the files.
      * An earlier version of this docstring claimed the include rule was implemented here.
@@ -416,16 +438,21 @@ class ZipImportSource(private val archive: File) : ImportSource, AutoCloseable {
 class DirectoryImportSource(private val root: File) : ImportSource {
 
     override fun entries(): List<SourceEntry> =
-        root.walkTopDown()
-            .filter { it.isFile || java.nio.file.Files.isSymbolicLink(it.toPath()) }
-            .map { file ->
-                SourceEntry(
-                    path = file.relativeTo(root).path.replace(File.separatorChar, '/'),
-                    size = file.length(),
-                    isSymlink = java.nio.file.Files.isSymbolicLink(file.toPath()),
-                )
-            }
-            .toList()
+        // Links are not followed (`Files.walk` does not by default): a link to a folder comes
+        // back as a link, so it is refused as one. Walking into it would list what it points at
+        // as ordinary files of the project, from anywhere on the device.
+        java.nio.file.Files.walk(root.toPath()).use { walk ->
+            walk.map { it.toFile() }
+                .filter { it.isFile || java.nio.file.Files.isSymbolicLink(it.toPath()) }
+                .map { file ->
+                    SourceEntry(
+                        path = file.relativeTo(root).path.replace(File.separatorChar, '/'),
+                        size = file.length(),
+                        isSymlink = java.nio.file.Files.isSymbolicLink(file.toPath()),
+                    )
+                }
+                .toList()
+        }
 
     override fun open(entry: SourceEntry): InputStream = File(root, entry.sourcePath).inputStream()
 }

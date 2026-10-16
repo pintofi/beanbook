@@ -64,7 +64,7 @@ data class WidgetSnapshot(
      * Deterministic, and never an arbitrary map entry: the widget used to take
      * `balances.entries.firstOrNull()`, which could name a different account between
      * refreshes and was rendered with no account name at all, so the number meant nothing
-     * (B1).
+     *.
      *
      * Assets first, because a balance somebody puts on a home screen is nearly always a bank
      * account, then alphabetically. A ledger with no asset accounts still shows something
@@ -123,7 +123,7 @@ class WidgetCache(stateDir: File) {
 
     /**
      * The newest snapshot, or -- when [prefer] names accounts the newest one does not have --
-     * the newest one of any project that does (B96).
+     * the newest one of any project that does.
      *
      * The cache used to hold only the project open last, so opening a second project blanked
      * every widget chosen for the first: the account names matched nothing and each row
@@ -145,8 +145,10 @@ class WidgetCache(stateDir: File) {
     fun write(snapshot: WidgetSnapshot) {
         file.parentFile?.mkdirs()
         val text = snapshot.toJson().write() + "\n"
-        // One file per project beside the newest, so another project does not erase it (B96).
-        listOf(file, File(dir, "widgets-${snapshot.projectId.filter { it.isLetterOrDigit() || it == '-' }}.json"))
+        // One file per project beside the newest, so another project does not erase it.
+        // The characters a project id may have, so that `a_b` and `ab` do not share a file.
+        val idPart = snapshot.projectId.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
+        listOf(file, File(dir, "widgets-$idPart.json"))
             .forEach { target ->
                 val tmp = File(target.parentFile, "${target.name}.tmp")
                 tmp.writeText(text)
@@ -179,7 +181,7 @@ class WidgetCache(stateDir: File) {
             valuation: io.github.pintofi.beanbook.core.domain.Valuation =
                 io.github.pintofi.beanbook.core.domain.Valuation.VALUE,
         ): WidgetSnapshot {
-            // One definition of these three, shared with the home surface (B10).
+            // One definition of these three, shared with the home surface.
             val summary = LedgerSummary.of(ledger, valuation)
             val wanted = accounts.toSet()
             // An account with no positions has nothing to show, and a widget saying nothing
@@ -202,7 +204,7 @@ class WidgetCache(stateDir: File) {
                 // Assets *plus* liabilities, not minus: Beancount already stores what you
                 // owe as a negative balance. Negating it made debt increase net worth, which
                 // is the most cheerful possible way to be wrong about someone's finances.
-                // In Home's headline order (B98): operating currencies first, then the largest.
+                // In Home's headline order: operating currencies first, then the largest.
                 // Alphabetical put "80.00 AIRSF-E" above the rupees, and a widget with room for
                 // one line showed that line.
                 netWorth = headlineOrder(ledger, valuation) ?: summary.netWorth,
@@ -224,12 +226,6 @@ class WidgetCache(stateDir: File) {
             ).shown
             return if (ordered.isEmpty()) null else LedgerSummary.format(ordered, ledger.format)
         }
-
-        /**
-         * Income is a credit balance and therefore negative in double-entry terms. A widget
-         * headed "Income" showing a minus sign would be technically right and useless, so it
-         * is flipped once, here, where the reason can be written down.
-         */
 
     }
 }

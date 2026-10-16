@@ -1,7 +1,7 @@
 package io.github.pintofi.beanbook.core.data
 
 /**
- * The curated plugin catalogue shipped inside the app (B82): `catalog/plugins.json`.
+ * The curated plugin catalogue shipped inside the app: `catalog/plugins.json`.
  *
  * Every Beancount plugin and Fava extension listed on awesome-beancount, plus any the project
  * added on purpose, each with the result of running it through the compatibility harness and,
