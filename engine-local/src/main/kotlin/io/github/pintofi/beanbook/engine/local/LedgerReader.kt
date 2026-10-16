@@ -26,7 +26,7 @@ import org.json.JSONObject
  * Reads a ledger through Beancount and maps the result into domain models.
  *
  * Parsing a 25k-transaction ledger takes over a second on a mid-range device
- * (docs/milestones/m3.md), so every entry point here is `suspend` and dispatches to IO —
+ *, so every entry point here is `suspend` and dispatches to IO —
  * the main thread never parses.
  *
  * JSON is the wire format from the engine *process*; it is decoded with the platform's own
@@ -48,6 +48,11 @@ class LedgerReader(
      */
     private val cache = SnapshotCache(File(context.cacheDir, "ledger-snapshots"))
 
+    /** Part of what a cached answer is valid for: an update can change what a ledger produces. */
+    private val appVersion: Long = runCatching {
+        context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
+    }.getOrDefault(0L)
+
     /**
      * @param pluginDirs the enabled plugins' directories, comma-separated. Beancount imports
      *   a plugin itself when it reaches a `plugin` directive; all this does is make them
@@ -59,15 +64,17 @@ class LedgerReader(
         journalLimit: Int = 0,
         pluginDirs: String = "",
         allowBridge: Boolean = true,
-        /** An inclusive ISO date range; empty bounds mean the whole file (B53). */
+        /** An inclusive ISO date range; empty bounds mean the whole file. */
         dateFrom: String = "",
         dateTo: String = "",
     ): Result<LedgerSnapshot> =
         withContext(io) {
-            val inputs = SnapshotCache.Inputs(journalLimit, pluginDirs, allowBridge, dateFrom, dateTo)
+            val inputs = SnapshotCache.Inputs(
+                journalLimit, pluginDirs, allowBridge, dateFrom, dateTo, appVersion,
+            )
 
             // The cached answer first, and only if it still applies to the files on disk.
-            // This is the whole of the large-ledger startup fix (B21): the native screens
+            // This is the whole of the large-ledger startup fix: the native screens
             // need a 200-row window and a per-account balance, neither of which grows with
             // the ledger, so there is no reason for opening one to cost a full load.
             val started = System.nanoTime()
@@ -106,7 +113,7 @@ class LedgerReader(
                     val snapshot = parse(JSONObject(text))
                     // Cached against the files this load actually read, which is what makes
                     // an added `include` invalidate it next time.
-                    // Not when the extension answer is "not known yet" (B101): a cache would keep
+                    // Not when the extension answer is "not known yet": a cache would keep
                     // that for as long as the ledger's files did not change.
                     if (JSONObject(text).optBoolean("extension_health_complete", true)) {
                         cache.write(ledgerPath, snapshot.includedFiles + ledgerPath, inputs, text)
@@ -153,13 +160,13 @@ class LedgerReader(
     )
 
     /**
-     * How the file asks to be shown (B59).
+     * How the file asks to be shown.
      *
      * Everything here is Beancount's own answer -- the display context it built from the
      * numbers in the file, and the user's own options -- so an older snapshot without these
      * keys simply gets plain rendering rather than a guess.
      */
-    /** What this file calls its five trees (B70). A file that renames none gets the defaults. */
+    /** What this file calls its five trees. A file that renames none gets the defaults. */
     private fun JSONObject.toAccountNames(): AccountNames {
         val names = optJSONObject("account_names") ?: return AccountNames.DEFAULT
         fun name(key: String, fallback: String) =
@@ -178,7 +185,7 @@ class LedgerReader(
         val tolerances = optJSONObject("tolerances")
         val fava = optJSONObject("fava_options")
         val grouped = optBoolean("render_commas", false)
-        // Fava's own rule, followed rather than approximated (B67): the `locale` option
+        // Fava's own rule, followed rather than approximated: the `locale` option
         // decides both separators, and `render_commas` with no locale means the locale "en".
         // The platform's own symbols for that locale are used, which is what a German reader
         // means by "the comma scheme" -- not a guess at which character to swap in.

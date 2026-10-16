@@ -26,7 +26,7 @@ class BeancountValidator(
             connection.withEngine { it.validate(mainFile) }
                 // The engine being unreachable says nothing about the ledger. Typed so the
                 // writer can tell it apart from Beancount refusing the file, and report the
-                // difference to the user (R5).
+                // difference to the user.
                 .recoverCatching { failure -> throw LedgerUnavailable(failure.message ?: "engine unavailable") }
                 .mapCatching { json ->
                 if (json.startsWith("error: ")) error(json.removePrefix("error: "))
@@ -96,7 +96,7 @@ class BeancountEditor(
     /**
      * The edited content comes back through a file in the app's cache, not through Binder:
      * a 7.7 MB ledger would exceed the ~1 MB transaction limit
-     * (docs/milestones/m5.5-process-split-analysis.md).
+     *.
      */
     private suspend fun transform(
         op: String,

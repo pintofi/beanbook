@@ -15,6 +15,10 @@ All notable changes to Beanbook. The format follows [Keep a Changelog](https://k
 - Diagnostics redact `Authorization: Bearer` tokens, cookies and whole passphrases, and no longer risk a crash when logged from several threads.
 - A ledger cannot list another project's documents by naming a folder with a shared prefix.
 - Typed lots accept thousands separators, as Beancount does.
+- Editing a ledger with Windows (CRLF) line endings keeps its line endings instead of mixing them.
+- A cached answer is no longer reused after a plugin changes or the app is updated.
+- A failed engine start no longer makes every later read wait out its timeout.
+- Displayed amounts round half to even, as Beancount and Fava do.
 
 ## [1.0.0] - 2026-10-15
 

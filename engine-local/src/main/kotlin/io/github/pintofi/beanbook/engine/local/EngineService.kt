@@ -12,7 +12,7 @@ import java.io.File
  * Declared with `android:process=":engine"`, so CPython, Beancount and Fava run at arm's
  * length from the Compose UI. Two reasons, both real:
  *
- *  1. **Licensing (risk R9).** Beancount is GPL-2.0-only; AndroidX and Compose are
+ *  1. **Licensing.** Beancount is GPL-2.0-only; AndroidX and Compose are
  *     Apache-2.0, which cannot be combined with GPLv2. Communicating with Beancount as a
  *     separate program is materially different from linking it into a binary full of
  *     Apache-2.0 code. This does not make the position airtight — same APK, same UID — and

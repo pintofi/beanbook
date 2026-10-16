@@ -10,9 +10,9 @@ import org.json.JSONObject
  * The answers a ledger produced last time, kept so opening it again does not cost a full load.
  *
  * **Why this exists.** A 100k-entry ledger takes ~25 s to load on a desktop and ~30 s on a
- * phone, against SPEC §6's 8 s budget, and profiling showed where it goes: parsing is
+ * phone, against the 8 s start-up budget, and profiling showed where it goes: parsing is
  * 4.2 s of it, **booking and validation are 85%**, and this repository's own post-processing
- * is 4%. Optimising our Python was never the lever (B21).
+ * is 4%. Optimising our Python was never the lever.
  *
  * The lever is that the native screens do not need the ledger. The Journal shows a 200-row
  * window, Home shows a handful of totals, Balances shows one row per account — all of which
@@ -87,7 +87,7 @@ internal class SnapshotCache(private val dir: File) {
                 .put("payload", payload)
             // Written beside and renamed, so a kill mid-write cannot leave a truncated entry
             // that the next run reads as a whole one -- the same discipline the ledger write
-            // protocol uses, and the same bug B37 fixed in the package installer.
+            // protocol uses.
             val temporary = File(entry.parentFile, entry.name + ".part")
             temporary.writeText(document.toString())
             if (!temporary.renameTo(entry)) temporary.delete()
@@ -102,6 +102,13 @@ internal class SnapshotCache(private val dir: File) {
         /** The date range the snapshot was computed over; empty means the whole file. */
         val dateFrom: String = "",
         val dateTo: String = "",
+        /**
+         * The app build that made it. The engine's output is produced by code that ships with the
+         * app, so an update can change what the same ledger produces, and a cached answer from
+         * the build before would be served as if it had never changed. [FORMAT] covers a change
+         * of shape that somebody remembered to record; this covers all of them.
+         */
+        val appVersion: Long = 0L,
     )
 
     /**
@@ -118,8 +125,12 @@ internal class SnapshotCache(private val dir: File) {
         // served for another, which would put the wrong figures on screen with no reload.
         digest.update(
             ("${inputs.journalLimit}|${inputs.pluginDirs}|${inputs.allowBridge}" +
-                "|${inputs.dateFrom}|${inputs.dateTo}").toByteArray(),
+                "|${inputs.dateFrom}|${inputs.dateTo}|${inputs.appVersion}").toByteArray(),
         )
+        // What is in the plugin directories, not only which directories they are. A plugin is
+        // code the load runs, so installing, editing or removing one changes what the same
+        // ledger produces, and the ledger's own files have not changed.
+        digest.update(pluginListing(inputs.pluginDirs).toByteArray())
         // Sorted, so the order the engine happened to report includes in cannot change the
         // fingerprint on its own.
         files.sorted().forEach { path ->
@@ -139,6 +150,17 @@ internal class SnapshotCache(private val dir: File) {
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
+    /**
+     * The names, sizes and modification times directly inside each plugin directory. One level
+     * only, as the engine's own cache key does: a site folder can hold a hundred megabytes of
+     * packages, and walking it on every open would cost more than the cache saves.
+     */
+    private fun pluginListing(pluginDirs: String): String =
+        pluginDirs.split(',').filter { it.isNotBlank() }.sorted().joinToString("\n") { directory ->
+            val children = File(directory).listFiles().orEmpty().sortedBy { it.name }
+            directory + children.joinToString("") { "|${it.name}:${it.length()}:${it.lastModified()}" }
+        }
+
     private fun digestOf(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
@@ -153,6 +175,6 @@ internal class SnapshotCache(private val dir: File) {
          * and silently missing it -- a screen quietly losing a column rather than a load
          * failing loudly.
          */
-        const val FORMAT = "3"
+        const val FORMAT = "4"
     }
 }
