@@ -2,7 +2,7 @@ package io.github.pintofi.beanbook.engine.local;
 
 /**
  * The arm's-length interface to the Beancount engine, which runs in its own process
- * (docs/milestones/m5.5-process-split-analysis.md).
+ *.
  *
  * Every method returns a short string. Anything that could be large — a ledger summary,
  * or the content of an edited file — is written to a caller-supplied path in the app's
@@ -17,7 +17,7 @@ interface IEngineService {
      *   Without this a Fava extension installed through the app is invisible to Fava, which
      *   reports `No module named …` and 404s the extension's route — the parse path took
      *   plugin directories from the beginning and the serving path never did
-     *   (docs/milestones/m14-part26.md).
+     *  .
      */
     String startEngine(String ledgerPath, String token, String pluginDirs);
 
@@ -25,7 +25,7 @@ interface IEngineService {
     String stopEngine();
 
     /**
-     * Serves the running Fava to other devices on the network, behind a sign-in (B93).
+     * Serves the running Fava to other devices on the network, behind a sign-in.
      *
      * @param host the device's own address on the Wi-Fi network; refused unless private.
      * @param passwordHash "pbkdf2_sha256$<iterations>$<salt hex>$<hash hex>". The password
@@ -78,7 +78,7 @@ interface IEngineService {
     /** Re-parses a project. Returns the validation JSON (bounded: 50 errors max). */
     /**
      * Imports user plugins. Runs here, not in the app process: plugin code is Python, and
-     * Python lives on this side of the boundary (docs/architecture.md 7.1, risk R9).
+     * Python lives on this side of the boundary (docs/architecture.md 7.1).
      */
     String loadPlugins(String pluginDir, String modules, boolean allowBridge,
                        String journalPath, String journalLabel);

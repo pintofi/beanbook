@@ -33,10 +33,10 @@ chaquopy {
         version = libs.versions.python.get()
 
         // The host needs a CPython matching the embedded runtime's minor version for pip to
-        // run (Phase 0 finding). The default used to be one developer's `~/tools/py313`,
+        // run. The default used to be one developer's `~/tools/py313`,
         // which meant the build only worked on that machine: a GitHub runner has 3.13 from
         // `actions/setup-python`, on PATH and nowhere near a home directory
-        // (docs/milestones/m14-part13.md). So: the property if given, else that path if it
+        //. So: the property if given, else that path if it
         // exists, else whatever `python3.13` PATH resolves to.
         val hostPython = providers.gradleProperty("beancount.buildPython").orNull
             ?: "${System.getProperty("user.home")}/tools/py313/bin/python3.13"
@@ -46,8 +46,7 @@ chaquopy {
 
         pip {
             // beancount and watchfiles have no Android wheels upstream; we cross-build
-            // them with cibuildwheel (docs/feasibility/s2-beancount-wheel.md,
-            // s3-fava-closure.md) and resolve them from this directory.
+            // them with cibuildwheel and resolve them from this directory.
             val wheelDir = providers.gradleProperty("beancount.wheelDir")
                 .getOrElse("${System.getProperty("user.home")}/tools/wheels")
             options("--find-links", wheelDir)
@@ -56,15 +55,15 @@ chaquopy {
             // left every transitive dependency free to move: two clean builds of the same
             // commit resolved click 8.4.2 and click 8.5.0, which is a supply-chain problem
             // before it is a reproducibility one — a build could pick up a version nobody
-            // reviewed (docs/milestones/m14-part5.md).
+            // reviewed.
             //
-            // Regenerate with tools/lock-python.py after a deliberate upgrade; CLAUDE.md
-            // makes upgrades their own milestone with the golden corpus re-run.
+            // Regenerate with tools/lock-python.py after a deliberate upgrade;
+            // an upgrade is its own change, with the golden corpus re-run.
             install("-r", "requirements.lock")
 
             // The two cross-built wheels are pinned separately, in a generated file, because
             // their bytes differ on every build and a hash recorded on one machine cannot
-            // match a wheel built on another (docs/milestones/m14-part9.md). Written by
+            // match a wheel built on another. Written by
             // tools/build-wheels.sh; without it there are no wheels to install anyway.
             install("-r", "requirements-local.lock")
         }
@@ -80,7 +79,7 @@ dependencies {
 // The generated pin file is checked when the Python assets are actually built, and not a
 // moment earlier. Checking it at configuration time made *every* Gradle invocation in a
 // fresh clone fail — `:core-domain:test` has nothing to do with Python and should not care
-// that a wheel has not been built (docs/milestones/m14-part10.md).
+// that a wheel has not been built.
 tasks.matching { it.name.matches(Regex("install.*PythonRequirements")) }.configureEach {
     val wheelDir = providers.gradleProperty("beancount.wheelDir")
         .getOrElse("${System.getProperty("user.home")}/tools/wheels")

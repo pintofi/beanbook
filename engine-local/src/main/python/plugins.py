@@ -78,7 +78,7 @@ class BridgeGuard:
 
     None of this is a security boundary. User code runs in this process and can restore
     `builtins.__import__` in one line. It is Play policy compliance, testable on a device
-    rather than asserted in a document (SPEC.md Q8).
+    rather than asserted in a document.
     """
 
     def __init__(self, blocked=BRIDGE_MODULES) -> None:
@@ -222,7 +222,7 @@ def preload_companion_libraries(directories) -> list:
     `DT_NEEDED` on `libopenblas.so`, which arrives in a separate `chaquopy-openblas` wheel and
     unpacks to `chaquopy/lib/` beside the package. Nothing puts that directory on the dynamic
     linker's search path, so numpy installed perfectly and then failed to import with
-    `library "libopenblas.so" not found` (B93, `fava_portfolio_returns`).
+    `library "libopenblas.so" not found`.
 
     The app used to preload these from the *app* process, with `System.load`. Ledgers are read
     and Fava is served in the `:engine` process, which has its own linker namespace, so that
@@ -363,8 +363,8 @@ def load_plugins(
 def probe_bridge(allow_bridge: bool) -> dict:
     """Tries to import the bridge exactly as a plugin would, and reports what happened.
 
-    This exists so the boundary can be tested on a device instead of asserted in a document
-    (SPEC.md Q8): the Play build must fail this, and the Expert build must pass it.
+    This exists so the boundary can be tested on a device instead of asserted in a document:
+    the Play build must fail this, and the Expert build must pass it.
     """
     guard = None if allow_bridge else BridgeGuard().install()
     results = {}
@@ -415,7 +415,7 @@ def cancel_script(handle: str) -> None:
 
 
 class _LiveOutput(io.StringIO):
-    """A script's output, also written as it prints to a file the app reads while it runs (B102).
+    """A script's output, also written as it prints to a file the app reads while it runs.
 
     The file is `beanbook-script-<handle>.live` in the temporary directory, which is the app's
     cache folder in both processes, so no new call crosses the process boundary. Written
@@ -430,9 +430,13 @@ class _LiveOutput(io.StringIO):
         self._last = 0.0
         if handle:
             try:
+                import re
                 import tempfile
 
-                self._path = os.path.join(tempfile.gettempdir(), f"beanbook-script-{handle}.live")
+                # The handle is the app's own, but it is a file name here, so nothing in it may
+                # be a path.
+                safe = re.sub(r"[^A-Za-z0-9_-]", "_", handle)
+                self._path = os.path.join(tempfile.gettempdir(), f"beanbook-script-{safe}.live")
                 self._file = open(self._path, "w", encoding="utf-8")
             except OSError:
                 self._path = self._file = None
@@ -487,7 +491,7 @@ def run_script(
     _CANCELLED.discard(handle)
 
     started = time.monotonic()
-    # No deadline when timeout_seconds is 0 or less (B102): a script that is still working is
+    # No deadline when timeout_seconds is 0 or less: a script that is still working is
     # not a failed script, and a fixed 30 seconds stopped one that was running correctly. It
     # ends when it finishes, when it fails, or when the user cancels it.
     deadline = started + float(timeout_seconds) if float(timeout_seconds) > 0 else None
@@ -512,7 +516,7 @@ def run_script(
             raise ScriptTimedOut(f"stopped after {timeout_seconds:g} seconds")
         return tracer
 
-    # Run as a program, the way `python3 script.py main.beancount` would (B93). Scripts
+    # Run as a program, the way `python3 script.py main.beancount` would. Scripts
     # written for the desktop keep their work under `if __name__ == "__main__":` and read the
     # ledger from `sys.argv[1]`; run under another name with no arguments, a script like that
     # defined its functions, did nothing, and the app reported "it printed nothing".
@@ -523,7 +527,7 @@ def run_script(
     }
     previous_argv = sys.argv
 
-    # A script runs in the folder its ledger is in (B92). Without this the working directory
+    # A script runs in the folder its ledger is in. Without this the working directory
     # was the app's, so `open("statements.csv")` in a script written beside the ledger, and
     # every other relative path in it, named a file that was not there. Restored afterwards:
     # the working directory belongs to the whole process, not to the script.
@@ -536,7 +540,7 @@ def run_script(
             os.chdir(work_dir)
         source = Path(script_path).read_text()
         code = compile(source, script_path, "exec")
-        # The same directories a ledger load gets (B60): the plugins the user turned on and
+        # The same directories a ledger load gets: the plugins the user turned on and
         # the packages they fetched. Without this a script could only import what the app
         # bundles, so fetching the module it asked for changed nothing and the install looked
         # broken.
@@ -613,10 +617,10 @@ def activated(plugin_dirs, allow_bridge: bool):
     than tidiness — the guard routes every import through `importlib.__import__`, which is
     the pure-Python implementation, and a ledger load imports a great deal of Beancount. Not
     paying for that when no user code is involved keeps the common case at full speed
-    (cold start is already over budget: docs/pending-verification.md V3).
+    (cold start is already over budget).
     """
     directories = _module_names(plugin_dirs)
-    # Beancount's own load cache must not answer for a different set of plugins (B82). It
+    # Beancount's own load cache must not answer for a different set of plugins. It
     # keys the pickle on the ledger files' modification times alone, so a load that failed to
     # import a plugin -- "No module named beancount_interpolate" -- was served again, error
     # and all, after the plugin had been installed. The cache file is named for the plugins
@@ -686,7 +690,7 @@ def loader_cache_pattern(directories) -> str:
 
 
 def loader_cache_root():
-    """Where the load cache lives, when it must not sit beside the ledger (B89).
+    """Where the load cache lives, when it must not sit beside the ledger.
 
     Beancount writes `.main.beancount.picklecache` next to the file it loads. In the app that
     is the project folder -- the folder the user imported, mirrors to a synced folder, and backs

@@ -98,6 +98,24 @@ class LoginGateTest(unittest.TestCase):
             status, _, _ = self.call("/ledger/api/changed", method=method, cookie=cookie)
             self.assertTrue(status.startswith("200"), (method, status))
 
+    def test_a_negative_content_length_does_not_make_the_login_read_everything(self):
+        class Watching(io.BytesIO):
+            def read(self, size=-1):
+                assert size is not None and size >= 0, f"read({size}) would read the whole request"
+                return super().read(size)
+
+        environ = {
+            "REQUEST_METHOD": "POST",
+            "PATH_INFO": sharing.LOGIN_PATH,
+            "REMOTE_ADDR": "192.168.1.30",
+            "HTTP_HOST": HOST,
+            "CONTENT_LENGTH": "-1",
+            "wsgi.input": Watching(b"username=x&password=y"),
+        }
+        status = {}
+        self.gate(environ, lambda s, h: status.setdefault("status", s))
+        self.assertTrue(status["status"].startswith("401"), status)
+
     def test_the_session_cookie_is_http_only_and_same_site_strict(self):
         _, headers, _ = self.sign_in()
         self.assertIn("HttpOnly", headers["Set-Cookie"])

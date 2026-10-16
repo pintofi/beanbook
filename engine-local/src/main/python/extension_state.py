@@ -1,4 +1,4 @@
-"""What Fava reported about its extensions when it loaded the ledger (B101).
+"""What Fava reported about its extensions when it loaded the ledger.
 
 Filled in by `engine.start` once `create_app` has returned, read by `ledger.inspect`. Module
 state rather than an argument because the two run in the same engine process on different

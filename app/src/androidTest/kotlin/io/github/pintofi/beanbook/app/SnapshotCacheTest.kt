@@ -156,4 +156,31 @@ class SnapshotCacheTest {
         val later = runBlocking { reader.read(main.absolutePath) }.getOrThrow()
         assertEquals("an edit to an included file was served from the cache", 3, later.journal.size)
     }
+
+    @Test fun aChangedPluginInvalidatesTheAnswerItProduced() {
+        // The ledger's own files do not change; the plugin it names does. A plugin is code the
+        // load runs, so the cached answer from before the edit must not be served after it.
+        val plugins = File(dir, "plugins").apply { mkdirs() }
+        val plugin = File(plugins, "reviewplug.py")
+        plugin.writeText(
+            "from collections import namedtuple\n" +
+                "E = namedtuple('E', 'source message entry')\n" +
+                "__plugins__ = ('check',)\n" +
+                "def check(entries, options_map):\n    return entries, []\n",
+        )
+        val main = ledger("plugin \"reviewplug\"\n" + base + "\n")
+
+        val first = runBlocking { reader.read(main.absolutePath, pluginDirs = plugins.absolutePath).getOrThrow() }
+        assertEquals(0, first.errors.size)
+
+        plugin.writeText(
+            "from collections import namedtuple\n" +
+                "E = namedtuple('E', 'source message entry')\n" +
+                "__plugins__ = ('check',)\n" +
+                "def check(entries, options_map):\n    return entries, [E(None, 'the plugin changed', None)]\n",
+        )
+        val second = runBlocking { reader.read(main.absolutePath, pluginDirs = plugins.absolutePath).getOrThrow() }
+
+        assertEquals(listOf("the plugin changed"), second.errors.map { it.message })
+    }
 }
