@@ -21,7 +21,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * call therefore goes through [withEngine], which binds if needed.
  *
  * Large payloads are exchanged through files in the app's cache directory, not through
- * Binder — see docs/milestones/m5.5-process-split-analysis.md.
+ * Binder.
  */
 class EngineConnection(private val context: Context) {
 

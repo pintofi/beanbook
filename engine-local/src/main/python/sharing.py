@@ -1,4 +1,4 @@
-"""Sharing Reports with other devices on the same network, behind a sign-in (B93).
+"""Sharing Reports with other devices on the same network, behind a sign-in.
 
 Off unless the user turns it on, and a separate server from the loopback one: the app's own
 WebView keeps talking to 127.0.0.1 with its per-process token, exactly as before, and this
@@ -153,7 +153,8 @@ class LoginGate:
                 f"Too many wrong attempts. Try again in {int(locked_for) + 1} seconds.",
             )
         try:
-            length = min(int(environ.get("CONTENT_LENGTH") or 0), 4096)
+            # Never negative: `read(-1)` reads everything, and this runs before anyone has signed in.
+            length = max(0, min(int(environ.get("CONTENT_LENGTH") or 0), 4096))
         except ValueError:
             length = 0
         fields = parse_qs(environ["wsgi.input"].read(length).decode("utf-8", "replace"))

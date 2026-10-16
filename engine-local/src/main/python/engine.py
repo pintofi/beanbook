@@ -2,7 +2,7 @@
 
 Security properties (docs/architecture.md 4, docs/threat-model.md 3.3):
   * binds 127.0.0.1 on an ephemeral port, never 0.0.0.0 and never a LAN interface. The one
-    exception is sharing on Wi-Fi (B93), a separate server in `sharing.py` that exists only
+    exception is sharing on Wi-Fi, a separate server in `sharing.py` that exists only
     while the user has turned it on, and answers only a signed-in browser on a private
     network
   * a 256-bit per-process token, supplied by the Kotlin side, is required on every request
@@ -68,7 +68,9 @@ class TokenGate:
         morsel = cookie.get(TOKEN_COOKIE)
         if morsel is None:
             return False
-        return hmac.compare_digest(morsel.value, self._token)
+        # Bytes, not str: `compare_digest` raises for a str with a character outside ASCII, which a
+        # cookie from anywhere can have, and that was a server error where a refusal belongs.
+        return hmac.compare_digest(morsel.value.encode("utf-8"), self._token.encode("utf-8"))
 
 
 def start(
@@ -83,10 +85,8 @@ def start(
     than a structure, because it crosses the Chaquopy boundary and is also logged.
 
     ``poll_watcher`` defaults to True: both watchers work on Android, and polling avoids
-    inotify's battery cost and per-app watch limits (docs/feasibility/s3-fava-closure.md).
+    inotify's battery cost and per-app watch limits.
     """
-    global _server, _thread
-
     # A server already running belongs to a caller that has gone: the app's own process can be
     # ended by Android while this one lives on, and the app that comes back has a new token
     # and no way to reach the old server. Refusing ("already started") left the app unable to
@@ -98,6 +98,18 @@ def start(
     import extension_state
 
     extension_state.starting = True
+    try:
+        return _start(ledger_path, token, poll_watcher, plugin_dirs)
+    except BaseException:
+        # `starting` is what makes `ledger.inspect` wait for Fava to finish loading. Left set
+        # by a start that failed, every later inspect waited out its full timeout for a load
+        # that was never going to happen.
+        extension_state.starting = False
+        raise
+
+
+def _start(ledger_path: str, token: str, poll_watcher: bool, plugin_dirs: str) -> str:
+    global _server, _thread
 
     path = Path(ledger_path)
     if not path.is_file():
@@ -109,7 +121,7 @@ def start(
     # installed has to be importable *before* create_app. The parse path has always done this
     # (see plugins.activated); the serving path never did, so every Fava extension installed
     # through the app failed with "No module named …" and its route 404ed
-    # (docs/milestones/m14-part26.md).
+    # (a Fava extension installed through the app 404ed on every route).
     for directory in filter(None, plugin_dirs.split(",")):
         if directory not in sys.path:
             sys.path.insert(0, directory)
@@ -121,12 +133,12 @@ def start(
     # the serving path had no reason to until now.
     importlib.invalidate_caches()
 
-    # Fava's loads read Beancount's pickle cache too; name it for these plugins (B82).
+    # Fava's loads read Beancount's pickle cache too; name it for these plugins.
     import plugins
 
     plugins.use_loader_cache(list(filter(None, plugin_dirs.split(","))))
     # numpy and friends link against libraries fetched beside them; this process has to load
-    # those itself before Fava imports an extension that needs them (B93).
+    # those itself before Fava imports an extension that needs them.
     plugins.preload_companion_libraries(plugin_dirs)
 
     from fava.application import create_app
@@ -161,7 +173,7 @@ def start(
 
 
 def _record_extension_errors(flask_app) -> None:
-    """Remembers which Fava extensions failed to load, from Fava's own error list (B101)."""
+    """Remembers which Fava extensions failed to load, from Fava's own error list."""
     import re
 
     import extension_state
@@ -183,7 +195,7 @@ def _record_extension_errors(flask_app) -> None:
 
 
 def _discover_slug(flask_app, path: Path) -> str:
-    """Fava namespaces every route by ledger slug. Ask, never guess (S4 finding)."""
+    """Fava namespaces every route by ledger slug. Ask, never guess."""
     ledgers = flask_app.config.get("LEDGERS")
     if ledgers:
         for slug, ledger in ledgers.items():
@@ -197,7 +209,7 @@ def stop() -> str:
     """Shut the server down.
 
     Required, not optional: cheroot's worker threads are not daemon threads, so an engine
-    that is never stopped keeps the process alive (Phase 0 finding C7).
+    that is never stopped keeps the process alive.
     """
     global _server, _thread
 
@@ -224,7 +236,7 @@ def stop() -> str:
 
 
 def share_start(host: str, port: int, username: str, password_hash: str) -> str:
-    """Serves the running Fava on [host] for other devices, behind a sign-in (B93)."""
+    """Serves the running Fava on [host] for other devices, behind a sign-in."""
     import sharing
 
     gate = _state.get("gate")

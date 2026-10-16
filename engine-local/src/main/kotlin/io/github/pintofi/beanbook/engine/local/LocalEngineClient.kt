@@ -93,7 +93,7 @@ class LocalEngineClient(
     override suspend fun start(projectPath: String): EngineStatus = lifecycleLock.withLock {
         // Already serving *this* ledger: nothing to do. Serving another one is not "already
         // started" -- after opening a second project the Reports tab kept showing the first
-        // project's entries under the second one's name (B96), so the old server is stopped
+        // project's entries under the second one's name, so the old server is stopped
         // and the new ledger takes its place.
         (status.value as? EngineStatus.Serving)?.let { running ->
             if (servingPath == projectPath) return running
@@ -135,7 +135,7 @@ class LocalEngineClient(
     }
 
     /**
-     * Shares the running Reports on the network, behind a sign-in (B93). Returns the port it
+     * Shares the running Reports on the network, behind a sign-in. Returns the port it
      * listens on. Fails if Reports are not running, or the address is not a private one.
      */
     suspend fun startSharing(host: String, port: Int, username: String, passwordHash: String): Result<Int> =
@@ -172,7 +172,7 @@ class LocalEngineClient(
      *
      * Stopping the server is not enough: Python caches every module it has imported, so a
      * package fetched after the interpreter started is not importable and an upgraded one
-     * keeps its old code (B49). The connection binds again on the next call, which forks a
+     * keeps its old code. The connection binds again on the next call, which forks a
      * new process.
      */
     suspend fun restartProcess() = lifecycleLock.withLock {

@@ -9,9 +9,9 @@ import kotlinx.coroutines.launch
  * Loading user plugins and running user scripts — **in the engine process**.
  *
  * This used to call `PythonRuntime.ensureStarted` directly, which started the interpreter in
- * whichever process asked. That was a hole in the process separation the app depends on: with
- * R9 resolved by keeping GPL-licensed Beancount and everything Python in `:engine`, an app
- * process that can start an interpreter is an app process that can load Beancount
+ * whichever process asked. That was a hole in the process separation the app depends on: the
+ * licensing position rests on keeping GPL-licensed Beancount and everything Python in `:engine`,
+ * and an app process that can start an interpreter is an app process that can load Beancount
  * (docs/architecture.md §7.1).
  *
  * So every entry point here goes through the same binder as the rest of the engine. The class
@@ -41,7 +41,7 @@ class PluginLoader(
         timeoutSeconds: Double,
         allowBridge: Boolean,
         handle: String,
-        /** The plugins and fetched packages a script may import (B60). */
+        /** The plugins and fetched packages a script may import. */
         pluginDirs: String = "",
     ): Result<String> = connection.withEngine {
         it.runScript(scriptPath, ledgerPath, timeoutSeconds, allowBridge, handle, pluginDirs)

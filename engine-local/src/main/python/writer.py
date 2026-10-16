@@ -1,15 +1,40 @@
 """Locating and validating, so Kotlin can write.
 
 Deliberately **read-only**. Finding an entry's extent in the source needs Beancount's own
-metadata (and Fava's slice logic, proven in docs/feasibility/s5-roundtrip.md), but the
-write itself belongs to ProjectWriter, which owns the journal, the snapshot and the atomic
-rename. Splitting it this way keeps one place responsible for durability.
+metadata and Fava's slice logic, but the write itself belongs to ProjectWriter, which owns the
+journal, the snapshot and the atomic rename. Splitting it this way keeps one place responsible
+for durability.
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
+
+
+def read_text(file_path: str) -> str:
+    """A file's text exactly as it is on disk.
+
+    `Path.read_text` translates `\\r\\n` and a lone `\\r` to `\\n` on the way in, so a ledger synced
+    from a Windows desktop came back with every line ending rewritten and the edit was written
+    over the whole file. `newline=""` leaves the terminators alone.
+    """
+    with open(file_path, encoding="utf-8", newline="") as handle:
+        return handle.read()
+
+
+def split_lines(text: str) -> list[str]:
+    """Lines as Beancount counts them: broken after `\\n` and nowhere else, terminators kept.
+
+    Not `str.splitlines`, which also breaks at form feed, vertical tab, NEL, U+2028 and U+2029.
+    Text pasted into a payee or narration can carry any of those, and Beancount's line numbers
+    do not move for them, so every line number after one would be wrong.
+    """
+    parts = text.split("\n")
+    lines = [part + "\n" for part in parts[:-1]]
+    if parts[-1]:
+        lines.append(parts[-1])
+    return lines
 
 
 def validate(main_file: str) -> str:
@@ -65,7 +90,7 @@ def entry_slice(main_file: str, target_file: str, lineno: int) -> str:
             continue
 
         source_slice, sha = get_entry_slice(entry)
-        line_count = len(source_slice.splitlines())
+        line_count = len(split_lines(source_slice))
         return json.dumps(
             {
                 "found": True,
@@ -87,27 +112,31 @@ def replace_lines(file_path: str, start_line: int, end_line: int, new_text: str)
     and the surrounding bytes are copied verbatim so nothing outside the range can move
     (invariant 4).
     """
-    original = Path(file_path).read_text(encoding="utf-8")
-    lines = original.splitlines(keepends=True)
+    lines = split_lines(read_text(file_path))
 
     if start_line < 1 or end_line > len(lines) or start_line > end_line:
         return json.dumps({"ok": False, "error": "line range outside the file"})
 
-    replacement = new_text if new_text.endswith("\n") or not new_text else new_text + "\n"
+    # The new text is written with the line ending of the lines it replaces, so a file that uses
+    # CRLF does not end up with a few LF lines in the middle of it.
+    eol = "\r\n" if lines[start_line - 1].endswith("\r\n") else "\n"
+    normalised = new_text.replace("\r\n", "\n")
+    replacement = normalised if normalised.endswith("\n") or not normalised else normalised + "\n"
+    if eol == "\r\n":
+        replacement = replacement.replace("\n", "\r\n")
     updated = lines[: start_line - 1] + [replacement] + lines[end_line:]
     return json.dumps({"ok": True, "content": "".join(updated)})
 
 
 def delete_lines(file_path: str, start_line: int, end_line: int) -> str:
     """Compute — but do not write — the file content with a line range removed."""
-    original = Path(file_path).read_text(encoding="utf-8")
-    lines = original.splitlines(keepends=True)
+    lines = split_lines(read_text(file_path))
 
     if start_line < 1 or end_line > len(lines) or start_line > end_line:
         return json.dumps({"ok": False, "error": "line range outside the file"})
 
     # The blank line that set the entry apart goes with it, so adding an entry and deleting it
-    # again leaves no stray blank line (B101). Same rule as BeancountText.removeEntryLines and as
+    # again leaves no stray blank line. Same rule as BeancountText.removeEntryLines and as
     # Fava: every entry is followed by one blank line, and that line goes with it; an entry with
     # none after it takes the one before. Nothing else is touched.
     first, last = start_line - 1, end_line - 1

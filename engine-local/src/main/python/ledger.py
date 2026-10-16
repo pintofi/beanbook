@@ -58,7 +58,7 @@ def _with_posting_prices(entries: Any, options_map: Any) -> list:
 
 
 def _commodity_attributes(options_map: Any) -> list:
-    """The metadata keys `beancount.plugins.commodity_attr` demands on every commodity (B94).
+    """The metadata keys `beancount.plugins.commodity_attr` demands on every commodity.
 
     The ledger's own plugin line names them -- `plugin "beancount.plugins.commodity_attr"
     "{'name': None, 'precision': None}"` -- and the plugin reports an error for each commodity
@@ -72,7 +72,9 @@ def _commodity_attributes(options_map: Any) -> list:
             continue
         try:
             parsed = ast.literal_eval(config)
-        except (ValueError, SyntaxError):
+        except (ValueError, SyntaxError, RecursionError, MemoryError):
+            # The text is the ledger's own and can be anything: a deeply nested one raises
+            # RecursionError, and that must not be a ledger that will not open.
             return []
         if isinstance(parsed, dict):
             return [str(key) for key in parsed]
@@ -80,7 +82,7 @@ def _commodity_attributes(options_map: Any) -> list:
 
 
 def _extension_health(entries: Any) -> tuple:
-    """Whether each Fava extension the ledger names loaded, as Fava itself found (B97, B101).
+    """Whether each Fava extension the ledger names loaded, as Fava itself found.
 
     Returns (health, complete). The modules are the `fava-extension` custom directives. The
     answer comes from what Fava reported when it loaded the ledger (`extension_state`), and
@@ -151,14 +153,18 @@ def _display_round(value):
     Used for operating-currency conversions. An operating currency is a unit of account a
     person keeps books in, so two places is what they expect to see; the unrounded value is
     still what Beancount computed, and nothing here feeds a write.
-    """
-    from decimal import Decimal, ROUND_HALF_UP
 
-    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    Half to even, which is what Beancount and Fava round with (Python's default decimal
+    context), so 2.345 reads 2.34 here as it does in Fava. Half-up is the schoolbook rule and
+    put a figure one hundredth away from the one the same ledger shows in Fava.
+    """
+    from decimal import ROUND_HALF_EVEN, Decimal
+
+    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
 
 
 def _posting_dict(posting: Any) -> dict[str, Any]:
-    """One posting, including what it was held or exchanged at (B63).
+    """One posting, including what it was held or exchanged at.
 
     Units alone cannot describe a holding. `10 ACME {12.50 USD}` and `10 ACME` are different
     facts about the books, and two lots of the same commodity bought at different prices are
@@ -196,7 +202,7 @@ def _posting_dict(posting: Any) -> dict[str, Any]:
 
 
 def _fava_options(entries: Any) -> dict[str, str]:
-    """The Fava options a ledger sets for itself (B67).
+    """The Fava options a ledger sets for itself.
 
     Fava reads its own settings out of the Beancount file, as
     `custom "fava-option" "<name>" "<value>"` directives -- they are ordinary Custom
@@ -285,7 +291,7 @@ def inspect(
 
     # A date range, applied the way Fava applies its time filter: the *entries* are narrowed,
     # and everything computed below -- balances, the journal, which accounts exist -- follows
-    # from the narrowed set (B53). Prices are the exception and are built from the whole file
+    # from the narrowed set. Prices are the exception and are built from the whole file
     # further down, because a rate published before the range still values a holding inside
     # it, and dropping it would report an asset at cost and call it market value.
     #
@@ -318,7 +324,7 @@ def inspect(
 
     # add_position, not add_amount: the latter keeps only the units and throws the cost
     # basis away before anything can ask for it, so ten shares could be reported but not
-    # what they cost (B14).
+    # what they cost.
     balances: dict[str, inventory_lib.Inventory] = {}
     for entry in entries:
         if isinstance(entry, data.Transaction):
@@ -333,7 +339,7 @@ def inspect(
     # inferred: an asset the ledger never priced is reported at cost by Beancount's own
     # get_value, which is the honest answer rather than an invented one.
     #
-    # One exception (B94): a posting that carries its own rate (`2000 SAR @ 75 PKR`) is the
+    # One exception: a posting that carries its own rate (`2000 SAR @ 75 PKR`) is the
     # ledger saying what that commodity was worth on that day. Without it, a ledger that
     # never wrote a `price` directive showed PKR and SAR as two unrelated figures. These are
     # what Beancount's own `implicit_prices` plugin derives, used here only to read figures
@@ -358,7 +364,7 @@ def inspect(
     operating = (options_map.get("operating_currency") or [None])[0]
 
     def _market(pos):
-        """The market value of one position, the way Fava's "Market Value" reads it (B95).
+        """The market value of one position, the way Fava's "Market Value" reads it.
 
         At the latest price on or before the end of the range; in the operating currency when
         the ledger declares one, otherwise in whatever the price is quoted in. Where no price
@@ -427,7 +433,7 @@ def inspect(
                 "name": account,
                 "positions": _amounts(inventory, convert.get_units),
                 "at_cost": _amounts(inventory, convert.get_cost),
-                # Market value (B95). `at_operating` is the same figure, kept so a cached
+                # Market value. `at_operating` is the same figure, kept so a cached
                 # snapshot and an older reader keep working.
                 "at_value": _valued(inventory),
                 "at_operating": _valued(inventory),
@@ -435,7 +441,7 @@ def inspect(
         )
 
     # 0 means every transaction. The window used to be 200 so the JSON stayed small and the
-    # cold-start budget held (B21), but 200 is also all the Journal screen could ever show,
+    # cold-start budget held, but 200 is also all the Journal screen could ever show,
     # which is not what a ledger is for. Measured on the 25k corpus: the whole journal costs
     # +0.55 s in here and takes the JSON from 0.08 MB to 10.03 MB. The result crosses to the
     # app as a file, not over the Binder, so size is a parse cost rather than a hard limit.
@@ -458,7 +464,7 @@ def inspect(
                 # -- filename, lineno, and anything it prefixes with two underscores -- and
                 # showing "__automatic__" to somebody as though they had written it would be
                 # wrong. This is also where `fava.plugins.link_documents` records a linked
-                # receipt, which is what makes offering to open one possible at all (B17).
+                # receipt, which is what makes offering to open one possible at all.
                 "metadata": {
                     key: _meta_str(value)
                     for key, value in (entry.meta or {}).items()
@@ -485,7 +491,7 @@ def inspect(
                 # wrote. `find_documents` stamps those with line 0, and the parser numbers
                 # real directives from 1, so the two can be told apart -- which the Organize
                 # screen needs: unlinking removes the written directive, and the automatic
-                # one comes straight back on the next load (B92).
+                # one comes straight back on the next load.
                 "auto": entry.meta.get("lineno") == 0,
                 "tags": sorted(entry.tags or []),
                 "links": sorted(entry.links or []),
@@ -496,7 +502,7 @@ def inspect(
         key=lambda row: (row["date"], row["path"]),
     )
 
-    # How this ledger asks to be shown (B59). Beancount works these out itself -- the
+    # How this ledger asks to be shown. Beancount works these out itself -- the
     # display context is built from the numbers actually in the file, and `render_commas` is
     # the user's own option -- and the app used neither, so a ledger written to three places
     # with thousands separators was displayed to two places without them.
@@ -533,9 +539,9 @@ def inspect(
         "ok": True,
         "render_commas": bool(options_map.get("render_commas")),
         # What the file asks Fava for. Reported rather than applied here: the app decides how
-        # to render, and it cannot do that without knowing what was asked (B67).
+        # to render, and it cannot do that without knowing what was asked.
         "fava_options": _fava_options(all_entries),
-        # What this file calls its five trees, and where it keeps documents (B70). Beancount
+        # What this file calls its five trees, and where it keeps documents. Beancount
         # lets a ledger rename the roots -- `option "name_expenses" "Ausgaben"` -- and an app
         # that hardcodes the English five shows such a ledger five empty headings.
         "account_names": {
