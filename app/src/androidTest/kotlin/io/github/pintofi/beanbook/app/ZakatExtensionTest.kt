@@ -4,7 +4,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.pintofi.beanbook.core.data.InstallResult
 import io.github.pintofi.beanbook.core.data.PluginStore
-import io.github.pintofi.beanbook.core.domain.BeancountText
 import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.engine.local.LocalEngineClient
 import java.io.File
@@ -53,7 +52,7 @@ class ZakatExtensionTest {
         val plugin = (installed as InstallResult.Installed).plugin
         val root = store.directoryFor(plugin).absolutePath
 
-        // The ledger has to *name* what it loads; installing the files is not enough (B60).
+        // The ledger has to *name* what it loads; installing the files is not enough.
         val ledger = File(project, "main.beancount")
         val base = "2026-01-01 open Assets:Cash\n" +
             "2026-01-01 open Income:Salary\n\n" +
@@ -61,7 +60,7 @@ class ZakatExtensionTest {
             "  Assets:Cash    1000.00 USD\n" +
             "  Income:Salary\n"
         ledger.writeText(
-            BeancountText.withPluginDirective(base, "beancount_zakat.fava_extension", extension = true)!!,
+            "2000-01-01 custom \"fava-extension\" \"beancount_zakat.fava_extension\"\n\n" + base,
         )
 
         val engine = LocalEngineClient(context)

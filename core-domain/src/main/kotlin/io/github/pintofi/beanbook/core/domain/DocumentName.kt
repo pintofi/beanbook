@@ -15,7 +15,7 @@ import java.time.LocalDate
  *
  *  * **Deterministic.** The name is derived from the account, the date and a hash of the
  *    *content*. Saving the same capture twice produces the same path, so a retried write
- *    cannot leave two copies of one receipt behind (CLAUDE.md, invariant 6).
+ *    cannot leave two copies of one receipt behind: a retried write never duplicates an entry.
  *  * **Inside the project.** Every segment comes from a validated account name or a hex
  *    hash, so a document link can never point outside the project tree (invariant 5).
  */
@@ -27,7 +27,7 @@ data class DocumentName(
     /** Distinguishes two different files that share a date, account and hash prefix. */
     val ordinal: Int = 0,
     /**
-     * What the user called it, if anything (B57).
+     * What the user called it, if anything.
      *
      * A name derived from content alone is unimpeachable and unreadable: a folder of
      * `2026-09-07.a1b2c3d4.pdf` tells nobody which one is the car insurance. The label sits
@@ -35,7 +35,7 @@ data class DocumentName(
      * still holds -- naming a document changes how it reads, not how it is found.
      */
     val label: String? = null,
-    /** Attached to an entry rather than filed under an account (B92). */
+    /** Attached to an entry rather than filed under an account. */
     val attached: Boolean = false,
 ) {
 
@@ -44,7 +44,7 @@ data class DocumentName(
         get() = buildString {
             append(ROOT).append('/')
             // A document attached to an entry is named by that entry, not by an account, so it
-            // goes in one folder of its own (B92). Beancount only turns a file into a document
+            // goes in one folder of its own. Beancount only turns a file into a document
             // of its own when it sits in a folder named after an account, so keeping these out
             // of those folders is what stops the same receipt appearing twice: once as the
             // entry's attachment and again as a document filed under the account.
@@ -138,8 +138,7 @@ data class DocumentName(
  *
  * Unlinking removes the reference and leaves the file; deleting removes the file itself.
  * They are separate operations with separately worded confirmations because someone who
- * meant "this receipt is attached to the wrong transaction" must not lose the receipt
- * (SPEC.md, J3).
+ * meant "this receipt is attached to the wrong transaction" must not lose the receipt.
  */
 enum class DocumentRemoval {
     /** Drop the `document` directive or metadata; the file stays on disk. */

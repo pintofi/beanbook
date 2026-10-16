@@ -174,4 +174,15 @@ class StructuredEditTest {
         assertEquals(listOf("invoice-4411"), editable.draft.links)
         assertFalse(editable.reformats)
     }
+
+    @Test fun `a narration with an escaped quote is still compared by its content`() {
+        val quoted = entry.copy(narration = "the \"big\"  shop")
+        // Same words, different spacing between the postings: only layout differs.
+        val source = StructuredEdit.draftOf(quoted).render().lines()
+            .joinToString("\n") { if (it.startsWith("  ")) "  $it" else it }
+
+        val editable = assertNotNull(StructuredEdit.editableDraftOf(quoted, source))
+        assertTrue(editable.reformats)
+        assertEquals("the \"big\"  shop", editable.draft.narration)
+    }
 }

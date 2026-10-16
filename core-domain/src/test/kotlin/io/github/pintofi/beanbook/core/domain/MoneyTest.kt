@@ -83,28 +83,4 @@ class BalanceTest {
             balance.residuals(),
         )
     }
-
-    @Test
-    fun `tolerance is set by the least precise number, as Beancount infers it`() {
-        // Half of 1.00's last place is 0.005, half of 0.999's is 0.0005; Beancount takes
-        // the maximum, so a residual of 0.001 is within tolerance.
-        val amounts = listOf(Amount.parse("1.00", "USD"), Amount.parse("-0.999", "USD"))
-        val tolerance = Balance.toleranceFor(amounts)
-        // compareTo, not equals: tolerance is a threshold, so its scale is irrelevant.
-        assertEquals(0, tolerance.compareTo(BigDecimal("0.005")))
-        assertTrue(Balance.of(amounts).isBalancedWithin(tolerance))
-    }
-
-    @Test
-    fun `a residual beyond tolerance is not excused`() {
-        val amounts = listOf(Amount.parse("1.00", "USD"), Amount.parse("-0.98", "USD"))
-        assertFalse(Balance.of(amounts).isBalancedWithin(Balance.toleranceFor(amounts)))
-    }
-
-    @Test
-    fun `integer-only amounts get no free tolerance`() {
-        val amounts = listOf(Amount.parse("10", "USD"), Amount.parse("-9", "USD"))
-        assertEquals(BigDecimal.ZERO, Balance.toleranceFor(amounts))
-        assertFalse(Balance.of(amounts).isBalancedWithin(Balance.toleranceFor(amounts)))
-    }
 }

@@ -217,6 +217,45 @@ class PluginPreflightTest {
     }
 
     @Test
+    fun `reading stops as soon as an entry is seen to exceed what is left`() {
+        // An endless stream that counts what it hands out. Abandoning the entry has to cost
+        // about the limit, not the size of the entry: a hostile archive must be cheap to refuse.
+        var served = 0L
+        val endless = object : java.io.InputStream() {
+            override fun read(): Int = 0.also { served++ }
+            override fun read(b: ByteArray, off: Int, len: Int): Int {
+                served += len
+                java.util.Arrays.fill(b, off, off + len, 0)
+                return len
+            }
+        }
+
+        val result = PluginPreflight.readAtMost(endless, limit = 1_000_000L)
+
+        assertEquals(null, result)
+        assertTrue(served < 1_000_000L + 256 * 1024, "read $served bytes before giving up")
+    }
+
+    @Test
+    fun `an entry within the limit is read in full`() {
+        val data = ByteArray(10_000) { it.toByte() }
+        val result = PluginPreflight.readAtMost(java.io.ByteArrayInputStream(data), limit = 10_000L)
+        assertTrue(result!!.contentEquals(data))
+    }
+
+    @Test
+    fun `a source file larger than any plugin is refused without being read into memory`() {
+        val huge = File(temp, "huge.py")
+        java.io.RandomAccessFile(huge, "rw").use { it.setLength(PluginPreflight.MAX_UNCOMPRESSED_BYTES + 1) }
+
+        val scan = PluginPreflight.scan(huge)
+
+        assertTrue(scan.truncated)
+        val verdict = assertIs<PluginVerdict.Rejected>(ExpertRules.judge(scan))
+        assertTrue(verdict.reasons.any { it is PluginRejection.TooLarge })
+    }
+
+    @Test
     fun `an archive that expands far beyond its size is abandoned rather than read`() {
         val bomb = archive(
             "bomb.zip",

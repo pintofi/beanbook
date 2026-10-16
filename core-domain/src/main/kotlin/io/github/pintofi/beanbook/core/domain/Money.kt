@@ -1,10 +1,9 @@
 package io.github.pintofi.beanbook.core.domain
 
 import java.math.BigDecimal
-import java.math.RoundingMode
 
 /**
- * Invariant 1 (SPEC.md 5): financial values use decimal arithmetic only. Binary floating
+ * Invariant: financial values use decimal arithmetic only. Binary floating
  * point never touches an amount.
  *
  * This type exists to make that invariant enforceable rather than merely intended: there
@@ -76,14 +75,6 @@ class Balance private constructor(private val byCurrency: Map<String, BigDecimal
             .map { (currency, number) -> Amount(number, currency) }
             .sortedBy { it.currency }
 
-    /**
-     * Beancount tolerates a residual smaller than half the last decimal place of the
-     * amounts involved. This mirrors that idea without guessing at upstream's exact
-     * inference rules, which stay upstream's job.
-     */
-    fun isBalancedWithin(tolerance: BigDecimal): Boolean =
-        byCurrency.values.all { it.abs() <= tolerance }
-
     companion object {
         fun of(amounts: List<Amount>): Balance {
             val sums = LinkedHashMap<String, BigDecimal>()
@@ -93,24 +84,61 @@ class Balance private constructor(private val byCurrency: Map<String, BigDecimal
             }
             return Balance(sums)
         }
+    }
+}
+
+/**
+ * How far from zero a residual may be, per currency, before Beancount calls a transaction
+ * unbalanced. This is Beancount's own rule (`infer_tolerances` in `beancount/core/interpolate.py`,
+ * checked against 3.2.3), ported rather than approximated, because the app refuses to save an
+ * entry the ledger would have accepted if it computes a tighter tolerance, and lets through an
+ * entry the ledger will reject if it computes a looser one:
+ *
+ *  * each currency is separate;
+ *  * a currency's tolerance is half of the last decimal place of the *units* of every posting
+ *    written with decimals, and the largest of those wins ("1.00" and "-0.999" tolerate 0.005);
+ *  * a whole number contributes nothing, and does not cancel what the other postings say;
+ *  * `option "inferred_tolerance_default"` is a *floor* for the currency it names, never a
+ *    replacement for what the postings imply, and its `*` entry is what a currency gets when
+ *    nothing else says anything about it.
+ *
+ * Not modelled: `infer_tolerance_from_cost`, which is off unless the file turns it on.
+ * Authoritative checking stays Beancount's: the ledger is validated by Beancount itself before
+ * any write is reported as successful (invariant 2). This only decides what the form shows and
+ * refuses while a person is typing.
+ */
+class Tolerances private constructor(
+    private val byCurrency: Map<String, BigDecimal>,
+    private val fallback: BigDecimal,
+) {
+
+    fun forCurrency(currency: String): BigDecimal = byCurrency[currency] ?: fallback
+
+    companion object {
+        /** Beancount's `tolerance_multiplier` default. */
+        val DEFAULT_MULTIPLIER: BigDecimal = BigDecimal("0.5")
 
         /**
-         * Beancount infers a tolerance per posting as half of that number's last decimal
-         * place, then takes the **maximum** across postings — so the *least* precise
-         * number sets the tolerance. `1.00` and `-0.999` therefore tolerate 0.005, not
-         * 0.0005.
-         *
-         * This is a UI-side helper for showing whether an entry is plausibly balanced
-         * while it is being typed. Authoritative tolerance handling stays upstream's job:
-         * the ledger is validated by Beancount itself before any write is reported as
-         * successful (invariant 2).
+         * @param units the amounts as written on the postings (not their weights)
+         * @param defaults `option "inferred_tolerance_default"`, by currency, with `*` for any
+         *   other
          */
-        fun toleranceFor(amounts: List<Amount>): BigDecimal {
-            val scale = amounts.minOfOrNull { it.number.scale() } ?: 0
-            if (scale <= 0) return BigDecimal.ZERO
-            return BigDecimal.ONE.movePointLeft(scale).divide(
-                BigDecimal(2), scale + 1, RoundingMode.HALF_UP
-            )
+        fun infer(
+            units: List<Amount>,
+            defaults: Map<String, BigDecimal> = emptyMap(),
+            multiplier: BigDecimal = DEFAULT_MULTIPLIER,
+        ): Tolerances {
+            val byCurrency = HashMap<String, BigDecimal>()
+            defaults.forEach { (currency, tolerance) -> if (currency != "*") byCurrency[currency] = tolerance }
+            for (amount in units) {
+                // A scale of zero or less is a whole number: no decimals, so nothing to infer.
+                val scale = amount.number.scale()
+                if (scale <= 0) continue
+                val inferred = BigDecimal.ONE.movePointLeft(scale).multiply(multiplier)
+                val known = byCurrency[amount.currency]
+                byCurrency[amount.currency] = if (known == null || inferred > known) inferred else known
+            }
+            return Tolerances(byCurrency, defaults["*"] ?: BigDecimal.ZERO)
         }
     }
 }

@@ -71,7 +71,7 @@ object StructuredEdit {
     }
 
     /**
-     * An entry the form can edit, and whether saving it will change only its layout (B78).
+     * An entry the form can edit, and whether saving it will change only its layout.
      *
      * [reformats] is the honest part. A hand-written entry is usually aligned or indented
      * differently from how the app writes one, and its figures may carry thousands separators;
@@ -94,7 +94,7 @@ object StructuredEdit {
      */
     fun editableDraftOf(entry: JournalEntry, source: String): Editable? {
         val plain = draftOf(entry).let { draft ->
-            // Tags and links the file does not write were added on the way in (B79): by
+            // Tags and links the file does not write were added on the way in: by
             // `fava.plugins.link_documents`, which links every entry that has a document, or
             // by a `pushtag` above it. They are not the entry's text and never were, so the
             // form leaves them out and the next load adds them again. Without this, every
@@ -169,8 +169,13 @@ object StructuredEdit {
         val out = mutableListOf<String>()
         val current = StringBuilder()
         var quoted = false
+        var escaped = false
         for (ch in text) {
             when {
+                // Inside a string a backslash takes the next character with it, so an escaped
+                // quote does not end the string and the spaces after it stay as typed.
+                escaped -> { escaped = false; current.append(ch) }
+                quoted && ch == '\\' -> { escaped = true; current.append(ch) }
                 ch == '"' -> { quoted = !quoted; current.append(ch) }
                 ch.isWhitespace() && !quoted -> if (current.isNotEmpty()) { out += current.toString(); current.clear() }
                 else -> current.append(ch)
