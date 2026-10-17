@@ -3,7 +3,7 @@
     python3 tools/plugin-compat/catalogue.py check   # new or dropped plugins upstream; exit 1 if any
     python3 tools/plugin-compat/catalogue.py pin     # write an `install` block for every entry
 
-**check** is the release step that "monitors" the list (B82). The app's curated catalogue is
+**check** is the release step that "monitors" the list. The app's curated catalogue is
 a copy of the Plugins section of https://awesome-beancount.com, which is generated from the
 README of github.com/siddhantgoel/awesome-beancount. A plugin added there is not in the app
 until someone runs this, tests the plugin and adds it -- which is the point: a catalogue entry

@@ -56,7 +56,7 @@ PYTHON_LICENCES = {
     "simplecountingsort": ("MIT", ""),
     # Chaquopy's repackages of the C libraries carry no `License:` metadata, but they do ship
     # the licence text itself in `dist-info/COPYING`, which is where these were read from
-    # (docs/milestones/m14-part11.md). Both are GPL-2.0-compatible, which is what the app
+    #. Both are GPL-2.0-compatible, which is what the app
     # needs; libxslt's is the X11 variant, with the clause about not using the author's name
     # in advertising, and the FSF lists that as compatible too.
     "chaquopy_libxml2": ("MIT", "dist-info/COPYING: the Expat text, (C) 1998-2012 Daniel Veillard"),

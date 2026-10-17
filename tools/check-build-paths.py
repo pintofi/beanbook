@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail if an artefact names the machine that built it.
 
-A release APK built in M14 carried 25 distinct strings under the developer's home
+A release APK once carried 25 distinct strings under the developer's home
 directory, from Rust panic metadata compiled into `watchfiles`' extension module and from
 the CycloneDX SBOM maturin writes beside it. None of it is secret, and none of it is
 load-bearing, but an app whose entire pitch is that your ledger stays on your device
@@ -14,8 +14,8 @@ they are reported and allowed. What is refused is *our* build leaking *our* path
 
     tools/check-build-paths.py <apk|whl|imy> ...
 """
-import os
 import io
+import os
 import re
 import sys
 import zipfile
@@ -39,7 +39,7 @@ UPSTREAM = (
 # same case as Chaquopy's: `libopencv_java4.so` comes from the published `org.opencv:opencv`
 # artefact, is not built here, and carries its builder's paths in assertion strings. Checked
 # before allowing rather than assumed -- every unallowed hit in an expert APK was inside that
-# one library, and no other file in either edition produced one (B52).
+# one library, and no other file in either edition produced one.
 
 # What is deliberately *not* checked: `/tmp/cibw-run-<random>` in beancount's `_parser.so`.
 # meson records the build prefix as a DT_RUNPATH, and the directory is a per-run temporary
