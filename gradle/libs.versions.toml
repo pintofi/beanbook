@@ -22,7 +22,7 @@ composeBom = "2026.09.00"
 # module, androidx.graphics:graphics-shapes 1.0.1 (Apache-2.0), for the shape morphs.
 # Return to the BOM's version when a stable BOM carries 1.5.0.
 material3 = "1.5.0-beta01"
-chaquopy = "17.0.0"
+chaquopy = "17.1.0"
 # detekt for Kotlin static analysis. Apache-2.0, which is fine here in a way it would
 # not be for a shipped dependency: it runs at build time and no part of it is linked into
 # the app, exactly like AGP and Gradle themselves (docs/architecture.md 7.1).
