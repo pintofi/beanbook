@@ -9,7 +9,7 @@ import io.github.pintofi.beanbook.core.data.LogLevel
 import java.io.File
 
 /**
- * The app's record of what it did, and the report a user can hand over (B62).
+ * The app's record of what it did, and the report a user can hand over.
  *
  * Nothing here leaves the device on its own. The app makes no network request in local mode
  * and reports nothing anywhere, which is the promise on the website and in the store

@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
  * Two rules drive this class:
  *
  *  1. **The engine must be stoppable.** cheroot's worker threads are not daemon threads,
- *     so an engine that is never stopped keeps the process alive (Phase 0 finding C7).
+ *     so an engine that is never stopped keeps the process alive.
  *  2. **The engine must not run when the app is not in front of the user.** It serves a
  *     local HTTP port; leaving it listening in the background is both a battery cost and
  *     an unnecessary attack surface (docs/threat-model.md §3.3). Widgets never start it.
@@ -50,7 +50,7 @@ class EngineManager(
     private var inForeground = false
 
     /**
-     * Whether something needs Reports running while the app is out of sight (B93): sharing
+     * Whether something needs Reports running while the app is out of sight: sharing
      * on Wi-Fi, which other devices are reading from. While it holds, leaving the app does
      * not stop the engine, and an engine Android ends is started again.
      */
@@ -74,11 +74,11 @@ class EngineManager(
         currentProject = projectPath
         scope.launch {
             // Fava resolves an extension by module name when it loads the ledger, so this has
-            // to be set before start rather than after (docs/milestones/m14-part26.md).
+            // to be set before start rather than after.
             (engine as? io.github.pintofi.beanbook.engine.local.LocalEngineClient)?.pluginDirs =
                 pluginDirectories()
             // Fava loads the ledger itself, so the documents folder has to be there before it
-            // does, not only before the app's own read (B79).
+            // does, not only before the app's own read.
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 io.github.pintofi.beanbook.core.data.DocumentRoots.ensure(java.io.File(projectPath))
             }
@@ -92,7 +92,7 @@ class EngineManager(
     }
 
     /**
-     * Ends the engine process and starts it again on the same project (B49).
+     * Ends the engine process and starts it again on the same project.
      *
      * What a "restart" has to mean here: not a new Fava server in the same interpreter, but
      * a new interpreter. A package fetched or a plugin installed after Python started is

@@ -17,6 +17,17 @@ data class Wheel(
     val filename: String get() = url.substringAfterLast('/')
 }
 
+private val PACKAGE_NAME = Regex("[a-z0-9]([a-z0-9._-]*[a-z0-9])?")
+
+/**
+ * Whether [name], already lower-cased and with `_` turned into `-`, can be a package name.
+ *
+ * Names come from the user and from the `Requires-Dist` lines of packages that were
+ * downloaded, and are spliced into index URLs. Anything with a `/`, a `..` or a space is not a
+ * name and must not reach a URL.
+ */
+internal fun isPackageName(name: String): Boolean = PACKAGE_NAME.matches(name)
+
 /** What happened, in terms the screen can show without inventing wording. */
 sealed interface FetchResult {
     data class Installed(val wheels: List<Wheel>, val bytes: Long) : FetchResult
@@ -68,7 +79,7 @@ object OnDemandPackages {
     /**
      * True when a previous merge into [root] was cut short.
      *
-     * The failure this exists to stop (B37): unpacking is staged and digest-checked, but the
+     * The failure this exists to stop: unpacking is staged and digest-checked, but the
      * final step copies staging over the root file by file, and that is not atomic. Lose the
      * process partway — an out-of-memory kill is the realistic way, and is how this was
      * found — and the root keeps a half-copied package. Nothing recorded that, so the
@@ -130,7 +141,7 @@ data class PackagesUi(
     val onConfirm: () -> Unit,
     val onCancel: () -> Unit,
     val onRemoveAll: () -> Unit,
-    /** The curated plugin catalogue (B82), which installs through the same fetcher. */
+    /** The curated plugin catalogue, which installs through the same fetcher. */
     val catalogue: io.github.pintofi.beanbook.app.plugins.CatalogueUi =
         io.github.pintofi.beanbook.app.plugins.CatalogueUi.EMPTY,
 )

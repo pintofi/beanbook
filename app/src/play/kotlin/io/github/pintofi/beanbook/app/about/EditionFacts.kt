@@ -3,11 +3,11 @@ package io.github.pintofi.beanbook.app.about
 /**
  * What differs between editions on the screens that talk about the app itself.
  *
- * **No donation link in the Play edition (B81).** Google Play's Payments policy says apps "may
+ * **No donation link in the Play edition.** Google Play's Payments policy says apps "may
  * not lead users to a payment method other than Google Play's billing system", and the only
  * donations it exempts are "tax exempt donations". A tip to an individual developer through
  * Ko-fi is not one, so this edition names no support page at all. Whether to offer support
- * through Play's own billing instead is recorded as a decision to make (N21).
+ * through Play's own billing instead is recorded as a decision to make.
  */
 internal object EditionFacts {
     const val NAME = "Play"
@@ -18,7 +18,7 @@ internal object EditionFacts {
     /** No support pages here, by policy. */
     val SUPPORT_LINKS: List<SupportLink> = emptyList()
 
-    /** The other edition, described for people who might want it (B81). */
+    /** The other edition, described for people who might want it. */
     val OTHER_EDITION: OtherEdition? = OtherEdition(
         name = "Expert",
         summary = "A separate edition of Beanbook, installed from outside Google Play, for " +

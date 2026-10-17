@@ -14,7 +14,7 @@ import io.github.pintofi.beanbook.app.R
 import io.github.pintofi.beanbook.app.diagnostics.Diagnostics
 
 /**
- * Keeps the app running while it finishes something the user started (B93).
+ * Keeps the app running while it finishes something the user started.
  *
  * Installing a plugin downloads and unpacks for tens of seconds, and saving an entry with a
  * receipt files a PDF and writes the ledger twice. Both were interrupted by switching apps or
@@ -39,7 +39,7 @@ object KeepWorking {
     private var wakeLock: PowerManager.WakeLock? = null
 
     /**
-     * Whether [WorkService] has called `startForeground` yet (B99).
+     * Whether [WorkService] has called `startForeground` yet.
      *
      * Android gives a service started with `startForegroundService` a few seconds to call it,
      * and kills the *app* if it is stopped first. A save with a scanned page ends in well under
@@ -153,7 +153,7 @@ object KeepWorking {
      */
     private const val WAKE_LOCK_TIMEOUT_MS = 10 * 60 * 1000L
 
-    /** What to say when Android would not let the work be protected (B93). */
+    /** What to say when Android would not let the work be protected. */
     const val KEEP_OPEN = "Keep Beanbook open and the screen on until this finishes."
 
     internal const val EXTRA_WHAT = "what"

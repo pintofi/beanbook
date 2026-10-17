@@ -70,15 +70,25 @@ class RemoteState(
 
         // Copied before the coroutine, then wiped here — the caller wipes its own array as
         // soon as this returns, and reading it later would send an empty password (the same
-        // mistake backup encryption made, m9.md).
+        // mistake backup encryption once made).
         val ownSecret = secret?.copyOf()
 
         scope.launch {
             addressFile.parentFile?.mkdirs()
             addressFile.writeText(parsed.base)
             if (username.isNullOrBlank()) usernameFile.delete() else usernameFile.writeText(username)
-            if (ownSecret == null || ownSecret.isEmpty()) password.clear() else password.store(ownSecret)
+            val stored = runCatching {
+                if (ownSecret == null || ownSecret.isEmpty()) password.clear() else password.store(ownSecret)
+            }
             ownSecret?.fill('\u0000')
+            if (stored.isFailure) {
+                // Not connected without it: the server would be asked for a password this
+                // device just failed to keep, and the next start would ask again with none.
+                Log.w(TAG, "the password could not be stored", stored.exceptionOrNull())
+                _message.value = "The password could not be kept safely on this device, so nothing " +
+                    "was saved. Try again; if it keeps failing, check the screen lock."
+                return@launch
+            }
 
             open(parsed, credentials(username, savedSecret()))
         }

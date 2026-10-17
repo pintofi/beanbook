@@ -25,8 +25,8 @@ import kotlinx.coroutines.withContext
  *
  * Filing a document is two steps in a fixed order: **write the PDF, then write the ledger
  * entry that points at it**. A link is never written before the file it names exists, so a
- * ledger can be trusted not to refer to something that was never there (CLAUDE.md,
- * invariant 5).
+ * ledger can be trusted not to refer to something that was never there (the
+ * write protocol's ordering rule).
  */
 class DocumentCapture(
     private val context: Context,
@@ -40,7 +40,7 @@ class DocumentCapture(
     val pages: StateFlow<CapturedPages> = _pages.asStateFlow()
 
     /**
-     * Files the person already had -- a PDF invoice, a picture -- attached as they are (B80).
+     * Files the person already had -- a PDF invoice, a picture -- attached as they are.
      *
      * Kept beside the pages rather than turned into pages: a PDF someone was sent is already the
      * document, and re-rendering it as photographs would lose its text.
@@ -63,7 +63,7 @@ class DocumentCapture(
     /**
      * Adds a page, with the outline the scanner found for it when there is one.
      *
-     * One update rather than an add followed by a crop (B79). The scanner used to crop "the
+     * One update rather than an add followed by a crop. The scanner used to crop "the
      * last page" through a list it had read *before* adding, so the outline went to the page
      * before -- or, for the first page of a batch, to index -1, which is nothing -- and every
      * detected crop landed on the wrong page or none.
@@ -78,7 +78,7 @@ class DocumentCapture(
         _pages.value = if (crop == null) added else added.crop(added.pages.lastIndex, crop)
     }
 
-    /** Renders one page differently (B58). Nothing on disk changes; the PDF is what changes. */
+    /** Renders one page differently. Nothing on disk changes; the PDF is what changes. */
     fun restyle(index: Int, style: io.github.pintofi.beanbook.core.domain.PageStyle) {
         _pages.value = _pages.value.restyle(index, style)
     }
@@ -152,7 +152,7 @@ class DocumentCapture(
         }
     }
 
-    /** One page as it will be filed, sized for the screen (B79). */
+    /** One page as it will be filed, sized for the screen. */
     suspend fun preview(page: io.github.pintofi.beanbook.core.domain.CapturedPage): android.graphics.Bitmap? =
         withContext(Dispatchers.Default) {
             runCatching { assembler.renderPage(page, ::fileFor, maxEdge = PREVIEW_EDGE) }
@@ -164,7 +164,7 @@ class DocumentCapture(
     private var assembled: Pair<CapturedPages, ByteArray>? = null
 
     /**
-     * The PDF the current pages make, assembled once per arrangement of them (B79).
+     * The PDF the current pages make, assembled once per arrangement of them.
      *
      * The entry form shows the document's name in its preview before anything is saved, and
      * the name is a hash of these bytes -- so the preview and the save must use the same
@@ -213,9 +213,9 @@ class DocumentCapture(
         projectId: String,
         account: String,
         date: LocalDate = LocalDate.now(),
-        /** What to call it, if the user typed something (B57). */
+        /** What to call it, if the user typed something. */
         label: String? = null,
-        /** Attached to an entry rather than filed under [account] (B92). */
+        /** Attached to an entry rather than filed under [account]. */
         attached: Boolean = false,
         onFiled: (List<String>) -> Unit,
     ) {
@@ -226,7 +226,7 @@ class DocumentCapture(
         }
 
         scope.launch {
-            // Assembling the PDF renders every page; held until it is on disk (B93).
+            // Assembling the PDF renders every page; held until it is on disk.
             val result = io.github.pintofi.beanbook.app.work.KeepWorking.around(
                 context,
                 "Filing ${if (pages.isEmpty) "a document" else "${pages.size} page(s)"}",

@@ -9,7 +9,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Notices when a `.beancount` file in the open project changes on disk (B92).
+ * Notices when a `.beancount` file in the open project changes on disk.
  *
  * The app used to have no watcher at all: an edit made by a script, a mirror pull, a restore,
  * or a desktop writing into a synced folder left every screen showing the ledger as it was
@@ -33,7 +33,7 @@ class LedgerWatcher(
     private var observer: FileObserver? = null
     private var pending: Job? = null
 
-    // The app's own writes are not outside edits (B93). `ProjectWriter` re-parses the ledger
+    // The app's own writes are not outside edits. `ProjectWriter` re-parses the ledger
     // as part of every write and the app reloads it afterwards; the watcher reloading a third
     // time put two more full parses in the engine's queue for each save, and a save with a
     // document -- two writes -- waited behind four.
@@ -57,7 +57,7 @@ class LedgerWatcher(
         if (folders.isEmpty()) return
         observer = object : FileObserver(folders, EVENTS) {
             override fun onEvent(event: Int, path: String?) {
-                // Only the events asked for (B98). Removing a watch makes the kernel send
+                // Only the events asked for. Removing a watch makes the kernel send
                 // IN_IGNORED with no path, and `watch` replaces the observer on every reload;
                 // the new observer can be handed the old one's IN_IGNORED (watch descriptors
                 // are reused), which read as "something changed", scheduled a reload, which

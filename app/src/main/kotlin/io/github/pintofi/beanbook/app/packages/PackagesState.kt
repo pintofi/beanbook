@@ -46,8 +46,8 @@ class PackagesState(
      */
     val root: File = OnDemandPackages.root(context),
     /**
-     * Called when packages on disk no longer match what the running interpreter imported
-     * (B49). Python answers an import once and caches the answer, so a package fetched now
+     * Called when packages on disk no longer match what the running interpreter imported.
+     * Python answers an import once and caches the answer, so a package fetched now
      * is not importable until a new process looks for it.
      */
     private val onEngineStale: () -> Unit = {},
@@ -121,7 +121,7 @@ class PackagesState(
         val pending = _status.value as? PackagesStatus.Confirming ?: return
         _status.value = PackagesStatus.Fetching(pending.request)
         scope.launch {
-            // Held until the download ends, even if the user leaves the app (B93).
+            // Held until the download ends, even if the user leaves the app.
             val result = io.github.pintofi.beanbook.app.work.KeepWorking.around(
                 context,
                 "Installing ${pending.request}",

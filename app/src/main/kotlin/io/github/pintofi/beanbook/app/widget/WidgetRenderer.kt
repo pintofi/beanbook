@@ -41,7 +41,7 @@ object WidgetRenderer {
         widgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID,
     ): RemoteViews {
         // Several accounts on one widget is its own layout: a row each, rather than one
-        // figure with a label (B48). One account keeps the original single-figure shape,
+        // figure with a label. One account keeps the original single-figure shape,
         // which reads better at the size most people place a balance widget at.
         if (metric == WidgetMetric.BALANCE && chosenAccounts.size > 1) {
             return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs, widgetId)
@@ -56,7 +56,7 @@ object WidgetRenderer {
         views.setTextColor(R.id.widget_value, palette.value)
 
         // The balance widget says *which* account, because an unlabelled figure on a home
-        // screen is not information (B1). Only the leaf: "Checking" fits where
+        // screen is not information. Only the leaf: "Checking" fits where
         // "Assets:Bank:Checking" would be truncated mid-word.
         // The account this widget is for: the one the user picked when they placed it, and
         // otherwise the deterministic default. Resolved before the snapshot is checked so the
@@ -70,8 +70,7 @@ object WidgetRenderer {
             ?: metric.label
         views.setTextViewText(R.id.widget_label, label)
         // The whole widget, not just the figure: a home-screen tile is one target, and a tap
-        // that lands on the label or the footnote and does nothing reads as a broken widget
-        // (B54).
+        // that lands on the label or the footnote and does nothing reads as a broken widget.
         views.setOnClickPendingIntent(R.id.widget_root, launchIntent(context, snapshot, metric))
         views.setOnClickPendingIntent(R.id.widget_add, addIntent(context, snapshot))
 
@@ -110,7 +109,7 @@ object WidgetRenderer {
     }
 
     /**
-     * Several balances, one row each (B48), in a list that scrolls (B93).
+     * Several balances, one row each, in a list that scrolls.
      *
      * Every chosen account has a row. The list used to stop at six and say how many it had
      * left out; a list the launcher scrolls has no reason to leave any out.
@@ -132,7 +131,7 @@ object WidgetRenderer {
         )
         views.setOnClickPendingIntent(R.id.widget_add, addIntent(context, snapshot))
 
-        // The rows are a list the launcher scrolls (B93), filled by [WidgetRowsService] from
+        // The rows are a list the launcher scrolls, filled by [WidgetRowsService] from
         // the same cache. It used to be six rows and "N more not shown". The widget id is in
         // the intent's data, not only its extras, because the launcher keeps one adapter per
         // distinct intent and two widgets must not share one.
@@ -197,7 +196,7 @@ object WidgetRenderer {
     }
 
     /**
-     * Colours one widget from the app's appearance settings (B92).
+     * Colours one widget from the app's appearance settings.
      *
      * The paper and the rule are tinted rather than set as background colours: a tint works on
      * every supported API, where `setBackgroundTintList` needs 31, and it keeps the rounded
@@ -264,7 +263,7 @@ object WidgetRenderer {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(EXTRA_PROJECT, snapshot?.projectId)
-            // Each widget opens where its own figure lives (B54): a balance is a line in the
+            // Each widget opens where its own figure lives: a balance is a line in the
             // journal, and net worth is the headline on Home. Both used to land on Balances,
             // which answered a question the user had not asked.
             putExtra(
@@ -284,7 +283,7 @@ object WidgetRenderer {
     }
 
     /**
-     * The + on every widget: straight to the entry form (B93). It replaced a widget that did
+     * The + on every widget: straight to the entry form. It replaced a widget that did
      * only this. Its own request code, so it does not replace the intent that opens the
      * widget's figure.
      */
@@ -313,7 +312,7 @@ object WidgetRenderer {
 }
 
 /**
- * A figure a widget can show whole, in its one-figure box or a balance row (B98).
+ * A figure a widget can show whole, in its one-figure box or a balance row.
  *
  * In Units a net worth is one line per commodity, and the widget's two lines showed whichever
  * of them landed in the middle of the box -- "80.00 AIRSF-E" under "Net worth", with the

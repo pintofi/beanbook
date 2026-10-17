@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
  *
  * Parsing happens on IO inside [LedgerReader]; the main thread only ever receives the
  * finished snapshot. A 25k-transaction ledger takes over a second to parse on a mid-range
- * device (docs/milestones/m3.md), so this is not a theoretical concern.
+ * device, so this is not a theoretical concern.
  */
 class LedgerState(
     private val reader: LedgerReader,
@@ -34,7 +34,7 @@ class LedgerState(
      * True while a read is in flight, so a pull-to-refresh can show a spinner for as long as
      * the work actually takes. That is not a formality: a reload is seconds rather than
      * milliseconds on a large ledger, far past the point where a user assumes nothing
-     * happened (B26).
+     * happened.
      */
     val loading: StateFlow<Boolean> = _loading.asStateFlow()
 
@@ -53,7 +53,7 @@ class LedgerState(
      * **Not covered by a test, deliberately.** Whether the superseded load's `finally` runs
      * before or after the replacement finishes is a race, so a test asserting the end state
      * passes either way — one was written, shown to pass with this check removed, and
-     * deleted rather than left to imply cover it did not give (B26). Widening the window
+     * deleted rather than left to imply cover it did not give. Widening the window
      * enough to observe it reliably would mean a fixture slow enough to make the suite slow.
      */
     private var generation = 0
@@ -78,7 +78,7 @@ class LedgerState(
     val dateRange: StateFlow<Pair<String, String>> = _dateRange.asStateFlow()
 
     /**
-     * Narrows every figure to a period, the way Fava's time filter does (B53).
+     * Narrows every figure to a period, the way Fava's time filter does.
      *
      * A reload rather than a client-side filter: balances at cost and at market value are
      * Beancount's to compute, and recomputing them here from the journal would be a second,
@@ -128,7 +128,7 @@ class LedgerState(
     }
 
     /**
-     * Creates the folders `option "documents"` names before Beancount looks for them (B79).
+     * Creates the folders `option "documents"` names before Beancount looks for them.
      *
      * A ledger with no receipts yet used to load with "Document root does not exist" on every
      * screen, and in Fava too. Logged when it does something, because a folder appearing in a
@@ -144,9 +144,8 @@ class LedgerState(
     /**
      * Reads the open ledger again from disk.
      *
-     * The app has no file watcher, so nothing notices a mirror pull, a restore, or an edit
-     * made on a desktop in a synced folder. Before this, the only ways to see such a change
-     * were to switch project and switch back, or to restart the app (B26).
+     * Called when the file watcher reports a change, and by pull-to-refresh, so that a mirror
+     * pull, a restore, or an edit made on a desktop in a synced folder shows up.
      *
      * Does nothing when no ledger is open, rather than guessing at a path.
      */

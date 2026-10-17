@@ -6,7 +6,7 @@ import io.github.pintofi.beanbook.core.data.PluginCatalogue
 import java.io.File
 
 /**
- * Applies `assets/overlays/<package>-<version>/` to a plugin installed from the catalogue (B92).
+ * Applies `assets/overlays/<package>-<version>/` to a plugin installed from the catalogue.
  *
  * The overlays were written for packages the wheel fetcher brings in, and the fetcher applies
  * them. A plugin installed from the catalogue takes a different route -- its code comes from
@@ -40,7 +40,7 @@ internal class CatalogueOverlay(private val assets: AssetManager) {
                 target.parentFile?.mkdirs()
                 val bytes = assets.open("$prefix/$relative").use { it.readBytes() }
                 // Only what actually changes is reported, so "re-applied" means a repair and
-                // not a start-up that rewrote identical files (B101).
+                // not a start-up that rewrote identical files.
                 if (!target.isFile || !target.readBytes().contentEquals(bytes)) {
                     target.writeBytes(bytes)
                     replaced += relative

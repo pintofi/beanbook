@@ -16,18 +16,18 @@ import java.io.File
  * Turns captured pages into a single PDF.
  *
  * Each page is encoded as a JPEG and carried into the file as it is by
- * [io.github.pintofi.beanbook.core.data.JpegPdf] (B79) -- no PDF library, no licence question.
+ * [io.github.pintofi.beanbook.core.data.JpegPdf] -- no PDF library, no licence question.
  * A receipt is a picture on a page, and that is the whole of what the file needs to say.
  *
  * The captures themselves are never modified. Rotation is applied while drawing into the
  * PDF, so the original JPEG the camera wrote is still on disk, at its original orientation,
- * if the user wants to start again (SPEC.md, J3: the original is preserved unless explicitly
+ * if the user wants to start again (the original is preserved unless explicitly
  * discarded).
  */
 class PdfAssembler(
     private val maxPageEdge: Int = DEFAULT_MAX_EDGE,
     /**
-     * Renders a page in the style it was given (B58).
+     * Renders a page in the style it was given.
      *
      * A function rather than a call into `:scanner`, so this class stays testable without
      * OpenCV and a device without it still assembles documents -- unstyled, which is the
@@ -45,7 +45,7 @@ class PdfAssembler(
     fun assemble(pages: CapturedPages, resolve: (String) -> File): ByteArray {
         require(!pages.isEmpty) { "a document needs at least one page" }
 
-        // JPEG pages written straight into the PDF (B79). `PdfDocument` stored every page as
+        // JPEG pages written straight into the PDF. `PdfDocument` stored every page as
         // deflated raw pixels at a point per pixel: several megabytes, and a page 70 cm tall.
         val written = pages.pages.mapIndexed { index, page ->
             val bitmap = renderPage(page, resolve)
@@ -65,7 +65,7 @@ class PdfAssembler(
 
     /**
      * One page exactly as it goes into the file -- cropped, turned and rendered in its style --
-     * or null when the photograph cannot be read (B79).
+     * or null when the photograph cannot be read.
      *
      * Public so the page editor can show *this*, not the raw photograph: it used to show the
      * picture as taken, so nobody could see whether the corners had been found or what
@@ -118,7 +118,7 @@ class PdfAssembler(
     /**
      * Reads a capture: upright, cropped, turned, and no larger than [maxPageEdge].
      *
-     * **In that order, and at enough resolution (B79).** Two faults lived here. The crop was
+     * **In that order, and at enough resolution.** Two faults lived here. The crop was
      * applied to the photograph *before* the camera's EXIF rotation, while the detector and
      * the crop editor both place corners on the upright image -- so on a phone that stores its
      * pictures sideways, which is most of them, the page that was cut out was a different

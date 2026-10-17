@@ -91,6 +91,12 @@ class WheelFetcher(
             val name = normalise(raw)
             if (!seen.add(name)) continue
             if (isBundled(name)) continue
+            if (!isPackageName(name)) {
+                // Spliced into index URLs below, so a name that is not one stops here.
+                if (name in names.map(::normalise)) error("\"$raw\" is not a package name")
+                unavailable += name.take(40)
+                continue
+            }
 
             val wheel = fromChaquopy(name) ?: fromPyPI(name)
             if (wheel == null) {
@@ -121,15 +127,15 @@ class WheelFetcher(
         }
         // A root left half-merged by an earlier run is thrown away before this one starts.
         // Installing *over* it would bury the damage under a good install and leave the
-        // broken files importable (B37).
+        // broken files importable.
         OnDemandPackages.discardIncomplete(root)
         root.mkdirs()
 
         // Unpacked into staging, moved into place only when every wheel has succeeded.
         // Previously a digest mismatch at wheel n left wheels 1..n-1 unpacked in the install
         // root and reported failure, and `installed()` then listed them as present -- while
-        // the comment below said nothing already unpacked is trusted. Nothing deleted them
-        // (R7). ProjectImporter and PluginStore both stage-then-rename for the same reason.
+        // the comment below said nothing already unpacked is trusted. Nothing deleted them.
+        // ProjectImporter and PluginStore both stage-then-rename for the same reason.
         val staging = File(root.parentFile ?: root, "${root.name}-staging")
         staging.deleteRecursively()
         staging.mkdirs()
@@ -169,7 +175,7 @@ class WheelFetcher(
         //
         // A file-by-file copy is not atomic, so the intent is journalled first: if the
         // process dies partway, the marker survives and the next run discards the root
-        // instead of importing a half-copied package (B37). Written and flushed before a
+        // instead of importing a half-copied package. Written and flushed before a
         // single byte moves, because a marker that lands after the copy it describes would
         // protect nothing.
         val marker = OnDemandPackages.marker(root)
@@ -333,7 +339,20 @@ class WheelFetcher(
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 30_000
         connection.readTimeout = 60_000
-        return connection.use { it.inputStream.readBytes() }
+        return connection.use { it.inputStream.use(::readCapped) }
+    }
+
+    /** At most [MAX_DOWNLOAD_BYTES]: the largest wheel measured is a fraction of it. */
+    private fun readCapped(input: java.io.InputStream): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(64 * 1024)
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            out.write(buffer, 0, read)
+            if (out.size() > MAX_DOWNLOAD_BYTES) throw java.io.IOException("the download is larger than expected")
+        }
+        return out.toByteArray()
     }
 
     /**
@@ -408,7 +427,7 @@ class WheelFetcher(
     }
 
     /**
-     * A wheel from PyPI this device can run: pure Python, or an Android wheel (B82).
+     * A wheel from PyPI this device can run: pure Python, or an Android wheel.
      *
      * PyPI used to have nothing with native code for Android, so only `py3-none-any` was taken
      * from it. PEP 738 changed that: projects now publish `android_24_arm64_v8a` wheels
@@ -445,7 +464,7 @@ class WheelFetcher(
      * The companion wheels (`chaquopy-openblas`, `chaquopy-libffi`, ...) are named
      * `py3-none-android_<api>_<arch>`. Matching on `py3-none` alone took the last one listed,
      * which is x86_64, so an arm64 phone unpacked an x86_64 `libffi.so` and `libopenblas.so`
-     * that the linker could not use: "library not found" at the import (B94).
+     * that the linker could not use: "library not found" at the import.
      */
     private fun chaquopyWheelFits(href: String): Boolean =
         href.contains(ABI_TAG) ||
@@ -523,6 +542,8 @@ class WheelFetcher(
 
     private companion object {
         const val TAG = "WheelFetcher"
+
+        const val MAX_DOWNLOAD_BYTES = 250_000_000
 
         /** The ABI this build runs on. Chaquopy's wheels are per-ABI and per-interpreter. */
         val ABI_TAG: String = if (android.os.Build.SUPPORTED_ABIS.firstOrNull() == "x86_64") {

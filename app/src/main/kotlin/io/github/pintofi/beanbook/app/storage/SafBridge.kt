@@ -102,7 +102,7 @@ class SafExportTarget(
         // "main.beancount.txt" -- and with it, every `include "files/accounts.beancount"` in
         // the exported copy pointed at a file that no longer existed by that name. That
         // breaks invariant 5 across export, and no `java.io.File` test could see it: it only
-        // happens on the far side of a real provider (V14).
+        // happens on the far side of a real provider.
         //
         // `renameDocument` does not re-derive the extension, so the name is put back.
         if (file.name != name) {

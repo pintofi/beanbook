@@ -20,7 +20,7 @@ import io.github.pintofi.beanbook.app.ui.NoticeTone
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
- * The other edition, described in the one that lacks what it adds (B81).
+ * The other edition, described in the one that lacks what it adds.
  *
  * Shown in the Play edition only, at the top of More, where people look for what the app can
  * do. It says what differs and where the editions are explained; it neither downloads nor
@@ -53,7 +53,7 @@ internal fun EditionNotice(
 }
 
 /**
- * The one mention that the project accepts donations, after a week of use (B81).
+ * The one mention that the project accepts donations, after a week of use.
  *
  * Nothing is locked and nothing changes whichever button is pressed; both answer it for good.
  * Absent when the edition has no support page -- the Play edition by policy, and every edition
@@ -94,7 +94,7 @@ internal fun SupportNotice(
 }
 
 /**
- * The support notice, when the week has passed and nobody has answered it (B81).
+ * The support notice, when the week has passed and nobody has answered it.
  *
  * Reads the app's own record directly: it is one fact about this install, and threading it
  * through the activity is what makes detekt's LargeClass bite there.
