@@ -13,11 +13,11 @@ plugins {
  * **Licence.** OpenCV 4.12.0 is Apache-2.0, which is not GPL-2.0-compatible in general — but
  * the resolution this project already uses covers it. GPL-2.0-only code (Beancount, Fava,
  * CPython) lives in the `:engine` process and nothing here touches it
- * (docs/architecture.md §7.1); the app process is where Apache-2.0 AndroidX and CameraX
+ * (docs/architecture.md); the app process is where Apache-2.0 AndroidX and CameraX
  * already are, and this joins them. No new exception is needed and none is claimed.
  *
- * Bundled, not downloaded: D1 and D3 forbid the Play edition fetching executable code, and a
- * dependency compiled into the APK is neither. Both editions get the scanner.
+ * Bundled, not downloaded: Google Play's policy forbids the Play edition fetching executable
+ * code, and a dependency compiled into the APK is neither. Both editions get the scanner.
  */
 android {
     namespace = "io.github.pintofi.beanbook.scanner"
