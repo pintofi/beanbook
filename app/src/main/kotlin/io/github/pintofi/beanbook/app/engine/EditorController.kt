@@ -155,7 +155,7 @@ class EditorController(
                     }
                     onSaved()
                     if (result.warnings.isEmpty()) "Saved."
-                    else "Saved. Beancount reports ${result.warnings.size} error(s) — see above."
+                    else "Saved. Beancount reports ${result.warnings.size} error(s); see above."
                 }
 
                 is WriteResult.Refused ->

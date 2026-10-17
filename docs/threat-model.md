@@ -10,7 +10,7 @@ network interactions. Revised as the app changes.
 | Asset | Why it matters |
 |---|---|
 | A1 Ledger files | The user's complete financial history. Loss or corruption is the worst outcome in this product. |
-| A2 Documents | Receipts, invoices, statements — often contain names, addresses, card fragments |
+| A2 Documents | Receipts, invoices, statements; they often contain names, addresses, card fragments |
 | A3 Remote credentials | Access to a self-hosted Fava, potentially the whole ledger |
 | A5 Backup archives | A1+A2 in one portable, exfiltratable file |
 | A6 App integrity | A tampered APK could exfiltrate everything above |
@@ -30,7 +30,7 @@ network interactions. Revised as the app changes.
 | T7 | Network attacker | TLS interception, downgrade, DNS spoofing |
 | T8 | Supply chain | Compromised PyPI/Maven dependency, compromised build machine, compromised signing key |
 | T9 | Device thief | Physical access to an unlocked or locked device |
-| T10 | The developer's own mistakes | Data-destroying bugs — statistically the most likely threat to A1 |
+| T10 | The developer's own mistakes | Data-destroying bugs, statistically the most likely threat to A1 |
 
 ---
 
@@ -44,7 +44,7 @@ timeout. `include` targets that escape the project root are reported, never foll
 silently. Files are read as bytes and decoded explicitly; encoding failures are errors,
 not silent replacements.
 
-### 3.2 Expert plugin execution — accepted residual risk
+### 3.2 Expert plugin execution: accepted residual risk
 
 User Python runs **in the engine process (`:engine`), with the app's permissions**: the same
 user id, so it can read and destroy the ledger, read anything the app can read, and use the
@@ -58,7 +58,7 @@ We therefore do not claim safety. We provide:
 - Provenance display: source path, import date, SHA-256, and a change alert when the file
   changes.
 - Execution logs with timestamps, arguments, working directory, exit status, and captured
-  output — with secret redaction.
+  output, with secret redaction.
 - **Safe mode:** no plugin or fetched package is loaded at all, and your choices are kept.
 - **Recovery:** a plugin that was loading when the app last died is turned off before the
   next start, and you are told.
@@ -123,7 +123,7 @@ report does nothing.
 
 ### 3.5 Remote mode (T5, T7)
 
-`https` and `http` are both accepted. Certificate errors are **fatal** — there is no "trust
+`https` and `http` are both accepted. Certificate errors are **fatal**: there is no "trust
 anyway" affordance in any build, and no `trustAll` code may exist in the repository
 (enforced by a secret/pattern scan in CI).
 
@@ -142,7 +142,7 @@ So cleartext is now the user's decision, made explicitly, with these properties:
   the transport contains no code that can rewrite a scheme (asserted in
   `CertificateIsFatalTest` and scanned in CI).
 - It is never silent. The remote screen shows what an `http` address means, in terms of the
-  user's ledger, while they are still typing — and says so more sharply when a password has
+  user's ledger, while they are still typing, and says so more sharply when a password has
   been entered, because that would go in the clear on every request.
 - The WebView origin allowlist still matches origins **exactly**, so an `https` allowlist
   cannot be satisfied by the `http` version of the same host.
@@ -192,11 +192,11 @@ no success is reported before a durable, re-parsed write.
   (the notice while work or sharing continues), `FOREGROUND_SERVICE` (with the data-sync and
   special-use types), `WAKE_LOCK` (held with a timeout while a save or install finishes),
   `ACCESS_NETWORK_STATE` (to find the Wi-Fi address when sharing) and `RECEIVE_BOOT_COMPLETED`
-  (added by the scheduler library for backups). No storage permissions — SAF only. No
+  (added by the scheduler library for backups). No storage permissions; SAF only. No
   location, contacts, or account access.
 
-**About `INTERNET`, stated plainly.** Android refuses socket creation without it —
-including a bind to `127.0.0.1` — so the app must declare `INTERNET` even in local-only
+**About `INTERNET`, stated plainly.** Android refuses socket creation without it,
+including a bind to `127.0.0.1`, so the app must declare `INTERNET` even in local-only
 mode, where it makes no outbound connections at all
 (measured). The permission list therefore
 overstates what the app does, and it is our job to close that gap rather than let users

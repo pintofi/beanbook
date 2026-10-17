@@ -204,8 +204,8 @@ class MirrorController(
         return when {
             plan.isClean -> "Everything is already in sync."
             plan.conflicts.isNotEmpty() ->
-                "$landed file(s) synced. ${plan.conflicts.size} need(s) your decision — " +
-                    "nothing was overwritten.$refusedNote"
+                "$landed file(s) synced. ${plan.conflicts.size} need(s) your decision. " +
+                    "Nothing was overwritten.$refusedNote"
             else -> "$landed file(s) synced.$refusedNote"
         }
     }

@@ -118,7 +118,7 @@ load each time, so they stay slow on a large ledger.
 
 ## Further reading
 
-- [known-limitations.md](known-limitations.md) — what the app does not do
-- [editions.md](editions.md) — Play against Expert, and supporting the project
-- [privacy.md](privacy.md) — what stays on the device
-- [storage-and-backup.md](storage-and-backup.md) — the storage model in technical detail
+- [known-limitations.md](known-limitations.md): what the app does not do
+- [editions.md](editions.md): Play against Expert, and supporting the project
+- [privacy.md](privacy.md): what stays on the device
+- [storage-and-backup.md](storage-and-backup.md): the storage model in technical detail

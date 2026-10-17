@@ -138,7 +138,7 @@ internal fun ChooseAccounts(
             return@Column
         }
         Text(
-            "Pick one account, or several — the widget shows a row for each.",
+            "Pick one account, or several. The widget shows a row for each.",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
         )
