@@ -80,7 +80,10 @@ android {
         applicationId = "io.github.pintofi.beanbook"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 1
+        // The release number. Each APK adds a one-digit ABI suffix to it (see androidComponents
+        // below), so 2 produces 20, 21 and 22. Raise this by one for every release, and
+        // versionName with it.
+        versionCode = 2
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -211,6 +214,25 @@ android {
             // copy keeps the "corpus/" prefix, which srcDir on the directory itself
             // would flatten away.
             assets.srcDir(layout.buildDirectory.dir("generated/corpusAssets").get().asFile)
+        }
+    }
+}
+
+// Each ABI APK needs its own versionCode: F-Droid and Android treat the files as separate
+// builds, and a phone must be offered the one that matches it. The code is the release number
+// times ten plus a suffix, so a later release always sorts above an earlier one whatever the
+// ABI. The universal APK, and the bundle Play splits itself, take the plain release number
+// times ten.
+val abiVersionSuffix = mapOf("x86_64" to 1, "arm64-v8a" to 2)
+
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            val abi = output.filters
+                .firstOrNull { it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI }
+                ?.identifier
+            val release = output.versionCode.orNull ?: error("versionCode is not set")
+            output.versionCode.set(release * 10 + (abiVersionSuffix[abi] ?: 0))
         }
     }
 }

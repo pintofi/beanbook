@@ -110,6 +110,20 @@ jobs:
           fi
           echo "every release APK is signed"
 
+      - name: Each APK carries its own version code
+        # F-Droid and Android treat the per-ABI files as separate builds, so two of them with
+        # the same versionCode would make one unreachable. app/build.gradle.kts derives them
+        # as release number * 10 + an ABI suffix; this checks what the APKs actually say.
+        run: |
+          AAPT2="$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)"
+          release="$(sed -n 's/^ *versionCode = \([0-9]*\)$/\1/p' app/build.gradle.kts | head -1)"
+          for pair in universal:0 x86_64:1 arm64-v8a:2; do
+            abi="${pair%%:*}"; want=$((release * 10 + ${pair##*:}))
+            got="$("$AAPT2" dump badging "app/build/outputs/apk/expert/release/app-expert-$abi-release.apk" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p")"
+            echo "$abi: versionCode $got (expected $want)"
+            test "$got" = "$want"
+          done
+
       - name: Name the files and write their checksums
         # Files are published as beanbook-<version>-<abi>.apk, copied out of Gradle's
         # per-flavour folders. Only the Expert edition is published here (it is also what F-Droid verifies
