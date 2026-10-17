@@ -30,14 +30,14 @@ sealed interface SubmitResult {
 }
 
 /**
- * A self-hosted Fava, spoken to over HTTPS (docs/feasibility/s12-fava-api.md).
+ * A self-hosted Fava, spoken to over HTTP or HTTPS.
  *
  * The idempotency rule is the reason this class exists rather than a handful of request
  * helpers. **Fava does not deduplicate**: two identical `PUT`s create two identical
  * transactions, and a submit that times out leaves the client genuinely unable to tell
  * whether the server got it. So every submission carries a key in its metadata, and any
  * retry asks the server whether that key is already there *before* sending anything
- * (SPEC.md J4: a retried submit cannot create a duplicate entry).
+ * (the rule: a retried submit cannot create a duplicate entry).
  */
 class FavaClient(
     private val address: RemoteAddress,
@@ -200,8 +200,21 @@ class FavaClient(
     private fun slugFrom(response: RemoteResponse): String? {
         val location = response.location ?: return null
         // "https://host/probe/income_statement/" or "/probe/income_statement/"
-        val path = location.substringAfter("://").substringAfter('/')
-        return path.trim('/').split('/').firstOrNull()?.takeIf { it.isNotBlank() }
+        var path = if ("://" in location) {
+            location.substringAfter("://").substringAfter('/', "")
+        } else {
+            location
+        }.trimStart('/')
+        // A server mounted under a prefix redirects to "/fava/probe/...": the prefix is part
+        // of the address already, not the slug.
+        val prefix = address.basePath.trim('/')
+        if (prefix.isNotEmpty() && (path == prefix || path.startsWith("$prefix/"))) {
+            path = path.removePrefix(prefix).trimStart('/')
+        }
+        val slug = path.split('/').firstOrNull().orEmpty()
+        // The slug is spliced into every later URL, and it comes from the network. Anything
+        // that is not a plain path segment is treated as "not a Fava server".
+        return slug.takeIf { SLUG.matches(it) && it != "." && it != ".." }
     }
 
     internal fun versionsFrom(body: String): Pair<String?, String?> {
@@ -218,6 +231,7 @@ class FavaClient(
 
         fun newKey(): String = UUID.randomUUID().toString()
 
+        private val SLUG = Regex("[A-Za-z0-9._~%-]+")
         private val CODE = Regex("<code>([^<]+)</code>")
         private val ROWS = Regex("\"rows\"\\s*:\\s*\\[(.*?)]", RegexOption.DOT_MATCHES_ALL)
 

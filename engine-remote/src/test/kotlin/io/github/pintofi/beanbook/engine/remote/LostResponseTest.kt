@@ -22,7 +22,7 @@ import kotlin.test.assertIs
  * same idempotency key, from a single call to [FavaClient.submit]. Nothing in this codebase
  * sent it twice. The platform HTTP stack did: with a buffered request body it may re-send the
  * whole request when the connection dies before the response arrives, and Fava does not
- * deduplicate (docs/feasibility/s12-fava-api.md). The app reported one success.
+ * deduplicate. The app reported one success.
  *
  * The fix is that [PlatformTransport] streams the body, which makes it unreplayable. This test
  * is the proof: the server accepts the request and then drops the connection without

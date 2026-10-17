@@ -14,11 +14,11 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * A retried submit cannot create a duplicate (SPEC.md, J4).
+ * A retried submit cannot create a duplicate.
  *
  * The fake server here **behaves like the real one**: it stores whatever it is sent, every
  * time, with no deduplication of its own — because that is what Fava 1.30.15 actually does
- * (docs/feasibility/s12-fava-api.md). If the client's protection is wrong, these tests show
+ * (checked against a running Fava). If the client's protection is wrong, these tests show
  * two entries where there should be one.
  *
  * It speaks plain HTTP on loopback so the test exercises request shaping and the retry rule;
@@ -193,7 +193,7 @@ class IdempotencyTest {
         // Fava answers queries from the ledger it holds in memory and only re-reads the file
         // when a request makes it check. Without this the query says "not there" about an
         // entry that is already on disk, and the retry writes a second copy — which is
-        // exactly what happened on a device (docs/milestones/m10.md).
+        // exactly what happened on a device.
         val client = clientFor(start())
         client.submit("probe", draft, key = "key-1")
         requests.clear()
