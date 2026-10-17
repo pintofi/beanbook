@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Preview shown in the widget picker (B93), with figures from the household ledger the site's
+  Preview shown in the widget picker, with figures from the household ledger the site's
   screenshots use (fixtures/site-screenshots/household). Only a picture.
 
   The paper and the rule are ImageViews rather than a background drawable so the renderer can
-  colour them from the app's appearance settings: wallpaper accent, dark, AMOLED (B92).
+  colour them from the app's appearance settings: wallpaper accent, dark, AMOLED.
   RemoteViews can tint an ImageView on every supported API; a background tint needs API 31.
 
-  The + in the corner adds an entry (B93). It replaced a widget of its own that did nothing
+  The + in the corner adds an entry. It replaced a widget of its own that did nothing
   else, so adding an entry is one tap from the figures a person already keeps on the screen.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"

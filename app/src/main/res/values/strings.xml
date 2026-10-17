@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Beanbook</string>
-    <!-- The widget picker's line under each widget (B93). -->
+    <!-- The widget picker's line under each widget. -->
     <string name="widget_preview_balance_description">One account, or several in a list that scrolls, with + to add an entry</string>
     <string name="widget_preview_networth_description">Your net worth, with + to add an entry</string>
 </resources>
