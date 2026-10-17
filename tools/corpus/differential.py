@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 import subprocess
 import sys
 import time
@@ -26,7 +27,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "engine-local/src/main/python"))
 
-import ledger  # noqa: E402  (path set above, deliberately)
+import ledger
 
 
 def cases(corpus: Path) -> list[Path]:
@@ -60,8 +61,6 @@ def run(corpus: Path, out: Path, record: bool) -> int:
 
         baseline = out / f"{case.name}.json"
         checked = bean_check_errors(main)
-        our_errors = digest.count('"message"') and None  # placeholder, computed below
-        import json
 
         our_error_count = json.loads(digest)["error_count"]
 

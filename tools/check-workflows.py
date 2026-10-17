@@ -1,7 +1,7 @@
 """Checks that every GitHub workflow is valid YAML and declares what it claims to.
 
 This exists because `verify.yml` was **malformed from the day it was written** and nobody
-noticed for thirteen milestones. A `run:` step contained `echo "TODO(M13): ..."`, and a plain
+noticed for thirteen milestones. A `run:` step contained `echo "TODO: ..."`, and a plain
 YAML scalar cannot contain `": "` — so the file never parsed, GitHub never loaded it, and CI
 never ran. Every gate in it — the TLS-bypass scan, the escaped-template scan, the SSL-proceed
 check, the process-separation check — had only ever run because someone invoked it by hand.
@@ -56,7 +56,7 @@ def main() -> int:
         # A key present with no value parses as None and GitHub refuses the whole file,
         # producing a run with zero jobs and no error anywhere a person will look. That is
         # how an `env:` block containing only comments reached CI and broke it
-        # (docs/milestones/m14-part20.md): this checker passed it, because `env: null` is
+        #: this checker passed it, because `env: null` is
         # perfectly good YAML.
         for key in ("env", "jobs", "defaults", "permissions", "concurrency"):
             if key in document and document[key] is None:

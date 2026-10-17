@@ -35,7 +35,7 @@
 set -uo pipefail
 
 WORKFLOW="${1:-.github/workflows/verify.yml}"
-PASS=0; FAIL=0; SKIP=0
+PASS=0; FAIL=0
 FAILED_STEPS=()
 STATE="$(mktemp -d)"
 trap 'rm -rf "$STATE"' EXIT

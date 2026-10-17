@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Times the three phases of a cold engine start, separately (SPEC §6, V3).
+# Times the three phases of a cold engine start, separately.
 #
 # Not an instrumentation test, deliberately. The numbers only mean anything in a process that
 # has not already started Python, and a JUnit suite cannot promise that: run inside the full
 # suite, the same code measured a warm start and asserted against a cold-start threshold, which
-# is exactly the order-dependence that made KeySecrecyTest report a phantom key leak
-# (docs/milestones/m14-part17.md). A measurement that needs a fresh process is a measurement,
-# not an invariant, and belongs here.
+# is exactly the order-dependence that made KeySecrecyTest report a phantom key leak.
+# A measurement that needs a fresh process is a measurement, not an invariant, and belongs
+# here.
 #
 #   tools/measure-cold-start.sh [serial]
 #
-# M3 measured 7,718 ms end to end on a Galaxy A16 against an 8 s budget and concluded the cost
-# was module import. This separates interpreter start-up from import from parsing, which is
+# An earlier run measured 7,718 ms end to end on a mid-range phone against an 8 s budget and
+# concluded the cost was module import. This separates interpreter start-up from import from parsing, which is
 # what that conclusion needed and never had.
 set -euo pipefail
 
