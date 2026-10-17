@@ -1,9 +1,7 @@
 name: verify
 
-# The M1 gate. Every check here must pass before a change lands.
-# Instrumentation, corpus and accessibility gates are added by the milestones that
-# introduce them (PLAN.md, "Test strategy") — this file grows with the app rather than
-# listing jobs that do not exist yet.
+# The gate. Every check here must pass before a change lands. Instrumentation tests need an
+# emulator and are run by hand; this file lists only what runs on a plain runner.
 
 on:
   # Callable so a release runs exactly the same gates as a push.
@@ -12,6 +10,10 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+
+# Nothing here writes to the repository. A caller that needs more (the release) says so itself.
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -31,8 +33,7 @@ jobs:
           java-version: '21'
 
       - name: Set up Python 3.13 for Chaquopy's pip
-        # Chaquopy needs a host interpreter matching the embedded runtime's minor version
-        # (Phase 0 finding).
+        # Chaquopy needs a host interpreter matching the embedded runtime's minor version.
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.13'
@@ -53,28 +54,41 @@ jobs:
           echo "BCA_WHEEL_DIR=$WHEELS" >> "$GITHUB_ENV"
 
       - name: Unit tests
-        # Every module with tests, not two of them. This ran :core-domain and
-        # :core-engine only, so :core-data and :engine-remote — the tests between
-        # them — were never going to run in CI even once the workflow
-        # could be loaded at all.
+        # Every module with tests.
         run: >-
           ./gradlew :core-domain:test :core-data:test :core-engine:test :app:testPlayDebugUnitTest
           :engine-remote:test -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
 
       - name: Reproducible Python bytecode
         # Hash-based .pyc rather than timestamp-based, so two builds of the same commit are
-        # byte-identical (docs/milestones/m14-part18.md). Derived from the commit, so a
-        # different commit is still allowed to differ.
+        # byte-identical. Derived from the commit, so a different commit is still allowed to
+        # differ.
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
       - name: detekt
         # Static analysis across every module. It earned its place on the first run: an
-        # accessibility helper written in M6 and never wired up, so every amount was
-        # announced as raw text (docs/milestones/m14-part16.md).
+        # accessibility helper that was never wired up, so every amount was announced as raw
+        # text.
         run: ./gradlew detekt -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
 
       - name: Play flavor boundaries
         run: ./gradlew :app:verifyPlayFlavorBoundaries -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
+
+  python:
+    name: Python engine tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.13'
+      - name: The writer, the engine gate, the ledger reader and the plugin runner
+        # The tests of engine-local/src/main/python, which holds the logic that computes what
+        # gets written to a ledger. They need Beancount at the version the app ships and
+        # nothing else.
+        run: |
+          pip install --quiet "beancount==3.2.3"
+          python -m unittest discover -s engine-local/src/test/python
 
   workflows:
     name: Workflows are valid
@@ -82,8 +96,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Every workflow parses and has runnable jobs
-        # verify.yml was malformed from the day it was written and nobody noticed for
-        # thirteen milestones: GitHub never loaded it, so none of these gates ever ran.
+        # This file was once malformed and GitHub never loaded it, so none of its gates ran.
         # A gate that has never executed is not a gate.
         run: |
           pip install --quiet pyyaml
@@ -96,8 +109,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: No trustAll TLS anywhere in the repository
-        # CLAUDE.md, non-negotiable: certificate errors are fatal and no trustAll code may
-        # exist in this repository.
+        # Non-negotiable: certificate errors are fatal and no trustAll code may exist in this
+        # repository.
         run: |
           if grep -arnE 'trustAll|TrustAllCerts|ALLOW_ALL_HOSTNAME|checkServerTrusted\s*\([^)]*\)\s*\{\s*\}' \
               --include='*.kt' --include='*.java' --include='*.py' . ; then
@@ -139,7 +152,7 @@ jobs:
         # Cleartext is allowed in remote mode, but only when the user typed http:// in full.
         # A scheme rewrite anywhere in the transport or client would turn "https" into a
         # suggestion, and it would look like ordinary string handling in review
-        # (docs/threat-model.md 3.5).
+        # (docs/threat-model.md, section 3.5).
         run: |
           if grep -arnE '"https".*(replace|removePrefix).*"http"|replace\(\s*"https"|"http://" *\+ *(host|origin|address)' \
               --include='*.kt' engine-remote/src/main app/src/main ; then
@@ -150,8 +163,7 @@ jobs:
 
       - name: No way past a certificate error in the WebView
         # onReceivedSslError must cancel, never proceed. A single proceed() call there is a
-        # working "accept anyway" button, and it looks like ordinary error handling in review
-        # (CLAUDE.md, security rules).
+        # working "accept anyway" button, and it looks like ordinary error handling in review.
         run: |
           if grep -arn -A20 'onReceivedSslError' --include='*.kt' . | grep -E 'handler\.proceed|\bproceed\(\)' ; then
             echo "::error::an SSL error handler proceeds past a bad certificate"
@@ -161,8 +173,8 @@ jobs:
 
       - name: No escaped string templates in user-facing text
         # "${'$'}{value}" prints the template literally instead of interpolating it. It has
-        # shipped twice in this app — a key banner and three save messages — and is invisible
-        # until the exact state that renders it occurs (docs/milestones/m7.md, m8.md).
+        # shipped twice in this app and is invisible until the exact state that renders it
+        # occurs.
         run: |
           if git grep -nF -- "\${'\$'}" -- '*.kt' ; then
             echo "::error::escaped string template found; it will print literally"
@@ -173,7 +185,7 @@ jobs:
       - name: Every Python pin carries a hash
         # pip enforces this during the build, but only for the packages it reaches. A pin
         # that loses its hash lines in a hand-edit would quietly leave --require-hashes
-        # mode for the whole file, and nothing would say so (docs/milestones/m14-part9.md).
+        # mode for the whole file, and nothing would say so.
         run: |
           python3 - <<'CHECK'
           import re, sys
@@ -186,9 +198,8 @@ jobs:
           CHECK
 
       - name: The licence is present and is GPL-2.0-only
-        # The repository declared itself GPL-2.0-only in CLAUDE.md for thirteen milestones
-        # and shipped no licence text at all (docs/milestones/m14-part11.md). GPLv3 is
-        # named here because Beancount is explicitly "not or later": a v3 text would not be
+        # The repository once declared itself GPL-2.0-only and shipped no licence text at all.
+        # GPLv3 is named here because Beancount is explicitly "not or later": a v3 text would not be
         # a formatting slip, it would be a licence this project cannot use.
         run: |
           if [ ! -s COPYING ]; then
@@ -211,8 +222,7 @@ jobs:
             echo "::error::key material committed to the repository"
             exit 1
           fi
-          # The contribution-key signing key lives in the private issuance repo and must
-          # never be pasted into a source file here (docs/distribution.md 4.6).
+          # No private key may be pasted into a source file here.
           if git grep -nE 'BEGIN [A-Z ]*PRIVATE KEY' -- . ; then
             echo "::error::a private key is embedded in a tracked file"
             exit 1
@@ -255,8 +265,8 @@ jobs:
         run: tools/build-wheels.sh --out wheels
 
       - name: No build-machine paths in the wheels
-        # The August wheels carried the maintainer's home directory in 25 strings, from
-        # Rust panic metadata and maturin's SBOM (docs/milestones/m14-part8.md).
+        # Earlier wheels carried the build machine's home directory in 25 strings, from Rust
+        # panic metadata and maturin's SBOM.
         run: python3 tools/check-build-paths.py wheels/*.whl
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -292,10 +302,10 @@ jobs:
           echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
       - name: Build twice and compare
-        # SPEC.md 7 asks for reproducible builds. Until M14 two clean builds of the same
-        # commit differed in 840 .pyc files, each carrying its source's mtime; with
-        # SOURCE_DATE_EPOCH set, CPython emits hash-based .pyc and the APKs are byte-identical
-        # (docs/milestones/m14-part18.md). This builds twice rather than trusting that.
+        # Builds must be reproducible. Two clean builds of the same commit once differed in 840
+        # .pyc files, each carrying its source's mtime; with SOURCE_DATE_EPOCH set, CPython
+        # emits hash-based .pyc and the APKs are byte-identical. This builds twice rather than
+        # trusting that.
         run: |
           set -eu
           build() {
@@ -329,14 +339,14 @@ jobs:
 
       - name: Reproducible Python bytecode
         # Hash-based .pyc rather than timestamp-based, so two builds of the same commit are
-        # byte-identical (docs/milestones/m14-part18.md). Derived from the commit, so a
-        # different commit is still allowed to differ.
+        # byte-identical. Derived from the commit, so a different commit is still allowed to
+        # differ.
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
       - name: Check the wheels are here
-        # Until M14 this step echoed a TODO and exited 0, so the build failed two steps
-        # later with a confusing error instead of here with a clear one. beancount and
-        # watchfiles have no upstream Android wheels: without them nothing assembles.
+        # Fails here with a clear message rather than two steps later with a confusing one.
+        # beancount and watchfiles have no upstream Android wheels: without them nothing
+        # assembles.
         run: |
           WHEELS="${BCA_WHEEL_DIR:-${GITHUB_WORKSPACE:-$PWD}/wheels}"
           if [ -z "$(ls -A "$WHEELS"/*.whl 2>/dev/null)" ]; then
@@ -345,7 +355,7 @@ jobs:
           fi
           ls "$WHEELS"
           # The cross-built wheels are pinned by hash in a generated file, because their
-          # bytes differ per build and cannot be committed (m14-part9.md). This job is a
+          # bytes differ per build and cannot be committed. This job is a
           # fresh checkout, so it writes its own from the wheels it actually has.
           python3 tools/lock-python.py --refresh-local --wheel-dir "$WHEELS"
           [ -n "${GITHUB_ENV:-}" ] && echo "BCA_WHEEL_DIR=$WHEELS" >> "$GITHUB_ENV"
@@ -358,7 +368,7 @@ jobs:
 
       - name: minSdk symbol gate
         # Fails if any bundled .so needs a symbol newer than minSdk — the failure mode
-        # that only shows up on old devices (docs/feasibility/r1-minsdk28.md).
+        # that only shows up on old devices.
         run: |
           APK=$(find app/build/outputs/apk -name '*play-arm64-v8a-debug*.apk' | head -1)
           python3 tools/check-minsdk-symbols.py "$APK" --api 29 --abi arm64-v8a
@@ -366,7 +376,7 @@ jobs:
       - name: The licence notices match what the APK ships
         # licences.json is generated from a built APK and committed, so it can drift — and a
         # drifted licence file is not untidiness, it is a component shipping with no notice
-        # a user can read (docs/milestones/m14-part15.md).
+        # a user can read.
         run: |
           APK=$(find app/build/outputs/apk -name '*expert-arm64-v8a-debug*.apk' | head -1)
           python3 tools/licences.py --apk "$APK" --check
@@ -379,7 +389,7 @@ jobs:
       - name: Android Lint
         # Lives here, not in the jvm job: lint builds the app's assets, which means it needs
         # the cross-built wheels. In the jvm job it would have failed on a real runner for
-        # exactly the reason N16 describes (docs/milestones/m14-part9.md).
+        # exactly that reason.
         run: >-
           ./gradlew :app:lintPlayDebug :app:lintExpertDebug
           -Pbeancount.wheelDir="$BCA_WHEEL_DIR"

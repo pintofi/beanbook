@@ -7,8 +7,8 @@ plugins {
     alias(libs.plugins.detekt)
 }
 
-// Kotlin static analysis across every module, from one config (N2). CLAUDE.md forbids
-// blanket suppressions, so the config below turns rules off by name with a reason rather
+// Kotlin static analysis across every module, from one config. Blanket suppressions are not
+// used, so the config below turns rules off by name with a reason rather
 // than silencing findings at the call site.
 subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")

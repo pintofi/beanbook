@@ -22,8 +22,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "beancount-android"
 
-// Only modules with real content exist. Others are added by the milestone that fills them
-// (see PLAN.md); an empty module is a placeholder, and placeholders are forbidden.
+// Only modules with real content exist: an empty module is a placeholder, and placeholders
+// are not wanted.
 include(":core-domain")     // pure Kotlin, holds the data invariants
 include(":core-data")      // workspace layout and project files
 include(":core-engine")     // EngineClient boundary + flavor policy types
