@@ -61,7 +61,7 @@ enum class DocumentsMode(val label: String) {
 
 /**
  * Attach a document: photograph the pages, put them in order, and file them against an
- * account (SPEC.md, J3).
+ * account.
  *
  * The camera is only bound while this screen is on top, and it is released the moment it
  * goes away — a finance app holding the camera open in the background would be indefensible,
@@ -85,7 +85,7 @@ fun DocumentsScreen(
     onUnlink: (String, String?) -> Unit,
     onDeleteFile: (String) -> Unit,
     onShare: (String) -> Unit,
-    /** The document on disk, so it can be read here rather than handed to another app (B57). */
+    /** The document on disk, so it can be read here rather than handed to another app. */
     fileForDocument: ((String) -> java.io.File)? = null,
     modifier: Modifier = Modifier,
     message: String? = null,
@@ -94,7 +94,7 @@ fun DocumentsScreen(
      * the screen can be rendered — and its accessibility checked — without a camera.
      */
     hasCamera: Boolean = rememberCameraPermission(),
-    /** What this ledger calls its five trees, for the account this screen pre-selects (B70). */
+    /** What this ledger calls its five trees, for the account this screen pre-selects. */
     names: io.github.pintofi.beanbook.core.domain.AccountNames =
         io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
 ) {
@@ -103,7 +103,7 @@ fun DocumentsScreen(
             vocabulary.accounts.firstOrNull { it.startsWith(names.expenses) }.orEmpty(),
         )
     }
-    // What to call it (B57). Optional: the name only changes how a folder of documents
+    // What to call it. Optional: the name only changes how a folder of documents
     // reads, and a document with no name is filed exactly as it always was.
     var label by rememberSaveable { mutableStateOf("") }
     var granted by remember(hasCamera) { mutableStateOf(hasCamera) }
@@ -118,8 +118,8 @@ fun DocumentsScreen(
     val askForCamera = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted = it }
-    // A file the person already has -- an emailed invoice, a saved PDF -- filed as it is
-    // (B89), the way the entry form has offered since B80. The picker needs no permission.
+    // A file the person already has -- an emailed invoice, a saved PDF -- filed as it is,
+    // the way the entry form also offers. The picker needs no permission.
     val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) capture.onAttachFile(uri)
     }
@@ -198,7 +198,7 @@ fun DocumentsScreen(
 
         if (!capture.pages.isEmpty) {
             LedgerHeading("Pages")
-            // Thumbnails, and one way in (B58): tapping a page opens the editor, where a
+            // Thumbnails, and one way in: tapping a page opens the editor, where a
             // page is rotated, cropped and re-rendered on the page itself rather than
             // through four text buttons in a form row.
             Row(
@@ -289,7 +289,7 @@ fun DocumentsScreen(
                         val open = path in expanded
                         // A row that reads as a control rather than as a line of text: it
                         // toggles a disclosure, so it carries a chevron and announces itself
-                        // as a button (B54).
+                        // as a button.
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -347,7 +347,7 @@ fun DocumentsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         // The detail pushes the rows below it down rather than appearing in a
-                        // gap that was already there (B76).
+                        // gap that was already there.
                         LedgerReveal(visible = open, label = "documentDetail") {
                             Column {
                                 Text(path, style = LedgerType.small)
@@ -391,7 +391,7 @@ fun DocumentsScreen(
                             // one has no file left. Showing them anyway would offer an
                             // action whose only possible outcome is an error.
                             // Anything the ledger says about this file counts as a link, not
-                            // just a `document` directive (B69): an entry that attaches it as
+                            // just a `document` directive: an entry that attaches it as
                             // `document:` metadata is a link too, and hiding Unlink for those
                             // left a document listed as attached with no way to detach it.
                             if (row.linked) {
@@ -446,7 +446,7 @@ fun DocumentsScreen(
 
     cropping?.let { index ->
         capture.pages.pages.getOrNull(index)?.let { page ->
-            // Over the whole screen, not in a card (B73). This screen scrolls and is not
+            // Over the whole screen, not in a card. This screen scrolls and is not
             // full-bleed itself, so the crop comes as a dialog with the platform's width
             // limit turned off -- the ordinary way to give a screen-sized task a screen.
             androidx.compose.ui.window.Dialog(
@@ -533,7 +533,7 @@ fun DocumentsScreen(
             text = {
                 // Unlinking cannot undo the folder. A dated file in an account folder is read
                 // back as filed there on the next load, so the dialog says so before the act
-                // rather than leaving the row looking unchanged (B92).
+                // rather than leaving the row looking unchanged.
                 val folderNote = if (
                     removal == DocumentRemoval.UNLINK && inAccountFolder(path)
                 ) {

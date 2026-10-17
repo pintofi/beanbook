@@ -69,7 +69,7 @@ import java.time.LocalDate
  * What the app opens on: what the ledger says, before what it contains.
  *
  * It used to be three figures and the five most recent entries, and the entries were the
- * Journal with a lower row count -- a second copy of a screen one tap away (B71). What a home
+ * Journal with a lower row count -- a second copy of a screen one tap away. What a home
  * screen can do that a list cannot is *total*, *compare* and *point at what needs a person*,
  * so that is what it does now: where the money went by category against the period before,
  * everything that needs attention gathered from the four screens it was scattered across, and
@@ -88,7 +88,7 @@ fun HomeScreen(
     ledger: LedgerSnapshot?,
     hideAmounts: Boolean,
     modifier: Modifier = Modifier,
-    /** What the documents screen reconciled, so Home can say it without looking (B71). */
+    /** What the documents screen reconciled, so Home can say it without looking. */
     unfiledDocuments: Int = 0,
     brokenDocumentLinks: Int = 0,
     mirrorConflicts: Int = 0,
@@ -100,9 +100,9 @@ fun HomeScreen(
     today: LocalDate = LocalDate.now(),
     layout: HomePreferences.Layout? = null,
     onLayoutChange: (HomePreferences.Layout) -> Unit = {},
-    /** Above the cards: the one-time support notice, when it is due (B81). */
+    /** Above the cards: the one-time support notice, when it is due. */
     header: @Composable () -> Unit = {},
-    /** The ledger went from errors to none while the app was open: stamp it (B87). */
+    /** The ledger went from errors to none while the app was open: stamp it. */
     stamped: Boolean = false,
     /** Opens Balances, where a headline's left-out commodities are listed in full. */
     onOpenBalances: () -> Unit = {},
@@ -143,9 +143,9 @@ fun HomeScreen(
     }
 
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
-        // Two columns once the window is wide enough for two readable ones (design-direction
-        // §8): in landscape the single column used about 55% of the width and left the rest
-        // empty (device audit 2026-10-10). Cards keep the person's order, read left then right.
+        // Two columns once the window is wide enough for two readable ones: in landscape the
+        // single column used about 55% of the width and left the rest empty (device audit
+        // 2026-10-10). Cards keep the person's order, read left then right.
         val twoColumns = maxWidth >= TWO_COLUMN_WIDTH
         Column(
             modifier = Modifier
@@ -224,14 +224,14 @@ private fun FiguresCard(
     onOpenBalances: () -> Unit,
     onValuation: (Valuation) -> Unit,
 ) {
-    val summary = LedgerSummary.of(ledger, valuation)
+    val summary = remember(ledger, valuation) { LedgerSummary.of(ledger, valuation) }
     val totals = remember(ledger, valuation) { LedgerSummary.totals(ledger, valuation) }
-    // The one signature composition in the app (B74): the headline figure set large in the
+    // The one signature composition in the app: the headline figure set large in the
     // figure face, hung off the column rule, with the two supporting figures under it in a
     // ruled pair. No card, no container -- this is the page itself, which is why it reads as
     // a ledger rather than as a dashboard tile.
     RuledColumn {
-        // Capped at three commodities and "+N more" (design-direction §5): in Units a ledger
+        // Capped at three commodities and "+N more": in Units a ledger
         // of twenty holdings stacked twenty 34sp lines here, taller than the screen.
         val headline = remember(totals, ledger.operatingCurrencies) {
             io.github.pintofi.beanbook.core.domain.HeadlineFigures.of(totals.netWorth, ledger.operatingCurrencies)
@@ -276,7 +276,7 @@ private fun FiguresCard(
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(Measure.gap))
-        // Labelled with this ledger's own names for the two trees (B70), because the
+        // Labelled with this ledger's own names for the two trees, because the
         // figures beneath them are the totals of exactly those trees. One description per
         // tile, so a screen reader says "Income, 3000.00 USD" rather than reading a number
         // and a word as two unrelated things.
@@ -397,7 +397,7 @@ private fun shown(value: String?, hideAmounts: Boolean): String = when {
 }
 
 /**
- * Where the money went, by category, against the period before (B71).
+ * Where the money went, by category, against the period before.
  *
  * A bar per category rather than a chart: the question is which two or three categories the
  * month went on, and a proportion is read faster as a length than as a percentage. The change
@@ -570,7 +570,7 @@ private fun AttentionCard(
     // announcing that nothing is wrong is the app congratulating itself.
     // What needs a person changes while the app is open -- a document is filed, a mirror
     // conflict is resolved -- so the two states dissolve into each other rather than
-    // replacing each other between frames (B76).
+    // replacing each other between frames.
     io.github.pintofi.beanbook.app.ui.LedgerContent(
         targetState = items,
         label = "attention",
@@ -589,7 +589,7 @@ private fun AttentionCard(
                     modifier = Modifier.padding(start = Measure.gap).weight(1f),
                 )
                 // Stamped beside the line that says so, when the last error has just been
-                // fixed (B87): on the ledger's own health line, in space the text leaves, so
+                // fixed: on the ledger's own health line, in space the text leaves, so
                 // it adds no row and covers no figure.
                 if (stamped) {
                     InBalanceStamp(size = 64.dp, modifier = Modifier.padding(start = Measure.gap))
@@ -599,7 +599,7 @@ private fun AttentionCard(
         return@LedgerContent
     }
 
-    // Calm ground, marked items (design-direction §3): the attention marks and the heading carry
+    // Calm ground, marked items: the attention marks and the heading carry
     // the alarm, so one ordinary error no longer turns a third of Home red.
     Notice(NoticeTone.QUIET) {
         Text(
@@ -692,7 +692,7 @@ private fun PendingCard(
 }
 
 /**
- * Choose the cards, their order, and how the spending card is set up (B71).
+ * Choose the cards, their order, and how the spending card is set up.
  *
  * A bottom sheet rather than a dialog (device audit 2026-10-10): the dialog stood at 60% of the
  * screen over the page it was changing, with its controls at the top where a thumb is not. The
@@ -718,7 +718,7 @@ private fun CustomiseHomeSheet(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(
-            // Clear of the navigation bar (B98): Save and Cancel sat under the gesture bar,
+            // Clear of the navigation bar: Save and Cancel sat under the gesture bar,
             // half drawn, until the sheet was scrolled.
             modifier = Modifier
                 .verticalScroll(rememberScrollState())
@@ -929,7 +929,7 @@ private fun EntryRow(
     hideAmounts: Boolean,
     onOpen: (JournalEntry) -> Unit,
     mark: LedgerMark = markOf(entry),
-    /** How the open ledger asks its figures to be written (B59). */
+    /** How the open ledger asks its figures to be written. */
     format: LedgerFormat = LedgerFormat.PLAIN,
 ) {
     val amount = entry.postings.firstOrNull()?.amount
@@ -972,7 +972,7 @@ private fun EntryRow(
 }
 
 /**
- * Whether Home's figures have rolled in yet in this process (B87). Once per launch: the opening
+ * Whether Home's figures have rolled in yet in this process. Once per launch: the opening
  * flourish belongs to opening the app, not to every return to Home.
  */
 internal object HomeIntro {

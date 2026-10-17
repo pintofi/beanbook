@@ -57,7 +57,11 @@ class DocumentCapture(
     /** A fresh file for the next capture. Names are sequential so page order starts sane. */
     fun nextCaptureFile(): File {
         captureDir.mkdirs()
-        return File(captureDir, "page-${System.currentTimeMillis()}.jpg")
+        // Never a name already taken: two pictures brought in within the same millisecond
+        // would otherwise be written to one file, and one page would silently become the other.
+        var stamp = System.currentTimeMillis()
+        while (File(captureDir, "page-$stamp.jpg").exists()) stamp += 1
+        return File(captureDir, "page-$stamp.jpg")
     }
 
     /**

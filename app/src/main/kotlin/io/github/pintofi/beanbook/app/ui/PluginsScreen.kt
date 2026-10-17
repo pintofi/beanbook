@@ -51,7 +51,7 @@ import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
  * use it in-process, so the app does not claim safety (docs/threat-model.md §3.2). That
  * warning sits above the list, not behind a link.
  *
- * Built from folios like every other page of controls (design-direction §7); every installed
+ * Built from folios like every other page of controls; every installed
  * plugin has a status line, filled from [status] (PluginStatus).
  */
 @Composable
@@ -77,7 +77,7 @@ fun PluginsScreen(
 
         UnsandboxedWarning(policy)
 
-        // Adding a plugin from a file is only for the edition that cannot download one (B89):
+        // Adding a plugin from a file is only for the edition that cannot download one:
         // in Expert the list below installs everything it offers, and the file route was
         // noise beside it.
         if (!packages.catalogue.canInstall) {
@@ -119,7 +119,7 @@ fun PluginsScreen(
         PackagesSection(policy, packages, noPluginsLeft = rows.isEmpty() && packages.catalogue.installed.isEmpty())
 
         // Last, because it is the way out when a plugin breaks loading, not something set
-        // on every visit (B89). The whole row toggles, not just the switch at its edge.
+        // on every visit. The whole row toggles, not just the switch at its edge.
         FolioHeading("When a plugin stops the ledger opening")
         FolioGroup {
             item {
@@ -393,7 +393,7 @@ private fun PackagesSection(
     )
 
     if (installed.isNotEmpty()) {
-        // One row per package (B66), and one per *package*, not per folder (device audit
+        // One row per package, and one per *package*, not per folder (device audit
         // 2026-10-10): `numpy`, `numpy-2.1.3.dist-info` and `numpy.libs` are one thing to a
         // person, "numpy 2.1.3".
         val grouped = remember(installed) { groupFetched(installed) }
@@ -412,15 +412,27 @@ private fun PackagesSection(
             }
         }
         if (noPluginsLeft) {
-            // Item 21's other half, as far as it can honestly go. A package is fetched by
+            // As far as this can honestly go: a package is fetched by
             // name because the user asked for it, not declared by a plugin, so the app
             // has no dependency graph to work out which packages a removed plugin was the
             // only user of. What it can say truthfully is that nothing is left to use
             // them, and offer the removal that already exists.
             FolioNote("No plugins are installed any more, and these are only useful to plugins.")
         }
+        var confirmingRemoval by remember { mutableStateOf(false) }
+        if (confirmingRemoval) {
+            ConfirmRemoval(
+                title = "Remove every fetched package?",
+                body = "All ${grouped.size} package(s) fetched for plugins are deleted from this " +
+                    "device. Plugins that need them stop working until you fetch them again, " +
+                    "which downloads them again. Your ledger and the plugins themselves are not touched.",
+                action = "Remove",
+                onConfirm = onRemoveAll,
+                onDismiss = { confirmingRemoval = false },
+            )
+        }
         OutlinedButton(
-            onClick = onRemoveAll,
+            onClick = { confirmingRemoval = true },
             modifier = Modifier.semantics {
                 contentDescription = "Remove every fetched package"
             },
@@ -429,7 +441,7 @@ private fun PackagesSection(
 }
 
 /**
- * The curated catalogue: every plugin on awesome-beancount, with one button each (B82, B89).
+ * The curated catalogue: every plugin on awesome-beancount, with one button each.
  *
  * A row says what the plugin is for and nothing else: licence, test status and download
  * source were detail nobody choosing a plugin needed, and they buried the one line that
@@ -444,11 +456,11 @@ internal fun CatalogueSection(
     var query by remember { mutableStateOf("") }
     var kind by remember { mutableStateOf(PluginKind.ALL) }
     // The whole catalogue is longer than anybody scrolls through to reach the settings under
-    // it, so it opens at five and the rest is one tap away (B92). Searching or filtering is
+    // it, so it opens at five and the rest is one tap away. Searching or filtering is
     // already a narrowing, so the list starts short again whenever either changes.
     var expanded by remember(query, kind) { mutableStateOf(false) }
 
-    // What is installed has a section of its own, above the list to choose from (B93). Sorting
+    // What is installed has a section of its own, above the list to choose from. Sorting
     // installed plugins to the top of the whole catalogue mixed "what I have" with "what I
     // could add", and a search or a filter could hide an installed plugin altogether.
     val installed = catalogue.entries.filter { it.id in catalogue.installed }
@@ -522,7 +534,7 @@ internal fun CatalogueSection(
 /** How many plugins the list shows before "Show more". */
 private const val CATALOGUE_PREVIEW = 5
 
-/** The three ways to narrow the plugin list (B89). */
+/** The three ways to narrow the plugin list. */
 internal enum class PluginKind(val label: String, val described: String) {
     ALL("All", "all plugins"),
     BEANCOUNT("Beancount", "plugins that change how the ledger loads"),

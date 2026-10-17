@@ -22,7 +22,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
 /**
- * Edits one entry's own source text (B11).
+ * Edits one entry's own source text.
  *
  * Text, not fields. Decomposing an entry into a form and rebuilding it would silently drop
  * whatever the form does not model — a comment inside the entry, metadata with no field, the

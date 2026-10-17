@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 /**
- * The type scale: two voices, set deliberately (B74).
+ * The type scale: two voices, set deliberately.
  *
  * A ledger has exactly two kinds of content and they want opposite things. **Prose** -- payee,
  * narration, account, the sentence explaining what a screen does -- wants a humanist sans and
@@ -93,7 +93,7 @@ private val ProseTypography = Typography(
 
 /**
  * The scale the theme installs: the prose voice above, with the Expressive emphasized styles
- * derived from it (docs/material-expressive.md).
+ * derived from it.
  *
  * Derived, not taken from Material: the same size, line height and tracking, one weight
  * heavier. Material's own emphasized defaults are its larger display sizes, and a component
@@ -146,7 +146,7 @@ private fun TextStyle.emphasized(): TextStyle = copy(
 )
 
 /**
- * The figure voice: everything that is read down a column rather than along a line (B74).
+ * The figure voice: everything that is read down a column rather than along a line.
  *
  * One family, four sizes, one alignment rule. Amounts are right-aligned and monospaced for the
  * same reason: the eye follows the decimal point down the page, and a proportional face makes

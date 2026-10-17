@@ -151,16 +151,15 @@ internal fun AmountText(
     amount: Amount,
     modifier: Modifier = Modifier,
     signed: Boolean = false,
-    /** How the open ledger asks its figures to be written (B59). */
+    /** How the open ledger asks its figures to be written. */
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
         io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
     /** Which size of the figure face: a row in a list, or a figure heading a group. */
     style: TextStyle = LedgerType.row,
 ) {
-    // The helper below existed from M6 and was never applied, so every amount was announced
+    // The helper below existed and was never applied, so every amount was announced
     // as its raw text: TalkBack reads "-12.34 USD" by pronouncing the hyphen or dropping it,
-    // which is the one thing ux.md 6 says must not happen. detekt found it as dead code
-    // (docs/milestones/m14-part16.md).
+    // which is the one thing docs/ux.md section 6 says must not happen. detekt found it as dead code.
     val spoken = amount.accessibleDescription(format)
     MoneyText(
         text = format.format(amount),
@@ -175,7 +174,7 @@ internal fun AmountText(
 }
 
 /**
- * What a posting was held or exchanged at, under its amount (B63).
+ * What a posting was held or exchanged at, under its amount.
  *
  * Beside the figure rather than in place of it: `-151.88 ASSF` and `{400.00 PKR} @ 483.0500
  * PKR` answer different questions, and a row that shows only the first cannot tell two lots
@@ -189,7 +188,7 @@ internal fun AmountText(
 internal fun PostingLotText(
     posting: io.github.pintofi.beanbook.core.domain.JournalPosting,
     modifier: Modifier = Modifier,
-    /** How the open ledger asks its figures to be written (B59). */
+    /** How the open ledger asks its figures to be written. */
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
         io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
 ) {
@@ -227,10 +226,10 @@ fun JournalScreen(
     snapshot: LedgerSnapshot,
     modifier: Modifier = Modifier,
     onOpenEntry: (JournalEntry) -> Unit = {},
-    /** Deletes the entries picked by holding one and tapping others (B89). */
+    /** Deletes the entries picked by holding one and tapping others. */
     onDeleteEntries: (List<JournalEntry>) -> Unit = {},
 ) {
-    // Picked by holding a row; then a tap adds or removes rather than opening (B89). Keyed by
+    // Picked by holding a row; then a tap adds or removes rather than opening. Keyed by
     // file and line, which is what identifies an entry until the ledger is read again.
     var picked by remember(snapshot) { mutableStateOf(emptySet<String>()) }
     var confirmingDelete by remember { mutableStateOf(false) }
@@ -246,8 +245,8 @@ fun JournalScreen(
     // Kept while the ledger reloads, because a save or a pull-to-refresh should not throw
     // away what the reader was looking for.
     var query by rememberSaveable { mutableStateOf("") }
-    // Which entries the ledger's errors are about (B64). They stay in date order with every
-    // other entry (B77): pinning them to the top moved the journal's own ordering every time a
+    // Which entries the ledger's errors are about. They stay in date order with every
+    // other entry: pinning them to the top moved the journal's own ordering every time a
     // file had a problem, so the list no longer read as the book. They are marked where they
     // sit, the message is on the entry's own page, and a filter shows only them.
     val faults = remember(snapshot.journal, snapshot.errors) {
@@ -403,7 +402,7 @@ fun JournalScreen(
         if (loose.isNotEmpty()) {
             item { ErrorBanner(loose) }
         }
-        // Always shown (B95). The filters used to appear only when an error landed on an entry,
+        // Always shown. The filters used to appear only when an error landed on an entry,
         // which made them look like a feature that had gone; they are part of the Journal.
         item(key = "filters") {
             val count = faults.values.sumOf { it.size }
@@ -458,7 +457,7 @@ fun JournalScreen(
                 // Centred in the viewport rather than pinned to the top: an empty state
                 // anchored to the top reads as content that failed to load, and this one is
                 // the screen's whole message. It says what to do next, not only that there
-                // is nothing (D9).
+                // is nothing.
                 Column(
                     modifier = Modifier
                         .fillParentMaxHeight()
@@ -475,7 +474,7 @@ fun JournalScreen(
             }
         }
         items(visible, key = { rowKeys[it] ?: "${it.file}:${it.line}" }) { entry ->
-            // No placement animation (B77). Filtering moved the surviving rows up while the rows
+            // No placement animation. Filtering moved the surviving rows up while the rows
             // that left vanished and the rows that stayed slid past each other, so for a
             // fraction of a second while typing in the search box two entries were drawn on
             // top of one another. A journal is read row by row; a filter that simply shows its
@@ -544,7 +543,7 @@ internal fun entrySummary(
 ).joinToString(" · ")
 
 /**
- * One entry in the journal, as a line of a ruled book (B74).
+ * One entry in the journal, as a line of a ruled book.
  *
  * The row is a gutter and a column. In the gutter is the mark -- what the file's flag says,
  * or that Beancount could not read this entry -- and in the column are the words, the date,
@@ -558,7 +557,7 @@ private fun JournalRow(
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    /** What Beancount said about this entry, when it said anything (B64). */
+    /** What Beancount said about this entry, when it said anything. */
     errors: List<LedgerError> = emptyList(),
     onLongClick: (() -> Unit)? = null,
     selected: Boolean = false,
@@ -608,7 +607,7 @@ private fun JournalRow(
             }
             .padding(horizontal = Measure.gutter, vertical = Measure.rowPadding),
     ) {
-        // While picking, the gutter holds a tick box in place of the mark (design-direction §7):
+        // While picking, the gutter holds a tick box in place of the mark:
         // a tint alone said "selected" only to someone who could see the difference in colour.
         if (selecting) {
             androidx.compose.material3.Icon(
@@ -633,7 +632,7 @@ private fun JournalRow(
             )
         }
         Column(Modifier.weight(1f)) {
-            // The message is on the entry's own page (B77). A list row says only that there is
+            // The message is on the entry's own page. A list row says only that there is
             // one, next to the mark, so a page of entries stays a page of entries.
             if (errors.isNotEmpty()) {
                 Text(
@@ -673,7 +672,7 @@ private fun JournalRow(
                     )
                 }
                 // Says a receipt is attached without opening anything: the row is a list
-                // item, and the document itself belongs on the detail screen (B17).
+                // item, and the document itself belongs on the detail screen.
                 if (entry.linkedDocuments.isNotEmpty()) {
                     Text(
                         if (entry.linkedDocuments.size == 1) {
@@ -722,7 +721,7 @@ private fun JournalRow(
                                 modifier = Modifier.weight(1f).padding(end = Measure.snug),
                             )
                             // In ink, like every balance: the sign says which way it went, and
-                            // colour is kept for a difference (design-direction §4).
+                            // colour is kept for a difference.
                             posting.amount?.let {
                                 AmountText(it, format = format, style = LedgerType.row)
                             }
@@ -756,7 +755,7 @@ fun ErrorBanner(errors: List<LedgerError>, modifier: Modifier = Modifier) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val count = if (errors.size == 1) "1 error in this ledger" else "${errors.size} errors in this ledger"
 
-    // A notice, inset and rounded like every other time the app speaks (design-direction §3),
+    // A notice, inset and rounded like every other time the app speaks,
     // with the attention mark leading and the count in the error colour. It was a full-width
     // red bar, the loudest thing on a screen for a state ux.md calls ordinary: the mark and the
     // words say "error" now, and the ground stays calm.
@@ -821,7 +820,7 @@ fun ErrorBanner(errors: List<LedgerError>, modifier: Modifier = Modifier) {
  * The mark on a row that opens: one chevron, turned.
  *
  * Two icons swapped between frames say "something changed"; one icon rotating says *this row
- * opened*, which is the thing that actually happened (B76). Rotation is a graphics-layer
+ * opened*, which is the thing that actually happened. Rotation is a graphics-layer
  * property, so the row is redrawn rather than measured again.
  */
 @Composable

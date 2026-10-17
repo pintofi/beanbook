@@ -60,7 +60,6 @@ import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.core.domain.LedgerVocabulary
 import io.github.pintofi.beanbook.core.domain.PostingDraft
 import io.github.pintofi.beanbook.core.domain.TransactionDraft
-import java.math.BigDecimal
 import java.time.LocalDate
 import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
@@ -75,7 +74,7 @@ import androidx.compose.foundation.layout.heightIn
  *
  * [commodity] is per posting, blank meaning "the transaction's". A single commodity for the
  * whole transaction could not express an exchange or a foreign-card purchase, which are
- * ordinary things to want to record (B4). Blank rather than a copy of the default, so changing
+ * ordinary things to want to record. Blank rather than a copy of the default, so changing
  * the transaction's commodity still moves every posting that never disagreed.
  */
 private class PostingRow(
@@ -90,7 +89,7 @@ private class PostingRow(
 
     /**
      * The rest of the posting line after the units: a lot, a price, or both, as the file
-     * writes them (B77).
+     * writes them.
      *
      * One field rather than four boxes for a cost and a price. The boxes could not say a total
      * cost, a total price, an acquisition date, a lot label or an empty `{}`, and the file has
@@ -101,7 +100,7 @@ private class PostingRow(
     /** Open when the row already carries details, so a clone shows what it is about to write. */
     var showDetails by mutableStateOf(details.isNotBlank())
 
-    /** Keys describing this leg only (B16). Empty for almost every posting. */
+    /** Keys describing this leg only. Empty for almost every posting. */
     val metadata = mutableStateListOf<MetadataRow>()
 }
 
@@ -119,7 +118,7 @@ private class WordRow(value: String = "") {
 /**
  * Transaction entry: fast for the common case, complete for the rest.
  *
- * **Laid out to be read in three groups, and to show only what is being used (B77).** The form
+ * **Laid out to be read in three groups, and to show only what is being used.** The form
  * had grown a control for everything a transaction can carry, and all of them were on screen
  * at once: two segmented rows, a cost-or-price button and a detail button under every posting,
  * and the commodity crammed into a box too narrow for its own label. What it does now, and the
@@ -145,10 +144,10 @@ private class WordRow(value: String = "") {
 @Composable
 fun QuickAddScreen(
     vocabulary: LedgerVocabulary,
-    /** The open ledger's own rendering and tolerance (B59). */
+    /** The open ledger's own rendering and tolerance. */
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
         io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
-    /** What this ledger calls its five trees (B70). Kept for callers; the form prefills none. */
+    /** What this ledger calls its five trees. Kept for callers; the form prefills none. */
     @Suppress("UNUSED_PARAMETER")
     names: io.github.pintofi.beanbook.core.domain.AccountNames =
         io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
@@ -157,18 +156,18 @@ fun QuickAddScreen(
     /** The date the form opens on. Today, on the device's clock, unless a caller says otherwise. */
     today: LocalDate = LocalDate.now(),
     saveState: String? = null,
-    /** Entries committed from this form this session (B77): what the save sweep marks. */
+    /** Entries committed from this form this session: what the save sweep marks. */
     committed: Int = 0,
-    /** A draft to start from -- an entry being entered again (B11). Applied once. */
+    /** A draft to start from -- an entry being entered again. Applied once. */
     prefill: TransactionDraft? = null,
     onPrefillApplied: () -> Unit = {},
     templates: List<EntryTemplate> = emptyList(),
     onSaveTemplate: (EntryTemplate) -> Unit = {},
     onDeleteTemplate: (String) -> Unit = {},
-    /** Photographing a receipt while entering the transaction it belongs to (B17). */
+    /** Photographing a receipt while entering the transaction it belongs to. */
     capture: DocumentCaptureHandle? = null,
     /**
-     * Whether anything has been typed that leaving would lose (B61).
+     * Whether anything has been typed that leaving would lose.
      *
      * Reported rather than guarded here: the form does not own the way out -- the close
      * button, the back gesture and the destination bar all do -- so it says what it holds
@@ -176,7 +175,7 @@ fun QuickAddScreen(
      */
     onDirtyChange: (Boolean) -> Unit = {},
     /**
-     * An entry already in the file, being edited (B79). The same form as Add, field for field:
+     * An entry already in the file, being edited. The same form as Add, field for field:
      * it used to be a dialog of its own with fewer options, and the two drifted apart with
      * every change to one of them. [prefill] carries the entry; this says what saving means.
      */
@@ -188,12 +187,12 @@ fun QuickAddScreen(
     var payee by remember { mutableStateOf("") }
     var narration by remember { mutableStateOf("") }
     // "*" cleared, "!" pending. Beancount treats the second as "look at this again", and the
-    // form had no way to say it, so every entry claimed to be settled (B15).
+    // form had no way to say it, so every entry claimed to be settled.
     var flag by remember { mutableStateOf("*") }
     // Transaction-level metadata, as editable rows so a half-typed key cannot be committed
-    // by accident (B16).
+    // by accident.
     val metaRows = remember { mutableStateListOf<MetadataRow>() }
-    // Tags and links, one box each, shown only once one is asked for (B77).
+    // Tags and links, one box each, shown only once one is asked for.
     val tagRows = remember { mutableStateListOf<WordRow>() }
     val linkRows = remember { mutableStateListOf<WordRow>() }
     // The default a posting uses when its own commodity box is left empty. There is no field
@@ -203,7 +202,7 @@ fun QuickAddScreen(
         mutableStateOf(vocabulary.defaultCurrency ?: vocabulary.currencies.firstOrNull() ?: "USD")
     }
 
-    // Two empty postings (B77). The form used to preselect the first expense account and the
+    // Two empty postings. The form used to preselect the first expense account and the
     // first asset account in alphabetical order, which for most ledgers were two accounts
     // nobody had chosen -- "Expenses:Books" and "Assets:Bank:Old" on every new entry. The
     // suggestions on focus make picking the right one two taps, and an empty box cannot be
@@ -228,19 +227,24 @@ fun QuickAddScreen(
                 account = row.account.trim(),
                 amount = row.amount.trim().takeIf { it.isNotBlank() }?.let { value ->
                     val denomination = row.commodity.trim().ifBlank { commodity.trim() }
-                    runCatching { Amount(BigDecimal(value), denomination) }.getOrNull()
+                    parseTypedAmount(value)?.let { number -> runCatching { Amount(number, denomination) }.getOrNull() }
                 },
                 details = row.details.trim().takeIf { row.showDetails && it.isNotEmpty() },
             )
         },
     )
     val problems = draft.validate(format, vocabulary.openAccounts)
+    // A box with something in it that is not a number. Without this the posting is built with
+    // no amount, which reads as "let Beancount work it out" and drops what was typed.
+    val unreadableAmounts = rows
+        .filter { it.amount.isNotBlank() && parseTypedAmount(it.amount) == null }
+        .map { unreadableAmountMessage(it.amount) }
 
     // What the session had saved when this form opened, so the sweep answers this form's own
-    // save rather than running as soon as a second entry is started (B92).
+    // save rather than running as soon as a second entry is started.
     val committedBefore = remember { committed }
 
-    // Files attached as they are (B80), beside the photographed pages.
+    // Files attached as they are, beside the photographed pages.
     val attachedFiles by (capture?.attachedFiles ?: remember { kotlinx.coroutines.flow.MutableStateFlow(emptyList()) })
         .collectAsState()
     val pageCount = capture?.pages?.pages?.size ?: 0
@@ -248,7 +252,7 @@ fun QuickAddScreen(
 
     // What counts as something to lose: words typed, a figure entered, a page photographed.
     // Not the date, which the form fills in by itself.
-    // What the form said the moment an entry being edited was put into it (B79). Compared with
+    // What the form said the moment an entry being edited was put into it. Compared with
     // what it says now, so opening an entry and leaving it again asks nothing.
     var baseline by remember { mutableStateOf<String?>(null) }
     var prefilled by remember { mutableStateOf(false) }
@@ -268,13 +272,13 @@ fun QuickAddScreen(
 
     var namingTemplate by remember { mutableStateOf(false) }
     // What the user typed under the pages, if anything. Held here because the Save button is
-    // what files them now (B66).
+    // what files them now.
     var documentName by remember { mutableStateOf("") }
-    // Scanning straight from the action row (B77): one tap to the camera, with the permission
+    // Scanning straight from the action row: one tap to the camera, with the permission
     // asked for at the moment it is needed, as the document section used to do behind a
     // second button.
-    // A file the person already has -- an emailed invoice, a saved picture -- attached as it is
-    // (B80). The document picker needs no storage permission.
+    // A file the person already has -- an emailed invoice, a saved picture -- attached as it is.
+    // The document picker needs no storage permission.
     val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) capture?.onAttachFile?.invoke(uri)
     }
@@ -318,7 +322,7 @@ fun QuickAddScreen(
             draft.tags.forEach { tagRows.add(WordRow(it)) }
             linkRows.clear()
             draft.links.forEach { linkRows.add(WordRow(it)) }
-            // Everything the draft carries goes into a field (B79). A clone arrives without
+            // Everything the draft carries goes into a field. A clone arrives without
             // metadata by design; an entry being edited arrives with it, and a detail that
             // was not shown would be dropped by the save.
             metaRows.clear()
@@ -331,8 +335,8 @@ fun QuickAddScreen(
                         account = posting.account,
                         amount = posting.amount?.number?.toPlainString().orEmpty(),
                         // Each posting says its own commodity in its own box, so what is on
-                        // screen is what the preview writes -- the rule "Use last" follows
-                        // since B78, and a multi-commodity entry is not quietly redenominated.
+                        // screen is what the preview writes -- the rule "Use last" follows,
+                        // and a multi-commodity entry is not quietly redenominated.
                         commodity = posting.amount?.currency.orEmpty(),
                         // A clone of a holding keeps the lot it was held at, so the form shows
                         // the entry it is about to write rather than a stripped one.
@@ -352,7 +356,7 @@ fun QuickAddScreen(
     // At large text two fields side by side stop fitting; the flag goes under the date.
     val large = LocalDensity.current.fontScale > 1.3f
 
-    // The link the pages will make, shown before the save that makes it (B79). The preview
+    // The link the pages will make, shown before the save that makes it. The preview
     // used to leave it out until the moment of saving, so a person who had just scanned a
     // receipt saw an entry with nothing connecting it to one. The name is the real one --
     // a hash of the PDF these pages assemble into, the same bytes the save files.
@@ -373,8 +377,8 @@ fun QuickAddScreen(
     }
     val previewDraft = withDocuments(draft, plannedPaths)
 
-    // What the form showed at the moment Save was tapped, held until the save is over
-    // (B93). Saving files the pages first, and filing empties the capture, so the form
+    // What the form showed at the moment Save was tapped, held until the save is over.
+    // Saving files the pages first, and filing empties the capture, so the form
     // recomputed itself with no pages mid-save: the `document:` line left the preview and
     // "Save entry with 1 page" became a greyed "Save entry", as if the pages had been lost.
     var saving by remember { mutableStateOf<SavingForm?>(null) }
@@ -400,24 +404,24 @@ fun QuickAddScreen(
         }
     }
 
-    // Pages photographed, or files attached, and not yet filed (B57, B66, B80): filed by
+    // Pages photographed, or files attached, and not yet filed: filed by
     // saving the entry.
     val documentAccount = rows.firstOrNull { it.account.isNotBlank() }?.account.orEmpty()
     val documentsWord = documentsLabel(pageCount, attachedFiles.size)
 
-    // The form scrolls; its save area does not (design-direction §7, FormSaveBar).
+    // The form scrolls; its save area does not (FormSaveBar).
     Column(modifier = modifier.fillMaxSize()) {
     Column(
         // No `imePadding()` here: the Scaffold above insets the whole app for the keyboard,
         // and doing it again shrank the scrolling viewport a second time -- a blank band
-        // above the keyboard, and a last field that could not be scrolled into view (B54).
+        // above the keyboard, and a last field that could not be scrolled into view.
         modifier = Modifier
             .weight(1f)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Measure.gutter)
             .padding(top = Measure.snug, bottom = Measure.section),
     ) {
-        // Said before anything is changed, not after (B78): the entry was written by hand, and
+        // Said before anything is changed, not after: the entry was written by hand, and
         // saving it through the form lines it up the way the app writes entries.
         if (editing?.reformats == true) {
             Notice(NoticeTone.QUIET, modifier = Modifier.padding(bottom = Measure.gap)) {
@@ -454,8 +458,8 @@ fun QuickAddScreen(
         FormGroup {
             val pendingChip: @Composable () -> Unit = {
                 // One chip rather than a two-way segmented row: cleared is what nearly every
-                // entry is, so the control that says otherwise is the one that needs to exist
-                // (B15, B77). A chip stays the height of a finger rather than of a field.
+                // entry is, so the control that says otherwise is the one that needs to exist.
+                // A chip stays the height of a finger rather than of a field.
                 //
                 // The label is the *state*, with the entry's own mark beside it; the spoken
                 // description adds the action (device audit 2026-10-10: the chip read "Pending"
@@ -529,11 +533,11 @@ fun QuickAddScreen(
                         last.postings.forEachIndexed { index, posting ->
                             val row = rows[index]
                             row.account = posting.account
-                            // With its sign (B78). The absolute value was taken here, so a
+                            // With its sign. The absolute value was taken here, so a
                             // refund or a transfer out came back as money in, and the preview
                             // wrote the opposite of what was reused.
                             row.amount = posting.amount?.number?.toPlainString().orEmpty()
-                            // The commodity goes in the box, not only into the text (B78): the
+                            // The commodity goes in the box, not only into the text: the
                             // preview was right because it fell back to the default, while the
                             // field that says what it is stayed empty.
                             row.commodity = posting.amount?.currency.orEmpty()
@@ -561,7 +565,7 @@ fun QuickAddScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            // The entry's own extras, right under the words that describe it (B79). They sat
+            // The entry's own extras, right under the words that describe it. They sat
             // below the postings, where a tag for the whole entry read as belonging to the
             // last posting, and reaching them meant scrolling past every amount. The row stays
             // where it is as fields open beneath it, so the next tap lands where the last did.
@@ -673,7 +677,7 @@ fun QuickAddScreen(
                 Text(
                     // The residual is what the written postings add up to; the posting left
                     // blank receives its opposite, which is the figure the sentence names
-                    // (B93: -300.00 on one side put 300.00 on the other, not -300.00).
+                    // (-300.00 on one side must put 300.00 on the other, not -300.00).
                     text = if (elided == 1) {
                         "Beancount will put ${shownResiduals.joinToString(", ") { format.format(-it) }} " +
                             "on the posting with no amount."
@@ -693,15 +697,15 @@ fun QuickAddScreen(
             LedgerHeading("Will be written as")
             Text(
                 // The entry, with the `document:` line its attachments will carry. No separate
-                // `document` directive: an attachment belongs to this entry (B92).
+                // `document` directive: an attachment belongs to this entry.
                 text = saving?.preview ?: previewDraft.render(),
                 style = LedgerType.source,
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                    // The signature (B76). When a save *commits*, the lines that were written
+                    // The signature. When a save *commits*, the lines that were written
                     // are swept once by the app's rule. Keyed on the commit count, not on the
-                    // message (B77): the message changes to "Saving…" first and again to the
+                    // message: the message changes to "Saving…" first and again to the
                     // result, and keying on it swept twice and swept refusals too.
                     .filedSweep(
                         key = committed.takeIf { it > committedBefore },
@@ -751,11 +755,11 @@ fun QuickAddScreen(
         }
     }
 
-    // Not before anything has been typed (B77): an empty form is not wrong, it is empty, and
+    // Not before anything has been typed: an empty form is not wrong, it is empty, and
     // greeting it with "needs at least two postings" is noise the person did nothing to cause.
     // The button stays disabled either way.
     FormSaveBar(
-        problems = if (dirty) problems.map { it.describe() } else emptyList(),
+        problems = if (dirty) unreadableAmounts + problems.map { it.describe() } else emptyList(),
         // What the write did, arriving beside the button that did it.
         message = saveState,
     ) {
@@ -778,12 +782,12 @@ fun QuickAddScreen(
                     onSave(draft)
                 }
             },
-            enabled = saving == null && problems.isEmpty() && draft != submitted,
+            enabled = saving == null && problems.isEmpty() && unreadableAmounts.isEmpty() && draft != submitted,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         ) {
             val inFlight = saving
             if (inFlight != null) {
-                // Working, and saying so with more than a word (B93): a save that files pages
+                // Working, and saying so with more than a word: a save that files pages
                 // and re-reads a large ledger takes seconds.
                 LedgerLoadingIndicator(
                     modifier = Modifier.padding(end = Measure.snug),
@@ -801,7 +805,7 @@ fun QuickAddScreen(
 }
 
 /**
- * What saving means when the form holds an entry that is already in the file (B79).
+ * What saving means when the form holds an entry that is already in the file.
  *
  * @property original the entry as the form received it.
  * @property reformats whether saving rewrites the entry's spacing into the app's layout.
@@ -870,7 +874,7 @@ private fun SmallAction(text: String, describe: String, onClick: () -> Unit) {
 }
 
 /**
- * A remove button that looks like one (B77).
+ * A remove button that looks like one.
  *
  * It was a "×" typed into a text button: a character the size of the label text, the colour of
  * a link, easy to miss and easy to hit instead of the field beside it. A tonal icon button is
@@ -891,7 +895,7 @@ private fun RemoveButton(describe: String, onClick: () -> Unit) {
 }
 
 /**
- * One posting: the account on its own line, the amount and commodity beneath it (B77).
+ * One posting: the account on its own line, the amount and commodity beneath it.
  *
  * The three used to share one line, which left the account -- the longest thing typed -- a
  * third of the width and the commodity a box too narrow for its own label. Top to bottom is
@@ -933,7 +937,7 @@ private fun PostingEditor(
                 placeholder = if (index == 0) null else { { Text("optional") } },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                // Even halves (B98): at 3:2 the commodity box was too narrow for "Commodity · PKR",
+                // Even halves: at 3:2 the commodity box was too narrow for "Commodity · PKR",
                 // and the default it falls back to was cut off its own label.
                 modifier = Modifier.weight(1f),
             )
@@ -1002,7 +1006,7 @@ private fun PostingEditor(
 }
 
 /**
- * Tags or links, one box each (B77).
+ * Tags or links, one box each.
  *
  * Beancount writes them after the narration -- `#trip-2026` and `^invoice-4411` -- and neither
  * may contain a space, so a space typed here is dropped as it is typed rather than refused at
@@ -1035,7 +1039,7 @@ private fun WordEditor(
 }
 
 /**
- * The page editor, over the whole screen, from inside the entry form (B65).
+ * The page editor, over the whole screen, from inside the entry form.
  *
  * It used to be composed straight into the form's scrolling column, so a page you were trying
  * to straighten appeared as a panel a few hundred pixels tall between two text fields --
@@ -1081,7 +1085,7 @@ internal fun Suggestions(
 ) {
     // A suggestion identical to what is already in the field does nothing when tapped, and
     // reads as though the app has not noticed what was typed -- a lone "USD" chip under a
-    // currency field already saying USD (D9).
+    // currency field already saying USD.
     val offered = values.filter { it != current.trim() }
     if (offered.isEmpty()) return
     Row(
@@ -1089,7 +1093,7 @@ internal fun Suggestions(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         // No cap: this row scrolls horizontally, so taking six hid matches the vocabulary had
-        // already found rather than saving any space (B7).
+        // already found rather than saving any space.
         offered.forEach { value ->
             AssistChip(
                 onClick = { onPick(value) },
@@ -1104,7 +1108,7 @@ internal fun Suggestions(
  * Names a template, and manages the ones already saved.
  *
  * Deleting is here rather than behind a long-press because a destructive action has to name
- * its scope (CLAUDE.md, invariant 7): the row says which template goes, and nothing else in
+ * its scope (destructive actions are named and undoable): the row says which template goes, and nothing else in
  * the app is touched — a template is prefill, so removing one cannot affect the ledger.
  */
 @Composable
@@ -1189,7 +1193,7 @@ private fun TemplateDialog(
 
 
 /**
- * Metadata pairs, on a transaction or on one posting (B16).
+ * Metadata pairs, on a transaction or on one posting.
  *
  * Collapsed until asked for. Almost no entry carries metadata, and a pair of empty fields on
  * every posting would make the common case worse to serve the rare one.
@@ -1247,7 +1251,7 @@ private fun MetadataEditor(
 }
 
 /**
- * Photograph a receipt while entering the transaction it belongs to (B17).
+ * Photograph a receipt while entering the transaction it belongs to.
  *
  * The pages are filed as soon as the user says so, before the transaction is saved, so the
  * ledger never names a file that is not there yet (invariant 5). The cost is that abandoning
@@ -1261,7 +1265,7 @@ private fun AttachDocumentSection(
     onNameChange: (String) -> Unit,
 ) {
 
-    // What to call it, if the user wants to (B57).
+    // What to call it, if the user wants to.
     var documentName by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(documentName) { onNameChange(documentName) }
     var editingPages by remember { mutableStateOf<Int?>(null) }
@@ -1287,7 +1291,7 @@ private fun AttachDocumentSection(
             if (allowed) capture.onStartScanning()
         }
 
-        // An action, drawn as one (B66). Text that happens to respond to a tap reads as a
+        // An action, drawn as one. Text that happens to respond to a tap reads as a
         // label until somebody guesses; an outlined button says what it is before it is
         // touched, which is what Material means by an affordance.
         OutlinedButton(
@@ -1307,7 +1311,7 @@ private fun AttachDocumentSection(
             Text("Scan a document")
         }
 
-        // Attached files, each with its own way out (B80).
+        // Attached files, each with its own way out.
         val files by capture.attachedFiles.collectAsState()
         files.forEachIndexed { index, name ->
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1325,7 +1329,7 @@ private fun AttachDocumentSection(
         if (!capture.pages.isEmpty || files.isNotEmpty()) {
             run {
                 // One row of thumbnails and one way in, rather than four text buttons under
-                // every page (B58): tapping a page opens the editor at it, where rotating,
+                // every page: tapping a page opens the editor at it, where rotating,
                 // cropping and re-rendering are done on the page itself.
                 if (!capture.pages.isEmpty) Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1365,7 +1369,7 @@ private fun AttachDocumentSection(
                         .fillMaxWidth()
                         .semantics { contentDescription = "What to call this document" },
                 )
-                // No button. Filing is part of saving the entry (B66): a receipt photographed
+                // No button. Filing is part of saving the entry: a receipt photographed
                 // *for this transaction* belongs to it, and asking the user to press a second
                 // button to make that true was a step whose only possible outcome, if they
                 // missed it, was a page filed under nothing.
@@ -1384,5 +1388,5 @@ private fun AttachDocumentSection(
     }
 }
 
-/** The preview and button label the form showed when Save was tapped (B93). */
+/** The preview and button label the form showed when Save was tapped. */
 private data class SavingForm(val preview: String, val label: String)

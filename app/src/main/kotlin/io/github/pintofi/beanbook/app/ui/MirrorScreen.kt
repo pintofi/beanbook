@@ -61,7 +61,7 @@ fun MirrorScreen(
         FolioPage(modifier = Modifier.readableMeasureCentred()) {
             // The state first, before any control. A screen whose top half is settings cannot
             // answer the question people open it to ask -- is my folder current right now -- and
-            // the answer used to exist only as a message left over from the last pass (B65).
+            // the answer used to exist only as a message left over from the last pass.
             MirrorStatusCard(status)
 
             FolioHeading("Mirror to a folder")
@@ -73,7 +73,7 @@ fun MirrorScreen(
                         // The folder by its name, not by Android's handle for it (device audit
                         // 2026-10-10: the raw content:// grant was printed here). The whole row
                         // chooses or changes it: a button beside the words squeezed them into a
-                        // column four lines tall on a phone (B98).
+                        // column four lines tall on a phone.
                         title = folder?.let { humanFolder(it) } ?: "Choose a folder",
                         detail = if (folder == null) {
                             "A synced folder works well: Syncthing, Nextcloud or Drive."
@@ -144,7 +144,7 @@ fun MirrorScreen(
     }
 }
 
-/** The last ten things the mirror did, newest first (B102). */
+/** The last ten things the mirror did, newest first. */
 @Composable
 private fun MirrorRecentActivity() {
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext
@@ -196,7 +196,7 @@ private fun ConflictRow(
             }
         }
         // Outlined, not text: these two decide which copy of a file survives, and a decision
-        // that destructive must look like a control rather than a caption (B66).
+        // that destructive must look like a control rather than a caption.
         androidx.compose.foundation.layout.FlowRow(
             horizontalArrangement = Arrangement.spacedBy(Measure.snug),
             verticalArrangement = Arrangement.spacedBy(Measure.tight),
@@ -218,7 +218,7 @@ private fun ConflictRow(
 }
 
 /**
- * One card that always says what mirroring is doing (B65).
+ * One card that always says what mirroring is doing.
  *
  * A progress bar only while a pass is running, and a determinate one wherever there is a
  * count: a spinner that never fills says "something is happening" for as long as it is on
@@ -259,7 +259,7 @@ private fun MirrorStatusCard(status: MirrorStatus) {
     ) {
         // A pass changes what this says several times in a few seconds -- comparing, copying
         // 3 of 40, done -- and text that is replaced between frames reads as flicker. The
-        // words dissolve into each other instead (B76).
+        // words dissolve into each other instead.
         io.github.pintofi.beanbook.app.ui.LedgerContent(
             targetState = headline to detail,
             label = "mirrorStatus",

@@ -251,7 +251,7 @@ private fun Editor(
 
 
 /**
- * Colours Beancount source in the editor without touching a character of it (B12).
+ * Colours Beancount source in the editor without touching a character of it.
  *
  * A `VisualTransformation` rather than a styled value, because the field's text stays a plain
  * `String` the write protocol can hash and compare. `OffsetMapping.Identity` is correct here

@@ -4,8 +4,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * The measurements the layout is built from, so rhythm is a decision rather than an accident
- * (B74).
+ * The measurements the layout is built from, so rhythm is a decision rather than an accident.
  *
  * Before this, every screen chose its own padding -- 16 here, 12 there, 24 in the one that was
  * written last -- and the result was a set of screens that were individually tidy and visibly

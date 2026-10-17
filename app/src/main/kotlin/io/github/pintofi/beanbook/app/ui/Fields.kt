@@ -37,7 +37,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 
 /**
- * A date, typed or picked (B53).
+ * A date, typed or picked.
  *
  * The text field stays: a date in a ledger is `YYYY-MM-DD` and somebody who knows that types
  * it faster than any calendar. What was missing is the other half — the calendar itself, for
@@ -104,14 +104,14 @@ fun DateField(
 }
 
 /**
- * A text field that offers what the ledger already contains, narrowing as you type (B53).
+ * A text field that offers what the ledger already contains, narrowing as you type.
  *
  * The app knew every account, payee, narration and commodity in the open ledger and offered
  * them as a row of chips under some fields and nowhere else, so most typing was still
  * typing. This shows the list on focus and filters it letter by letter -- which is what
  * makes a long account name a two-tap job rather than forty characters.
  *
- * **Inline, not a popup (B77).** The suggestions used to open in an `ExposedDropdownMenu`,
+ * **Inline, not a popup.** The suggestions used to open in an `ExposedDropdownMenu`,
  * which is a separate window laid over the keyboard. A second window over the IME is what
  * left the app with a blank band where the keyboard had been: the popup and the activity
  * disagreed about the keyboard's insets as it moved, the activity's inset animation never
@@ -120,7 +120,7 @@ fun DateField(
  * now part of the page, directly under the field it belongs to, so there is one window and
  * one set of insets, and nothing can be left behind.
  *
- * **The cursor goes to the end of what was chosen (B77).** The field used to take a plain
+ * **The cursor goes to the end of what was chosen.** The field used to take a plain
  * `String`, so a picked suggestion replaced the text and Compose kept the cursor at the index
  * it had been at -- mid-word, where the person stopped typing. The field now owns its
  * selection, and choosing a suggestion puts the cursor after the last character, which is
@@ -142,7 +142,7 @@ fun SuggestingField(
     transform: (String) -> String = { it },
     /**
      * What an empty field stands for, shown faintly inside it: the commodity a posting falls
-     * back to, say. Never the only label (content style guide §7): the label stays above it.
+     * back to, say. Never the only label: the label stays above it.
      */
     placeholder: String? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
@@ -198,7 +198,7 @@ fun SuggestingField(
             },
             // A resting, empty field shows its label in the box, where Material hides the
             // placeholder; so the fallback rides on the label until the field is touched
-            // ("Commodity · PKR"), then moves into the box as the placeholder (B98).
+            // ("Commodity · PKR"), then moves into the box as the placeholder.
             label = {
                 Text(
                     if (placeholder != null && value.isEmpty() && !focused) "$label · $placeholder" else label,

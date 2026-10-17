@@ -6,7 +6,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
 /**
- * The palette: paper, ink, and one teal rule (B74).
+ * The palette: paper, ink, and one teal rule.
  *
  * The app is a ledger, and a ledger is ink on ruled paper. So the ground is *paper* -- a
  * neutral with a faint green cast taken from the teal, not the warm cream that every
@@ -202,7 +202,7 @@ internal fun ColorScheme.onBlack(): ColorScheme = copy(
  * number is negative. The minus sign does that, and the balance mark beside an entry says in
  * shape what [pending] says in colour. These exist to reinforce, never to carry.
  *
- * **Colour is for a difference, not a direction (docs/design-direction.md §4).** Postings and
+ * **Colour is for a difference, not a direction.** Postings and
  * balances are drawn in ink everywhere, and the minus sign says which way the money went.
  * [positive] and [negative] colour only a *change*: this period against the last, an entry that
  * does not balance, Fava's diff columns. They were applied to every posting, which put green on
@@ -231,7 +231,7 @@ data class LedgerColours(
         val Light = LedgerColours(
             positive = Color(0xFF1B5E3F),
             negative = Color(0xFFA3264E),
-            neutral = Color(0xFF5E6B66), // 4.9:1 on the band (B98); #66736E was 4.3
+            neutral = Color(0xFF5E6B66), // 4.9:1 on the band; #66736E was 4.3
             pending = Color(0xFF9A4C2E),
             rule = Color(0xFF0B5F5B),
             flagged = Color(0xFF4F4FA0),

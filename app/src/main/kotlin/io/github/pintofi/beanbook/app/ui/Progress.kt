@@ -19,9 +19,9 @@ import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
  * The ledger's rule, filling: the progress mark for reading the ledger, mirroring and drawing a
- * report (docs/material-expressive.md -- flat, 2dp, never wavy).
+ * report (flat, 2dp, never wavy).
  *
- * **Honours reduce-motion (design-direction §9).** An indeterminate bar is a loop, and Material's
+ * **Honours reduce-motion.** An indeterminate bar is a loop, and Material's
  * runs whatever the system says; the audit found the app's bars still sliding with animations
  * turned off. With motion off this draws a still rule -- a third of the track in the rule colour
  * -- and still reports indeterminate progress to accessibility services, so nothing is lost but

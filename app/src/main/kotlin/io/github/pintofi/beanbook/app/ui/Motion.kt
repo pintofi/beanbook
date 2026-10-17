@@ -42,7 +42,7 @@ import io.github.pintofi.beanbook.app.ui.theme.MotionDistance
 import io.github.pintofi.beanbook.app.ui.theme.MotionRole
 
 /**
- * The parts motion is made of (B76).
+ * The parts motion is made of.
  *
  * The visual system says the app is ruled paper; this says what paper does. A **peer** move
  * slides a short way along the horizontal axis, because two destinations sit side by side. A
@@ -229,7 +229,7 @@ private fun <T> AnimatedContentTransitionScope<T>.transformFor(
 
         // In place, one after the other: the old content fades out, then the new fades in.
         // Crossfading two states that occupy the same space drew both at once for the middle
-        // of the transition -- two notices, two statuses, legible as neither (B77).
+        // of the transition -- two notices, two statuses, legible as neither.
         MotionAxis.NONE -> fadeIn(
             tween(Motion.STANDARD_MS - Motion.QUICK_MS, delayMillis = Motion.QUICK_MS, easing = Motion.enter),
         ) togetherWith fadeOut(tween(Motion.QUICK_MS, easing = Motion.exit))
@@ -315,7 +315,7 @@ fun Modifier.filedSweep(
     colour: Color,
 ): Modifier {
     val animate = LocalMotionEnabled.current
-    // Two values rather than one (B78): how far the band has travelled, and how strongly it
+    // Two values rather than one: how far the band has travelled, and how strongly it
     // shows. The first version drew the band at full width on the first frame and shrank it,
     // which read as a flicker rather than as anything being written -- over in the same third
     // of a second the form took to leave.

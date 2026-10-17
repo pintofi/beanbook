@@ -230,11 +230,15 @@ class BackupController(
     /** Puts the staged restore in place, keeping the previous project as a rollback point. */
     fun acceptRestore(projectId: String, onRestored: () -> Unit) {
         val staged = _pendingRestore.value ?: return
+        // Cleared and announced at once, not when the copy ends: the Restore button stays on
+        // screen for as long as the staged restore is pending, and a second tap during a
+        // long copy would start a second restore over the first.
+        _pendingRestore.value = null
+        _message.value = "Restoring…"
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching { restores.activate(projectId, staged.staging) }
             }
-            _pendingRestore.value = null
             _message.value = result.fold(
                 onSuccess = { kept ->
                     "Restored. Your previous project is kept as ${kept.name} until you remove it."

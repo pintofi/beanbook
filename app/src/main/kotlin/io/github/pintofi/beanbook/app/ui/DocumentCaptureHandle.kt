@@ -49,23 +49,23 @@ data class DocumentCaptureHandle(
      * it cannot name a file that does not exist yet (invariant 5).
      */
     val onFile: (account: String, label: String?, onFiled: (List<String>) -> Unit) -> Unit,
-    /** Turns one page either way (B58). The single-argument [onRotate] is the clockwise case. */
+    /** Turns one page either way. The single-argument [onRotate] is the clockwise case. */
     val onRotateBy: (index: Int, clockwise: Boolean) -> Unit = { _, _ -> },
-    /** Renders one page in a different style (B58). */
+    /** Renders one page in a different style. */
     val onRestyle: (index: Int, style: io.github.pintofi.beanbook.core.domain.PageStyle) -> Unit =
         { _, _ -> },
-    /** Sets or clears one page's crop corners (B31). */
+    /** Sets or clears one page's crop corners. */
     val onCrop: (index: Int, quad: io.github.pintofi.beanbook.core.domain.CropQuad?) -> Unit = { _, _ -> },
     /**
      * What the pages and files will be filed as under an account, relative to the project, before they
-     * are (B79): what the entry form's preview names in its `document:` lines. Empty when there
+     * are: what the entry form's preview names in its `document:` lines. Empty when there
      * is nothing to file.
      */
     val plannedPaths: suspend (account: String, label: String?) -> List<String> = { _, _ -> emptyList() },
-    /** Files attached as they are, by the name they had (B80). */
+    /** Files attached as they are, by the name they had. */
     val attachedFiles: kotlinx.coroutines.flow.StateFlow<List<String>> =
         kotlinx.coroutines.flow.MutableStateFlow(emptyList()),
-    /** Attaches a file the person picked (B80). */
+    /** Attaches a file the person picked. */
     val onAttachFile: (android.net.Uri) -> Unit = {},
     val onRemoveFile: (Int) -> Unit = {},
     /** The capture on disk for a page, so it can be shown for cropping. */

@@ -26,7 +26,7 @@ import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.core.domain.JournalEntry
 
 /**
- * One entry, in full, and what can be done with it (B11).
+ * One entry, in full, and what can be done with it.
  *
  * The journal row already shows the postings, so this screen earns its place by saying the
  * things a list cannot: which file and line the entry came from — the answer somebody needs
@@ -44,12 +44,12 @@ fun EntryDetailScreen(
     onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
     onOpenDocument: ((String) -> Unit)? = null,
-    /** The document on disk, so it can be read here rather than handed to another app (B57). */
+    /** The document on disk, so it can be read here rather than handed to another app. */
     fileForDocument: ((String) -> java.io.File)? = null,
-    /** How the open ledger asks its figures to be written (B59). */
+    /** How the open ledger asks its figures to be written. */
     format: io.github.pintofi.beanbook.core.domain.LedgerFormat =
         io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
-    /** What Beancount said about this entry (B64). Empty for an entry it accepted. */
+    /** What Beancount said about this entry. Empty for an entry it accepted. */
     errors: List<io.github.pintofi.beanbook.core.domain.LedgerError> = emptyList(),
 ) {
     var viewing by remember { mutableStateOf<String?>(null) }
@@ -136,7 +136,7 @@ fun EntryDetailScreen(
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.weight(1f).padding(end = Measure.snug),
                     )
-                    // In ink: the sign carries direction (design-direction §4).
+                    // In ink: the sign carries direction.
                     posting.amount?.let { AmountText(it, format = format) }
                         ?: Text(
                             "(worked out by Beancount)",
@@ -149,7 +149,7 @@ fun EntryDetailScreen(
         }
 
         // Documents this entry links to, by the convention link_documents uses. Read here
-        // first (B57): checking what a transaction was for used to mean leaving the app
+        // first: checking what a transaction was for used to mean leaving the app
         // through a share sheet and coming back. Sharing is still one tap away, inside.
         if (entry.linkedDocuments.isNotEmpty()) {
             RuledColumn {
