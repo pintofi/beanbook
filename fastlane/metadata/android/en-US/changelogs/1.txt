@@ -3,4 +3,4 @@ First public release (1.0.0).
 • Units, At cost and Market value everywhere, as in Fava.
 • Add entries and directives, edit files, and Undo the last change.
 • Scan receipts into PDFs, mirror and back up your project.
-• Plugins, Fava extensions and scripts in the Expert edition.
+• Plugins, Fava extensions and scripts.

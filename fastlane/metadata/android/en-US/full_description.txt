@@ -10,7 +10,7 @@ There is no account to create, no sign-in and no server run by this project. You
 • Scan receipts and statements into PDFs and file them under an account.
 • Open Fava's Reports inside the app.
 • Mirror a project to a folder you choose, and back it up with an optional passphrase.
-• Use Beancount plugins and Fava extensions, and run your own Python scripts (Expert edition).
+• Use Beancount plugins and Fava extensions, and run your own Python scripts.
 • Home-screen widgets for balances and net worth.
 
 <b>Your data stays yours</b>
