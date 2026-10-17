@@ -12,7 +12,7 @@ import org.opencv.core.Mat
  *
  * `initLocal` loads the `.so` bundled in the APK. It is not the old `initAsync` that pulled
  * an OpenCV Manager app off the Play Store — nothing here downloads anything, which is what
- * keeps this side of D1/D3 uninteresting.
+ * keeps this side of the Play edition's no-downloaded-code rule uninteresting.
  *
  * Loading is attempted once and its result remembered. A device where it fails must still
  * open the app: every entry point below returns the un-scanned image instead of throwing, so
@@ -37,6 +37,7 @@ object Scanner {
         return runCatching { PageDetector.detect(mat) }
             .onFailure { Log.w(TAG, "detection failed", it) }
             .getOrNull()
+            .also { mat.release() }
     }
 
     /**
@@ -47,18 +48,30 @@ object Scanner {
      */
     fun straighten(photo: Bitmap, quad: CropQuad, style: ScanStyle): Bitmap {
         if (!available) return photo
+        val input = photo.toMat()
         return runCatching {
-            val out = PageWarp.straighten(photo.toMat(), quad, style)
-            out.toBitmap()
-        }.onFailure { Log.w(TAG, "warp failed", it) }.getOrDefault(photo)
+            val out = PageWarp.straighten(input, quad, style)
+            try {
+                out.toBitmap()
+            } finally {
+                // A page too small to warp comes back as the input itself.
+                if (out !== input) out.release()
+            }
+        }.onFailure { Log.w(TAG, "warp failed", it) }.getOrDefault(photo).also { input.release() }
     }
 
     /** [photo] re-rendered in [style] without changing its shape. */
     fun restyle(photo: Bitmap, style: ScanStyle): Bitmap {
         if (!available || style == ScanStyle.COLOUR) return photo
-        return runCatching { PageWarp.applyStyle(photo.toMat(), style).toBitmap() }
-            .onFailure { Log.w(TAG, "restyle failed", it) }
-            .getOrDefault(photo)
+        val input = photo.toMat()
+        return runCatching {
+            val out = PageWarp.applyStyle(input, style)
+            try {
+                out.toBitmap()
+            } finally {
+                if (out !== input) out.release()
+            }
+        }.onFailure { Log.w(TAG, "restyle failed", it) }.getOrDefault(photo).also { input.release() }
     }
 
     private fun Bitmap.toMat(): Mat = Mat().also { Utils.bitmapToMat(this, it) }

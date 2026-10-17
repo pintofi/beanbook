@@ -422,7 +422,7 @@ and the status of every item.
 - [x] **1.0**: local Beancount and Fava on the phone, entry forms, documents and scanning, backup,
       mirror, remote Fava, plugins and extensions, Share on Wi-Fi
 - [ ] **1.1 Trust and polish** (now)
-  - [ ] Review every file in the repository: 7 of 15 areas done ([#16](https://github.com/pintofi/beanbook/issues/16))
+  - [ ] Review every file in the repository: 8 of 15 areas done ([#16](https://github.com/pintofi/beanbook/issues/16))
   - [ ] Fava's own editor saves outside the app's write protocol ([#17](https://github.com/pintofi/beanbook/issues/17))
   - [ ] TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18))
   - [ ] Instrumentation tests in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19))

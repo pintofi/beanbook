@@ -47,18 +47,33 @@ object PageDetector {
     /** Above this it is the frame itself — a table edge, or the phone's own shadow. */
     private const val MAX_AREA_FRACTION = 0.98
 
+    /**
+     * Every native matrix made here is released before returning. A `Mat` frees its native
+     * memory only when the garbage collector finalises it, and the collector sees a few bytes of
+     * Java object, not the megabytes behind it; on the live preview, which calls this several
+     * times a second, lets native memory climb between collections.
+     */
     fun detect(source: Mat): CropQuad? {
         if (source.empty()) return null
+        val scratch = mutableListOf<Mat>()
+        fun <T : Mat> T.tracked(): T = also { scratch += it }
+        try {
+            return findPage(source) { Mat().tracked() }
+        } finally {
+            scratch.forEach { it.release() }
+        }
+    }
 
+    private fun findPage(source: Mat, newMat: () -> Mat): CropQuad? {
         val scale = WORKING_HEIGHT / source.rows().toDouble()
-        val small = Mat()
+        val small = newMat()
         if (scale < 1.0) {
             Imgproc.resize(source, small, Size(source.cols() * scale, WORKING_HEIGHT))
         } else {
             source.copyTo(small)
         }
 
-        val prepared = Mat()
+        val prepared = newMat()
         Imgproc.cvtColor(small, prepared, Imgproc.COLOR_RGBA2GRAY)
         Imgproc.GaussianBlur(prepared, prepared, Size(5.0, 5.0), 0.0)
         // Canny before contours: a page edge is a brightness step, and thresholds relative to
@@ -68,21 +83,28 @@ object PageDetector {
         // outline, and four almost-touching arcs are four contours, none of them a rectangle.
         val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(9.0, 9.0))
         Imgproc.morphologyEx(prepared, prepared, Imgproc.MORPH_CLOSE, kernel)
+        kernel.release()
 
         val contours = mutableListOf<MatOfPoint>()
+        val hierarchy = newMat()
         Imgproc.findContours(
-            prepared, contours, Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE,
+            prepared, contours, hierarchy, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE,
         )
 
         val frameArea = small.rows().toDouble() * small.cols().toDouble()
-        val best = contours
-            .asSequence()
-            .mapNotNull { asQuadrilateral(it) }
-            .filter { quad ->
-                val area = Imgproc.contourArea(MatOfPoint(*quad.asPoints().toTypedArray()))
-                area > frameArea * MIN_AREA_FRACTION && area < frameArea * MAX_AREA_FRACTION
-            }
-            .maxByOrNull { Imgproc.contourArea(MatOfPoint(*it.asPoints().toTypedArray())) }
+        val best = try {
+            contours
+                .asSequence()
+                .mapNotNull { asQuadrilateral(it) }
+                .map { quad -> quad to areaOf(quad) }
+                .filter { (_, area) ->
+                    area > frameArea * MIN_AREA_FRACTION && area < frameArea * MAX_AREA_FRACTION
+                }
+                .maxByOrNull { (_, area) -> area }
+                ?.first
+        } finally {
+            contours.forEach { it.release() }
+        }
 
         val inverse = if (scale < 1.0) 1.0 / scale else 1.0
         return best?.scaled(inverse)
@@ -91,16 +113,35 @@ object PageDetector {
     /** A contour that reduces to four convex corners, ordered, or null. */
     private fun asQuadrilateral(contour: MatOfPoint): CropQuad? {
         val curve = MatOfPoint2f(*contour.toArray())
-        val perimeter = Imgproc.arcLength(curve, true)
         val approximation = MatOfPoint2f()
-        // 2% of the perimeter: enough to fold a slightly wavy paper edge into one straight
-        // line, not enough to turn a pentagon into a rectangle.
-        Imgproc.approxPolyDP(curve, approximation, 0.02 * perimeter, true)
+        try {
+            val perimeter = Imgproc.arcLength(curve, true)
+            // 2% of the perimeter: enough to fold a slightly wavy paper edge into one straight
+            // line, not enough to turn a pentagon into a rectangle.
+            Imgproc.approxPolyDP(curve, approximation, 0.02 * perimeter, true)
 
-        val corners = approximation.toArray()
-        if (corners.size != 4) return null
-        if (!Imgproc.isContourConvex(MatOfPoint(*corners))) return null
-        return order(corners)
+            val corners = approximation.toArray()
+            if (corners.size != 4) return null
+            val outline = MatOfPoint(*corners)
+            try {
+                if (!Imgproc.isContourConvex(outline)) return null
+            } finally {
+                outline.release()
+            }
+            return order(corners)
+        } finally {
+            curve.release()
+            approximation.release()
+        }
+    }
+
+    private fun areaOf(quad: CropQuad): Double {
+        val outline = MatOfPoint(*quad.asPoints().toTypedArray())
+        return try {
+            Imgproc.contourArea(outline)
+        } finally {
+            outline.release()
+        }
     }
 
     /**
