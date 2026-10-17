@@ -18,7 +18,7 @@ import kotlin.test.assertTrue
  * The test starts an HTTPS server on loopback with a self-signed certificate this JVM has
  * never trusted — the same situation as a man-in-the-middle, an expired certificate or a
  * misconfigured server — and asserts the client refuses it. It is the executable form of the
- * rule in CLAUDE.md: *certificate errors are fatal*, and there is nothing in the app that
+ * rule that *certificate errors are fatal*, and there is nothing in the app that
  * can be set to continue anyway.
  */
 class CertificateIsFatalTest {

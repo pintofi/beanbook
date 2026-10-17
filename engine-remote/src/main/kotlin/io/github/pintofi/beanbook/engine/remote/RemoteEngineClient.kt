@@ -3,6 +3,7 @@ package io.github.pintofi.beanbook.engine.remote
 import io.github.pintofi.beanbook.core.engine.EngineClient
 import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.core.engine.ReportPath
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,7 @@ import kotlinx.coroutines.withContext
  * A self-hosted Fava, behind the same [EngineClient] interface as the embedded one.
  *
  * That shared interface is what lets the WebView, the report routes and the origin allowlist
- * be written once (docs/architecture.md §2). The differences that matter are the ones this
+ * be written once (docs/architecture.md section 2). The differences that matter are the ones this
  * class cannot hide:
  *
  *  * **"Starting" means connecting**, not launching a server. Nothing here owns a process,
@@ -22,8 +23,8 @@ import kotlinx.coroutines.withContext
  *  * **The allowlist is exactly one origin** — the configured server. Fava's own pages link
  *    outward (documentation, its changelog); those are external links for the browser, not
  *    navigations for this WebView.
- *  * **There is no offline cache.** SPEC.md §"Remote" is explicit: remote is view plus
- *    quick-add. A cache would be a second copy of a ledger this app is not the owner of.
+ *  * **There is no offline cache.** Remote is view plus quick-add. A cache would be a second
+ *    copy of a ledger this app is not the owner of.
  */
 class RemoteEngineClient(
     private val address: RemoteAddress,
@@ -51,6 +52,8 @@ class RemoteEngineClient(
      */
     override suspend fun start(projectPath: String): EngineStatus = withContext(io) {
         _status.value = EngineStatus.Starting
+        // A failed connect must not leave the previous connection's slug usable by urlFor.
+        capabilities = null
         val started = System.currentTimeMillis()
         val next = try {
             val found = client.connect()
@@ -68,10 +71,30 @@ class RemoteEngineClient(
                 recoverable = remote.failure !is RemoteFailure.CertificateRejected,
                 cause = remote,
             )
+        } catch (cancelled: CancellationException) {
+            _status.value = EngineStatus.Stopped
+            throw cancelled
+        } catch (other: java.net.URISyntaxException) {
+            failedUnexpectedly(other)
+        } catch (other: IllegalArgumentException) {
+            failedUnexpectedly(other)
+        } catch (other: IllegalStateException) {
+            failedUnexpectedly(other)
         }
         _status.value = next
         next
     }
+
+    /**
+     * A malformed address that only shows up at request time must end as a status the screen
+     * can show, not as a crash.
+     */
+    private fun failedUnexpectedly(other: Exception) = EngineStatus.Failed(
+        message = "Something went wrong talking to the server: " +
+            "${other.message ?: other.javaClass.simpleName}.",
+        recoverable = true,
+        cause = other,
+    )
 
     override suspend fun stop() {
         capabilities = null
@@ -80,7 +103,9 @@ class RemoteEngineClient(
 
     override fun urlFor(report: ReportPath): String {
         val slug = capabilities?.slug ?: error("not connected: no ledger has been discovered yet")
-        return address.resolve("/$slug/${report.path}/")
+        // The default report has no path of its own: "/slug//" would be a different URL.
+        val tail = if (report.path.isEmpty()) "" else "${report.path}/"
+        return address.resolve("/$slug/$tail")
     }
 
     /**

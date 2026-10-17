@@ -5,8 +5,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Closes Phase 0 risk R3 at the unit level: the allowlist is tested for what it *refuses*,
- * not only for what it permits. The WebView-level instrumentation test is M2's job.
+ * The allowlist is tested for what it *refuses*, not only for what it permits. The
+ * WebView-level check is an instrumentation test.
  */
 class OriginAllowlistTest {
 
