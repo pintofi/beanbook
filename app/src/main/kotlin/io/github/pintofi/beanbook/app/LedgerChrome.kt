@@ -54,11 +54,11 @@ import io.github.pintofi.beanbook.app.ui.theme.MotionRole
 import io.github.pintofi.beanbook.app.ui.theme.rememberAnimationsEnabled
 
 // The app's chrome around the destinations: the bar, the rail, and the add button
-// (docs/design-direction.md §7, §8). Split out of LedgerApp.kt and AppChrome.kt so the shell
+//. Split out of LedgerApp.kt and AppChrome.kt so the shell
 // stays a list of decisions rather than a wall of components.
 
 /**
- * A destination's icon, with the rule that marks the one you are on (B74).
+ * A destination's icon, with the rule that marks the one you are on.
  *
  * The rule grows from the centre rather than fading in: it is the same gesture as the column
  * rule drawing down a surface, at the size of a tab, so moving between destinations reads as
@@ -98,7 +98,7 @@ internal fun DestinationMark(icon: ImageVector, selected: Boolean) {
 }
 
 /**
- * A destination's label, which never clips (design-direction §5).
+ * A destination's label, which never clips.
  *
  * At 200% text the bar used to become a scrolling row of words with no icons, and "More" was
  * cut to "M" (device audit 2026-10-10). Now every destination keeps its icon, and its label is
@@ -145,10 +145,10 @@ private fun destinationColours(): NavigationItemColors = ShortNavigationBarItemD
 
 /**
  * The destination bar on a phone: Material 3 Expressive's short bar, on the band, with the
- * app's rule as the selection mark (docs/material-expressive.md).
+ * app's rule as the selection mark.
  *
- * The footer rule (B74): a hairline above it, no shadow. Nothing is selected while the entry
- * form is open (B61): the form is not a destination.
+ * The footer rule: a hairline above it, no shadow. Nothing is selected while the entry
+ * form is open: the form is not a destination.
  */
 @Composable
 internal fun LedgerBottomBar(selected: Surface, adding: Boolean, onSelect: (Surface) -> Unit) {
@@ -173,7 +173,7 @@ internal fun LedgerBottomBar(selected: Surface, adding: Boolean, onSelect: (Surf
 
 /**
  * The navigation rail, for windows too wide for a bottom bar, with the add button in its header
- * (design-direction §8): in landscape the floating button sat in the far corner, a hand's width
+ *: in landscape the floating button sat in the far corner, a hand's width
  * from the content it adds to; on the rail it is beside the destinations, where a hand already is.
  */
 @Composable
@@ -201,7 +201,7 @@ internal fun LedgerNavigationRail(
         },
     ) {
         // Scrolls when the window is shorter than the rail, so no destination is ever out of
-        // reach (B98). On a phone in landscape -- about 410dp tall -- the add button leaves the
+        // reach. On a phone in landscape -- about 410dp tall -- the add button leaves the
         // rail for the corner of the page ([railHoldsAdd]), and the five destinations fit.
         androidx.compose.foundation.layout.Column(
             modifier = Modifier
@@ -231,7 +231,7 @@ internal fun LedgerNavigationRail(
 }
 
 /**
- * Whether the rail has room for the add button above its five destinations (B98). Below about
+ * Whether the rail has room for the add button above its five destinations. Below about
  * 480dp of height -- a phone on its side -- it does not: "More" was pushed off the bottom and
  * "Reports" lost its icon. There the button floats in the page's corner, as on a phone held
  * upright.
@@ -244,7 +244,7 @@ internal fun railHoldsAdd(): Boolean =
 private const val SHORT_RAIL_DP = 480
 
 /**
- * Whether the page under the add button is being scrolled down (design-direction §7).
+ * Whether the page under the add button is being scrolled down.
  *
  * Read from the scroll every surface already dispatches, at the shell, so no screen has to
  * report it: a finger moving the page up -- reading further down -- sends the button aside,
@@ -299,7 +299,7 @@ internal fun AddEntryButton(onClick: () -> Unit) {
 }
 
 /**
- * Calls [release] on a tap that nothing beneath took (B98): a tap on blank page, not on a
+ * Calls [release] on a tap that nothing beneath took: a tap on blank page, not on a
  * control. `detectTapGestures` waits for an unconsumed press, and a button, a field, a chip or
  * a clickable row consumes its own, so taps on those never reach here; a scroll is a drag, not a
  * tap, and does not either.
@@ -317,7 +317,7 @@ internal fun pageKey(surface: Surface, section: MoreSection? = null): String =
 
 /**
  * [content] with its remembered-and-saved state -- scroll positions, list positions -- filed
- * under [key] in [pages], so it comes back when the page does (B98). A null key keeps nothing.
+ * under [key] in [pages], so it comes back when the page does. A null key keeps nothing.
  */
 @Composable
 internal fun KeptPage(

@@ -13,7 +13,7 @@ data class SavedScript(
 )
 
 /**
- * The scripts the user has run, kept so they can be run again (B49).
+ * The scripts the user has run, kept so they can be run again.
  *
  * Picking a file through SAF grants a URI to *this* process for *this* launch, so a script
  * used weekly had to be found in the picker every single time -- and the copy the runner made

@@ -25,12 +25,17 @@ import javax.crypto.spec.GCMParameterSpec
 class KeystoreSecret(private val file: File, private val alias: String = DEFAULT_ALIAS) {
 
     fun store(value: CharArray) {
-        val cipher = Cipher.getInstance(TRANSFORMATION).apply {
-            init(Cipher.ENCRYPT_MODE, keyFor(alias))
+        val cipher = encryptingCipher()
+        // Encoded without building a String, which would sit in memory until collected.
+        val encoded = Charsets.UTF_8.encode(java.nio.CharBuffer.wrap(value))
+        val plaintext = ByteArray(encoded.remaining())
+        encoded.get(plaintext)
+        if (encoded.hasArray()) encoded.array().fill(0)
+        val ciphertext = try {
+            cipher.doFinal(plaintext)
+        } finally {
+            plaintext.fill(0)
         }
-        val plaintext = String(value).toByteArray()
-        val ciphertext = cipher.doFinal(plaintext)
-        plaintext.fill(0)
 
         file.parentFile?.mkdirs()
         // Nonce first, then ciphertext: one file, nothing to fall out of step.
@@ -40,6 +45,22 @@ class KeystoreSecret(private val file: File, private val alias: String = DEFAULT
             tmp.copyTo(file, overwrite = true)
             tmp.delete()
         }
+    }
+
+    /**
+     * A cipher ready to encrypt, with a key that works.
+     *
+     * A Keystore key can be invalidated while it still exists -- the screen lock changed, the
+     * device was restored -- and every use then throws. Left alone, saving a password would
+     * fail for ever. The key only protects what this file holds, which could no longer be
+     * read anyway, so a new one replaces it.
+     */
+    private fun encryptingCipher(): Cipher = try {
+        Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, keyFor(alias)) }
+    } catch (invalid: java.security.GeneralSecurityException) {
+        android.util.Log.w("KeystoreSecret", "the key was unusable and is being replaced", invalid)
+        runCatching { keystore().deleteEntry(alias) }
+        Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, generate(alias)) }
     }
 
     /**
@@ -59,7 +80,10 @@ class KeystoreSecret(private val file: File, private val alias: String = DEFAULT
             val cipher = Cipher.getInstance(TRANSFORMATION).apply {
                 init(Cipher.DECRYPT_MODE, existingKey() ?: return null, GCMParameterSpec(TAG_BITS, nonce))
             }
-            String(cipher.doFinal(ciphertext)).toCharArray()
+            val plain = cipher.doFinal(ciphertext)
+            val decoded = Charsets.UTF_8.decode(java.nio.ByteBuffer.wrap(plain))
+            plain.fill(0)
+            CharArray(decoded.remaining()).also { decoded.get(it) }
         }.getOrNull()
     }
 

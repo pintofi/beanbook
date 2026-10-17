@@ -54,9 +54,9 @@ import io.github.pintofi.beanbook.core.engine.ReportPath
 @Composable
 internal fun SurfaceContent(
     selected: Surface,
-    /** The add form is open over [selected]; it is an action, not a destination (B26). */
+    /** The add form is open over [selected]; it is an action, not a destination. */
     adding: Boolean,
-    /** Whether the open entry form holds anything that would be lost by leaving (B61). */
+    /** Whether the open entry form holds anything that would be lost by leaving. */
     onAddDirtyChange: (Boolean) -> Unit = {},
     documentCapture: DocumentCaptureHandle,
     documents: List<DocumentRow>,
@@ -67,9 +67,9 @@ internal fun SurfaceContent(
     onUnlinkDocument: (String, String?) -> Unit,
     onDeleteDocumentFile: (String) -> Unit,
     onShareDocument: (String) -> Unit,
-    /** The app's own record of what it did, and what a person can do with it (B62). */
+    /** The app's own record of what it did, and what a person can do with it. */
     diagnostics: io.github.pintofi.beanbook.app.ui.DiagnosticsUi,
-    /** A document's file inside the open project, for reading it in the app (B57). */
+    /** A document's file inside the open project, for reading it in the app. */
     fileForDocument: (String) -> java.io.File,
     pendingRestore: RestoreStaged.Ready?,
     passphraseNeeded: Boolean,
@@ -104,7 +104,7 @@ internal fun SurfaceContent(
     remoteReports: RemoteReports?,
     moreSection: MoreSection?,
     onMoreSection: (MoreSection?) -> Unit,
-    /** Moving to another destination from inside one, which is what Home's rows do (B71). */
+    /** Moving to another destination from inside one, which is what Home's rows do. */
     onSelectSurface: (Surface) -> Unit = {},
     twoPane: Boolean,
     themeChoice: io.github.pintofi.beanbook.app.ui.theme.ThemeChoice,
@@ -112,7 +112,7 @@ internal fun SurfaceContent(
     onThemeChoice: (io.github.pintofi.beanbook.app.ui.theme.ThemeChoice) -> Unit,
     onDynamicColour: (Boolean) -> Unit,
     hideWidgetAmounts: Boolean,
-    /** An entry being entered again, and the way to ask for one (B11). */
+    /** An entry being entered again, and the way to ask for one. */
     prefill: TransactionDraft? = null,
     onPrefillApplied: () -> Unit = {},
     onEnterAgain: (JournalEntry) -> Unit = {},
@@ -123,7 +123,7 @@ internal fun SurfaceContent(
     pluginSafeMode: Boolean,
     pluginMessage: String?,
     packages: io.github.pintofi.beanbook.app.packages.PackagesUi,
-    /** The period Balances is showing, and the way to change it (B53). */
+    /** The period Balances is showing, and the way to change it. */
     dateFrom: String,
     dateTo: String,
     onDateRange: (String, String) -> Unit,
@@ -139,7 +139,7 @@ internal fun SurfaceContent(
     onSetPluginEnabled: (String, Boolean) -> Unit,
     onRemovePlugin: (String) -> Unit,
     onSetPluginSafeMode: (Boolean) -> Unit,
-    /** Modules the open ledger names, and the way to add or remove one (B60). */
+    /** Modules the open ledger names, and the way to add or remove one. */
     onRemoteConnect: (String, String?, CharArray?) -> Unit,
     onRemoteDisconnect: () -> Unit,
     onRemoteForget: () -> Unit,
@@ -151,9 +151,9 @@ internal fun SurfaceContent(
     onDeleteTemplate: (String) -> Unit,
     onSaveDirective: (io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
-    /** Entries committed from the form this session (B77): what the save sweep marks. */
+    /** Entries committed from the form this session: what the save sweep marks. */
     entryCommits: Int = 0,
-    /** An entry already in the file, open in the form (B79). */
+    /** An entry already in the file, open in the form. */
     editSession: EntryEditSession? = null,
     projects: List<ProjectSummary>,
     activeProjectId: String?,
@@ -181,10 +181,10 @@ internal fun SurfaceContent(
     onRefresh: () -> Unit,
     onRestartApp: () -> Unit = {},
     onDeleteEntries: (List<JournalEntry>) -> Unit = {},
-    /** Starts the engine again after it failed, or restarts it when it stopped answering (B89). */
+    /** Starts the engine again after it failed, or restarts it when it stopped answering. */
     onEngineRetry: () -> Unit = {},
     onEngineUnreachable: () -> Unit = {},
-    /** The ledger is in balance again: Home stamps it (B87). */
+    /** The ledger is in balance again: Home stamps it. */
     stamped: Boolean = false,
 ) {
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
@@ -391,10 +391,10 @@ internal fun SurfaceContent(
                                 packages = packages,
                                 message = pluginMessage,
                                 // What the last load said about each catalogue plugin's
-                                // modules (B97): extension imports and plugin import errors.
+                                // modules: extension imports and plugin import errors.
                                 status = { id ->
                                     // While the ledger or the engine is reloading, the last
-                                    // answer may be stale (B102): say so rather than flash an
+                                    // answer may be stale: say so rather than flash an
                                     // error that is about to clear.
                                     val reloading = refreshing ||
                                         engineStatus !is io.github.pintofi.beanbook.core.engine.EngineStatus.Serving
@@ -467,7 +467,7 @@ internal fun SurfaceContent(
                             message = backupMessage,
                         )
 
-                        // Pull down to read the folder and the ledger again (B89): a receipt
+                        // Pull down to read the folder and the ledger again: a receipt
                         // saved into the documents folder from elsewhere had no way in.
                         MoreSection.DOCUMENTS -> Refreshable(refreshing, onRefresh) {
                             DocumentsScreen(
@@ -528,7 +528,7 @@ internal fun SurfaceContent(
                             fileForDocument = fileForDocument,
                             format = ledger.format,
                             // What Beancount said about this entry, so the message is where
-                            // the entry is rather than only in the list at the top (B64).
+                            // the entry is rather than only in the list at the top.
                             errors = io.github.pintofi.beanbook.core.domain.JournalErrors
                                 .attach(ledger.journal, ledger.errors)[
                                 io.github.pintofi.beanbook.core.domain.JournalErrors.keyOf(entry)
@@ -572,13 +572,22 @@ internal fun SurfaceContent(
                 } else if (serving == null) {
                     LoadingOrError(engineStatus, Modifier.padding(padding), onRetry = onEngineRetry)
                 } else {
-                    if (token != null) installSessionToken(serving.origin, token)
+                    // Once per origin and token, not on every recomposition: the cookie has to
+                    // be in place before the page loads, and setting it again each time the
+                    // screen redraws only flushes the cookie store.
+                    if (token != null) {
+                        // Returns the token only because `remember` must not return Unit.
+                        remember(serving.origin, token) {
+                            installSessionToken(serving.origin, token)
+                            token
+                        }
+                    }
                     // Starts at the ledger's own index so Fava serves whatever the file's
                     // default-page option asks for; picking a report from the list overrides
-                    // it from then on (B19).
+                    // it from then on.
                     var report by remember { mutableStateOf(ReportPath.LEDGER_DEFAULT) }
                     // Kept by the app, so returning to Reports finds the report that was open
-                    // rather than starting Fava again (B89). Back first returns to the page the
+                    // rather than starting Fava again. Back first returns to the page the
                     // ledger opens on -- its `default-page` Fava option -- then leaves Reports.
                     val page = io.github.pintofi.beanbook.app.web.LocalReportsPage.current
                     BackHandler(enabled = page?.awayFromLanding == true) {
@@ -599,8 +608,8 @@ internal fun SurfaceContent(
                         )
                     }
                     if (twoPane) {
-                        // ux.md 7: on an expanded window the Fava WebView gets the wider
-                        // pane, with the report list beside it (N8).
+                        // docs/ux.md section 7: on an expanded window the Fava WebView gets the wider
+                        // pane, with the report list beside it.
                         ReportsPane(
                             selected = report,
                             onSelect = { report = it },
@@ -621,19 +630,18 @@ internal fun SurfaceContent(
 /**
  * Pull down to read the open ledger from disk again.
  *
- * The app has no file watcher — `watchfiles` is bundled for Fava's benefit, nothing of ours
- * uses it, and there is no `FileObserver` — so a mirror pull, a restore, or an edit made on a
- * desktop inside a synced folder leaves the screen showing the ledger as it was. Before this
- * the only ways out were to switch project and back, or to restart the app (B26).
+ * The file watcher catches most outside changes by itself; this is for the ones it cannot see
+ * (a folder that only changes while the app is closed, a provider that sends no events), and
+ * for anyone who wants to be sure.
  *
- * **Only on the surfaces that draw ledger data, and Documents (B89).** Reports is Fava's own page inside a
+ * **Only on the surfaces that draw ledger data, and Documents.** Reports is Fava's own page inside a
  * WebView and has its own reload; the file editor holds an unsaved draft that a reload would
  * be entitled to lose; and the entry detail view is about one entry, which a reload could
  * remove from under it. Adding the gesture there would offer a promise this cannot keep.
  *
  * The indicator is worth the wiring rather than being decoration: a reload is seconds, not
  * milliseconds, on a large ledger — far past the point where a user assumes the pull did
- * nothing and pulls again (the Doherty Threshold, B26).
+ * nothing and pulls again (the Doherty Threshold).
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable

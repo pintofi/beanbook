@@ -37,7 +37,7 @@ import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import io.github.pintofi.beanbook.core.data.WidgetCache
 
 /**
- * Asks which account a balance widget should show, while it is being placed (B1).
+ * Asks which account a balance widget should show, while it is being placed.
  *
  * Before this, `WidgetSnapshot.primaryBalance` chose for everyone — assets first, then
  * alphabetically — so somebody with two current accounts could not put the *other* one on
@@ -70,8 +70,8 @@ class BalanceWidgetConfigureActivity : ComponentActivity() {
         // This activity is exported, because a launcher in another process has to start it.
         // So the id it is handed is not trusted: it is only accepted if it really is one of
         // *our* balance widgets. Without this, any app could invoke this screen and have a
-        // person set an account against an arbitrary widget id (B34's rule, applied to the
-        // second exported component this app has ever had).
+        // person set an account against an arbitrary widget id (the same rule as for the launcher
+        // activity, applied to the second exported component).
         val info = AppWidgetManager.getInstance(this).getAppWidgetInfo(widgetId)
         if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID ||
             info?.provider?.className != BalanceWidget::class.java.name ||
@@ -143,7 +143,7 @@ internal fun ChooseAccounts(
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
         )
         // Every account in the ledger reaches this list now, which is long enough to need
-        // finding rather than scrolling (B48).
+        // finding rather than scrolling.
         OutlinedTextField(
             value = filter,
             onValueChange = { filter = it },

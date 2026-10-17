@@ -14,7 +14,6 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.viewinterop.AndroidView
@@ -36,7 +35,7 @@ private const val TAG = "FavaWebView"
  * Blocks every navigation and subresource that is not on an allowed origin.
  *
  * This is a security control, so it is a named class with injectable callbacks rather
- * than an anonymous object: it has to be testable (Phase 0 risk R3).
+ * than an anonymous object: it has to be testable.
  */
 class AllowlistWebViewClient(
     private val allowlist: OriginAllowlist,
@@ -49,13 +48,15 @@ class AllowlistWebViewClient(
     // so a captured string would freeze the palette at whatever it was then and switching to
     // dark would not re-skin the reports until the WebView was rebuilt.
     private val themeScript: () -> String? = { null },
-    /** Every address the page moves to, including Fava's in-page navigation (B89). */
+    /** Every address the page moves to, including Fava's in-page navigation. */
     private val onUrlChanged: (String) -> Unit = {},
     /** A document load began; [onPageLoaded] says when it ended (the native progress rule). */
     private val onPageBegan: (String) -> Unit = {},
+    /** The page's renderer process died or was killed; the view is no longer usable. */
+    private val onRendererGone: () -> Unit = {},
     /**
      * How many times a main-frame load that failed is tried again, after a short wait, before
-     * it is reported (B101). The local server can be a moment behind the WebView, or on a new
+     * it is reported. The local server can be a moment behind the WebView, or on a new
      * port after Android revived the app, and the first load then fails; Android shows its own
      * error page and *still* calls `onPageFinished`, which counted as "loaded" and took the
      * loading cover away, leaving that page on screen.
@@ -152,6 +153,20 @@ class AllowlistWebViewClient(
         )
     }
 
+    /**
+     * The renderer process behind the page is gone: Android reclaimed its memory, or it crashed.
+     *
+     * Not handling this takes the whole app down with it, and the system does this to a
+     * WebView in the background more often than to almost anything else. Returning true says
+     * the app has dealt with it, and obliges it to stop using this view: [onRendererGone]
+     * drops it and builds another.
+     */
+    override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+        Log.w(TAG, "the report renderer ended (crashed=${detail.didCrash()})")
+        onRendererGone()
+        return true
+    }
+
     override fun onReceivedError(
         view: WebView,
         request: WebResourceRequest,
@@ -211,7 +226,7 @@ class AllowlistWebViewClient(
         // so a style injected into one page is gone by the next.
         //
         // The page counts as loaded, and the native cover goes, only after the style has run
-        // *and* the WebView has drawn a frame that includes it (B102). Calling onPageLoaded
+        // *and* the WebView has drawn a frame that includes it. Calling onPageLoaded
         // straight after the asynchronous evaluateJavascript uncovered Fava's own layout and
         // colours for a moment before the app's were applied.
         val script = themeScript()
@@ -244,8 +259,7 @@ class AllowlistWebViewClient(
 @SuppressLint("SetJavaScriptEnabled")
 fun WebView.applyBeancountHardening(debuggingAllowed: Boolean = false) {
     settings.apply {
-        // Fava renders every report client-side, so JavaScript is not optional
-        // (Phase 0 finding C10).
+        // Fava renders every report client-side, so JavaScript is not optional.
         javaScriptEnabled = true
         domStorageEnabled = true
 
@@ -284,8 +298,8 @@ fun installSessionToken(origin: String, token: String) {
         setAcceptCookie(true)
         // HttpOnly: the token authenticates requests to the loopback engine, and nothing on
         // the page has any reason to read it. Without the flag, script running in the Fava
-        // document could — and the page renders a ledger, so it is not a place to be generous
-        // (R9). The browser still sends the cookie; only script is shut out.
+        // document could — and the page renders a ledger, so it is not a place to be generous.
+        // The browser still sends the cookie; only script is shut out.
         setCookie(origin, "bca_token=$token; Path=/; SameSite=Strict; HttpOnly")
         flush()
     }
@@ -299,7 +313,7 @@ fun clearSessionToken(origin: String) {
 }
 
 /**
- * A report WebView that outlives the Reports tab (B89).
+ * A report WebView that outlives the Reports tab.
  *
  * Leaving Reports used to dispose of the WebView, so every visit started Fava again from its
  * first page -- slow on a large ledger, and it forgot the report the person was reading.
@@ -336,7 +350,7 @@ class RetainedWebView {
     }
 }
 
-/** The report page kept for the app's Reports tab (B89); provided by the app's composition. */
+/** The report page kept for the app's Reports tab; provided by the app's composition. */
 val LocalReportsPage = androidx.compose.runtime.staticCompositionLocalOf<RetainedWebView?> { null }
 
 @Composable
@@ -349,11 +363,11 @@ fun FavaWebView(
     onExternalLink: (Uri) -> Unit = {},
     httpAuth: (() -> AllowlistWebViewClient.HttpAuth?)? = null,
     onLoadProblem: (String) -> Unit = {},
-    /** Keeps the page across leaving and returning (B89); null for a page of its own. */
+    /** Keeps the page across leaving and returning; null for a page of its own. */
     retained: RetainedWebView? = null,
 ) {
     // Whether the page has ever finished loading, so the native shell can hold something in
-    // front of a blank WebView (B76). A report takes a moment to render and Fava paints white
+    // front of a blank WebView. A report takes a moment to render and Fava paints white
     // until it does, which read as the app having lost the screen. Nothing is injected into
     // the page and nothing about the WebView's security changes: this is a native cover over
     // a native slot, removed when Fava says it is ready.
@@ -372,13 +386,15 @@ fun FavaWebView(
     }
     val currentTheme = androidx.compose.runtime.rememberUpdatedState(themeScript)
 
-    // Whether Fava is working on something right now (design-direction §10): a document load,
+    // Whether Fava is working on something right now: a document load,
     // from onPageStarted to onPageFinished, or one of Fava's own in-page navigations, which load
     // no document and are read from its header spinner. A 30 s report used to show no native
     // sign of life at all (device audit 2026-10-10).
     var documentLoading by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var favaBusy by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val webRef = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<WebView?>(null) }
+    // Bumped when the page's renderer dies, which discards the WebView and builds a new one.
+    val rebuilds = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
 
     val onLoaded = androidx.compose.runtime.rememberUpdatedState { at: String ->
         documentLoading = false
@@ -391,6 +407,7 @@ fun FavaWebView(
     }.value
 
     androidx.compose.foundation.layout.Box(modifier) {
+    androidx.compose.runtime.key(rebuilds.intValue) {
     AndroidView(
         modifier = androidx.compose.ui.Modifier.fillMaxSize(),
         factory = { context ->
@@ -402,7 +419,7 @@ fun FavaWebView(
             // collapsed into nothing and the page came up blank with the whole document
             // present in the DOM. The wrapper absorbs that measure pass and the WebView is
             // laid out MATCH_PARENT inside it, which is what makes `vh` mean something
-            // (B47, `ViewportUnitsTest`).
+            // (`ViewportUnitsTest`).
             android.widget.FrameLayout(context).apply {
                 val kept = retained?.view
                 (kept?.parent as? android.view.ViewGroup)?.removeView(kept)
@@ -437,6 +454,26 @@ fun FavaWebView(
                         themeScript = { currentTheme.value },
                         onUrlChanged = { retained?.currentUrl = it },
                         onPageBegan = { documentLoading = true },
+                        onRendererGone = {
+                            // A dead WebView cannot be used again. It leaves the retained slot
+                            // and the screen, and a new one is built in its place and loads
+                            // the same address.
+                            webRef.value = null
+                            retained?.view = null
+                            retained?.requested = null
+                            retained?.loaded = false
+                            loaded = false
+                            (parent as? android.view.ViewGroup)?.removeView(this)
+                            destroy()
+                            rebuilds.intValue += 1
+                            // A server the user hosts has no retry of its own to fall back on.
+                            if (retained == null) {
+                                onLoadProblem(
+                                    "The report view was closed by Android, usually to free memory. " +
+                                        "Open Reports again.",
+                                )
+                            }
+                        },
                         // The local server is retried; a server the user hosts is reported at once.
                         retries = if (retained != null) 4 else 0,
                     )
@@ -451,7 +488,7 @@ fun FavaWebView(
             }
         },
         update = { host ->
-            val view = host.getChildAt(0) as WebView
+            val view = host.getChildAt(0) as? WebView ?: return@AndroidView
             // A retained page loads only when the app asks for a different address, never
             // because the person moved to another report inside it.
             val reload = if (retained != null) retained.requested != url else view.url != url
@@ -467,6 +504,7 @@ fun FavaWebView(
             }
         },
     )
+    }
 
     // The report fading up over the shell's own loading rule, rather than a white page
     // becoming a report between two frames. An instant swap with animations off (design-
@@ -504,10 +542,6 @@ fun FavaWebView(
         }
     }
     if (loaded) ReportWorking(busy = documentLoading || favaBusy)
-    }
-
-    DisposableEffect(url) {
-        onDispose { /* the WebView is released with the composition */ }
     }
 }
 
@@ -548,7 +582,7 @@ private const val BUSY_WORDS_AFTER_MS = 3_000L
 
 /**
  * The native sign that a report is on its way, over a page that is already showing
- * (design-direction §10): the ledger's rule filling across the top as soon as a wait is
+ *: the ledger's rule filling across the top as soon as a wait is
  * noticeable, and after a few seconds a line saying so, announced politely. Both go the moment
  * Fava is done.
  */

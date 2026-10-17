@@ -49,7 +49,7 @@ class BeancountApplication : Application() {
     private val appScope = CoroutineScope(SupervisorJob())
 
     /**
-     * Where a write the user asked for runs (B93): the application's lifetime, on the main
+     * Where a write the user asked for runs: the application's lifetime, on the main
      * thread, rather than an activity's. A save launched from an activity's own scope was
      * cancelled with the activity -- rotating, or Android reclaiming a screen left in the
      * background -- and the entry the user had tapped Save on was never written.
@@ -67,7 +67,7 @@ class BeancountApplication : Application() {
 
     val engine: LocalEngineClient by lazy { LocalEngineClient(this, connection = engineConnection) }
 
-    /** Sharing Reports on Wi-Fi, behind a sign-in (B93). Off until the user turns it on. */
+    /** Sharing Reports on Wi-Fi, behind a sign-in. Off until the user turns it on. */
     val sharingState: io.github.pintofi.beanbook.app.sharing.SharingState by lazy {
         io.github.pintofi.beanbook.app.sharing.SharingState(
             this,
@@ -108,7 +108,7 @@ class BeancountApplication : Application() {
         }
     }
 
-    /** Offers to take back the last save, delete or file edit (B97). */
+    /** Offers to take back the last save, delete or file edit. */
     val undo: io.github.pintofi.beanbook.app.undo.UndoController by lazy {
         io.github.pintofi.beanbook.app.undo.UndoController(writer, workScope)
     }
@@ -127,7 +127,7 @@ class BeancountApplication : Application() {
             this,
             DocumentStore(workspace),
             appScope,
-            // The scanner renders a page in its chosen style at assembly time (B58); a
+            // The scanner renders a page in its chosen style at assembly time; a
             // device where OpenCV did not load returns the photograph unchanged, which is
             // the honest fallback rather than a failure.
             io.github.pintofi.beanbook.app.documents.PdfAssembler(
@@ -148,7 +148,7 @@ class BeancountApplication : Application() {
         )
     }
 
-    /** The names of files attached to the entry being written, for the form to show (B80). */
+    /** The names of files attached to the entry being written, for the form to show. */
     val documentFileNames: kotlinx.coroutines.flow.StateFlow<List<String>> by lazy {
         documentCapture.files
             .map { files -> files.map { it.displayName } }
@@ -184,7 +184,7 @@ class BeancountApplication : Application() {
     }
 
     /**
-     * Whether the running interpreter is behind the plugins and packages on disk (B49).
+     * Whether the running interpreter is behind the plugins and packages on disk.
      *
      * Owned here rather than by either store, because both of them can put it out of date
      * and only one of them can be asked about it.
@@ -194,7 +194,7 @@ class BeancountApplication : Application() {
     }
 
     /**
-     * Bumped whenever a ledger file changes on disk under the open project (B92).
+     * Bumped whenever a ledger file changes on disk under the open project.
      *
      * A counter rather than an event, so anything showing the ledger -- the native screens,
      * the document list, Fava's page in Reports -- can follow it without the watcher needing
@@ -238,7 +238,7 @@ class BeancountApplication : Application() {
         )
     }
 
-    /** The curated plugin catalogue (B82): listed in both editions, installable in Expert. */
+    /** The curated plugin catalogue: listed in both editions, installable in Expert. */
     val catalogueState: io.github.pintofi.beanbook.app.plugins.CatalogueState by lazy {
         io.github.pintofi.beanbook.app.plugins.CatalogueState(
             this,
@@ -266,7 +266,7 @@ class BeancountApplication : Application() {
         io.github.pintofi.beanbook.app.ui.theme.ThemeSettings(filesDir.resolve("state"))
     }
 
-    /** When to mention, once, that the project accepts donations (B81). */
+    /** When to mention, once, that the project accepts donations. */
     val supportPrompt: io.github.pintofi.beanbook.core.data.SupportPrompt by lazy {
         io.github.pintofi.beanbook.core.data.SupportPrompt(filesDir.resolve("state"))
     }
@@ -279,14 +279,14 @@ class BeancountApplication : Application() {
 
     /**
      * Every write goes through here: lock, snapshot, journal, atomic rename, re-parse
-     * with Beancount, and only then report success (CLAUDE.md, write protocol).
+     * with Beancount, and only then report success (the write protocol).
      */
     val writer: ProjectWriter by lazy {
         ProjectWriter(
             workspace,
             journal,
             BeancountValidator(this, connection = engineConnection),
-            // Every write's outcome in the app's own log (B62). What a person needs when a
+            // Every write's outcome in the app's own log. What a person needs when a
             // save did not take: which file, which operation, and what the protocol said.
             observer = { line ->
                 io.github.pintofi.beanbook.app.diagnostics.Diagnostics.i("ProjectWriter", line)
@@ -302,14 +302,14 @@ class BeancountApplication : Application() {
         // (docs/architecture.md §5).
         io.github.pintofi.beanbook.app.storage.ContextHolder.install(this)
         // First, so a crash during start-up is still recorded, and so the app's own log
-        // covers the run from its first line (B62).
+        // covers the run from its first line.
         io.github.pintofi.beanbook.app.diagnostics.Diagnostics.install(this) {
             val status = engineManager.status.value
             "engine: ${status::class.simpleName}, edition: ${pluginPolicy.name}"
         }
-        // The first launch is when the week before the one support notice starts (B81).
+        // The first launch is when the week before the one support notice starts.
         supportPrompt.recordLaunch(Instant.now())
-        // What the trial and the contribution keys left behind (B81): a stored key carries the
+        // What the trial and the contribution keys left behind: a stored key carries the
         // email it was issued to, and nothing reads it any more.
         filesDir.resolve("entitlement").deleteRecursively()
         filesDir.resolve("state/welcomed").delete()
@@ -318,7 +318,7 @@ class BeancountApplication : Application() {
 
     override fun onTerminate() {
         // Only called by the framework in tests, but leaving the engine running would
-        // keep non-daemon cheroot threads alive (Phase 0 finding C7).
+        // keep non-daemon cheroot threads alive.
         engineManager.stopNow()
         engineConnection.release()
         appScope.cancel()

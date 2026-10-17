@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** What happened to one file, or to a pass, when the mirror last ran (B102). */
+/** What happened to one file, or to a pass, when the mirror last ran. */
 data class MirrorHistoryEntry(val atEpochMs: Long, val kind: Kind, val detail: String) {
     enum class Kind(val label: String) {
         SENT("Sent to the folder"),

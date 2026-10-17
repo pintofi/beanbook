@@ -104,7 +104,7 @@ object WidgetRefresh {
 }
 
 /**
- * Which accounts each balance widget was told to show (B1, B48).
+ * Which accounts each balance widget was told to show.
  *
  * A default was never enough. `WidgetSnapshot.primaryBalance` picks assets-then-alphabetical
  * so the figure at least means something, but somebody with two current accounts cannot put
@@ -112,7 +112,7 @@ object WidgetRefresh {
  * same number.
  *
  * **A list, not one name.** A widget the size of four app icons can hold several balances,
- * and "current account, savings, card" is one glance rather than three widgets (B48).
+ * and "current account, savings, card" is one glance rather than three widgets.
  *
  * Keyed by app-widget id, because the choice belongs to the placed widget rather than to the
  * app: two of them are the point.

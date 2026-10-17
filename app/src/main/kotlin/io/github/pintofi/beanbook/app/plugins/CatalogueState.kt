@@ -21,11 +21,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * The curated plugin catalogue on the Plugins screen: install one, remove one (B82).
+ * The curated plugin catalogue on the Plugins screen: install one, remove one.
  *
  * Each plugin is installed with the Python packages it needs into a folder of its own
  * ([CatalogueInstaller]), so installing or removing one never touches another. [request]
- * installs at once and reports only the outcome (B89).
+ * installs at once and reports only the outcome.
  *
  * The Play edition lists the catalogue and installs nothing from it: its [ArchiveFetcher] and
  * `WheelFetcher` both refuse, and the screen says to add a plugin from a file instead.
@@ -65,7 +65,7 @@ class CatalogueState(
     }
 
     /**
-     * Applies the shipped overlays to plugins installed before they existed (B97).
+     * Applies the shipped overlays to plugins installed before they existed.
      *
      * An overlay was only applied at install time, so `fava-portfolio-returns` installed
      * earlier kept the SciPy import SciPy-free code now replaces, and kept failing with "No
@@ -83,7 +83,7 @@ class CatalogueState(
                     Diagnostics.i(TAG, "overlay re-applied to $id")
                     // The ledger snapshot carries which extensions import, and it is cached
                     // against the ledger's files, not the plugin's: a repaired plugin kept
-                    // showing the failure it had been repaired for (B101).
+                    // showing the failure it had been repaired for.
                     File(context.cacheDir, "ledger-snapshots").deleteRecursively()
                 }
             }
@@ -113,14 +113,17 @@ class CatalogueState(
             _message.value = "${entry.name} has no source the app can install from."
             return
         }
-        // Straight to installing (B89): a confirmation listing download sources and package
+        // Straight to installing: a confirmation listing download sources and package
         // names asked people to judge detail they had no way to judge. What they see is the
         // progress and, if it fails, why.
+        // One install at a time: a second tap while the first runs would race it in the same
+        // folder, and the failure path of either one removes the plugin.
+        if (_status.value is CatalogueStatus.Installing) return
         _status.value = CatalogueStatus.Installing(id)
         _message.value = null
         scope.launch {
             // Resolving and installing both use the network and take a while; both are held
-            // until they end, even if the user leaves the app or the screen goes off (B93).
+            // until they end, even if the user leaves the app or the screen goes off.
             io.github.pintofi.beanbook.app.work.KeepWorking.around(
                 context,
                 "Installing ${entry.name}",
@@ -143,7 +146,7 @@ class CatalogueState(
         val wheels = LinkedHashMap<String, io.github.pintofi.beanbook.app.packages.Wheel>()
         val unavailable = mutableListOf<String>()
         // What the overlay has already removed from the code is not fetched and not reported
-        // as missing: the file that imported it is replaced during this same install (B92).
+        // as missing: the file that imported it is replaced during this same install.
         val removed = overlay.removes(entry)
         entry.install?.requires.orEmpty()
             .filterNot { it.lowercase().replace('_', '-') in removed }

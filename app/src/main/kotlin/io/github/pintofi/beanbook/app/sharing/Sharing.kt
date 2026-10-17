@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** Where sharing on Wi-Fi stands (B93). */
+/** Where sharing on Wi-Fi stands. */
 sealed interface SharingStatus {
     data object Off : SharingStatus
     data object Starting : SharingStatus
@@ -41,7 +41,7 @@ sealed interface SharingStatus {
 }
 
 /**
- * The sign-in for sharing, kept on this device (B93).
+ * The sign-in for sharing, kept on this device.
  *
  * The password is never stored: only a salted PBKDF2-SHA256 hash, which is also all that is
  * handed to the engine. The format is the one `sharing.py` checks against, pinned on both
@@ -61,7 +61,8 @@ class SharingSettings(stateDir: File) {
         val hash = io.github.pintofi.beanbook.core.data.SharingPassword.hash(password)
         password.fill('\u0000')
         file.parentFile?.mkdirs()
-        file.writeText("${username.trim()}\n$hash\n")
+        // One line each: a line break in the name would shift the hash onto the wrong line.
+        file.writeText("${username.trim().replace('\n', ' ').replace('\r', ' ')}\n$hash\n")
     }
 
     fun forget() {
@@ -77,8 +78,7 @@ class SharingSettings(stateDir: File) {
 }
 
 /**
- * Sharing Reports on the Wi-Fi network: turned on by the user, and kept on while it is on
- * (B93).
+ * Sharing Reports on the Wi-Fi network: turned on by the user, and kept on while it is on.
  *
  * Kept on means three things. A foreground service holds the process with a notification that
  * names the address and has a Stop button, so the phone says, for as long as it is true, that
@@ -223,7 +223,7 @@ class SharingState(
 }
 
 /**
- * The foreground service that keeps sharing alive and says so (B93).
+ * The foreground service that keeps sharing alive and says so.
  *
  * It does no serving itself -- that is the engine process -- but while it runs the app keeps
  * foreground priority, and its notification is the phone's own statement that it is reachable

@@ -26,7 +26,7 @@ import io.github.pintofi.beanbook.app.undo.UndoController
 import kotlinx.coroutines.delay
 
 /**
- * The Undo bar (B97 core, B98 screen): "Deleted 1 entry. Undo", over whatever screen is open.
+ * The Undo bar: "Deleted 1 entry. Undo", over whatever screen is open.
  *
  * Hosted in the shell's snackbar slot, so Material's scaffold places it above the bottom bar and
  * lifts the add button over it rather than letting either cover the other. What it offers is

@@ -107,7 +107,7 @@ internal fun LedgerTopBar(
     onBack: () -> Unit,
     onSwitchProject: () -> Unit,
     /**
-     * Whether the entry form is what is on screen (B61).
+     * Whether the entry form is what is on screen.
      *
      * The form is a task, not a destination: it is opened by the action button, it has no
      * place in the bar of destinations, and the way out of it is a close, not a step back
@@ -116,14 +116,14 @@ internal fun LedgerTopBar(
      * an arrow walks back through where you have been.
      */
     adding: Boolean = false,
-    /** The form is open on an entry already in the file (B79). */
+    /** The form is open on an entry already in the file. */
     editing: Boolean = false,
     /** Whether the rule beside the name says "in balance" ([ledgerHealthy]). */
     healthy: Boolean = health?.contains("no errors") == true,
 ) {
     androidx.compose.material3.TopAppBar(
         // The band: a tint one step off the paper, so the chrome reads as a strip laid over
-        // the page rather than as more page (B74). The rule below starts here and continues
+        // the page rather than as more page. The rule below starts here and continues
         // down the surface, which is what ties the chrome to the ledger under it.
         colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -161,7 +161,7 @@ internal fun LedgerTopBar(
                 Column {
                     // The title changes when the app moves, and it changes *as* the app
                     // moves: a section's name rises into place and the project's name settles
-                    // back, so the bar and the page are telling the same story (B76).
+                    // back, so the bar and the page are telling the same story.
                     io.github.pintofi.beanbook.app.ui.LedgerContent(
                         targetState = when {
                             editing -> "Edit entry"
@@ -186,7 +186,7 @@ internal fun LedgerTopBar(
                         label = "health",
                     ) {
                         val shown = remember(health) { health }
-                        // Ends in an ellipsis rather than a cut word at large text (B98): "1 error
+                        // Ends in an ellipsis rather than a cut word at large text: "1 error
                         // · 2" read as a different count. A screen reader still gets the whole
                         // line: the row merges it.
                         Text(
@@ -212,7 +212,7 @@ internal fun LedgerTopBar(
             // The corner changes with the page rather than a frame before it: a cross for a
             // form you opened, an arrow for a section you walked into, and nothing at the top
             // level. Cross-fades in place, because the two icons mean different things and
-            // sliding one into the other would imply they were the same control (B76).
+            // sliding one into the other would imply they were the same control.
             io.github.pintofi.beanbook.app.ui.LedgerContent(
                 targetState = when {
                     adding -> NavigationAffordance.CLOSE
@@ -250,7 +250,7 @@ internal fun LedgerTopBar(
 
 /**
  * The two rules from the launcher icon, at the size of a glyph, saying whether the open
- * ledger parses (B74).
+ * ledger parses.
  *
  * Equal rules means every entry balanced and the file loaded. A short second rule means
  * Beancount had something to say about it. The line of text beside this says the same thing
@@ -309,7 +309,7 @@ internal fun ledgerHealth(status: EngineStatus, ledger: LedgerSnapshot?): String
             else -> "${ledger.errors.size} errors"
         },
         // A report extension that does not import is not in Beancount's list, so the count
-        // above was one short of Fava's Errors page (device audit 2026-10-10, B97).
+        // above was one short of Fava's Errors page (found in a device audit).
         when (ledger.extensionFailures) {
             0 -> null
             1 -> "1 extension failed"
@@ -335,7 +335,7 @@ internal fun ledgerHealthy(ledger: LedgerSnapshot?): Boolean =
 @Composable
 internal fun MoreMenu(
     onOpen: (MoreSection) -> Unit,
-    /** Ends the engine and the app and opens it again (B77). */
+    /** Ends the engine and the app and opens it again. */
     onRestartApp: () -> Unit = {},
 ) {
     var confirmingRestart by remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -360,7 +360,7 @@ internal fun MoreMenu(
     // neither edition self-updates now, and both have a version worth showing.
     val sections = MoreSection.entries
 
-    // Grouped by what a person came to do (design-direction §7): thirteen rows of two-line text
+    // Grouped by what a person came to do: thirteen rows of two-line text
     // read as one block, and the row you wanted was found by reading every label. Each group is
     // a folio; each row a target with its icon on a badge, the anchor the eye finds first.
     val groups = listOf(
@@ -381,7 +381,7 @@ internal fun MoreMenu(
     val leftOver = sections.filterNot { it in grouped }
 
     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-        // What this edition is, and what the other one adds (B81). Said in More, where people
+        // What this edition is, and what the other one adds. Said in More, where people
         // go looking for what the app can do, rather than over their ledger.
         io.github.pintofi.beanbook.app.about.EditionNotice()
         io.github.pintofi.beanbook.app.ui.FolioPage(modifier = Modifier.readableMeasureCentred()) {
@@ -409,7 +409,7 @@ internal fun MoreMenu(
                 }
             }
             // Last, and an action rather than a section: it does not open a screen, it starts
-            // the app again (B77).
+            // the app again.
             androidx.compose.foundation.layout.Spacer(Modifier.height(Measure.gap))
             io.github.pintofi.beanbook.app.ui.FolioGroup {
                 item {
@@ -489,7 +489,7 @@ internal fun LoadingOrError(
     modifier: Modifier = Modifier,
     onRetry: () -> Unit = {},
 ) {
-    // No edition line here (B89): which edition this is belongs on More, not on a screen that
+    // No edition line here: which edition this is belongs on More, not on a screen that
     // is only waiting for the ledger.
     Column(
         modifier = modifier.padding(horizontal = Measure.gutter, vertical = Measure.chapter),
@@ -521,7 +521,7 @@ internal fun LoadingOrError(
 }
 
 /**
- * What to tell a person when the engine did not start (B89): what happened, why, what to do.
+ * What to tell a person when the engine did not start: what happened, why, what to do.
  *
  * The raw message was shown as it came -- "RuntimeError: engine already started; call stop()
  * first", "Transaction failed on small parcel; remote process probably died" -- which names

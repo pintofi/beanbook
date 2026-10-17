@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Whether the engine is running older code than what is on disk (B49).
+ * Whether the engine is running older code than what is on disk.
  *
  * Installing a plugin or fetching a package changes what the interpreter *would* import, and
  * changes nothing about what it already has: Python caches every module it has loaded, so a

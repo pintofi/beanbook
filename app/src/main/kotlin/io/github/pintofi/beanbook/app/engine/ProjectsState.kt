@@ -71,19 +71,21 @@ class ProjectsState(
     /**
      * Imports a `.zip`. The archive is copied into app storage first, because validation
      * uses `ZipFile`, which needs random access — and because nothing should be extracted
-     * until the whole archive has been judged (docs/milestones/m5.md).
+     * until the whole archive has been judged.
      */
-    fun importArchive(resolver: ContentResolver, archive: Uri, cacheDir: File, onOpened: (String) -> Unit) =
-        import(onOpened) {
-            val local = File(cacheDir, "import-${System.currentTimeMillis()}.zip")
+    fun importArchive(resolver: ContentResolver, archive: Uri, cacheDir: File, onOpened: (String) -> Unit) {
+        val local = File(cacheDir, "import-${System.currentTimeMillis()}.zip")
+        // Deleted when the import ends, whatever happens: it is a whole copy of the ledger.
+        import(onOpened, cleanup = { local.delete() }) {
             resolver.openInputStream(archive)?.use { input ->
                 local.outputStream().use { input.copyTo(it) }
             } ?: error("could not read the chosen file")
             ZipImportSource(local) to (archive.lastPathSegment ?: "imported")
         }
+    }
 
     /**
-     * Writes a copy of a project into a folder the user chooses (SPEC.md §55).
+     * Writes a copy of a project into a folder the user chooses.
      *
      * Distinct from mirroring, which sets up an ongoing relationship with one folder. This is
      * a snapshot: it happens once, to wherever the user points it, and the app forgets about
@@ -122,15 +124,20 @@ class ProjectsState(
 
     private fun import(
         onOpened: (String) -> Unit,
+        cleanup: () -> Unit = {},
         open: () -> Pair<io.github.pintofi.beanbook.core.data.ImportSource, String>,
     ) {
         scope.launch {
             _message.value = "Reading…"
             val outcome = withContext(Dispatchers.IO) {
                 runCatching {
-                    val (source, name) = open()
-                    val id = ProjectRegistry.idFor(name, workspace.listProjects().toSet())
-                    importer.import(source, id) to id
+                    try {
+                        val (source, name) = open()
+                        val id = ProjectRegistry.idFor(name, workspace.listProjects().toSet())
+                        importer.import(source, id) to id
+                    } finally {
+                        cleanup()
+                    }
                 }
             }
 

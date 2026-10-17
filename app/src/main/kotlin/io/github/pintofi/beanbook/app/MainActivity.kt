@@ -41,11 +41,8 @@ import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.core.engine.ReportPath
 
 /**
- * M3 shell: three surfaces over one ledger — the native journal and balances
- * and Fava's own reports in the hardened WebView.
- *
- * The project picker and guided entry arrive in M6; this screen still uses a single
- * starter project and says so rather than pretending otherwise.
+ * The app's single activity: three surfaces over one ledger — the native journal and
+ * balances, and Fava's own reports in the hardened WebView.
  */
 class MainActivity : ComponentActivity() {
 
@@ -54,7 +51,7 @@ class MainActivity : ComponentActivity() {
         // Mirroring is two ways, and only one of them had a trigger: a pass ran after a
         // local commit, so an edit made in the folder on a computer sat there until somebody
         // wrote something on the phone or tapped Mirror now. Coming back to the app is the
-        // moment those edits are most likely to be waiting (B65).
+        // moment those edits are most likely to be waiting.
         val app = application as BeancountApplication
         if (app.mirror.enabled) {
             app.projectsState.activeId.value?.let { app.mirror.syncAfterCommit(it) }
@@ -65,7 +62,7 @@ class MainActivity : ComponentActivity() {
      * What had to be put right at startup — an interrupted write, or a plugin that stopped
      * the app last time.
      *
-     * `mutableStateOf`, and actually rendered. It was a plain field until M11: computed on
+     * `mutableStateOf`, and actually rendered. It used to be a plain field: computed on
      * every launch, assigned, and never read by anything, so the app silently recovered from
      * an interrupted write and told nobody.
      */
@@ -76,7 +73,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * A change the app wants to make to one of the ledger's own files, waiting to be shown to
-     * the person and approved (B92).
+     * the person and approved.
      *
      * The app writes entries and document links because the person asked for those. Anything
      * else -- an `include` line that makes a new file part of the ledger -- is a change to how
@@ -91,8 +88,11 @@ class MainActivity : ComponentActivity() {
 
     internal var pendingLedgerEdit: LedgerEdit? by mutableStateOf(null)
 
+    /** A link out of a report, waiting for the person to confirm it. */
+    internal var pendingExternalLink: Uri? by mutableStateOf(null)
+
     /**
-     * How many entries this session has written and committed from the entry form (B77).
+     * How many entries this session has written and committed from the entry form.
      *
      * A count rather than a flag, so two saves in a row are two changes the form can react
      * to. It moves only on `WriteResult.Committed` -- after the durable write and the
@@ -102,10 +102,10 @@ class MainActivity : ComponentActivity() {
      */
     internal var entryCommits: Int by mutableStateOf(0)
 
-    /** The entry whose own source is open for editing, if any (B11). */
+    /** The entry whose own source is open for editing, if any. */
     internal var editingEntry: io.github.pintofi.beanbook.engine.local.EntrySlice? by mutableStateOf(null)
 
-    /** The same entry as fields, when a draft describes it fully (B45, B78). */
+    /** The same entry as fields, when a draft describes it fully. */
     internal var editingDraft: io.github.pintofi.beanbook.core.domain.StructuredEdit.Editable?
         by mutableStateOf(null)
 
@@ -276,14 +276,14 @@ class MainActivity : ComponentActivity() {
      *
      * `WidgetLink.resolve` has always returned this and the caller has always thrown it away
      * by taking `.projectId`, so the add-entry widget -- which correctly sends `ADD` -- landed
-     * on whatever the app opens by default (B2).
+     * on whatever the app opens by default.
      */
     private var requestedSurface: String? by mutableStateOf(null)
 
     private fun openProject(app: BeancountApplication, projectId: String) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
         app.projectsState.open(projectId)
-        // Before anything can sync: the mirror answers for this project only (B96).
+        // Before anything can sync: the mirror answers for this project only.
         app.mirror.useProject(projectId)
         app.undo.dismiss()
         mirrorFolder = app.mirror.folderUri
@@ -310,7 +310,7 @@ class MainActivity : ComponentActivity() {
         // there is no background work (docs/ux.md §8).
         lifecycleScope.launch {
             // Republished when the basis changes too, so the widgets follow the same switch
-            // as Home and Balances (B95).
+            // as Home and Balances.
             kotlinx.coroutines.flow.combine(
                 app.ledgerState.snapshot,
                 io.github.pintofi.beanbook.app.ui.ValuationPreference(this@MainActivity).flow,
@@ -339,7 +339,7 @@ class MainActivity : ComponentActivity() {
                         // pointed at an expense category, at a top-level account, or at the
                         // thirteenth bank account -- and the configuration screen offered
                         // only what this had cached, so those accounts did not exist as far
-                        // as the home screen was concerned (B48). The cache is app-private
+                        // as the home screen was concerned. The cache is app-private
                         // storage that never enters a backup or a mirror, and it already
                         // held account names; the cap bought no privacy it did not have.
                         accounts = ledger.accounts.map { it.name },
@@ -356,7 +356,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Android 13+ shows no notification, not even a foreground service's, until the user
-     * allows it, and the app never asked (B94). Asked once: a refusal is respected, and the
+     * allows it, and the app never asked. Asked once: a refusal is respected, and the
      * work still runs -- only the "Beanbook keeps working" notice is not shown.
      */
     private fun askForNotifications() {
@@ -404,7 +404,7 @@ class MainActivity : ComponentActivity() {
             }
 
             // Debug-only: begin a write and stall before committing, so a process kill
-            // can be timed to land mid-write (docs/milestones/m4.md, process-death test).
+            // can be timed to land mid-write (the process-death test).
             val stall = intent.getStringExtra("m4_test")
             val active = widgetTarget(app)?.projectId ?: app.projectsState.activeId.value
             if (BuildConfig.DEBUG && active != null && stall != null &&
@@ -414,7 +414,7 @@ class MainActivity : ComponentActivity() {
             }
 
             // Debug-only: stall *inside* a plugin load, so a process kill lands in the
-            // window safe mode has to survive (docs/milestones/m11-part2.md).
+            // window safe mode has to survive.
             if (BuildConfig.DEBUG && active != null &&
                 intent.getStringExtra("m11_test") == "stall_mid_plugin_load"
             ) {
@@ -493,7 +493,7 @@ class MainActivity : ComponentActivity() {
                     val pluginMessage by app.pluginsState.message.collectAsStateWithLifecycle()
                     // Read from the ledger itself rather than remembered beside it: the file
                     // is the record of what it loads, and an edit in the raw editor has to
-                    // show here too (B60).
+                    // show here too.
                     val catalogue = app.catalogueState.collectUi()
                     val packagesInstalled by app.packagesState.installed.collectAsStateWithLifecycle()
                     val packagesStatus by app.packagesState.status.collectAsStateWithLifecycle()
@@ -504,8 +504,8 @@ class MainActivity : ComponentActivity() {
                     val dateRange by app.ledgerState.dateRange.collectAsStateWithLifecycle()
                     val restartNeeded by app.engineRestart.needed.collectAsStateWithLifecycle()
                     // Whatever changed under the running engine -- a plugin or package installed
-                    // or removed, safe mode switched -- is picked up by restarting it at once
-                    // (B89). It used to wait behind a "Restart needed" card.
+                    // or removed, safe mode switched -- is picked up by restarting it at once.
+                    // It used to wait behind a "Restart needed" card.
                     androidx.compose.runtime.LaunchedEffect(restartNeeded, activeId) {
                         if (restartNeeded && activeId != null) restartEngine(app, activeId)
                     }
@@ -544,7 +544,7 @@ class MainActivity : ComponentActivity() {
                         ledger = ledger,
                         token = app.engine.sessionToken,
                         debuggingAllowed = BuildConfig.DEBUG,
-                        onOpenExternally = ::openInBrowser,
+                        onOpenExternally = ::askToOpenExternally,
                         onSaveEntry = { draft ->
                             // Connected to a remote server means the ledger is over there.
                             // Writing to the local project instead would put the entry
@@ -554,7 +554,7 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 // Written the way this ledger writes: Fava's `currency-column`
                                 // and `indent` are the file's own layout, and a file the user
-                                // keeps at column 80 should not come back at 61 (B67).
+                                // keeps at column 80 should not come back at 61.
                                 saveText(
                                     app,
                                     activeId!!,
@@ -581,7 +581,7 @@ class MainActivity : ComponentActivity() {
                         // The folder alone cannot say what a document is filed under, nor
                         // tell one the ledger knows from a stray file; the directives alone
                         // cannot say whether the file is still there. Reconciled here,
-                        // where both are in hand (B18).
+                        // where both are in hand.
                         documents = DocumentIndex.reconcile(
                             root = activeId?.let { app.workspace.projectDir(it).absolutePath }
                                 .orEmpty(),
@@ -650,7 +650,7 @@ class MainActivity : ComponentActivity() {
                         remoteMessage = remoteMessage,
                         themeChoice = themeChoice,
                         dynamicColour = dynamicColour,
-                        // The widgets are drawn in these colours too (B92), and nothing else
+                        // The widgets are drawn in these colours too, and nothing else
                         // would tell them the setting had changed.
                         onThemeChoice = {
                             app.themeSettings.setChoice(it)
@@ -783,17 +783,18 @@ class MainActivity : ComponentActivity() {
                         refreshing = ledgerLoading,
                         onRefresh = {
                             app.ledgerState.reload()
-                            // Documents too (B89): Organize is refreshed by the same pull.
+                            // Documents too: Organize is refreshed by the same pull.
                             activeId?.let { refreshDocuments(app, it) }
                         },
                     )
 
                     // Over the app rather than inside a screen: an entry can be opened for
                     // editing from the journal or from its detail view, and the dialog
-                    // should not belong to whichever one happened to open it (B11).
+                    // should not belong to whichever one happened to open it.
                     EntryEditor(app, activeId)
 
                     LedgerEditDialog()
+                    ExternalLinkDialog()
                 }
             }
             }
@@ -801,25 +802,11 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Writes a real entry and then stops short of committing, leaving an open journal
-     * record on disk. Debug builds only — this exists so `adb shell am kill` can be
-     * timed to land in the window the write protocol has to survive.
-     */
-    /**
-     * Writes a plugin that never finishes importing, then loads it.
-     *
-     * Debug builds only. The point is to be killed: a plugin that hangs or crashes the
-     * process leaves the app unable to start, and the marker Python writes before each
-     * import is the only thing that survives to say which plugin it was. Stalling rather
-     * than crashing outright means the kill can be timed from outside, exactly as the M4
-     * process-death test does.
-     */
-    /**
      * Turns off whatever was mid-load when the app last died, and says so.
      *
      * Runs before any plugin is loaded. The marker it reads is written from Python
      * immediately before each import and flushed, so it survives a kill that gives the app
-     * no chance to clean up (docs/milestones/m11-part2.md).
+     * no chance to clean up.
      */
     private suspend fun recoverFromPluginCrash(app: BeancountApplication, projectId: String) {
         withContext(Dispatchers.IO) {
@@ -832,6 +819,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Writes a plugin that never finishes importing, then loads it.
+     *
+     * Debug builds only. The point is to be killed: a plugin that hangs or crashes the
+     * process leaves the app unable to start, and the marker Python writes before each
+     * import is the only thing that survives to say which plugin it was. Stalling rather
+     * than crashing outright means the kill can be timed from outside, exactly as the
+     * mid-write process-death test does.
+     */
     private suspend fun stallMidPluginLoad(app: BeancountApplication, projectId: String) {
         withContext(Dispatchers.IO) {
             val projectRoot = app.workspace.projectDir(projectId)
@@ -854,7 +850,7 @@ class MainActivity : ComponentActivity() {
             android.util.Log.i("M11", "stalling inside a plugin load; kill me now")
             // Through the binder, like everything else that touches Python. This harness
             // used to start an interpreter in the app process, which is precisely the hole
-            // the R9 decision closes (docs/architecture.md §7.1).
+            // the engine process split closes (docs/architecture.md).
             io.github.pintofi.beanbook.engine.local.PluginLoader(this@MainActivity).load(
                 pluginDir = store.directoryFor(installed.plugin).absolutePath,
                 modules = "stalls_forever",
@@ -865,18 +861,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Writes a real entry and then stops short of committing, leaving an open journal
+     * record on disk. Debug builds only — this exists so `adb shell am kill` can be
+     * timed to land in the window the write protocol has to survive.
+     */
     private suspend fun stallMidWrite(
         app: BeancountApplication,
         projectId: String,
         introducesErrors: Boolean,
     ) {
         val file = app.workspace.projectDir(projectId).resolve("files/transactions.beancount")
-        val baseline = if (introducesErrors) 0 else 0
         val record = app.journal.begin(
             projectId = projectId,
             operation = if (introducesErrors) "stall-test-bad" else "stall-test",
             files = listOf(file),
-            baselineErrors = baseline,
+            baselineErrors = 0,
             rollbackOnNewErrors = true,
         )
         // A date before the account was opened is an error; a later one is not.
@@ -890,14 +890,4 @@ class MainActivity : ComponentActivity() {
         android.util.Log.w("M4Test", "stalled mid-write txn=" + record.txnId + "; kill me now")
         delay(10 * 60 * 1000)
     }
-
-    /**
-     * Saves through the M4 protocol: snapshot, journal, atomic rename, re-parse with
-     * Beancount, and only then report success. A generated entry that introduces errors is
-     * rolled back rather than kept, because broken output from guided entry is our bug.
-     */
-    private fun openInBrowser(uri: Uri) {
-        runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-    }
-
 }

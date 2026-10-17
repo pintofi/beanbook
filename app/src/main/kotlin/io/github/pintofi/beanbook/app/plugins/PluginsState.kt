@@ -38,7 +38,7 @@ class PluginsState(
     private val policy: PluginPolicy,
     private val scope: CoroutineScope,
     /**
-     * Called when the interpreter's idea of what is installed has gone out of date (B49).
+     * Called when the interpreter's idea of what is installed has gone out of date.
      *
      * Installing, removing or turning a plugin on changes what a load *would* import and
      * nothing about what the running Python has already imported.
@@ -97,11 +97,11 @@ class PluginsState(
         // shadowed something would make that promise false.
         //
         // A root whose last merge was interrupted is withheld too. It is the other half of
-        // B37: `installed()` already refuses to name those packages, but this is the path
+        // the same rule: `installed()` already refuses to name those packages, but this is the path
         // that actually reaches Python, and handing the directory over is what turned a
         // half-copied file into an import error. Withheld rather than repaired here --
         // recovery belongs to the fetcher, on the next install.
-        // Not conditional on a plugin being installed (B60). It used to be, and that is why
+        // Not conditional on a plugin being installed. It used to be, and that is why
         // fetching a package to satisfy a *script* changed nothing: the script runs in the
         // engine process, the package sat in a directory that was never put on `sys.path`,
         // and the same `ModuleNotFoundError` came back -- so the install looked like it had
@@ -114,7 +114,7 @@ class PluginsState(
             }
             ?.absolutePath
 
-        // Plugins installed from the catalogue (B82), each folder holding the plugin and what it
+        // Plugins installed from the catalogue, each folder holding the plugin and what it
         // needs. Withheld under safe mode like everything else.
         val catalogue = if (PluginSafeMode(root).isSafeMode) {
             emptyList()
@@ -173,7 +173,7 @@ class PluginsState(
                 val scratch = File(context.cacheDir, "plugin-install-${System.nanoTime()}")
                     .apply { mkdirs() }
                 try {
-                    val name = displayName.ifBlank { "plugin.py" }
+                    val name = io.github.pintofi.beanbook.app.storage.safeDisplayName(displayName, "plugin.py")
                     val target = File(scratch, name)
                     context.contentResolver.openInputStream(uri)?.use { input ->
                         target.outputStream().use { output -> input.copyTo(output) }

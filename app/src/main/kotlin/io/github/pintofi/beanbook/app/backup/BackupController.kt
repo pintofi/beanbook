@@ -2,6 +2,7 @@ package io.github.pintofi.beanbook.app.backup
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import io.github.pintofi.beanbook.app.storage.ContextHolder
@@ -110,7 +111,17 @@ class BackupController(
                 onSuccess = { manifest -> describe(manifest) },
                 onFailure = { failure ->
                     Log.w(TAG, "backup failed", failure)
-                    "Backup failed: ${failure.message}. Nothing was written."
+                    // Opening the destination for writing empties it, so a failure part-way
+                    // leaves a truncated file there. Removed when the provider allows it, and
+                    // said plainly when it does not.
+                    val removed = runCatching { DocumentsContract.deleteDocument(resolver, uri) }
+                        .getOrDefault(false)
+                    "Backup failed: ${failure.message}. " +
+                        if (removed) {
+                            "The unfinished file was removed."
+                        } else {
+                            "The file you chose may hold a partial copy; do not rely on it."
+                        }
                 },
             )
         }
@@ -161,6 +172,7 @@ class BackupController(
                             _pendingRestore.value = outcome
                             _passphraseNeeded.value = false
                             _message.value = outcome.diff.describe()
+                            dropArchiveCopy()
                         }
                         is RestoreStaged.Refused -> {
                             _pendingRestore.value = null
@@ -176,6 +188,7 @@ class BackupController(
                 },
                 onFailure = {
                     _pendingRestore.value = null
+                    dropArchiveCopy()
                     _message.value = ArchiveProblem
                         .Unreadable(it.message ?: it.javaClass.simpleName)
                         .describe()
@@ -201,6 +214,7 @@ class BackupController(
                             _pendingRestore.value = outcome
                             _passphraseNeeded.value = false
                             _message.value = outcome.diff.describe()
+                            dropArchiveCopy()
                         }
                         is RestoreStaged.Refused -> {
                             _passphraseNeeded.value = true
@@ -231,7 +245,21 @@ class BackupController(
         }
     }
 
+    /**
+     * Deletes the cache copy of the archive being restored.
+     *
+     * It is a full copy of someone's ledger (readable, when the archive is not encrypted), and
+     * once the restore is staged -- or has failed for good -- nothing needs it. It is kept
+     * only while a passphrase is still being asked for, because the retry opens it again.
+     */
+    private fun dropArchiveCopy() {
+        val copy = pendingArchive ?: return
+        pendingArchive = null
+        scope.launch(Dispatchers.IO) { copy.delete() }
+    }
+
     fun discardRestore(projectId: String) {
+        dropArchiveCopy()
         scope.launch {
             withContext(Dispatchers.IO) { restores.discardStaging(projectId) }
             _pendingRestore.value = null
@@ -260,13 +288,17 @@ class BackupController(
             .mapNotNull { document ->
                 val name = document.name ?: return@mapNotNull null
                 val local = File(ContextHolder.require().cacheDir, "retention-check.bcaz")
-                runCatching {
-                    ContextHolder.require().contentResolver.openInputStream(document.uri)
-                        ?.use { input -> local.outputStream().use { input.copyTo(it) } }
-                    val manifest = archives.peek(local) ?: return@mapNotNull null
-                    if (manifest.projectId != projectId) return@mapNotNull null
-                    document to BackupRetention.Archive(name, manifest.createdAt)
-                }.getOrNull()
+                try {
+                    runCatching {
+                        ContextHolder.require().contentResolver.openInputStream(document.uri)
+                            ?.use { input -> local.outputStream().use { input.copyTo(it) } }
+                        val manifest = archives.peek(local) ?: return@mapNotNull null
+                        if (manifest.projectId != projectId) return@mapNotNull null
+                        document to BackupRetention.Archive(name, manifest.createdAt)
+                    }.getOrNull()
+                } finally {
+                    local.delete()
+                }
             }
 
         val expired = retention.expired(candidates.map { it.second }, now).map { it.name }.toSet()

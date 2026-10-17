@@ -52,20 +52,20 @@ data class ScriptOutcome(
 }
 
 /**
- * Running a user script against the open ledger (N10).
+ * Running a user script against the open ledger.
  *
- * The engine has been able to do this since M11 — with a deadline, cancellation, output
+ * The engine has been able to do this for some time — with a deadline, cancellation, output
  * capture and redaction — and nothing in the app called it, so a paid feature shipped dead.
  *
  * Every call goes through [PluginLoader] to the `:engine` process. Nothing here starts Python,
- * which is the property the R9 process split exists to keep (docs/architecture.md §7.1).
+ * which is the property the engine process split exists to keep (docs/architecture.md).
  */
 class ScriptRunnerState(
     private val context: Context,
     private val policy: PluginPolicy,
     private val scope: CoroutineScope,
     /**
-     * What a script may import (B60): the plugins the user turned on and the packages they
+     * What a script may import: the plugins the user turned on and the packages they
      * fetched, asked for at run time rather than captured, because either can change between
      * runs -- which is the whole point of fetching one.
      */
@@ -77,7 +77,7 @@ class ScriptRunnerState(
 
     private val _saved = MutableStateFlow<List<SavedScript>>(emptyList())
 
-    /** The scripts kept from earlier runs, so one can be run again without the picker (B49). */
+    /** The scripts kept from earlier runs, so one can be run again without the picker. */
     val saved: StateFlow<List<SavedScript>> = _saved.asStateFlow()
 
     fun refreshSaved() {
@@ -111,7 +111,7 @@ class ScriptRunnerState(
     val running: StateFlow<String?> = _running.asStateFlow()
 
     private val _live = MutableStateFlow("")
-    /** What the running script has printed so far, read from the engine's live file (B102). */
+    /** What the running script has printed so far, read from the engine's live file. */
     val live: StateFlow<String> = _live.asStateFlow()
 
     private val _outcome = MutableStateFlow<ScriptOutcome?>(null)
@@ -133,7 +133,7 @@ class ScriptRunnerState(
      *
      * A content URI is granted to *this* process, so the engine — a different process — cannot
      * open it. The copy is kept as a saved script rather than deleted, because a SAF grant
-     * does not outlive the launch and the same script is usually run more than once (B49).
+     * does not outlive the launch and the same script is usually run more than once.
      */
     fun runFrom(uri: Uri, name: String, timeoutSeconds: Double = DEFAULT_TIMEOUT) {
         if (_running.value != null) {
@@ -163,7 +163,7 @@ class ScriptRunnerState(
             }
             // Kept, then run from the kept copy. A SAF grant lasts for this launch, so a
             // script picked today could not be run again tomorrow without finding it in the
-            // picker again (B49).
+            // picker again.
             val script = withContext(Dispatchers.IO) { store.save(copy, name) }
             copy.delete()
             refreshSaved()
@@ -199,7 +199,7 @@ class ScriptRunnerState(
         _live.value = ""
         scope.launch {
             val started = System.currentTimeMillis()
-            // The engine writes what the script prints to this file as it goes (B102); reading
+            // The engine writes what the script prints to this file as it goes; reading
             // it twice a second is what makes the terminal live instead of one block at the end.
             val liveFile = File(context.cacheDir, "beanbook-script-$id.live")
             val poll = launch(Dispatchers.IO) {
@@ -216,7 +216,7 @@ class ScriptRunnerState(
             }
             try {
                 // Under a foreground service, like an install or a save, so a script that
-                // takes minutes is not stopped when the person leaves the app (B102).
+                // takes minutes is not stopped when the person leaves the app.
                 val json = io.github.pintofi.beanbook.app.work.KeepWorking.around(
                     context,
                     "Running $name",
@@ -252,10 +252,13 @@ class ScriptRunnerState(
             } finally {
                 poll.cancel()
                 _live.value = ""
+                // The engine's copy of what the script printed: not needed once the run ends,
+                // and it can hold figures from the ledger.
+                liveFile.delete()
                 if (deleteAfterwards) file.delete()
                 // A script that fails on its first line finishes in milliseconds, and the
                 // progress bar appeared and vanished within one frame -- which reads as the
-                // screen glitching rather than as a script that ran (B60). Held just long
+                // screen glitching rather than as a script that ran. Held just long
                 // enough to be seen. The work is already done; this delays only the
                 // indicator.
                 val shown = System.currentTimeMillis() - started
@@ -298,7 +301,7 @@ class ScriptRunnerState(
         /** Long enough that a run is seen to have happened; short enough not to be a wait. */
         const val MINIMUM_VISIBLE_MILLIS = 450L
         /**
-         * No deadline (B102). A fixed 30 seconds ended a script that was still running
+         * No deadline. A fixed 30 seconds ended a script that was still running
          * correctly. It now ends when it finishes, when it fails, or when the person cancels.
          */
         const val DEFAULT_TIMEOUT = 0.0

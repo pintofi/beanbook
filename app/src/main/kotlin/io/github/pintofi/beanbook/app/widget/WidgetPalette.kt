@@ -7,7 +7,7 @@ import io.github.pintofi.beanbook.app.ui.theme.ThemeChoice
 import io.github.pintofi.beanbook.app.ui.theme.ThemeSettings
 
 /**
- * The colours one widget is drawn in, taken from the app's own appearance settings (B92).
+ * The colours one widget is drawn in, taken from the app's own appearance settings.
  *
  * The widget used to be four fixed colour resources, so an app running on a wallpaper palette
  * or held in AMOLED still had teal rules on grey paper on the home screen. A widget that does
