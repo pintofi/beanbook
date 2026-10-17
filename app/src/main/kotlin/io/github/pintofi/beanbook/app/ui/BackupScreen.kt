@@ -202,7 +202,7 @@ fun BackupScreen(
         FolioHeading("Scheduled backups")
         FolioGroup {
             item {
-                // The whole row chooses or changes the folder (B98): a button beside the words
+                // The whole row chooses or changes the folder: a button beside the words
                 // squeezed them into a narrow column on a phone.
                 FolioRow(
                     title = scheduleFolder?.let { humanFolder(it) } ?: "Choose a folder",

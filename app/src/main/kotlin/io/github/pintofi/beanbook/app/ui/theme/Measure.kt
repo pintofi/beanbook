@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
  * a row is a label at one end and a number at the other, and what matters is the gap between
  * them rather than the words per line.
  *
- * This is not the expanded two-pane layout that ux.md §7 describes and N8 tracks as unbuilt.
+ * This is not the expanded two-pane layout that docs/ux.md section 7 describes and that is not built yet.
  * It is the cheap half of the same problem: a second pane would use the space, and until there
  * is one, not stretching a single column across it is better than stretching it.
  */

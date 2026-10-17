@@ -220,7 +220,7 @@ private fun WaysInPage(
                     )
                     // Filled, where "Choose folder" and "Choose .zip" are outlined. On the first
                     // screen of the app every control had the same weight, so nothing said which
-                    // one to press (D9, Von Restorff). Creating is the path for somebody who has
+                    // one to press (Von Restorff). Creating is the path for somebody who has
                     // no ledger yet, which is who this screen is for.
                     Button(
                         onClick = { onCreateNew(title) },
@@ -239,7 +239,7 @@ private fun WaysInPage(
  * The project list. Shows enough to recognise a ledger without opening it, and never waits
  * on the engine to draw.
  *
- * Folios (design-direction §7), in the order a person needs them: the projects there are, a new
+ * Folios, in the order a person needs them: the projects there are, a new
  * one, one brought in from elsewhere, and what can be done with the open one. "New project" has
  * a heading of its own: the field used to sit under "The open project" and read as part of it
  * (device audit 2026-10-10).
@@ -412,7 +412,7 @@ private fun WelcomeHeader() {
         verticalArrangement = Arrangement.spacedBy(Measure.gap),
     ) {
         // In the theme's colours, so the first thing the app shows is in the palette of
-        // everything after it (design-direction §4).
+        // everything after it.
         BeanbookMark(size = 72.dp)
         Text("Beanbook", style = MaterialTheme.typography.displaySmall)
         Text(

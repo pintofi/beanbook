@@ -419,13 +419,17 @@ internal fun MainActivity.deleteEntries(
     if (entries.isEmpty()) return
     lifecycleScope.launch {
         val mainFile = app.workspace.mainFile(projectId).absolutePath
-        val slices = entries.mapNotNull { entry ->
+        // Two entries can share a position (a plugin points the ones it generates at the line
+        // that caused them), and selecting one selects both. Removing the same lines twice
+        // would take the entry after them as well, so each position is removed once.
+        val wanted = entries.distinctBy { it.file to it.line }
+        val slices = wanted.mapNotNull { entry ->
             val file = entry.file ?: return@mapNotNull null
             val line = entry.line ?: return@mapNotNull null
             runCatching { app.editor.sliceAt(mainFile, file, line) }.getOrNull()
                 ?.takeIf { sliceMatches(entry, it.text) }
         }
-        if (slices.size != entries.size) {
+        if (slices.size != wanted.size) {
             saveMessage = "Some of those entries could not be found in the files, or the files " +
                 "have changed since the list was read. Nothing was deleted."
             return@launch
@@ -468,7 +472,7 @@ internal fun MainActivity.deleteEntries(
         saveMessage = when {
             failure == null -> if (deleted == 1) "Deleted 1 entry." else "Deleted $deleted entries."
             deleted == 0 -> "Nothing was deleted: $failure."
-            else -> "Deleted $deleted of ${entries.size} entries, then stopped: $failure."
+            else -> "Deleted $deleted of ${wanted.size} entries, then stopped: $failure."
         }
         // Undo is offered when the delete was one write: with several files only the last
         // could be taken back, which would leave the rest deleted.

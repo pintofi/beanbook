@@ -56,7 +56,7 @@ object BeancountTheme {
  * overridden, because "follow the system" is wrong for the person who reads their ledger in
  * bed with the phone on light mode (docs/ux.md 3).
  *
- * **Dynamic colour is taken as an accent, not as the whole design (B74.)** Before, the
+ * **Dynamic colour is taken as an accent, not as the whole design.** Before, the
  * wallpaper palette replaced every role, so on an unlucky wallpaper the app was a lilac
  * dashboard and nothing of its own composition survived. Now the wallpaper supplies the
  * accents -- primary, secondary, tertiary and their containers, which is where a person
@@ -64,7 +64,7 @@ object BeancountTheme {
  * raised surfaces. The result still changes visibly with the wallpaper and still looks like
  * this app.
  *
- * **Material 3 Expressive (docs/material-expressive.md.)** The theme is
+ * **Material 3 Expressive.** The theme is
  * [MaterialExpressiveTheme], so components take the expressive shapes, springs and type
  * where this app has not stated its own. The motion scheme is the expressive one while
  * animation is on and [StillMotionScheme] while it is off, so every Material component -- a
@@ -101,10 +101,10 @@ fun BeancountTheme(
 
     // Read once, here, rather than per composable: the animator duration scale is a
     // content-provider lookup, and a screen of animated rows asking individually is a screen
-    // making one lookup per row (B76).
+    // making one lookup per row.
     val motion = animationsEnabled()
 
-    // The system bar icons follow the app's theme, not the phone's (B88). `enableEdgeToEdge`
+    // The system bar icons follow the app's theme, not the phone's. `enableEdgeToEdge`
     // picks their colour from the system setting, so a person who chose "Dark" on a
     // phone in light mode got dark clock and battery icons on the dark band: there, but
     // unreadable. Set on every change of theme, against the window this content is in.

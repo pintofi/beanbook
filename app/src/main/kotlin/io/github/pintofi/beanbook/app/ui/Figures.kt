@@ -28,7 +28,7 @@ import io.github.pintofi.beanbook.core.domain.HeadlineFigures
 import io.github.pintofi.beanbook.core.domain.LedgerFormat
 
 /**
- * Figures that are never clipped (docs/design-direction.md §5).
+ * Figures that are never clipped.
  *
  * At 200% text Home's Income and Expenses tiles cut "2,624,167.69 PKR" to "2,624,167." with no
  * ellipsis (device audit 2026-10-10) -- the worst failure a money screen can have, because the
@@ -98,6 +98,8 @@ fun FitFigure(
         style = style.merge(AmountTextStyle).copy(textAlign = textAlign),
         color = color,
         maxLines = 2,
+        // A figure that still does not fit ends in an ellipsis, so a cut is visible as a cut.
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         autoSize = fit,
     )
 }
@@ -119,7 +121,7 @@ fun breakableAccount(name: String): String = buildString(name.length + 8) {
 
 /**
  * A headline figure that may hold several commodities: up to three lines and "+N more"
- * (docs/design-direction.md §5, core-domain `HeadlineFigures`).
+ * (core-domain `HeadlineFigures`).
  *
  * One commodity is set at the full display size. Several are set a step smaller and left in a
  * column, because a stack of 34sp lines is a list pretending to be a headline. The rest are one
@@ -134,7 +136,7 @@ fun HeadlineFigure(
     style: TextStyle = LedgerType.display,
     color: Color = MaterialTheme.colorScheme.onSurface,
     onMore: (() -> Unit)? = null,
-    /** The single-figure path, which rolls its digits in (B87); null for a plain figure. */
+    /** The single-figure path, which rolls its digits in; null for a plain figure. */
     single: (@Composable (String) -> Unit)? = null,
 ) {
     val lines = figures.shown.map { if (hideAmounts) "•••" else format.format(it) }

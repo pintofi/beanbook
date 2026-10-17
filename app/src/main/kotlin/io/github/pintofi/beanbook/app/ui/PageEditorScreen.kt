@@ -46,7 +46,7 @@ import java.io.File
 import kotlinx.coroutines.launch
 
 /**
- * The captured pages, one screen each, with the things you do to a page (B58).
+ * The captured pages, one screen each, with the things you do to a page.
  *
  * The shape is OSS-DocumentScanner's editor — swipe through the batch, act on the page in
  * front of you — rebuilt in this app's own language: a Material top bar rather than their
@@ -68,7 +68,7 @@ fun PageEditorScreen(
     onCrop: (index: Int, quad: CropQuad?) -> Unit,
     onRestyle: (index: Int, style: PageStyle) -> Unit,
     onRemove: (index: Int) -> Unit,
-    /** Moves a page earlier or later in the document (B58). */
+    /** Moves a page earlier or later in the document. */
     onMove: (from: Int, to: Int) -> Unit = { _, _ -> },
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
@@ -92,8 +92,8 @@ fun PageEditorScreen(
         scope.launch { state.scrollToPage(to) }
     }
 
-    // Cropping takes the screen in place of the editor rather than opening a card over it
-    // (B73): it is the same page, at the same size, and only the controls change.
+    // Cropping takes the screen in place of the editor rather than opening a card over it:
+    // it is the same page, at the same size, and only the controls change.
     val croppingIndex = cropping
     if (croppingIndex != null) {
         val page = pages.pages.getOrNull(croppingIndex)
@@ -176,7 +176,7 @@ fun PageEditorScreen(
         HorizontalPager(state = state, modifier = Modifier.weight(1f).fillMaxWidth()) { index ->
             val page = pages.pages[index]
             val file = fileFor(page.source)
-            // The page as it will be filed (B79): straightened on its corners and rendered in
+            // The page as it will be filed: straightened on its corners and rendered in
             // its style. The raw photograph said nothing about either until the PDF existed.
             val render = LocalPageRenderer.current
             val shown by androidx.compose.runtime.produceState<PageRender>(PageRender.Working, page, file.length()) {
@@ -189,10 +189,10 @@ fun PageEditorScreen(
                 } else if (bitmap == null) {
                     Text("This page could not be opened.", color = Color.White)
                 } else {
-                    // Pinch to check the small print before filing it (B84). Telephoto hands a
+                    // Pinch to check the small print before filing it. Telephoto hands a
                     // horizontal drag to the pager at the page's edge, so swiping is how you
                     // turn pages: it stops at the first and last, and the counter follows. The
-                    // arrows that used to sit under the page are gone (B86) -- as move buttons
+                    // arrows that used to sit under the page are gone -- as move buttons
                     // they read as next/previous, and as next/previous they repeated the swipe.
                     val shown = remember(bitmap) { bitmap.asImageBitmap() }
                     ZoomablePage(
@@ -213,7 +213,7 @@ fun PageEditorScreen(
             label = { it.label() },
             describe = { "Render page ${current + 1} in ${it.label()}" },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            // Legible on the editor's black ground (B79): the theme's colours for an
+            // Legible on the editor's black ground: the theme's colours for an
             // unchosen segment are dark text meant for a light surface.
             colors = androidx.compose.material3.ToggleButtonDefaults.colors(
                 containerColor = Color.Transparent,
@@ -267,7 +267,7 @@ private sealed interface PageRender {
 }
 
 /**
- * How the page editor draws a page (B79). The app provides the assembler's own rendering, so
+ * How the page editor draws a page. The app provides the assembler's own rendering, so
  * the editor shows what will be filed; the default is the upright photograph, which is what a
  * screen without the app around it -- a test -- can show.
  */

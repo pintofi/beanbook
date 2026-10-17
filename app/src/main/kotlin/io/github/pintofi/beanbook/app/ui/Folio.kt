@@ -38,8 +38,7 @@ import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
- * Folios: the grouped rows every page a person *acts* on is built from (docs/design-direction.md
- * §3, §7).
+ * Folios: the grouped rows every page a person *acts* on is built from.
  *
  * The ledger's own pages are ruled paper -- square rows hung from a rule -- and stay that way.
  * Everything else the app shows is a control: a setting, a section to open, an action with a
@@ -99,7 +98,7 @@ class FolioScope internal constructor() {
 }
 
 /**
- * A group of rows as one rounded object (docs/design-direction.md §6, `BeanbookShape.Folio`).
+ * A group of rows as one rounded object (`BeanbookShape.Folio`).
  *
  * The builder is not composable, like a lazy list's: it says which rows exist, and the group
  * then knows which is first and last and shapes each one.
@@ -252,7 +251,7 @@ fun FolioRow(
 }
 
 /**
- * A row that is a switch: the whole row toggles, and says its state (content style guide §7).
+ * A row that is a switch: the whole row toggles, and says its state.
  *
  * [describe] names the control and what turning it on means; the switch itself carries no
  * description of its own, so a screen reader says it once.

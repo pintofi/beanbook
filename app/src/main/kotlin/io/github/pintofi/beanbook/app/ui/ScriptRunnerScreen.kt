@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -34,9 +35,9 @@ import androidx.compose.material.icons.outlined.Terminal
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 
 /**
- * Run a script against the open ledger (N10).
+ * Run a script against the open ledger.
  *
- * The engine could do this from M11 and nothing called it. What this screen adds beyond a
+ * The engine could already do this and nothing called it. What this screen adds beyond a
  * button is the honesty the engine already provides and had no way to show: whether a script
  * finished, was stopped, or ignored its deadline and kept going.
  */
@@ -49,7 +50,7 @@ fun ScriptRunnerScreen(
     onPick: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
-    /** Scripts kept from earlier runs (B49). */
+    /** Scripts kept from earlier runs. */
     saved: List<SavedScript> = emptyList(),
     onRunSaved: (String) -> Unit = {},
     onForgetSaved: (String) -> Unit = {},
@@ -66,7 +67,7 @@ fun ScriptRunnerScreen(
             modifier = Modifier.padding(horizontal = Measure.tight),
         )
 
-        // The risk, read before the button (content style guide §6), in the attention tone:
+        // The risk, read before the button, in the attention tone:
         // always on screen, so it should read as a statement, not an alarm.
         Notice(NoticeTone.ATTENTION) {
             run {
@@ -113,7 +114,7 @@ fun ScriptRunnerScreen(
             ) { Text("Choose a script…") }
         }
 
-        // The result directly under the button that produced it (B89). It used to come last,
+        // The result directly under the button that produced it. It used to come last,
         // below every saved script, so after a run it was off the bottom of the screen and
         // the run looked as if it had printed nothing.
         message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
@@ -150,6 +151,19 @@ private fun SavedScriptCard(
     onRun: (String) -> Unit,
     onForget: (String) -> Unit,
 ) {
+    var confirming by androidx.compose.runtime.remember(script.id) {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
+    if (confirming) {
+        ConfirmRemoval(
+            title = "Remove \"${script.name}\"?",
+            body = "The copy Beanbook kept is deleted. The file you picked it from is not touched, " +
+                "but you will have to pick it again to run it.",
+            action = "Remove",
+            onConfirm = { onForget(script.id) },
+            onDismiss = { confirming = false },
+        )
+    }
     FolioBody {
         Row(verticalAlignment = androidx.compose.ui.Alignment.Top) {
             FolioBadge(
@@ -174,7 +188,7 @@ private fun SavedScriptCard(
                 },
             ) { Text("Run") }
             TextButton(
-                onClick = { onForget(script.id) },
+                onClick = { confirming = true },
                 modifier = Modifier.semantics {
                     contentDescription = "Remove the saved script ${script.name}"
                 },
@@ -207,7 +221,7 @@ private fun Outcome(outcome: ScriptOutcome) {
 }
 
 /**
- * The script's output exactly as it printed it, in a box that reads like a terminal (B93).
+ * The script's output exactly as it printed it, in a box that reads like a terminal.
  *
  * Its own area rather than a line inside the result notice: output is often long -- a
  * generated configuration runs to hundreds of lines -- and a notice that grew to hold it
@@ -256,7 +270,7 @@ private fun ScriptTerminal(outcome: ScriptOutcome) {
 
 /**
  * The running script's output as it prints, in the same terminal box, following the end unless
- * the person has scrolled up to read something (B102).
+ * the person has scrolled up to read something.
  */
 @Composable
 private fun LiveTerminal(name: String) {

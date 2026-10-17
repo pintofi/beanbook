@@ -44,12 +44,12 @@ fun PageThumbnail(
     size: androidx.compose.ui.unit.Dp = 56.dp,
     /**
      * The page as captured, so the thumbnail shows it cropped, turned and styled the way it
-     * will be filed (B89). Without it the thumbnail is the raw photograph.
+     * will be filed. Without it the thumbnail is the raw photograph.
      */
     page: io.github.pintofi.beanbook.core.domain.CapturedPage? = null,
 ) {
     // Upright, and sampled down to something a 56dp box can use: a camera writes its
-    // orientation into EXIF and leaves the pixels sideways (B55). Off the main thread (B83):
+    // orientation into EXIF and leaves the pixels sideways. Off the main thread:
     // this decoded a camera JPEG inside composition, once per thumbnail, which is a stutter
     // every time a batch of pages appears.
     val bitmap = if (page != null) rememberRenderedPage(page, file) else rememberDecodedPage(file)
@@ -93,7 +93,7 @@ internal fun rememberDecodedPage(file: File, maxEdge: Int = THUMBNAIL_EDGE): and
 
 /**
  * [page] as it will be filed -- the scanner's crop, the rotation and the style applied -- sampled
- * down for a thumbnail (B89).
+ * down for a thumbnail.
  *
  * Thumbnails decoded the photograph, so a page the scanner had cropped showed uncropped until
  * it was opened full size, which read as the crop having been lost. The same renderer the page

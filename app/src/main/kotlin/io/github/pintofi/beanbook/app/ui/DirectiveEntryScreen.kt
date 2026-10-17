@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.DirectiveDraft
 import io.github.pintofi.beanbook.core.domain.LedgerVocabulary
-import java.math.BigDecimal
 import java.time.LocalDate
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
@@ -53,7 +52,7 @@ enum class DirectiveKind(val label: String) {
 }
 
 /**
- * Editors for every directive that is not a transaction (SPEC.md §2.1).
+ * Editors for every directive that is not a transaction.
  *
  * A ledger where you can record a payment but cannot open the account it came from is not
  * a usable ledger, so these sit alongside transactions.
@@ -65,9 +64,9 @@ fun DirectiveEntryScreen(
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
     saveState: String? = null,
-    /** Directives committed from the form this session (B77); a change marks the preview. */
+    /** Directives committed from the form this session; a change marks the preview. */
     committed: Int = 0,
-    /** Whether anything has been typed that leaving would lose (B61). */
+    /** Whether anything has been typed that leaving would lose. */
     onDirtyChange: (Boolean) -> Unit = {},
 ) {
     var kind by remember { mutableStateOf(DirectiveKind.OPEN) }
@@ -76,7 +75,7 @@ fun DirectiveEntryScreen(
     var second by remember { mutableStateOf("") }
     var text by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
-    // What the ledger's commodity_attr plugin asks of a commodity (B94), keyed by attribute.
+    // What the ledger's commodity_attr plugin asks of a commodity, keyed by attribute.
     val attributes = remember { androidx.compose.runtime.mutableStateMapOf<String, String>() }
     // The operating currency first, as the transaction form does: it is what the ledger says
     // it counts in.
@@ -91,7 +90,7 @@ fun DirectiveEntryScreen(
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onDirtyChange(false) } }
 
     val parsedAmount = remember(amount, currency) {
-        runCatching { Amount(BigDecimal(amount.trim()), currency.trim()) }.getOrNull()
+        parseTypedAmount(amount)?.let { number -> runCatching { Amount(number, currency.trim()) }.getOrNull() }
     }
 
     val draft: DirectiveDraft = when (kind) {

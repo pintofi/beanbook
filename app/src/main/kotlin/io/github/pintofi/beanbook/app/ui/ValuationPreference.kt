@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Which basis the app shows figures on -- units, at cost, or market value (B53, B95).
+ * Which basis the app shows figures on -- units, at cost, or market value.
  *
  * One choice for the whole app, as in Fava: Home, Balances and the widgets read the same
  * value, so switching it in one place changes every figure rather than leaving a heading that

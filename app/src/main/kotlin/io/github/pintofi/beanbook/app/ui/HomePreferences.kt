@@ -4,7 +4,7 @@ import android.content.Context
 import io.github.pintofi.beanbook.core.domain.HomeInsights
 import io.github.pintofi.beanbook.core.domain.SpendingPeriod
 
-/** One thing Home can show. The order of this list is the default order on screen (B71). */
+/** One thing Home can show. The order of this list is the default order on screen. */
 enum class HomeCard(val label: String, val description: String) {
     FIGURES("Headline figures", "Net worth, income and expenses"),
     SPENDING("Where the money went", "By category, against the period before"),
@@ -13,7 +13,7 @@ enum class HomeCard(val label: String, val description: String) {
 }
 
 /**
- * What Home shows, in what order, and how the spending card is set up (B71).
+ * What Home shows, in what order, and how the spending card is set up.
  *
  * Customisable because the right home screen is not the same for everybody: somebody
  * reconciling a business wants what needs attention, somebody watching a budget wants the

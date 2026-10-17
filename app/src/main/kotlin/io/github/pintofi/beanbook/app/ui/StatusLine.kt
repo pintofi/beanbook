@@ -16,7 +16,7 @@ import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 
 /**
  * A line saying what the app is doing, with a loading indicator beside it while it is still
- * doing it (B93).
+ * doing it.
  *
  * The app's status lines are written as the work goes -- "Downloading beangrow…", "Backing
  * up…", "Connecting…" -- and a line of text alone looks the same whether the work is moving

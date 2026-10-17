@@ -42,15 +42,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Share on Wi-Fi: open this phone's Reports from a browser on another device (B93).
+ * Share on Wi-Fi: open this phone's Reports from a browser on another device.
  *
- * The risk is said before the control, every time, as the content guide requires for a
- * cleartext connection: anyone on the network can reach the sign-in page, only someone with
+ * The risk is said before the control, every time, as a cleartext connection
+ * requires: anyone on the network can reach the sign-in page, only someone with
  * the username and password gets past it, and the connection is not encrypted.
  *
  * Reads its state from the application rather than taking it as parameters, like the other
  * self-contained screens: threading more through `MainActivity` is what detekt's `LargeClass`
- * catches (CLAUDE.md).
+ * catches.
  */
 @Composable
 fun SharingScreen(modifier: Modifier = Modifier) {
@@ -74,7 +74,7 @@ fun SharingScreen(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = Measure.tight),
         )
-        // The risk before the control, every time (content style guide §8).
+        // The risk before the control, every time.
         Notice(NoticeTone.ATTENTION) {
             Text(
                 "Anyone on this network can reach the sign-in page. Only someone with the " +
@@ -112,7 +112,7 @@ fun SharingScreen(modifier: Modifier = Modifier) {
                     FolioBody {
                         OutlinedTextField(
                             value = username,
-                            onValueChange = { username = it.trim() },
+                            onValueChange = { username = it },
                             label = { Text("Username") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
@@ -133,7 +133,7 @@ fun SharingScreen(modifier: Modifier = Modifier) {
                             onClick = {
                                 saving = true
                                 val chars = password.toCharArray()
-                                val name = username
+                                val name = username.trim()
                                 password = ""
                                 scope.launch {
                                     // PBKDF2 is slow on purpose; off the main thread.

@@ -104,7 +104,7 @@ fun ScannerScreen(
     onDone: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
-    /** Per-page editing, reached from the batch thumbnail (B58). */
+    /** Per-page editing, reached from the batch thumbnail. */
     onRotatePage: (index: Int, clockwise: Boolean) -> Unit = { _, _ -> },
     onCropPage: (index: Int, quad: CropQuad?) -> Unit = { _, _ -> },
     onRestylePage: (index: Int, style: io.github.pintofi.beanbook.core.domain.PageStyle) -> Unit =
@@ -117,12 +117,12 @@ fun ScannerScreen(
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // Back leaves the scanner, not the app (B55). The scanner is a mode drawn over
+    // Back leaves the scanner, not the app. The scanner is a mode drawn over
     // everything else, and without this the system's back gesture went to the activity --
     // which had nothing behind it, so a stray swipe closed Beanbook mid-batch.
     androidx.activity.compose.BackHandler(enabled = true) { onCancel() }
 
-    // The form underneath stays composed while scanning (B79), and a field in it may still
+    // The form underneath stays composed while scanning, and a field in it may still
     // hold focus -- which would keep the keyboard up over the viewfinder.
     val focus = androidx.compose.ui.platform.LocalFocusManager.current
     LaunchedEffect(Unit) { focus.clearFocus(force = true) }
@@ -151,26 +151,26 @@ fun ScannerScreen(
     var previewing by remember { mutableStateOf<Int?>(null) }
 
     // The three controls a scanner needs that a viewfinder does not, taken from what
-    // OSS-DocumentScanner does (MIT; read, not copied — see B56): a torch for a receipt on a
+    // OSS-DocumentScanner does (MIT; read, not copied): a torch for a receipt on a
     // dark table, zoom for a page you cannot get closer to, and a shutter that fires itself
     // once the page is squarely in frame.
     var camera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
     var provider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
     var torch by remember { mutableStateOf(false) }
-    // Off / on / auto, cycled by one button, as OSS-DocumentScanner does it (B58). The torch
+    // Off / on / auto, cycled by one button, as OSS-DocumentScanner does it. The torch
     // is a separate control because it is a different thing: a lamp for framing, not a flash
     // for the shot.
     var flash by rememberSaveable { mutableIntStateOf(ImageCapture.FLASH_MODE_OFF) }
     var zoom by remember { mutableStateOf(0f) }
     var autoCapture by rememberSaveable { mutableStateOf(true) }
     var aimed by remember { mutableStateOf(false) }
-    // What the viewfinder draws into, handed over by CameraX each time it (re)binds (B84).
+    // What the viewfinder draws into, handed over by CameraX each time it (re)binds.
     var surfaceRequest by remember { mutableStateOf<androidx.camera.core.SurfaceRequest?>(null) }
     // Where the last tap to focus landed, and a count so a second tap restarts the ring.
     var focusPoint by remember { mutableStateOf<Offset?>(null) }
     var focusTaps by remember { mutableIntStateOf(0) }
     val transformer = remember { androidx.camera.viewfinder.compose.MutableCoordinateTransformer() }
-    // The page as the detector sees it right now, in the sampled frame's pixels (B79). The
+    // The page as the detector sees it right now, in the sampled frame's pixels. The
     // outline used to be the *last shot's*, stretched over the whole window without allowing
     // for the letterboxing, so it sat somewhere near the page rather than on it.
     var liveQuad by remember { mutableStateOf<CropQuad?>(null) }
@@ -212,11 +212,11 @@ fun ScannerScreen(
 
     // Watches the camera a few times a second: the outline drawn over the page, and the
     // shutter fired when the page is squarely in frame, which is what a scanner does that a
-    // camera does not (B56). Firing needs the page to be *still*, not merely found twice (B79):
+    // camera does not. Firing needs the page to be *still*, not merely found twice:
     // two detections of a page sliding across the table used to be enough, and the shot came
     // out blurred.
     //
-    // Frames come from a small ImageAnalysis stream now (B84). They used to be copied out of the
+    // Frames come from a small ImageAnalysis stream now. They used to be copied out of the
     // preview view's own bitmap, which the Compose viewfinder does not have -- and the analysis
     // frame is the camera's picture rather than a screenshot of the view, so the outline no
     // longer depends on how the preview happens to be letterboxed.
@@ -276,7 +276,7 @@ fun ScannerScreen(
         }
     }
 
-    // The lamp goes out with the screen (B65). The camera is bound to the *activity's*
+    // The lamp goes out with the screen. The camera is bound to the *activity's*
     // lifecycle, not to this composable, so leaving the scanner left the use cases bound and
     // the torch burning -- with no control anywhere in the app to turn it off again, because
     // the only switch had gone with the screen. Turning it off and unbinding on the way out
@@ -290,7 +290,7 @@ fun ScannerScreen(
         }
     }
 
-    // Bound once, to the back camera (B88): pages are photographed facing away from you, and
+    // Bound once, to the back camera: pages are photographed facing away from you, and
     // the front camera switch it once offered did nothing a scanner needs.
     LaunchedEffect(Unit) {
         val cameraProvider = ProcessCameraProvider.awaitInstance(context)
@@ -315,7 +315,7 @@ fun ScannerScreen(
         )
     }
 
-    // Photographs already on the phone become pages too (B79): a receipt someone else sent, a
+    // Photographs already on the phone become pages too: a receipt someone else sent, a
     // screenshot of a bill. The system photo picker needs no storage permission, and each
     // picture goes through the same detection as a shot from the camera.
     val importPictures = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -358,16 +358,16 @@ fun ScannerScreen(
             // The preview runs under the system bars; the controls must not.
             .systemBarsPadding(),
     ) {
-        // The Compose viewfinder (B84), in place of a PreviewView inside AndroidView. Fitted, not
+        // The Compose viewfinder, in place of a PreviewView inside AndroidView. Fitted, not
         // filled: filling the window crops the frame to the screen's shape, so the viewfinder
-        // showed less than the camera saw (B55). Embedded, so the controls draw over it.
+        // showed less than the camera saw. Embedded, so the controls draw over it.
         surfaceRequest?.let { request ->
             androidx.camera.compose.CameraXViewfinder(
                 surfaceRequest = request,
                 implementationMode = androidx.camera.viewfinder.core.ImplementationMode.EMBEDDED,
                 coordinateTransformer = transformer,
                 contentScale = ContentScale.Fit,
-                // Tap to focus, the way the camera app does (B79): a receipt close to the lens is
+                // Tap to focus, the way the camera app does: a receipt close to the lens is
                 // where continuous focus most often settles on the table instead. The tap is
                 // mapped from the screen onto the camera's own buffer by the viewfinder.
                 modifier = Modifier
@@ -393,7 +393,7 @@ fun ScannerScreen(
             )
         }
 
-        // A ring where the tap landed, as camera apps draw one (B85): it closes in on the point,
+        // A ring where the tap landed, as camera apps draw one: it closes in on the point,
         // holds while the lens settles, and fades. Without it a tap looked like nothing happened.
         focusPoint?.let { point ->
             val ring = remember { Animatable(0f) }
@@ -424,9 +424,9 @@ fun ScannerScreen(
             }
         }
 
-        // The page the detector sees now, on the preview (B79). The analysis frame is upright
+        // The page the detector sees now, on the preview. The analysis frame is upright
         // and the same 4:3 shape as the preview, which is fitted into this box, so a point maps
-        // by one scale and the letterbox offset (B84).
+        // by one scale and the letterbox offset.
         liveQuad?.let { quad ->
             androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
                 if (liveFrame.width == 0 || liveFrame.height == 0) return@Canvas
@@ -442,7 +442,7 @@ fun ScannerScreen(
                 }
                 drawPath(path, SCAN_INK.copy(alpha = 0.18f))
                 drawPath(path, SCAN_INK.copy(alpha = 0.7f), style = Stroke(width = 2.dp.toPx()))
-                // The page's corners, bracketed (B87): the same mark the crop editor uses for
+                // The page's corners, bracketed: the same mark the crop editor uses for
                 // its handles, so the page found here is recognisably the page cropped there.
                 val corners = listOf(quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft)
                 pageBrackets(
@@ -495,7 +495,7 @@ fun ScannerScreen(
         )
 
         // Two rows, as OSS-DocumentScanner arranges them: the camera's own controls on the
-        // top line, and what a page will look like on the line below (B58). One row of both
+        // top line, and what a page will look like on the line below. One row of both
         // put the style chips underneath the icon buttons, where they could not be read or
         // tapped.
         Column(modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth()) {
@@ -621,7 +621,7 @@ fun ScannerScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                // A spacer, not a thumbnail (B72). The last page taken used to sit here as a
+                // A spacer, not a thumbnail. The last page taken used to sit here as a
                 // 56dp box beside the shutter, above a strip that already showed every page
                 // including that one -- the same picture twice, one of them unable to say
                 // which page it was or let the others be reached. The strip does both jobs,
@@ -671,7 +671,7 @@ fun ScannerScreen(
     previewing?.let { index ->
         // The editor, not a dialog: a page you are straightening wants the whole screen, and
         // the batch is a thing to swipe through rather than a list of thumbnails with four
-        // text buttons under each (B58).
+        // text buttons under each.
         PageEditorScreen(
             pages = io.github.pintofi.beanbook.core.domain.CapturedPages(pages),
             fileFor = fileFor,
@@ -701,7 +701,7 @@ private fun PageStrip(
     onRemovePage: (Int) -> Unit,
     onMovePage: (from: Int, to: Int) -> Unit = { _, _ -> },
 ) {
-    // Long-press a page and drag it along the strip to put the batch in order (B84, Reorderable).
+    // Long-press a page and drag it along the strip to put the batch in order (Reorderable).
     // The page editor's earlier and later buttons are still there, and the same moves are
     // offered to accessibility services as actions on each page.
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -715,7 +715,7 @@ private fun PageStrip(
     ) {
         items(pages.size, key = { pages[it].source }) { index ->
             val page = pages[index]
-            // Rendered as it will be filed, crop included (B89), off the main thread (B83).
+            // Rendered as it will be filed, crop included, off the main thread.
             val bitmap = rememberRenderedPage(page, fileFor(page.source))
             ReorderableItem(reorder, key = page.source) { dragging ->
             Box(
@@ -754,7 +754,7 @@ private fun PageStrip(
                     modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
                 )
                 // Removing stays one tap away, but it is its own target with its own label:
-                // the thumbnail is for looking at the page, not for losing it (B55).
+                // the thumbnail is for looking at the page, not for losing it.
                 IconButton(
                     onClick = { onRemovePage(index) },
                     modifier = Modifier

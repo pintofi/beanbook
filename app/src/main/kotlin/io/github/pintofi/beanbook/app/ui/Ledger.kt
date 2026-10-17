@@ -44,7 +44,7 @@ import io.github.pintofi.beanbook.app.ui.theme.Motion
 import io.github.pintofi.beanbook.app.ui.theme.rememberAnimationsEnabled
 
 /**
- * The parts a ledger page is made of (B74).
+ * The parts a ledger page is made of.
  *
  * The design's one structural idea: a financial surface is **ruled paper**, not a stack of
  * cards. A rule runs down the left of the data, headings hang off it, rows sit against it, and
@@ -254,7 +254,7 @@ fun KeyFigure(
     modifier: Modifier = Modifier,
     emphasis: Boolean = false,
     colour: Color = MaterialTheme.colorScheme.onSurface,
-    /** Roll the digits in from zero and draw the total rule, once (B87). */
+    /** Roll the digits in from zero and draw the total rule, once. */
     introduce: Boolean = false,
 ) {
     Column(
@@ -262,7 +262,7 @@ fun KeyFigure(
         verticalArrangement = Arrangement.spacedBy(Measure.tight),
     ) {
         // The figure a screen is about is a total, so it is double-ruled the way a bookkeeper
-        // closes a column (B87), and its digits roll when it changes.
+        // closes a column, and its digits roll when it changes.
         val rule = BeancountTheme.ledger.rule
         val ruleDrawn = rememberRuleProgress(drawIn = introduce)
         RollingFigure(
@@ -302,7 +302,7 @@ fun Notice(
     val scheme = MaterialTheme.colorScheme
     val container = when (tone) {
         NoticeTone.QUIET -> scheme.surfaceContainerHigh
-        // A tint of the accent on the band, not the accent's container (B98): a wallpaper
+        // A tint of the accent on the band, not the accent's container: a wallpaper
         // palette on Android 16+ can hand back a light tertiary container in dark mode, and a
         // pale slab of body text in a dark app read as a different app. A tint keeps the
         // notice in the page's own lightness in every theme, with ink that always reads.
@@ -347,11 +347,11 @@ fun EmptyState(
     title: String,
     detail: String,
     modifier: Modifier = Modifier,
-    /** A drawing of what is missing, above the words (B87). */
+    /** A drawing of what is missing, above the words. */
     art: EmptyArt? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
-    // Centred, art and words on one axis (design-direction §7). Left-aligned inside a block that
+    // Centred, art and words on one axis. Left-aligned inside a block that
     // was itself centred, it read as accidentally off-centre (device audit 2026-10-10).
     Column(
         modifier = modifier

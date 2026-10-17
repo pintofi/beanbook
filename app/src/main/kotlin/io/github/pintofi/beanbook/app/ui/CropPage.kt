@@ -44,7 +44,7 @@ import io.github.pintofi.beanbook.core.domain.CropQuad
 import java.io.File
 
 /**
- * Drag the four corners of a page to straighten it (B31), over the whole screen (B73).
+ * Drag the four corners of a page to straighten it, over the whole screen.
  *
  * A perspective crop rather than a rectangular one, because a receipt photographed on a table
  * is a general quadrilateral: its near edge is longer than its far edge and its sides lean. A
@@ -72,9 +72,9 @@ fun CropPageScreen(
     // to mean the nearest "this" first.
     androidx.activity.compose.BackHandler(enabled = true) { onDismiss() }
 
-    // Upright: the corners a person drags have to sit on the page as they see it (B55).
+    // Upright: the corners a person drags have to sit on the page as they see it.
     //
-    // Sampled and off the main thread (B83). This decoded the photograph at full size inside
+    // Sampled and off the main thread. This decoded the photograph at full size inside
     // composition: a 12 MP camera page is a 48 MB bitmap, decoded on the UI thread, which is a
     // freeze on opening the crop and a real risk of running out of memory. The corners stay in
     // the full photograph's pixels, which is what the detector and the assembler use, so they
@@ -231,7 +231,7 @@ private fun CropCanvas(
 
             val corners = listOf(quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft)
             val points = corners.map { on(it) }
-            // What will be cut away is dimmed (B87), so the page you are keeping stands out.
+            // What will be cut away is dimmed, so the page you are keeping stands out.
             val outline = androidx.compose.ui.graphics.Path().apply {
                 moveTo(points[0].x, points[0].y)
                 points.drop(1).forEach { lineTo(it.x, it.y) }

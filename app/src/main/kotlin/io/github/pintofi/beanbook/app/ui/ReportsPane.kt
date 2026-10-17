@@ -45,7 +45,7 @@ private val LISTED = listOf(
  *
  * ux.md §7 asks for exactly this and it was never built — Reports rendered as a single pane at
  * every width, so on a tablet the report text ran the full width of the window and Fava's own
- * navigation stayed folded away inside the page (N8).
+ * navigation stayed folded away inside the page.
  *
  * The list is native rather than part of the page because it is the one piece of navigation
  * that should not depend on the WebView having loaded: when a report fails, the way to another
