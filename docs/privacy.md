@@ -23,7 +23,7 @@ your browser, on Ko-fi, and the app learns nothing about it.
 
 - **Ledger files.** Plain Beancount text in the project you created or imported.
 - **Documents and receipt photos**, stored inside the project tree. The app never reads your
-  photo library; it sees images you capture in it or attach yourself.
+  photo library; it sees images you capture in it or choose yourself in the system picker.
 - **Backups**, written where you choose, encrypted with your passphrase if you ask for that.
 - **Settings**, including your theme.
 - **One date**: when the app was first opened, so the single mention of donations comes after
@@ -48,9 +48,12 @@ sends what is needed to show your ledger, including a username and password if y
 for them. That destination is a machine you control. There is no default server to fall back
 on.
 
-**Optional Python packages, Expert edition only.** When you ask for a package, it is downloaded
-from the Python Package Index. The request contains the package name; none of your ledger goes
-with it. The Play edition never downloads code from anywhere.
+**Optional Python packages and plugins, Expert edition only.** When you ask for a package or a
+catalogue plugin, it is downloaded from the Python Package Index (`pypi.org` and
+`files.pythonhosted.org`), from Chaquopy's index of Android builds (`chaquo.com`), or from
+GitHub (`codeload.github.com`). The request contains the package name; none of your ledger goes
+with it. Each download is checked against a recorded hash before it is unpacked. The Play
+edition never downloads code from anywhere.
 
 **Share on Wi-Fi (incoming connections, off by default).** If you turn this on in More → Share on
 Wi-Fi, other devices on the same private Wi-Fi network can open your Reports in a browser. It does
@@ -89,10 +92,15 @@ no other time.
 
 - **Camera**, only for photographing receipts, and only when you open the camera in the app.
 - **Storage**, through Android's folder picker, limited to folders you choose.
-- **Internet**, used for the three cases above. It is required even in local mode because the
-  app runs Fava as a local web server on the device itself.
-- **Install packages**, in the Expert edition only, so it can offer you a signed update. Not
-  present in the Play build.
+- **Internet**, used for the cases above. It is required even in local mode because the app
+  runs Fava as a local web server on the device itself.
+- **Notifications and foreground service**, to show that a save, an install or sharing is
+  still going after you leave the app. **Wake lock**, held with a timeout while that work
+  finishes. **Network state**, to find the Wi-Fi address when you share Reports.
+- **Run at start-up**, added by the scheduler library so scheduled backups survive a restart.
+  Nothing else uses it.
+
+Neither edition asks to install packages.
 
 ## What is deliberately absent
 

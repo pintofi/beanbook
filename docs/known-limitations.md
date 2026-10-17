@@ -96,6 +96,21 @@ worked. A failure leaves the previous valid ledger recoverable.
 
 ---
 
+**Small differences and gaps that are known**, each with an issue you can follow:
+
+- Totals can differ from Fava's by a cent, because the app rounds each account before adding
+  them up ([#60](https://github.com/pintofi/beanbook/issues/60)).
+- A remote entry that did not get through is kept for a retry only until the app is closed
+  ([#65](https://github.com/pintofi/beanbook/issues/65)).
+- Scheduled backups are not encrypted; a backup you start yourself can be
+  ([#68](https://github.com/pintofi/beanbook/issues/68)).
+- Deleting a document file cannot be undone; unlinking one, deleting an entry and deleting a
+  project can ([#72](https://github.com/pintofi/beanbook/issues/72)).
+- Saving in Fava's own editor (Reports) does not go through the app's write protocol
+  ([#17](https://github.com/pintofi/beanbook/issues/17)).
+
+---
+
 ## Plugins and Fava extensions
 
 **Plugins you supply as files are not resolved for you.** You give the app a plugin's source

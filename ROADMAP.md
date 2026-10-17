@@ -21,7 +21,7 @@ Make the app sturdier before it grows.
 
 | Item | Status | Why |
 |---|---|---|
-| A careful review of every file in the repository ([#16](https://github.com/pintofi/beanbook/issues/16)) | in progress: 12 of 15 areas done (`core-domain`, `core-data`, `engine-local`, `clients`, `app-core`, `app-ui`, `resources`, `scanner`, `tests`, `tools`, `build-ci`, `data-sets`: [logs](review/)) | A known-good baseline to build on |
+| A careful review of every file in the repository ([#16](https://github.com/pintofi/beanbook/issues/16)) | in progress: 13 of 15 areas done (`core-domain`, `core-data`, `engine-local`, `clients`, `app-core`, `app-ui`, `resources`, `scanner`, `tests`, `tools`, `build-ci`, `data-sets`, `docs`: [logs](review/)) | A known-good baseline to build on |
 | Fava's own editor saves outside the app's write protocol ([#17](https://github.com/pintofi/beanbook/issues/17)) | accepted | Every change should get a snapshot, a re-parse and Undo |
 | A TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18)) | accepted | Automated checks do not cover screen-reader order |
 | The instrumentation suite in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19)) | accepted | Regressions and flakes should be visible |
