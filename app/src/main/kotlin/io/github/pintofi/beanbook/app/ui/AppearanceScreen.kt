@@ -51,7 +51,7 @@ import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
  * table of numbers — and none of it touches a ledger.
  *
  * The four themes are chosen from swatches -- a small page of each, paper, ink and rule -- so a
- * person sees what they are choosing rather than reading four words (design-direction §7).
+ * person sees what they are choosing rather than reading four words.
  */
 @Composable
 fun AppearanceScreen(
@@ -123,7 +123,7 @@ fun AppearanceScreen(
             item {
                 FolioBody {
                     // Both sides of one entry in ink: the minus sign says which way the money
-                    // went (design-direction §4). Colour is kept for a difference -- this month
+                    // went. Colour is kept for a difference -- this month
                     // against the last -- which is the one place the app paints a figure.
                     AmountRow("Expenses:Food:Groceries", "262.00", Color.Unspecified)
                     AmountRow("Assets:Bank:Checking", "-262.00", Color.Unspecified)

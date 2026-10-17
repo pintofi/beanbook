@@ -53,13 +53,13 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * A document, read inside the app (B57), over the whole screen (B79).
+ * A document, read inside the app, over the whole screen.
  *
  * Every route to a receipt used to leave Beanbook: "Share" handed the file to whatever the
  * device would open it with. A PDF is rendered here by the platform's own `PdfRenderer` -- no
  * library, no network, nothing that leaves the device -- and an image is simply drawn.
  *
- * **What changed in B79, and why.** It was a dialog the size of a postcard that rendered the
+ * **What changed, and why.** It was a dialog the size of a postcard that rendered the
  * first eight pages up front, and any failure -- a file the app had looked for in the wrong
  * place, a PDF Android could not open -- became the same sentence, "could not be shown", with
  * the reason thrown away. A receipt is read to check a figure on it, which wants the whole
@@ -136,7 +136,7 @@ private fun DocumentPages(file: File) {
             description = "The document ${file.name}",
         )
         is Opened.Pdf -> {
-            // A page at a time, each with its own zoom (B84). Pinch, pan, fling and double-tap
+            // A page at a time, each with its own zoom. Pinch, pan, fling and double-tap
             // come from Telephoto, which also hands a drag to the pager once a page is at its
             // edge -- the hand-written two-finger gesture this replaced could not fling or stop
             // at the page's bounds, and could only zoom the whole list at once.

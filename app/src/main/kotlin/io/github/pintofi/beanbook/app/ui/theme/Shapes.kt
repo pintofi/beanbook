@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Shape by role, because one rounded rectangle for everything is how an app stops having a
- * shape at all (B74).
+ * shape at all.
  *
  * The rule this design follows: **data is square, interventions are round.** A row of figures
  * is part of a ruled page and has no corners; a thing that interrupts the page -- a notice, a
@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 internal val BeancountShapes = Shapes(
     // Text fields, menus and snackbars take this slot. It was 4dp, so every field in the app
     // was squarer than the buttons and segments beside it; at the control radius a form reads
-    // as one set of controls (design-direction §6).
+    // as one set of controls.
     extraSmall = RoundedCornerShape(10.dp),
     // Fields and controls. Enough radius to read as touchable, not enough to read as a pill.
     small = RoundedCornerShape(10.dp),
@@ -99,7 +99,7 @@ object BeanbookShape {
 
     /**
      * A folio: a group of rows a person acts on -- settings, sections, choices -- as one
-     * rounded object with seams between its rows (docs/design-direction.md §3).
+     * rounded object with seams between its rows.
      *
      * The connected choice row's vocabulary turned vertical: a generous outer radius where the
      * group meets the page and a stamp-sized seam between rows, so each row is a target of its

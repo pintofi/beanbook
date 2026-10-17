@@ -116,8 +116,11 @@ class EditorController(
 
     fun save(projectId: String, onSaved: () -> Unit) {
         val editing = _state.value as? EditorState.Editing ?: return
+        // One save at a time: a second tap while the first runs would be refused as stale,
+        // after the first had succeeded, and its message would replace "Saved.".
+        if (_message.value == SAVING) return
         scope.launch {
-            _message.value = "Saving…"
+            _message.value = SAVING
             val result = writer.replace(
                 projectId = projectId,
                 file = File(editing.file.absolutePath),
@@ -167,5 +170,6 @@ class EditorController(
 
     private companion object {
         const val TAG = "EditorController"
+        const val SAVING = "Saving…"
     }
 }

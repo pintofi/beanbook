@@ -3,7 +3,7 @@ package io.github.pintofi.beanbook.app.ui
 import java.net.URLDecoder
 
 /**
- * A folder the person chose, in the words they would use for it (design-direction §7).
+ * A folder the person chose, in the words they would use for it.
  *
  * The Mirror page printed the grant itself --
  * `content://com.android.externalstorage.documents/tree/primary%3ADocuments%2FHamza%2FBeanbook`

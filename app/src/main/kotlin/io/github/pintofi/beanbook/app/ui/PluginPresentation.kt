@@ -21,7 +21,7 @@ sealed interface PluginStatus {
     data object Unknown : PluginStatus
 
     /**
-     * The ledger or the engine is being reloaded, so what was last said may be out of date (B102).
+     * The ledger or the engine is being reloaded, so what was last said may be out of date.
      * Right after an install the previous load still said "did not load" for a few seconds,
      * until the engine had restarted and read the ledger again.
      */
@@ -29,7 +29,7 @@ sealed interface PluginStatus {
 }
 
 /**
- * What the last load said about a plugin that provides [modules] (B97 data, design-direction §7).
+ * What the last load said about a plugin that provides [modules].
  *
  * Two sources, both from the load itself, never a guess:
  * - a Fava extension's import result, from [extensionHealth] (module to the import error, or

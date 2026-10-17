@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * The motion language: one gesture, used sparingly (B74).
+ * The motion language: one gesture, used sparingly.
  *
  * The rule this app follows is that motion explains a change and then stops. A ledger is read,
  * not watched, so there is no perpetual animation anywhere, nothing animates on a timer, and a
@@ -48,7 +48,7 @@ object Motion {
     const val RULE_MS = 320
 
     /**
-     * The save acknowledgement (B78): the band crosses the written lines, holds, and fades.
+     * The save acknowledgement: the band crosses the written lines, holds, and fades.
      * Long enough to be seen -- the first version was over before anyone looked -- and short
      * enough that the fifth entry of an evening is not waiting on it.
      */
@@ -118,7 +118,7 @@ fun rememberAnimationsEnabled(): Boolean {
 }
 
 /**
- * The motion language, by role (B76).
+ * The motion language, by role.
  *
  * The visual design says a financial surface is ruled paper. The motion says what a page of
  * paper does: it **arrives along one axis**, it **rises when it is on top of something**, and
@@ -134,7 +134,7 @@ fun rememberAnimationsEnabled(): Boolean {
  * - **Nothing bounces on money.** Springs are used for direct manipulation, where overshoot
  *   reads as physical, and never on an amount, a warning, or a destructive confirmation.
  *
- * **Material 3 Expressive (docs/material-expressive.md).** Expressive motion is springs, split
+ * **Material 3 Expressive.** Expressive motion is springs, split
  * the way Material splits them: *spatial* for position, size and shape, *effects* for colour
  * and opacity, which must never overshoot. The roles that change a thing in place --
  * [feedback], [local], [fade], [control] -- are those springs now, at the expressive scheme's

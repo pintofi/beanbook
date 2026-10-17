@@ -46,8 +46,8 @@ import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import io.github.pintofi.beanbook.app.ui.theme.LocalMotionEnabled
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 
-// The Material 3 Expressive components this app composes with, in its own proportions
-// (docs/material-expressive.md). Each one honours LocalMotionEnabled: the theme hands
+// The Material 3 Expressive components this app composes with, in its own proportions.
+// Each one honours LocalMotionEnabled: the theme hands
 // Material a still motion scheme when animation is off, and the two indicators below, whose
 // animation is a loop rather than a spring, draw a still mark instead.
 
@@ -216,7 +216,7 @@ private const val STILL_INDICATOR_FRACTION = 38f / 48f
  *
  * The Expressive wavy bar, because a script is not the ledger and a wave says "moving" more
  * plainly than a sliding block. Deliberately not used for reading the ledger or mirroring,
- * where the bar is the app's rule filling and stays flat (docs/material-expressive.md). With
+ * where the bar is the app's rule filling and stays flat. With
  * animation off it is the flat track, announced as indeterminate progress.
  */
 @Composable

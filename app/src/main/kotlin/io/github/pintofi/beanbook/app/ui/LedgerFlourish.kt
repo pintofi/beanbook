@@ -52,7 +52,7 @@ import io.github.pintofi.beanbook.app.ui.theme.LocalMotionEnabled
 import io.github.pintofi.beanbook.app.ui.theme.Motion
 
 /*
- * The few moments that are allowed to be loud (B87).
+ * The few moments that are allowed to be loud.
  *
  * The app's everyday surfaces stay calm: a screen of figures is read, not watched. These are
  * the exceptions, each tied to something that is true about the ledger rather than to a screen
@@ -121,12 +121,12 @@ fun RollingFigure(
     rollInFrom: String? = null,
 ) {
     // A figure in several currencies is one line each. Rolled character by character the line
-    // break drew as nothing, and "669,140.23 PKR" ran into "2,000.00 SAR" (B94).
+    // break drew as nothing, and "669,140.23 PKR" ran into "2,000.00 SAR".
     if ('\n' in text) {
         Text(text, style = style, color = color, modifier = modifier)
         return
     }
-    // A still figure fits its space rather than being cut at its edge (design-direction §5):
+    // A still figure fits its space rather than being cut at its edge:
     // `maxLines = 1` alone clipped "2,624,167.69 PKR" to "2,624,167." at 200% text.
     val align = style.textAlign.takeIf { it != androidx.compose.ui.text.style.TextAlign.Unspecified }
         ?: androidx.compose.ui.text.style.TextAlign.Start
@@ -182,7 +182,7 @@ private fun RollingColumns(text: String, style: TextStyle, color: Color, rollInF
 fun zeroed(figure: String): String = figure.map { if (it.isDigit()) '0' else it }.joinToString("")
 
 /**
- * The stamp for a ledger that is in balance again (B87).
+ * The stamp for a ledger that is in balance again.
  *
  * Shown on Home only when the ledger went from having errors to having none while the app was
  * open -- the moment somebody fixes the last error -- because that is the one time the app has
@@ -263,7 +263,7 @@ enum class EmptyArt {
 }
 
 /**
- * The drawing above an empty state (B87). Decorative: the heading and line under it say
+ * The drawing above an empty state. Decorative: the heading and line under it say
  * everything, so this carries no semantics. Drawn in the rule colour and the outline tone, so
  * it belongs to the page in every theme, including wallpaper colours.
  */
@@ -414,7 +414,7 @@ fun DrawScope.cornerBracket(colour: Color, corner: Offset, direction: Offset, ar
 }
 
 /**
- * Corner brackets on a page outline whose corners are [points], in order round the page (B87).
+ * Corner brackets on a page outline whose corners are [points], in order round the page.
  * Each bracket's arms run along the page's own two edges, so a page photographed at an angle
  * gets brackets at that angle rather than square ones floating off its corners. A darker edge
  * is drawn under each, so the mark reads against a white receipt as well as a dark table.

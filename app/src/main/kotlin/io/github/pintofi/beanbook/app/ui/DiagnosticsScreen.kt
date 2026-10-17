@@ -29,7 +29,7 @@ import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
 
 /**
- * What the app has been doing, for somebody trying to say what went wrong (B62).
+ * What the app has been doing, for somebody trying to say what went wrong.
  *
  * A person who meets a bug had nothing to send and nothing to read: the app kept no record,
  * and `android.util.Log` is gone by the time anyone asks. This is that record, on the device,
@@ -166,7 +166,7 @@ private fun describeSize(bytes: Long): String =
 data class DiagnosticsRecord(val lines: List<String>, val sizeBytes: Long)
 
 /**
- * What the diagnostics screen needs, as one value (B62).
+ * What the diagnostics screen needs, as one value.
  *
  * Built where the log and the share sheet live, so the screen stays a screen: it renders
  * lines and reports taps, and never reads a file or starts an intent itself.

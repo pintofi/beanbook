@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The app's mark -- two brackets facing across a pair of rules (docs/icon.md) -- drawn in the
- * theme's own colours (design-direction §4).
+ * theme's own colours.
  *
  * The About screen and the welcome page used to show the launcher icon's two layers, which are
  * fixed teal: on a phone whose wallpaper made the app terracotta, the one place the app named

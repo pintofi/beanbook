@@ -19,7 +19,7 @@ import androidx.compose.ui.semantics.semantics
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
- * The Journal's three filters: errors, pending, flagged (B95).
+ * The Journal's three filters: errors, pending, flagged.
  *
  * Chips, not a connected choice: these combine -- pending *and* flagged is a real question --
  * and chips are what Material uses for filters that combine. What Expressive changes here is
@@ -27,7 +27,7 @@ import io.github.pintofi.beanbook.app.ui.theme.Measure
  * not in colour alone. The row scrolls sideways rather than wrapping, so at 200% text every
  * chip stays whole and reachable.
  *
- * The descriptions say the state and what a tap will do, and are unchanged from B95.
+ * The descriptions say the state and what a tap will do.
  */
 @Composable
 internal fun JournalFilterChips(

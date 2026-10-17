@@ -50,30 +50,30 @@ import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.core.domain.LedgerSummary
 import io.github.pintofi.beanbook.core.domain.Valuation
 
-// The account balances surface, split out of LedgerScreens.kt (design-direction §7).
+// The account balances surface, split out of LedgerScreens.kt.
 
 @Composable
 fun BalancesScreen(
     snapshot: LedgerSnapshot,
     modifier: Modifier = Modifier,
-    /** The period the figures cover, as Fava's time filter expresses it (B53). */
+    /** The period the figures cover, as Fava's time filter expresses it. */
     dateFrom: String = "",
     dateTo: String = "",
     onDateRange: (String, String) -> Unit = { _, _ -> },
 ) {
-    // What *this* ledger calls them (B70). A file with `option "name_expenses" "Ausgaben"`
+    // What *this* ledger calls them. A file with `option "name_expenses" "Ausgaben"`
     // used to get five headings with nothing under any of them.
     val roots = snapshot.accountNames.roots
     var filter by rememberSaveable { mutableStateOf("") }
     var tagFilter by rememberSaveable { mutableStateOf("") }
-    // Remembered across launches, not just recompositions (B53). Somebody who keeps their
+    // Remembered across launches, not just recompositions. Somebody who keeps their
     // books at market value sets that once; asking again on every start is the app forgetting
     // something it was told.
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember(context) { ValuationPreference(context) }
     val basis by store.flow.collectAsState()
 
-    // Tags and links, as Fava's filter bar takes them (B78): `#trip`, `^invoice-4411`, or
+    // Tags and links, as Fava's filter bar takes them: `#trip`, `^invoice-4411`, or
     // both. The totals below then come from the matching transactions only.
     val tagSuggestions = remember(snapshot.journal) {
         (snapshot.journal.flatMap { it.tags }.distinct().sorted().map { "#$it" } +
@@ -82,7 +82,7 @@ fun BalancesScreen(
     var filtering by rememberSaveable { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // The filters, folded (design-direction §7): four stacked controls took 45% of the first
+        // The filters, folded: four stacked controls took 45% of the first
         // screen before any balance was visible (device audit 2026-10-10). The account filter
         // stays on the page -- it is the one typed while reading -- and the period and the tags
         // move behind one button that says how many are on.
@@ -192,7 +192,7 @@ fun BalancesScreen(
 
         // Room at the end for the floating action button, which draws over the list rather
         // than beside it. Without this the last row's figures sit under the FAB — the cost a
-        // FAB always carries, and one the surfaces it appears on have to pay (B26).
+        // FAB always carries, and one the surfaces it appears on have to pay.
         LazyColumn(
             modifier = Modifier.fillMaxSize().readableMeasure(),
             contentPadding = PaddingValues(bottom = Measure.actionClearance),
@@ -254,7 +254,7 @@ fun BalancesScreen(
                 if (open || root in expanded) {
                     items(rows, key = { it.name }) { node ->
                         AccountRow(
-                            // No placement animation (B77): opening a branch slid the rows
+                            // No placement animation: opening a branch slid the rows
                             // below it down while the new rows appeared at once in the space
                             // they were still leaving, so the two overlapped mid-move.
                             node = node,
@@ -296,12 +296,12 @@ private fun RootHeader(
     operating: List<String>,
 ) {
     val rule = BeancountTheme.ledger.rule
-    // The root's total, double-ruled (B87): the line a bookkeeper draws under a column that is
-    // closed. Shown with the sign this ledger asks for (B67): Fava's
+    // The root's total, double-ruled: the line a bookkeeper draws under a column that is
+    // closed. Shown with the sign this ledger asks for: Fava's
     // `invert-income-liabilities-equity` turns income, liabilities and equity the way a person
     // reads them.
     //
-    // Three commodities and "+N more" (design-direction §5): in Units the Assets band listed
+    // Three commodities and "+N more": in Units the Assets band listed
     // about twenty, one heading taller than the screen. The rows under it list them all.
     val capped = remember(totals, root, format, operating) {
         io.github.pintofi.beanbook.core.domain.HeadlineFigures.of(
@@ -482,14 +482,14 @@ private fun AccountRow(
         label = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (node.hasChildren) {
-                    // Tinted, not left to the icon default (B78): the default is black, and a
+                    // Tinted, not left to the icon default: the default is black, and a
                     // black chevron on the dark and pure-black themes could not be seen at all.
                     DisclosureChevron(expanded, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 // The leaf alone. A ledger with both Expenses:Rent and Expenses:Home:Rent used
                 // to show two rows called "Rent" with different figures and nothing to tell them
                 // apart, because a parent with no balance of its own was not listed and the
-                // indent had no row to sit under (D9). Every ancestor is a row now, so the
+                // indent had no row to sit under. Every ancestor is a row now, so the
                 // indent says which "Rent" this is. Breakable at its hyphens, so a long leaf
                 // wraps between words rather than inside one.
                 Text(
@@ -556,7 +556,7 @@ private fun filterSummary(dateFrom: String, dateTo: String, tags: String): Strin
 }
 
 /**
- * The period and the tags, in a sheet (design-direction §7). The two bounds are what Fava puts
+ * The period and the tags, in a sheet. The two bounds are what Fava puts
  * above its own reports: they go to the engine and narrow what is computed.
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

@@ -96,8 +96,8 @@ fun loadLicences(context: Context): Pair<LicenceEntry, List<LicenceEntry>> {
  * This app is GPL-2.0-only and bundles 36 Python packages and 29 Android libraries under MIT,
  * BSD, X11, LGPL-2.1, PSF, Apache-2.0, EPL and CC0. Every one of those requires its notice to
  * travel with the software, and the GPL requires the terms be offered to the user. Shipping
- * the bytes inside a zip inside `assets/`, which is what happened until M14, is a thin reading
- * of both (docs/milestones/m14-part11.md).
+ * the bytes inside a zip inside `assets/`, which is what an early version did, is a thin reading
+ * of both.
  *
  * The app's own licence comes first and is stated in plain words before the legal text,
  * because "you may use, study, share and change this" is the part that means something to
@@ -196,7 +196,7 @@ private fun LicenceEntry.kind() = if (members.isEmpty()) "component" else "group
  *
  * Monospace and horizontally scrollable because these texts are written to a fixed column
  * width, and reflowing them makes the numbered clauses of the GPL and the Apache licence
- * hard to follow. The row scrolls; the page does not (CLAUDE.md, responsive rules).
+ * hard to follow. The row scrolls; the page does not (the project's responsive rules).
  */
 @Composable
 private fun LicenceText(entry: LicenceEntry, onBack: () -> Unit, modifier: Modifier = Modifier) {

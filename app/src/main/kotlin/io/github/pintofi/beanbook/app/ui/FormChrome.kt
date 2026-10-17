@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 
 /**
- * The entry forms' save area, pinned under the form (design-direction §7).
+ * The entry forms' save area, pinned under the form.
  *
  * Save was at the very end of a form two and a half screens long, and the message that said
  * why a save was refused appeared *under* it, below the fold, where it was missed right after
@@ -45,7 +45,7 @@ fun FormSaveBar(
     ) {
         Column {
             // Inside the page gutter, like every rule on a form: drawn edge to edge it was the one
-            // thing in the forms' side margins, which the pixel gate refuses (B98).
+            // thing in the forms' side margins, which the pixel gate refuses.
             LedgerHairline(Modifier.padding(horizontal = Measure.gutter))
             Column(
                 modifier = Modifier
