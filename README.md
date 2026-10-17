@@ -390,7 +390,7 @@ live, and what to do when something goes wrong.
 Projects live in app-private storage, which is canonical. That is not an aesthetic choice:
 Python and Fava need real POSIX paths, and Android's folder picker hands out content URIs.
 Modern file managers cannot browse app-private storage, so the app provides explicit routes
-out — an in-app editor for every included file, export to a folder you pick, backup archives,
+out: an in-app editor for every included file, export to a folder you pick, backup archives,
 and optional mirroring. Caches, logs and credentials are kept outside the
 portable project tree, so an exported copy contains your ledger and nothing else.
 

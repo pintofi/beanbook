@@ -10,11 +10,11 @@ Verified against upstream on **2026-08-16**.
 |---|---|---|---|
 | Chaquopy | 17.0.0 (2025-12-01) | MIT | Python 3.10–3.14, minSdk 24, AGP 7.3–9.2 |
 | CPython | 3.13 (via Chaquopy) | PSF | Runtime supplied by Chaquopy |
-| Beancount | 3.2.3 | **GPL-2.0-only** | ❌ No Android wheel — **must cross-build** (meson-python, bison ≥3.8, flex ≥2.6.4, C++) |
+| Beancount | 3.2.3 | **GPL-2.0-only** | ❌ No Android wheel: **must cross-build** (meson-python, bison ≥3.8, flex ≥2.6.4, C++) |
 | Fava | 1.30.15 | MIT | ✅ pure-Python `any` wheel |
 | Beanquery | 0.2.0 | GPL-2.0 | ✅ `any` wheel (Fava requires `<0.3`) |
 | Beangulp | 0.2.0 | GPL-2.0 | ✅ `any` wheel |
-| watchfiles | 1.2.0 | MIT | ❌ Rust/PyO3 — **must cross-build** or shim |
+| watchfiles | 1.2.0 | MIT | ❌ Rust/PyO3: **must cross-build** or shim |
 | cheroot | 11.1.2 | BSD | ✅ `any` wheel |
 | simplejson | 4.1.1 | MIT/AFL-2.1 | ✅ `any` wheel (pure fallback) |
 | protobuf | 7.35.1 | BSD-3 | ✅ `any` wheel |
@@ -33,7 +33,7 @@ Beancount's `COPYING` states GPL **v2 only**, explicitly *not* "v2 or any later 
 Beanquery and Beangulp are also GPL-2.0. The engine runs in-process with the app, so the
 distributed APK is a combined work: **the application is licensed GPL-2.0-only.** GPLv3
 is incompatible and must not be introduced. All third-party Android dependencies must be
-GPL-2.0-compatible (Apache-2.0 is *not* GPL-2.0-compatible — see §7.1 for the
+GPL-2.0-compatible (Apache-2.0 is *not* GPL-2.0-compatible; see §7.1 for the
 consequence, which is real and constrains dependency choice).
 
 ### 1.2 The two hard build problems
@@ -41,10 +41,10 @@ consequence, which is real and constrains dependency choice).
 Everything else installs as an ordinary pure-Python wheel. The entire native risk of this
 project is:
 
-1. **Beancount's C++ parser** — meson-python build backend, bison/flex-generated sources,
+1. **Beancount's C++ parser**: meson-python build backend, bison/flex-generated sources,
    cross-compiled for `aarch64-linux-android21+` and `x86_64-linux-android21+` via
    Chaquopy's `build-wheel` tool. This is Spike 2 and it is architecture-defining.
-2. **watchfiles' Rust extension** — cross-compiled with maturin against the NDK.
+2. **watchfiles' Rust extension**: cross-compiled with maturin against the NDK.
    *Mitigation already identified:* `fava.core.watcher` provides a pure-Python polling
    `Watcher`, selected by `FavaLedger(poll_watcher=True)`. `watchfiles` is only imported
    at module scope, so a ~30-line import shim providing `Change`, `DefaultFilter`, and
@@ -104,7 +104,7 @@ project is:
 | B3 | Kotlin ↔ CPython | both | Typed `EngineClient` calls only; no `eval` of UI-supplied strings |
 | B4 | WebView ↔ loopback Fava | both | Origin allowlist, per-process bearer token, no file access, no JS bridge |
 | B5 | App ↔ remote Fava | both | HTTPS only, strict cert validation, no bypass path in any build |
-| B6 | Engine ↔ user plugin code (expert) | in | **Not a security boundary** — same process, same privileges. Documented as such. |
+| B6 | Engine ↔ user plugin code (expert) | in | **Not a security boundary**: same process, same privileges. Documented as such. |
 
 Detailed adversary analysis: [threat-model.md](threat-model.md).
 
@@ -127,7 +127,7 @@ Detailed adversary analysis: [threat-model.md](threat-model.md).
   `mixedContentMode = NEVER_ALLOW`, no `addJavascriptInterface` in the Fava WebView,
   `setWebContentsDebuggingEnabled` only in debug builds, and a
   `WebViewClient` that hard-blocks any navigation outside the allowlisted origin
-  (loopback, or the configured remote host) — external links open in the browser after a
+  (loopback, or the configured remote host); external links open in the browser after a
   confirmation.
 
 ---
@@ -135,7 +135,7 @@ Detailed adversary analysis: [threat-model.md](threat-model.md).
 ## 5. Process and lifecycle model
 
 - The engine lives in a bound `Service` running in **its own process** (`:engine`), for the
-  licensing reason in §7.1 and for crash isolation — Expert plugins are unsandboxed by
+  licensing reason in §7.1 and for crash isolation; Expert plugins are unsandboxed by
   design, and a plugin that kills the interpreter must not take the UI with it. Large
   payloads cross via files in the app's cache, never Binder, whose ~1 MB limit a 7.7 MB
   ledger would exceed. Superseded note: an earlier draft said the engine lives in the main process (Chaquopy
@@ -173,8 +173,8 @@ Rules:
   names no donation page.
 - Plugin/script loading is **shared** by both flavors (parity), but the loader takes a
   `PluginPolicy` supplied per flavor:
-  `PlayPluginPolicy` — pure-Python only, no native wheel installation, Java/Android bridge
-  withheld from the user import context; `ExpertPluginPolicy` — unrestricted.
+  `PlayPluginPolicy`: pure-Python only, no native wheel installation, Java/Android bridge
+  withheld from the user import context; `ExpertPluginPolicy`: unrestricted.
   A Gradle verification task fails the `play` build if native-wheel installation, the
   bridge, self-update, or any payment dependency is reachable. This is the build-time
   proof required by Play policy.
@@ -188,7 +188,7 @@ Rules:
 **Correction.** An earlier version of this section claimed the Apache-2.0 problem
 "narrows to future OCR only". That was wrong, and the mistake matters.
 
-Apache-2.0 is incompatible with GPL-2.0-**only**, and *AndroidX itself is Apache-2.0* —
+Apache-2.0 is incompatible with GPL-2.0-**only**, and *AndroidX itself is Apache-2.0*,
 `core-ktx`, Compose, `lifecycle`, `documentfile`, the test libraries, all of it. So the
 incompatibility is not a corner case about OCR; it sits in the middle of the dependency
 graph of any modern Android app. Dropping Play Billing removed one proprietary dependency
@@ -204,7 +204,7 @@ Three realistic resolutions, in the order they should be considered:
    interface it already exposes. Beancount then runs as an independent program that the
    app communicates with at arm's length, rather than as a library linked into an
    Apache-2.0-laden process. This is the strongest structural answer and is *almost the
-   present design already* — Fava is an HTTP server; the only coupling is that Chaquopy
+   present design already*: Fava is an HTTP server; the only coupling is that Chaquopy
    currently hosts the interpreter in the app's own process. Costs: a second process's
    memory, IPC for the non-HTTP calls (`ledger.inspect`, `writer.validate`), and a
    lifecycle to manage.
@@ -221,7 +221,7 @@ Three realistic resolutions, in the order they should be considered:
 separate OS process, reached over a binder. The app process links AndroidX and never links
 GPL-2.0-only code.
 
-This was almost the design already — the AIDL split landed earlier for reliability reasons —
+This was almost the design already (the AIDL split landed earlier for reliability reasons),
 so the decision was mostly about committing to it and then making it true, because it was
 not quite:
 
@@ -245,7 +245,7 @@ Tracked as risk R9.
 User Python runs in the app's process with the app's permissions. There is no Android
 mechanism that makes this safe while keeping in-process Fava integration. We document the
 residual risk plainly, offer per-project enable/disable, provenance and checksums,
-execution logs, safe mode, and a plugin-free relaunch — and we never call it secure.
+execution logs, safe mode, and a plugin-free relaunch, and we never call it secure.
 
 ### 7.3 Size
 

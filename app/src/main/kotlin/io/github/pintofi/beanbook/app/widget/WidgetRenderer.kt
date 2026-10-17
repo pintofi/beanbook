@@ -223,7 +223,7 @@ object WidgetRenderer {
             !snapshot.clean ->
                 "${snapshot.projectTitle} has errors to review · $time"
             snapshot.isStale(nowEpochMs) ->
-                "Out of date — from $time. Open the app to refresh."
+                "Out of date, from $time. Open the app to refresh."
             redacted -> "Hidden · $time"
             else -> "${snapshot.projectTitle} · $time"
         }
