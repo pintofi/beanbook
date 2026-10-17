@@ -1,6 +1,6 @@
 """Writes the Python lockfile from the packages that actually ended up in an APK.
 
-CLAUDE.md requires pinned versions, and only the two direct dependencies were pinned:
+The project requires pinned versions, and only the two direct dependencies were pinned:
 `fava==1.30.15` and `beancount==3.2.3`. Every transitive dependency floated. Two clean builds
 of the same commit resolved **click 8.4.2 and click 8.5.0**, which is both a reproducibility
 failure and a supply-chain one — a build can pick up a version nobody reviewed.
@@ -17,7 +17,7 @@ version, so a published release cannot be altered underneath the pin. Three sour
   downloaded and hashed here. That is trust-on-first-use: it fixes what every later build
   gets, but the first recording is only as good as the connection that made it.
 * **The two wheels we cross-build ourselves** are hashed from the local wheel directory,
-  because they are not reproducible byte for byte (docs/milestones/m14-part8.md). Their
+  because they are not reproducible byte for byte. Their
   supply-chain pin is the sdist hash in `engine-local/wheels.lock`; the hash here only
   describes the binary this machine produced, and `tools/build-wheels.sh` rewrites it.
 
@@ -46,8 +46,7 @@ REPO = Path(__file__).resolve().parents[1]
 CHAQUOPY_PROVIDED: set[str] = set()
 
 # Chaquopy serves its own prebuilt Android wheels from here. The path carries the plugin's
-# major version, so it moves when Chaquopy is upgraded — which CLAUDE.md already makes a
-# milestone of its own.
+# major version, so it moves when Chaquopy is upgraded — which is a change of its own.
 CHAQUOPY_INDEX = "https://chaquo.com/pypi-13.1"
 
 # Built by tools/build-wheels.sh rather than downloaded. See the module docstring.
@@ -124,7 +123,7 @@ def refresh_local(lockfile: Path, wheel_dir: Path) -> int:
     """Write the pins for the wheels we cross-build, into their own generated file.
 
     These cannot live in the committed lockfile. Their bytes differ on every build — a GNU
-    build-id and a build directory (docs/milestones/m14-part8.md) — so a hash recorded on one
+    build-id and a build directory — so a hash recorded on one
     machine can never match a wheel built on another, and CI would fail on its own artefacts
     every time the cache missed. Committing them would make the lockfile a record of whose
     laptop last ran the build.
@@ -139,7 +138,7 @@ def refresh_local(lockfile: Path, wheel_dir: Path) -> int:
         "# Written by tools/build-wheels.sh. Their hashes describe the binaries in",
         f"#   {wheel_dir}",
         "# and would not match a wheel built anywhere else, which is why they are here and",
-        "# not in requirements.lock (docs/milestones/m14-part9.md).",
+        "# not in requirements.lock.",
         "",
     ]
     versions = pinned_versions(lockfile)
@@ -204,13 +203,13 @@ def main() -> int:
         "#",
         "# Only fava and beancount were pinned before this file existed; every transitive",
         "# dependency floated, and two clean builds of the same commit resolved click 8.4.2",
-        "# and click 8.5.0 (docs/milestones/m14-part5.md).",
+        "# and click 8.5.0.",
         "#",
         "# A hash on any line puts pip into --require-hashes mode for the whole file, so",
         "# every requirement must carry one and nothing can be installed that was not",
         "# written down here. Digests come from PyPI's API where it publishes them, and are",
         "# computed by downloading the file where it does not — Chaquopy's index publishes",
-        "# none (docs/milestones/m14-part9.md).",
+        "# none.",
         "#",
         "# beancount and watchfiles are not here: they are cross-built, not reproducible",
         "# byte for byte, and a hash recorded on one machine cannot match a wheel built on",

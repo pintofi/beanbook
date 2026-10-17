@@ -221,7 +221,7 @@ option "operating_currency" "USD"
 
 
 def case_large(root: Path, count: int, seed: int = 20260817) -> None:
-    """A realistic multi-year ledger, for the performance target in SPEC.md 6."""
+    """A realistic multi-year ledger, for the cold-start performance target."""
     rng = random.Random(seed)
     start = date(2015, 1, 1)
 

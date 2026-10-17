@@ -144,7 +144,7 @@ fi
 # resolved Python against an x86_64 libpython while cross-compiling for aarch64, and on a
 # laptop — where the variable is unset — it resolved the Android one and everything worked.
 # That single line of difference produced two entirely different failures
-# (docs/milestones/m14-part12.md).
+#.
 if [ -n "${PKG_CONFIG_PATH:-}" ]; then
     echo "ignoring PKG_CONFIG_PATH=$PKG_CONFIG_PATH: it points at the host Python"
     unset PKG_CONFIG_PATH
@@ -240,7 +240,7 @@ while read -r name version want; do
     # supply it — its `Libs:` line is `-L${libdir} $(BLDLIBRARY)`, an unexpanded Makefile
     # variable — so whether `-lpython3.13` reaches the link is left to what meson infers, and
     # that inference differed between a laptop and a GitHub runner on identical toolchains
-    # (docs/milestones/m14-part12.md).
+    #.
     #
     # It has to be said through meson, not the environment: cibuildwheel's own Android setup
     # rewrites LDFLAGS after CIBW_ENVIRONMENT is applied, so anything added there is silently
@@ -275,17 +275,18 @@ status=0
 while read -r name version _; do
     case "$name" in ''|\#*) continue ;; esac
     for arch in ${archs//,/ }; do
-        wheel="$out/${name}-${version}-cp313-cp313-android_"*"_${arch}.whl"
-        # shellcheck disable=SC2086  # the glob is the point
-        set -- $wheel
-        if [ ! -f "$1" ]; then
+        # An array, so a build directory with a space in its name still globs; with no match
+        # the array holds the pattern itself, which is not a file.
+        matches=( "$out/${name}-${version}-cp313-cp313-android_"*"_${arch}.whl" )
+        wheel="${matches[0]}"
+        if [ ! -f "$wheel" ]; then
             echo "MISSING  $name $arch"; status=1; continue
         fi
-        sos="$(python3 -c "import sys,zipfile;print(sum(1 for n in zipfile.ZipFile(sys.argv[1]).namelist() if n.endswith('.so')))" "$1")"
+        sos="$(python3 -c "import sys,zipfile;print(sum(1 for n in zipfile.ZipFile(sys.argv[1]).namelist() if n.endswith('.so')))" "$wheel")"
         if [ "$sos" -eq 0 ]; then
-            echo "NO NATIVE CODE  $(basename "$1") — would fail at import on device"; status=1; continue
+            echo "NO NATIVE CODE  $(basename "$wheel") — would fail at import on device"; status=1; continue
         fi
-        printf 'ok  %-58s %s  %s .so\n' "$(basename "$1")" "$(sha256sum "$1" | cut -c1-16)" "$sos"
+        printf 'ok  %-58s %s  %s .so\n' "$(basename "$wheel")" "$(sha256sum "$wheel" | cut -c1-16)" "$sos"
     done
 done < "$lock"
 
@@ -302,5 +303,5 @@ if [ "$status" -eq 0 ]; then
     python3 "$here/tools/lock-python.py" --refresh-local --wheel-dir "$out" || status=1
 fi
 
-[ "$status" -eq 0 ] && say "wheels are in $out" || say "FAILED"
+if [ "$status" -eq 0 ]; then say "wheels are in $out"; else say "FAILED"; fi
 exit "$status"

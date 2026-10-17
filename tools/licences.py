@@ -4,7 +4,7 @@ The app is GPL-2.0-only and bundles 36 Python packages under MIT, BSD, X11, LGPL
 PSF, plus AndroidX and friends under Apache-2.0. Every one of those licences requires the
 notice to travel with the software, and the GPL requires the terms be offered to the user.
 Until this existed, 34 licence texts shipped inside a zip inside `assets/`, where nobody
-could read them, and two shipped nowhere at all (docs/milestones/m14-part11.md).
+could read them, and two shipped nowhere at all.
 
 The text comes from the packages themselves wherever they carry it, so this cannot drift
 from what is installed. Where a package ships none, a canonical copy of its licence is used

@@ -15,8 +15,6 @@ import argparse
 import io
 import json
 import re
-import subprocess
-import sys
 import tarfile
 import urllib.error
 import urllib.request
