@@ -1,4 +1,4 @@
-"""Positions reported as units, at cost, and at market value (B14).
+"""Positions reported as units, at cost, and at market value.
 
 Run from the repository root:
 
@@ -105,7 +105,7 @@ class ValuationTest(unittest.TestCase):
             payload = json.loads(ledger.inspect(str(path)))
             art = next(r for r in payload["accounts"] if r["name"] == "Assets:Art")
 
-        # Market value falls back to cost when no price exists (B95), as Fava's does; a
+        # Market value falls back to cost when no price exists, as Fava's does; a
         # holding with neither a price nor a cost stays in its own units.
         self.assertEqual(
             [{"number": "500.00", "currency": "USD"}],
@@ -141,7 +141,7 @@ plugin "beancount.plugins.commodity_attr" "{'name': None, 'precision': None}"
 
 
 class PostingRateTest(unittest.TestCase):
-    """A rate written on a posting is what values the commodity (B94)."""
+    """A rate written on a posting is what values the commodity."""
 
     @classmethod
     def setUpClass(cls):
@@ -183,7 +183,7 @@ class PostingRateTest(unittest.TestCase):
 
 
 class ExtensionHealthTest(unittest.TestCase):
-    """Extension health comes from what Fava reported, and nothing is imported (B101)."""
+    """Extension health comes from what Fava reported, and nothing is imported."""
 
     TEXT = (
         '2026-01-01 open Assets:Cash\n'

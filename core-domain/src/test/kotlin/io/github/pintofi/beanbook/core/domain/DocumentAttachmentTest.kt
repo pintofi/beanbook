@@ -6,7 +6,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * A document is linked in one of two ways, and the app knew about one of them (B57).
+ * A document is linked in one of two ways, and the app knew about one of them.
  *
  * A `document` directive files a file under an account. A `document:` metadata key attaches
  * it to a transaction — which is what the Add form writes, and what

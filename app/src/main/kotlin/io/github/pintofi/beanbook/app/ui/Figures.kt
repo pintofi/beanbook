@@ -30,7 +30,7 @@ import io.github.pintofi.beanbook.core.domain.LedgerFormat
 /**
  * Figures that are never clipped.
  *
- * At 200% text Home's Income and Expenses tiles cut "2,624,167.69 PKR" to "2,624,167." with no
+ * At 200% text Home's Income and Expenses tiles cut "2,345,678.90 PKR" to "2,345,678." with no
  * ellipsis (device audit 2026-10-10) -- the worst failure a money screen can have, because the
  * figure still looks like a figure. Layouts around figures now reflow first; this is what a
  * figure does when the space it is finally given is still too narrow.
@@ -55,7 +55,7 @@ private class FigureFit(
             if (layout.lineCount == 1 && !layout.hasVisualOverflow) return size.sp
             size -= step.value
         }
-        // Two lines, broken at a space: "2,624,167.69" over "PKR" rather than a split number.
+        // Two lines, broken at a space: "2,345,678.90" over "PKR" rather than a split number.
         size = largest
         while (size >= smallest) {
             val layout = performLayout(constraints, text, size.sp)
@@ -107,7 +107,7 @@ fun FitFigure(
 /**
  * Text that may break between the segments of an account name.
  *
- * "Assets:Current:Bank:Savings:Meezan-Bank" broke as "Savi / ngs" at 200% text, because the
+ * "Assets:Current:Bank:Savings:Example-Bank" broke as "Savi / ngs" at 200% text, because the
  * name is one word to a line breaker. A zero-width space after every colon and hyphen gives it
  * the places a person would break it. Only for display: the name is never written anywhere
  * with these in it, and callers give a screen reader the plain name.

@@ -12,7 +12,7 @@ import kotlin.math.abs
  * draws clipped. A `Switch` shipped that way in two screens — visibly cut in half at the
  * right edge of the phone, and unusable — while every semantics check stayed green, because
  * the node's reported bounds were inside the window. Three attempts to make the tree see it
- * failed (docs/milestones/m12-part1.md). Only looking at what was drawn works.
+ * failed. Only looking at what was drawn works.
  *
  * This is deliberately **not** golden-image comparison. A golden catches any change, which
  * sounds better and is worse: it fails on every intentional edit, on a font metric changing

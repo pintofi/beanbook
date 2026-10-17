@@ -6,7 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/** Units, At cost and Market value, as Fava's switch reads them (B95). */
+/** Units, At cost and Market value, as Fava's switch reads them. */
 class ValuationTest {
 
     private fun amount(value: String, currency: String) = Amount(BigDecimal(value), currency)

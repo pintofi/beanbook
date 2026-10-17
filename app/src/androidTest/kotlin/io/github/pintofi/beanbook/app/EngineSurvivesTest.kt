@@ -12,7 +12,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The engine starts again after the app lost track of it (B89).
+ * The engine starts again after the app lost track of it.
  *
  * Both failures were seen on a phone after switching away and back: Android had ended the
  * app's own process, or the engine's, and the next start reported "engine already started;

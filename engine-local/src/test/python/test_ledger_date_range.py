@@ -1,4 +1,4 @@
-"""A date range narrows what is computed, the way Fava's time filter does (B53).
+"""A date range narrows what is computed, the way Fava's time filter does.
 
 Run from the repository root:
 

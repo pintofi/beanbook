@@ -16,7 +16,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** What the app says about the other edition and about donations (B81). */
+/** What the app says about the other edition and about donations. */
 @RunWith(AndroidJUnit4::class)
 class EditionNoticesTest {
 

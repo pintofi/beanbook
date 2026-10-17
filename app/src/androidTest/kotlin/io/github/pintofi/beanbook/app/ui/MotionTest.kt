@@ -27,7 +27,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The motion contracts (B76).
+ * The motion contracts.
  *
  * These assert what motion *means* and what it must never cost, rather than how many
  * milliseconds a fade takes: the axis a move travels along, that an interrupted move lands on

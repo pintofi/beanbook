@@ -15,7 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * A balance widget shows the account it was told to show (B1).
+ * A balance widget shows the account it was told to show.
  *
  * The default — assets first, then alphabetically — was never wrong, only fixed: someone
  * with two current accounts could not put the *other* one on their home screen, and two
@@ -108,7 +108,7 @@ class WidgetAccountChoiceTest {
 
 
     /**
-     * Several accounts on one widget (B48), in a list that scrolls (B93).
+     * Several accounts on one widget, in a list that scrolls.
      *
      * Each row is inflated from the `RemoteViews` the list's service hands the launcher and
      * read back from the view tree, so a row that never reaches its layout still fails.
@@ -132,7 +132,7 @@ class WidgetAccountChoiceTest {
         return lines to root.findViewById<TextView>(R.id.widget_footnote).text.toString()
     }
 
-    /** B93: every widget adds an entry, now that the widget that only did that is gone. */
+    /** every widget adds an entry, now that the widget that only did that is gone. */
     @Test fun bothWidgetsCarryAnAddButton() {
         listOf(
             WidgetMetric.BALANCE to listOf("Assets:Bank:Current"),
@@ -173,7 +173,7 @@ class WidgetAccountChoiceTest {
     }
 
 
-    /** A widget is one target, and each one opens where its own figure lives (B54). */
+    /** A widget is one target, and each one opens where its own figure lives. */
     @Test fun theWholeWidgetOpensTheSurfaceThatFigureBelongsTo() {
         val views = WidgetRenderer.render(
             context = context,

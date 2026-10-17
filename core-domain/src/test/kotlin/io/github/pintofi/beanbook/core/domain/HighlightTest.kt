@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Colouring Beancount source without changing a byte of it (B12).
+ * Colouring Beancount source without changing a byte of it.
  *
  * The editor is the one screen where the user sees the file as it really is, so the
  * highlighter has two obligations beyond looking right: it must never alter the text, and its

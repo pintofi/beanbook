@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 class SharingPasswordTest {
 
     /**
-     * B93: the same vector `test_sharing.py` pins, computed by Python's hashlib. If the two
+     * the same vector `test_sharing.py` pins, computed by Python's hashlib. If the two
      * sides ever disagree, no password would ever sign in, and this is where it shows.
      */
     @Test

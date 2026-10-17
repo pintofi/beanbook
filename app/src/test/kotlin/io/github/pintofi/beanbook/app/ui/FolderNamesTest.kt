@@ -11,9 +11,9 @@ class FolderNamesTest {
 
     @Test fun aFolderOnThePhoneIsItsPath() {
         assertEquals(
-            "Documents/Hamza/Beanbook",
+            "Documents/Sam/Beanbook",
             humanFolder(
-                "content://com.android.externalstorage.documents/tree/primary%3ADocuments%2FHamza%2FBeanbook",
+                "content://com.android.externalstorage.documents/tree/primary%3ADocuments%2FSam%2FBeanbook",
             ),
         )
     }

@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Closes Phase 0 risk R3 on a real WebView: the allowlist is tested for what it
+ * On a real WebView: the allowlist is tested for what it
  * **refuses**, and every hardening flag is asserted rather than assumed.
  */
 @RunWith(AndroidJUnit4::class)

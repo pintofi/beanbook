@@ -1,4 +1,4 @@
-"""What the file asks Fava for, reported so the app can follow it (B67).
+"""What the file asks Fava for, reported so the app can follow it.
 
 Run from the repository root:
 
@@ -107,7 +107,7 @@ class FavaOptionsTest(unittest.TestCase):
 
 
 class AccountNamesTest(unittest.TestCase):
-    """What this file calls its five trees, and where it keeps documents (B70)."""
+    """What this file calls its five trees, and where it keeps documents."""
 
     def inspect(self, text):
         with tempfile.TemporaryDirectory() as directory:

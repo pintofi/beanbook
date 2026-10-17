@@ -26,7 +26,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The entry form's layout and its edit mode (B79). */
+/** The entry form's layout and its edit mode. */
 @RunWith(AndroidJUnit4::class)
 class EntryFormLayoutTest {
 
@@ -89,7 +89,7 @@ class EntryFormLayoutTest {
         compose.onNode(hasText("food")).assertExists()
         assertEquals("opening an entry is not a change to it", false, dirty)
 
-        // On the sticky save bar since B98: always on screen, and outside the scroll.
+        // On the sticky save bar: always on screen, and outside the scroll.
         compose.onNodeWithText("Save changes").performClick()
         assertEquals("an untouched entry is written back as it was", entry.render(), saved?.render())
     }
@@ -167,13 +167,13 @@ class EntryFormLayoutTest {
             compose.onAllNodes(hasText("document: \"2026-09-13.0123456789ab.pdf\"", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        // No separate `document` directive in the preview since B92: the attachment belongs
+        // No separate `document` directive in the preview: the attachment belongs
         // to this entry, by its `document:` line (checked above). This assertion still looked
-        // for the directive and had been failing since then; found running the suite in B98.
-        // An attached file is a second link, under its own key, and is listed in the form (B80).
+        // for the directive and had been failing since then; found when the suite was next run.
+        // An attached file is a second link, under its own key, and is listed in the form.
         compose.onNode(hasText("document-2: \"2026-09-13.ba9876543210.jpg\"", substring = true)).assertExists()
         compose.onNodeWithContentDescription("Remove the attached file invoice.jpg").assertExists()
-        // On the sticky save bar since B98: always on screen, and outside the scroll.
+        // On the sticky save bar: always on screen, and outside the scroll.
         compose.onNodeWithText("Save entry with 1 page and 1 file").assertExists()
     }
 

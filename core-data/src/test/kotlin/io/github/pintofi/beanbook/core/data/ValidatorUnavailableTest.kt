@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 
 /**
- * Telling "the engine is not there" apart from "the ledger will not parse" (R5).
+ * Telling "the engine is not there" apart from "the ledger will not parse".
  *
  * `BeancountValidator` returns a failed `Result` for both: the engine process being dead or
  * unbindable, and Beancount genuinely refusing the file. The writer could not distinguish

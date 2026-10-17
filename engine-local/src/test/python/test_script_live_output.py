@@ -1,4 +1,4 @@
-"""A script prints live and has no fixed deadline (B102)."""
+"""A script prints live and has no fixed deadline."""
 
 import os
 import sys

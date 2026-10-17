@@ -17,9 +17,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * A Fava extension, installed and reached end to end (B60, and the gap V8 left open).
+ * A Fava extension, installed and reached end to end (and the gap an earlier test left open).
  *
- * M14 part 26 fixed the plumbing and could not exercise it: every catalogued extension needed
+ * An earlier change fixed the plumbing and could not exercise it: every catalogued extension needed
  * a package no Android build existed for, so "Fava can find an installed extension" was
  * tested and "a user can install one and see its page" never was. `beancount-zakat` closes
  * that -- pure Python, and its only dependency, `hijridate`, is pure Python too.
@@ -35,7 +35,7 @@ class ZakatExtensionTest {
 
     @Test fun anInstalledExtensionAppearsInFavaOnceItsDependencyIsFetched() {
         assumeTrue(
-            "this edition cannot fetch packages, so there is nothing to test (B99)",
+            "this edition cannot fetch packages, so there is nothing to test",
             currentPluginPolicy().allowsPackageDownload,
         )
         val project = File(context.cacheDir, "zakat-${System.nanoTime()}").apply { mkdirs() }

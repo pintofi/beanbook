@@ -87,7 +87,7 @@ class CatalogPluginTest {
         Case("autobean.include", "plugin \"autobean.include\"\n\n$opened\n\n$twoTransactions", 2),
         // autobean.truelayer is deliberately absent: it imports `beancount.ingest`, which
         // Beancount 3 removed, and fails identically on desktop. It is a Beancount 2 plugin,
-        // and the catalogue now says so (docs/milestones/m14-part25.md).
+        // and the catalogue now says so.
     )
 
     @Before fun setUp() {

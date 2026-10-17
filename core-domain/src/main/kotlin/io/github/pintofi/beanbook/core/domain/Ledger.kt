@@ -230,7 +230,7 @@ data class DocumentDirective(
  * What a lot was acquired at: the figure, and what identifies the lot.
  *
  * Beancount books this before the app sees it, so a cost written in the file as a label or a
- * partial spec -- `{"avcoassf"}` -- arrives here as the whole thing: the number, the currency,
+ * partial spec -- `{"lot-a"}` -- arrives here as the whole thing: the number, the currency,
  * the acquisition date, and the label if the lot carries one. Units without it are not a
  * holding: two lots of the same fund bought a year apart are the same number of the same
  * commodity and are worth different money.
@@ -240,7 +240,7 @@ data class Cost(
     val date: String? = null,
     val label: String? = null,
 ) {
-    /** `{400.00 PKR, 2025-01-01, "avcoassf"}` -- the way the file writes it. */
+    /** `{400.00 PKR, 2025-01-01, "lot-a"}` -- the way the file writes it. */
     fun format(): String = buildString {
         append('{')
         append(amount.format())

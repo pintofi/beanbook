@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * A ledger says how it wants to be read, and the app now listens (B59).
+ * A ledger says how it wants to be read, and the app now listens.
  *
  * Beancount works the display context out from the numbers in the file, and `render_commas`
  * is the user's own option. The app used neither, so a currency written to three places with
@@ -62,9 +62,9 @@ class LedgerFormatTest {
 
     /** A lot is a figure too: `{400.00 PKR}` follows the same places and separators. */
     @Test fun `a cost is written the way the file writes figures`() {
-        val cost = Cost(amount("4000.5"), date = "2025-01-01", label = "avcoassf")
+        val cost = Cost(amount("4000.5"), date = "2025-01-01", label = "lot-a")
 
-        assertEquals("{4,000.500 PKR, 2025-01-01, \"avcoassf\"}", pkr.format(cost))
+        assertEquals("{4,000.500 PKR, 2025-01-01, \"lot-a\"}", pkr.format(cost))
     }
 
     @Test fun `a ledger that says nothing gets plain rendering`() {
@@ -99,7 +99,7 @@ class LedgerFormatTest {
 }
 
 /**
- * The rest of what a ledger says about how its figures read (B67).
+ * The rest of what a ledger says about how its figures read.
  *
  * Beancount's own options were already honoured; Fava's were not, and Fava's are where the
  * separators and the signs are decided. A German ledger displayed with the English scheme

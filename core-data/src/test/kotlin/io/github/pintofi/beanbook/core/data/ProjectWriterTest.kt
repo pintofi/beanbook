@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 
 /**
- * Every release-blocking invariant in SPEC.md §5 that the write protocol owns, with a
+ * Every release-blocking invariant in that the write protocol owns, with a
  * named test each. The validator is faked so the protocol itself is under test; the real
  * Beancount validator is exercised in the instrumentation suite.
  */

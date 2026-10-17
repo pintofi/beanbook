@@ -13,7 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * A script that needs a package the app does not carry, and what happens next (B60).
+ * A script that needs a package the app does not carry, and what happens next.
  *
  * The whole journey a person actually takes: run a script, meet `ModuleNotFoundError`, fetch
  * the module from the Plugins screen, run it again. It used to end at step three -- fetching
@@ -29,7 +29,7 @@ class ScriptWithMissingModuleTest {
 
     @Test fun aFetchedPackageReachesTheNextRunOfAScript() {
         assumeTrue(
-            "this edition cannot fetch packages, so there is nothing to test (B99)",
+            "this edition cannot fetch packages, so there is nothing to test",
             currentPluginPolicy().allowsPackageDownload,
         )
         val script = File("/data/local/tmp/commodities.py")

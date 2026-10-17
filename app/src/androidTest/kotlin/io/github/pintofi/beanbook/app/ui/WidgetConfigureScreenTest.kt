@@ -12,7 +12,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * The screen a launcher shows while a balance widget is being placed (B1).
+ * The screen a launcher shows while a balance widget is being placed.
  *
  * Tested as a composable rather than through the activity, because the activity's guard
  * requires a real bound app-widget id and the system refuses `bindAppWidgetIdIfAllowed` to
@@ -42,7 +42,7 @@ class WidgetConfigureScreenTest {
         )
     }
 
-    /** Several balances on one widget is the point of the screen being a list (B48). */
+    /** Several balances on one widget is the point of the screen being a list. */
     @Test fun severalAccountsCanBeChosenAtOnce() {
         var chosen: List<String>? = null
         compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { chosen = it }) }
@@ -54,7 +54,7 @@ class WidgetConfigureScreenTest {
         assertEquals(listOf("Assets:Bank:Current", "Liabilities:Card"), chosen)
     }
 
-    /** A long chart of accounts is found rather than scrolled (B48). */
+    /** A long chart of accounts is found rather than scrolled. */
     @Test fun theListCanBeFiltered() {
         compose.setContent { ChooseAccounts(accounts = accounts, onChoose = {}) }
 

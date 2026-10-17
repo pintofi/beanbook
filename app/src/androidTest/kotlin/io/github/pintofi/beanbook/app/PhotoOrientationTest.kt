@@ -14,7 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * A photograph is stored the way the sensor read it, with a tag saying which way is up (B55).
+ * A photograph is stored the way the sensor read it, with a tag saying which way is up.
  *
  * `BitmapFactory` ignores that tag and every decode in the app used it directly, so a page
  * photographed in portrait appeared on its side — in the capture strip, in the crop editor,
@@ -91,7 +91,7 @@ class PhotoOrientationTest {
     }
 
     /**
-     * The crop lands on the part of the page the person framed (B79).
+     * The crop lands on the part of the page the person framed.
      *
      * Corners are placed on the upright photograph -- by the detector and in the crop editor --
      * and the assembler used to apply them to the sideways pixels before turning them, so on a

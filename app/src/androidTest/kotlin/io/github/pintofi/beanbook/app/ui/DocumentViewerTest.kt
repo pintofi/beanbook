@@ -19,7 +19,7 @@ import org.junit.runner.RunWith
 import org.junit.Assert.assertTrue
 
 /**
- * Reading a receipt without leaving the app (B57).
+ * Reading a receipt without leaving the app.
  *
  * Every route to a document used to be "Share", which hands the file to another app and
  * takes the user with it. The check that matters is that a real PDF is rendered here — a
@@ -66,7 +66,7 @@ class DocumentViewerTest {
                 compose.onAllNodesWithTextSafely("Opening…").fetchSemanticsNodes().isEmpty()
         }
         compose.onNodeWithText("statement.pdf").assertIsDisplayed()
-        // One page at a time, each zoomable (B84), with the count on screen.
+        // One page at a time, each zoomable, with the count on screen.
         compose.onNodeWithText("Page 1 of 2").assertIsDisplayed()
         compose.onNodeWithContentDescription("Close statement.pdf").assertIsDisplayed()
     }

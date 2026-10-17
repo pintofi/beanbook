@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * An error belongs to the entry that caused it (B64).
+ * An error belongs to the entry that caused it.
  *
  * The list at the top of the screen named a file and a line and left the reader to find the
  * transaction themselves. These are the rules for putting the two back together, and the

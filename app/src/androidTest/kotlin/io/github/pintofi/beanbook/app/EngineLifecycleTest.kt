@@ -21,7 +21,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.MethodSorters
 
 /**
- * The evidence M2 owes: the engine really serves on loopback, the token gate really
+ * The evidence this test owes: the engine really serves on loopback, the token gate really
  * refuses unauthenticated requests, and the engine really stops.
  *
  * Ordered, because these share one engine start — starting Fava costs about a second and

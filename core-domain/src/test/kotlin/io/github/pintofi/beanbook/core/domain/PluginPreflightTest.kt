@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 
 /**
  * The pre-flight scan, and the two Play boundary rules it exists to enforce
- * (CLAUDE.md, flavor boundaries; PLAN.md M11).
+ * (the Play and Expert edition boundary).
  *
  * Note what these tests do **not** claim. A static read of Python is not a sandbox: code can
  * assemble an import from a string at runtime, and this scan will not see it. It is Play

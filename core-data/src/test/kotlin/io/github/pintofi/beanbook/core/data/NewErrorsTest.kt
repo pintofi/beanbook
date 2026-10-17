@@ -3,7 +3,7 @@ package io.github.pintofi.beanbook.core.data
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** A refused save names what it added, not what the ledger already had (B96). */
+/** A refused save names what it added, not what the ledger already had. */
 class NewErrorsTest {
 
     @Test
