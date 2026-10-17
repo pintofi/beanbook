@@ -1,7 +1,7 @@
 # Threat model
 
 Scope: the Android application, its embedded Python engine, its storage, and its
-network interactions. Written before implementation; revised at each milestone.
+network interactions. Revised as the app changes.
 
 ---
 
@@ -46,24 +46,25 @@ not silent replacements.
 
 ### 3.2 Expert plugin execution — accepted residual risk
 
-User Python runs **in the app's process, with the app's permissions**. It can read and
-destroy the ledger, read anything the app can read, and use the network if the app has
-that permission. Android offers no mechanism that both isolates it and keeps in-process
-Fava integration.
+User Python runs **in the engine process (`:engine`), with the app's permissions**: the same
+user id, so it can read and destroy the ledger, read anything the app can read, and use the
+network. A separate process protects the UI from a crash, not the data from the code.
+Android offers no mechanism that both isolates it and keeps Fava's integration.
 
 We therefore do not claim safety. We provide:
 
-- An unambiguous warning at enable time: this is executable code you are trusting.
+- A warning above the list of plugins: this is executable code you are trusting.
 - Per-project enable/disable, off by default.
 - Provenance display: source path, import date, SHA-256, and a change alert when the file
   changes.
 - Execution logs with timestamps, arguments, working directory, exit status, and captured
   output — with secret redaction.
-- **Safe mode:** relaunch with all third-party code disabled and the ledger read-only.
-- **Recovery mode:** reachable even when a plugin crashes the engine at start.
-- Timeouts and cancellation for scripts; a script that hangs cannot wedge the app.
-- Clear messaging that in-process Python has no subprocess/shell semantics, and that
-  unsupported native imports fail at import time with an explanation.
+- **Safe mode:** no plugin or fetched package is loaded at all, and your choices are kept.
+- **Recovery:** a plugin that was loading when the app last died is turned off before the
+  next start, and you are told.
+- Cancellation for scripts, with a deadline if one is set; a script that hangs can be
+  stopped.
+- Native imports that cannot work fail at import time with an explanation.
 
 The `play` edition removes this surface entirely.
 
@@ -72,14 +73,15 @@ The `play` edition removes this surface entirely.
 - Bound to `127.0.0.1` only, ephemeral port, never a LAN interface. (Sharing on Wi-Fi,
   §3.3a, is a separate server the user turns on.)
 - 256-bit per-process token required on every request; missing/incorrect → `403`.
-- `Origin`/`Referer` validated on state-changing requests (localhost request forgery).
+- `Host` must name the bound address (DNS rebinding). The token is an `HttpOnly`,
+  `SameSite=Strict` cookie, so another site cannot make the browser send it.
 - Server stopped when not needed; never kept alive for widgets.
 - No `INTERNET`-independent assumption: local mode functions with the network off, which
   is also the strongest privacy demonstration we can offer.
 
 ### 3.3a Sharing on Wi-Fi
 
-The one exception to "never a LAN interface", added at the owner's request on 2026-09-27.
+The one exception to "never a LAN interface", added on 2026-09-27.
 Off until the user turns it on, in both editions, and a separate server from the loopback
 one, which is unchanged.
 
@@ -115,8 +117,9 @@ the user installing one; that is not built.
 `allowUniversalAccessFromFileURLs` all `false`; `mixedContentMode = NEVER_ALLOW`; no
 JavaScript bridge into the Fava WebView; `setWebContentsDebuggingEnabled` only in debug
 builds; navigation restricted to an origin allowlist (loopback + configured remote host),
-with external links requiring confirmation and opening in the browser. Downloads inside
-the WebView are intercepted and routed through the app's own document handling.
+with external links opening in the browser only after a confirmation, and only if they are
+`http` or `https`. The WebView has no download handler, so a download started from a
+report does nothing.
 
 ### 3.5 Remote mode (T5, T7)
 
@@ -124,7 +127,7 @@ the WebView are intercepted and routed through the app's own document handling.
 anyway" affordance in any build, and no `trustAll` code may exist in the repository
 (enforced by a secret/pattern scan in CI).
 
-**Cleartext (revised, M11).** `http` was refused outright until M11. The refusal was
+**Cleartext (revised).** `http` was once refused outright. The refusal was
 well-intentioned and, for a self-hoster, frequently unworkable: Fava on a home LAN or behind
 a VPN has no name a public CA will certify, and `192.168.1.5` cannot be given a certificate
 at all without running a private CA and installing it on the device. In practice the rule did
@@ -147,29 +150,25 @@ So cleartext is now the user's decision, made explicitly, with these properties:
 The residual risk is real and accepted: on a hostile network an `http` remote is readable and
 modifiable, including the entries the app writes. We do not claim otherwise. Credentials and
 tokens are stored via Keystore. Write operations carry an
-idempotency key so a retry after a timeout cannot duplicate an entry. Server version is
-detected and mismatches produce an understandable message rather than silent breakage.
+idempotency key so a retry after a timeout cannot duplicate an entry. The server's Fava and
+Beancount versions are shown when it reports them.
 
 ### 3.6 Archives, PDFs, images (T3, T4)
 
 See [storage-and-backup.md](storage-and-backup.md) §4 for archive validation. Documents
-are rendered in a sandboxed viewer, shared only via `FileProvider` with per-URI grants,
-and never handed to a component with elevated privileges.
+are rendered by the platform's own PDF and image decoders, shared only via `FileProvider`
+with per-URI grants, and never handed to a component with elevated privileges.
 
 ### 3.7 Supply chain (T8)
 
-Exact version pins with lockfiles and checksums for Maven and Python wheels; a generated
-SBOM and license inventory per release; wheels we cross-build ourselves are built from
-verified upstream sdists with recorded hashes and reproducible build scripts; CI runs
-dependency and secret scanning; the release signing key is stored as encrypted repository secrets and used only by the tag-triggered release workflow, whose actions are pinned to commit hashes and whose branch is protected; an offline backup of the keystore is kept by the maintainer. Anyone who can change a workflow file could use the key, which is why the workflow, its actions and the branch are the things to protect.
+Exact version pins everywhere, with hashes for Python wheels (Maven checksums are not verified yet; see the issue tracker); a generated SBOM and licence inventory per release; wheels we cross-build ourselves are built from verified upstream sdists with recorded hashes and reproducible build scripts; CI scans for TLS bypasses, key material and unhashed pins, and Dependabot reports new versions; the release signing key is stored as encrypted repository secrets and used only by the tag-triggered release workflow, whose actions are pinned to commit hashes; force-pushes to and deletion of the main branch are blocked. Anyone who can change a workflow file could use the key, which is why the workflow, its actions and the branch are the things to protect.
 
 ### 3.8 Device loss (T9)
 
 All project data lives in app-private storage, protected by the platform's
-full-disk/file-based encryption and the device lock. Optional app-lock (biometric) gates
-app entry. Widgets can redact amounts. Screenshots of financial surfaces can be blocked
-via `FLAG_SECURE` as a user setting. Backups may be passphrase-encrypted before leaving
-the device.
+full-disk/file-based encryption and the device lock. The app has no lock of its own and does
+not block screenshots. Widgets can hide amounts, and always do on the lock screen. Backups
+may be passphrase-encrypted before leaving the device.
 
 ### 3.9 Our own bugs (T10)
 
@@ -185,11 +184,15 @@ no success is reported before a durable, re-parsed write.
 - Local mode makes **zero** network requests. Verifiable by the user with airplane mode.
 - No analytics, telemetry, crash reporting, ad SDKs, or attribution SDKs in any edition.
 - Nothing is sold, so there is no licence check of any kind.
-- Update checks (expert only) are opt-in, off by default, and disclosed.
-- The diagnostics bundle is redacted by default: no ledger content, no amounts, no
-  account names, no credentials, no keys — and it is shown to the user before sharing.
-- Permissions requested: `CAMERA` (at point of use), `INTERNET`,
-  `POST_NOTIFICATIONS` (backup/script results). No storage permissions — SAF only. No
+- Neither edition checks for updates or installs packages.
+- The diagnostics report is built only when the user asks, redacts credentials, tokens and
+  cookies, and is shown on screen before it can be shared. It is a log of what the app did,
+  so it can still contain file names and messages from the engine; read it before sending.
+- Permissions requested: `CAMERA` (at point of use), `INTERNET`, `POST_NOTIFICATIONS`
+  (the notice while work or sharing continues), `FOREGROUND_SERVICE` (with the data-sync and
+  special-use types), `WAKE_LOCK` (held with a timeout while a save or install finishes),
+  `ACCESS_NETWORK_STATE` (to find the Wi-Fi address when sharing) and `RECEIVE_BOOT_COMPLETED`
+  (added by the scheduler library for backups). No storage permissions — SAF only. No
   location, contacts, or account access.
 
 **About `INTERNET`, stated plainly.** Android refuses socket creation without it —
@@ -200,9 +203,9 @@ overstates what the app does, and it is our job to close that gap rather than le
 infer it: the store listing, Play Data Safety declaration, and in-app privacy screen must
 say that local mode contacts nothing, that the permission exists solely to run the
 on-device Fava server on loopback, and that the claim is verifiable by using the app in
-airplane mode. Release builds additionally set `usesCleartextTraffic=false` with a network
-security config permitting cleartext for `127.0.0.1` only, so no remote server can ever be
-configured over plain HTTP.
+airplane mode. Cleartext is permitted by the network security config, because the embedded
+Fava is on `http://127.0.0.1` and a self-hoster may choose an `http://` address; section 3.5
+says how that is kept deliberate.
 
 ---
 
@@ -211,6 +214,6 @@ configured over plain HTTP.
 | # | Risk | Why accepted |
 |---|---|---|
 | R1 | Expert plugins are unsandboxed | No Android mechanism achieves isolation with in-process Fava; disclosed, controllable, and absent from `play` |
-| R4 | Loopback port is visible to other apps on the device | Mitigated by the per-process token and origin checks; documented |
+| R4 | Loopback port is visible to other apps on the device | Mitigated by the per-process token and the `Host` check; documented |
 | R5 | A forgotten backup passphrase is unrecoverable | Correct cryptographic behaviour; warned about explicitly, and encryption is off by default |
 | R6 | ML Kit (future OCR) is proprietary and GPL-incompatible without a linking exception | Tracked as a licensing task before OCR ships; no OCR in v1 |

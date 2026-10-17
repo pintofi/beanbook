@@ -109,7 +109,7 @@ for it and for `fava-portfolio-returns` were out of date.
 4. Execute against the golden corpus → record errors and wall time.
 5. For Fava extensions: load the extension's report page in the WebView and screenshot it.
 6. Byte-diff the corpus afterwards → any unexpected mutation is a **fail**, not a warning.
-7. Emit a matrix row (JSON) plus logs into `docs/feasibility/plugin-compat/<date>/`.
+7. Emit a matrix row (JSON) plus logs into a dated folder under `build/`.
 
 Run by hand before a release (`tools/plugin-compat/run_catalog.py` on a desktop,
 `push-to-device.sh` then `CatalogManifestTest` on a device). It is not in CI: most entries are

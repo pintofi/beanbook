@@ -31,7 +31,6 @@ justified below. There is no artificial crippling of the Play build.
 | Installing packages that contain native code (`.so`) | ❌ | ✅ |
 | beangrow / fava-portfolio-returns | ⏳ deferred (Play Feature Delivery) | ✅ on-demand |
 | Safe mode / recovery mode | ✅ | ✅ |
-| In-app update check + user-confirmed install | ❌ Play handles updates | ✅ |
 | Anything sold, any trial or key | ❌ none | ❌ none |
 | Mentions donations (Ko-fi), once, after a week | ❌ by policy (4.2) | ✅ |
 | Describes the other edition | ✅ | — |
@@ -126,7 +125,7 @@ A Ko-fi tip to an individual developer is not a tax-exempt donation, and it is n
 purchase either -- it buys nothing. The policy does not say in words how such a tip is treated,
 so the safe reading is the one that cannot be wrong: **the Play build links to no payment page
 of any kind**, and `:verifyPlayFlavorBoundaries` fails if a Ko-fi, Buy Me a Coffee, Patreon,
-Liberapay, PayPal or GitHub Sponsors address appears in anything compiled into it (M3).
+Liberapay, PayPal or GitHub Sponsors address appears in anything compiled into it.
 
 If support through Play is wanted later, the compliant route is a "support the project"
 one-time product through Google Play's own billing. That is a decision, not a default.
@@ -153,8 +152,8 @@ document is neither -- and it is not a payment page, since both editions are fre
 
 ## 5. Channels not supported in v1
 
-**F-Droid**: now much closer to viable, since no billing library remains in either edition. The remaining blocker
-is future ML Kit OCR (proprietary) — kept behind the `OcrEngine` interface so F-Droid
-becomes a flavor decision rather than a rewrite. Revisit after v1.
+**F-Droid**: the Expert edition has a recipe in a merge request against `fdroiddata`, and its
+pipeline passed; see [fdroid.md](fdroid.md). No billing library or proprietary component
+remains in either edition.
 
 **Amazon Appstore** and others: deferred, no architectural blocker.
