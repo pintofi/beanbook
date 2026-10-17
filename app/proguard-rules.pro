@@ -17,12 +17,6 @@
 -keep class io.github.pintofi.beanbook.engine.local.IEngineService { *; }
 -keep class io.github.pintofi.beanbook.engine.local.IEngineService$* { *; }
 
-# --- Ed25519 ---------------------------------------------------------------------------------
-# net.i2p.crypto.eddsa registers its algorithms through java.security.Provider, which looks
-# implementations up by class name.
--keep class net.i2p.crypto.eddsa.** { *; }
--dontwarn net.i2p.crypto.eddsa.**
-
 # --- Widgets and receivers ---------------------------------------------------------------
 # AppWidgetProviders are instantiated by the system from the name in the manifest.
 -keep class io.github.pintofi.beanbook.app.widget.** extends android.appwidget.AppWidgetProvider { *; }

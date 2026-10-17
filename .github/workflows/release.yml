@@ -12,8 +12,9 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+# Read by default. Only the job that publishes the draft release is given write access.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -23,6 +24,11 @@ jobs:
 
   release:
     needs: verify
+    # Signed APKs come from a tag and from nothing else. A manual run started on a branch
+    # would otherwise sign and draft a release named after the branch.
+    if: github.ref_type == 'tag'
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -41,17 +47,28 @@ jobs:
           name: android-wheels
           path: wheels
 
+      - name: The tag names the version being built
+        # `v1.2.3` must be the versionName in app/build.gradle.kts, or the published files
+        # would carry one number in their names and another inside the APK.
+        run: |
+          declared="$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts | head -1)"
+          if [ "v$declared" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match versionName $declared in app/build.gradle.kts"
+            exit 1
+          fi
+          echo "tag $GITHUB_REF_NAME matches versionName $declared"
+
       - name: Reproducible Python bytecode
         # Hash-based .pyc rather than timestamp-based, so two builds of the same commit are
-        # byte-identical (docs/milestones/m14-part18.md). Derived from the commit, so a
-        # different commit is still allowed to differ.
+        # byte-identical. Derived from the commit, so a different commit is still allowed to
+        # differ.
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
       - name: Take the wheels the verify run built
         # Not rebuilt here: a release must ship the artefacts the gates actually passed on,
-        # and the wheels are not reproducible byte for byte (m14-part8.md). The pins for them
-        # are generated rather than committed, so this job writes its own from what it got
-        # (m14-part9.md) — it is a separate checkout from the job that built them.
+        # and the wheels are not reproducible byte for byte. The pins for them are generated
+        # rather than committed, so this job writes its own from what it got — it is a
+        # separate checkout from the job that built them.
         run: |
           WHEELS="$GITHUB_WORKSPACE/wheels"
           if [ -z "$(ls -A "$WHEELS"/*.whl 2>/dev/null)" ]; then

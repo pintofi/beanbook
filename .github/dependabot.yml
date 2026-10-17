@@ -1,13 +1,13 @@
 # Dependabot: a notifier, not an upgrader.
 #
-# CLAUDE.md makes upgrades their own milestone with the golden corpus re-run, so nothing
-# here may auto-merge. What Dependabot is good for in this repository is answering the
+# Upgrades are their own change with the golden corpus re-run, so nothing here may
+# auto-merge. What Dependabot is good for in this repository is answering the
 # question "has anything moved?" without a person running maven-metadata queries by hand.
 #
 # Every PR it opens still needs the same two things a manual bump needs: a licence check
 # (the app is GPL-2.0-only, Apache-2.0 is fine only for build-time and AndroidX runtime
-# pieces, and GPLv3 is never acceptable — docs/architecture.md 7.1), and the gates in
-# CLAUDE.md's "Definition of done".
+# pieces, and GPLv3 is never acceptable — docs/architecture.md), and the gates in
+# CONTRIBUTING.md.
 
 version: 2
 updates:
@@ -39,8 +39,9 @@ updates:
       - dependency-name: "com.android.application"
       - dependency-name: "com.android.library"
       # Compose Material3 must track the BOM. A standalone bump here would silently
-      # override the BOM's pin and could drag in an alpha: 1.5.0 exists only as
-      # alpha27, and the decision on record is to wait for stable (B23).
+      # override the BOM's pin. gradle/libs.versions.toml pins it above the BOM on purpose
+      # (1.5.0-beta01, for the Expressive components); return to the BOM's version when a
+      # stable BOM carries 1.5.0.
       - dependency-name: "androidx.compose.material3:material3"
 
   # Workflow actions. These are the supply chain that builds and signs the release, so
