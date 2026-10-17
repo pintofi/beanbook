@@ -3,7 +3,7 @@ package io.github.pintofi.beanbook.core.domain
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** An entry is followed by one blank line, and a delete takes that line with it (B101). */
+/** An entry is followed by one blank line, and a delete takes that line with it. */
 class RemoveEntryLinesTest {
 
     private fun lines(text: String) = text.split(Regex("(?<=\n)")).filter { it.isNotEmpty() }.toMutableList()

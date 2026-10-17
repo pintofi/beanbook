@@ -10,7 +10,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-/** The scanner's PDF writer: valid structure, JPEG carried as it is, same bytes every time (B79). */
+/** The scanner's PDF writer: valid structure, JPEG carried as it is, same bytes every time. */
 class JpegPdfTest {
 
     private fun jpeg(width: Int, height: Int, colour: Color = Color.WHITE): ByteArray {

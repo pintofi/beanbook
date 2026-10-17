@@ -21,7 +21,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The loud moments: the in-balance stamp, rolling figures and empty-state drawings (B87). */
+/** The loud moments: the in-balance stamp, rolling figures and empty-state drawings. */
 @RunWith(AndroidJUnit4::class)
 class LedgerFlourishTest {
 
@@ -56,14 +56,14 @@ class LedgerFlourishTest {
     }
 
     @Test fun aRollingFigureIsReadAsTheWholeFigure() {
-        var value by mutableStateOf("116423.20 PKR")
+        var value by mutableStateOf("100000.20 PKR")
         compose.setContent {
             MaterialTheme { RollingFigure(text = value, style = LedgerType.display, rollInFrom = zeroed(value)) }
         }
-        compose.onNodeWithText("116423.20 PKR").assertIsDisplayed()
-        value = "116500.00 PKR"
+        compose.onNodeWithText("100000.20 PKR").assertIsDisplayed()
+        value = "100500.00 PKR"
         compose.waitForIdle()
-        compose.onNodeWithText("116500.00 PKR").assertIsDisplayed()
+        compose.onNodeWithText("100500.00 PKR").assertIsDisplayed()
         // Never announced digit by digit.
         compose.onAllNodesWithText("6").assertCountEquals(0)
     }

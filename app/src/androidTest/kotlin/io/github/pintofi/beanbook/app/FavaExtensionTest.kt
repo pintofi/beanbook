@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Can a Fava extension installed through the app actually be loaded by Fava? (V8)
+ * Can a Fava extension installed through the app actually be loaded by Fava?
  *
  * The catalogue calls the four Fava extensions **partial**, with the reason "importable here,
  * but its UI needs a WebView and is not exercised". That reason assumes the extension gets as
@@ -34,7 +34,7 @@ class FavaExtensionTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
     /**
-     * A Fava extension, with the dependencies it needs fetched on demand (V8).
+     * A Fava extension, with the dependencies it needs fetched on demand.
      *
      * Every catalogued Fava extension was recorded as unavailable for wanting a package the
      * app does not bundle — `pandas`, `yaml`, `packaging`, `scipy`. The first three are now
@@ -194,7 +194,7 @@ class FavaExtensionTest {
         )
 
         // The property this test exists for, and the one that was broken: Fava can *find* an
-        // extension the user installed. Before M14 the failure was
+        // extension the user installed. Before the fix the failure was
         // `No module named 'fava_investor'` — the extension itself, invisible because the
         // install directory never reached the serving path. It now fails, when it fails, on
         // one of the extension's own dependencies, which is a different and honest problem.

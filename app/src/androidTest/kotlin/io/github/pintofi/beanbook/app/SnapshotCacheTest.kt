@@ -14,7 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The snapshot cache must be fast, and must never be wrong (B21).
+ * The snapshot cache must be fast, and must never be wrong.
  *
  * Opening a 100k-entry ledger cost ~30 s on a phone because the native screens waited for a
  * full Beancount load they do not need — the Journal shows a 200-row window and Balances one
@@ -81,7 +81,7 @@ class SnapshotCacheTest {
         Log.i("SnapshotCacheTest", "cold=${coldMs}ms warm=${warmMs}ms")
         // A deliberately loose bound. This fixture is three directives, where a real load is
         // already milliseconds and the cache cannot save much -- the saving this exists for
-        // shows up at 100k entries, which is measured separately and recorded in B21. What
+        // shows up at 100k entries, which is measured separately and recorded elsewhere. What
         // is asserted here is that the cached path is not *slower*, which is what a broken
         // fingerprint or a re-read would look like.
         assertTrue(

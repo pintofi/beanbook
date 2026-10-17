@@ -104,7 +104,7 @@ class DocumentNameTest {
     }
 
     /**
-     * A name the user typed (B57).
+     * A name the user typed.
      *
      * It sits between the date and the hash, so the folder still sorts by date and the
      * content hash is still what makes a retried save idempotent (invariant 6).

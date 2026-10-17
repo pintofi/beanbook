@@ -51,7 +51,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The accessibility gate for the entry surfaces (CLAUDE.md, "Definition of done").
+ * The accessibility gate for the entry surfaces (the project's definition of done).
  *
  * Two things are checked, because they fail differently:
  *
@@ -91,7 +91,7 @@ class AccessibilityTest {
     }
 
     /**
-     * Attaching a receipt while entering the transaction it belongs to (B17).
+     * Attaching a receipt while entering the transaction it belongs to.
      *
      * The control is only useful if it says what it attaches to, and the refusal path has to
      * be readable too: without an account there is nowhere to file the document, and a
@@ -129,7 +129,7 @@ class AccessibilityTest {
     }
 
     /**
-     * Editing an entry's own source (B11).
+     * Editing an entry's own source.
      *
      * The field holds Beancount, not prose, so it has to be reachable and named: a
      * multi-line box with no label is unusable without sight, and this one can rewrite a
@@ -149,7 +149,7 @@ class AccessibilityTest {
     }
 
     /**
-     * Editing an entry as fields (B45).
+     * Editing an entry as fields.
      *
      * The form is only offered for an entry the draft describes completely, so what it saves
      * must come back byte-for-byte when nothing is typed into it. A field editor that
@@ -185,7 +185,7 @@ class AccessibilityTest {
         )
         val original = io.github.pintofi.beanbook.core.domain.StructuredEdit.draftOf(entry)
         render(widthDp = 320, fontScale = 2f) {
-            // The same form as Add (B79), holding the entry.
+            // The same form as Add, holding the entry.
             QuickAddScreen(
                 vocabulary = vocabulary,
                 onSave = { saved = it },
@@ -198,7 +198,7 @@ class AccessibilityTest {
         compose.onAllNodesWithText("Date")[0].assertExists()
         compose.onNodeWithContentDescription("Commodity for posting 1").assertExists()
         assertNull("nothing should be saved until Save is pressed", saved)
-        // On the sticky save bar since B98: always on screen, and outside the scroll.
+        // On the sticky save bar: always on screen, and outside the scroll.
         compose.onNodeWithText("Save changes").performClick()
         assertEquals(
             "an untouched entry should be written back exactly as it was",
@@ -235,7 +235,7 @@ class AccessibilityTest {
             QuickAddScreen(vocabulary, onSave = {}, today = today)
         }
         compose.onNodeWithText("Will be written as").performScrollTo().assertExists()
-        // On the sticky save bar since B98, so on screen without scrolling to it: that is the
+        // On the sticky save bar, so on screen without scrolling to it: that is the
         // point of the bar, and scrolling to it would fail -- it is not inside the scroll.
         compose.onNodeWithText("Save entry").assertIsDisplayed()
         assertAccessible()
@@ -271,7 +271,7 @@ class AccessibilityTest {
 
         // The currency field shares the amount's line rather than taking a third: it is
         // short enough to, and a three-line posting at 200% font leaves room for almost
-        // nothing else (B4).
+        // nothing else.
         val currency = compose.onAllNodesWithContentDescription("Commodity for posting 1")
             .fetchSemanticsNodes().first().boundsInRoot
         assertTrue(
@@ -320,7 +320,7 @@ class AccessibilityTest {
             DirectiveEntryScreen(vocabulary, onSave = {}, today = today)
         }
         compose.onNodeWithText("Will be written as").performScrollTo().assertExists()
-        // On the sticky save bar since B98: on screen, outside the scroll.
+        // On the sticky save bar: on screen, outside the scroll.
         compose.onNodeWithText("Save ", substring = true).assertIsDisplayed()
         assertAccessible()
     }
@@ -368,7 +368,7 @@ class AccessibilityTest {
         // controls live in Add, the per-document ones in Organize, and asserting them all
         // against whichever tab happens to open would quietly stop checking one of them.
         // The page controls moved into the editor, which is reached from the thumbnail: the
-        // form row of four text buttons per page is gone (B58). What must stay reachable
+        // form row of four text buttons per page is gone. What must stay reachable
         // from here is the way in, named for the page it opens.
         listOf(
             "Edit page 1 of 2",
@@ -418,7 +418,7 @@ class AccessibilityTest {
      * it would delete, is the worst label in the app.
      */
     /**
-     * The home surface, which is the first thing anybody sees (B10).
+     * The home surface, which is the first thing anybody sees.
      *
      * Each figure carries one description covering its label and its value, so a screen
      * reader says "Net worth, 940.00 USD" rather than reading a caption and a number as two
@@ -427,7 +427,7 @@ class AccessibilityTest {
      * defeat it on the surface where it matters most.
      */
     /**
-     * The entry detail, which is where the destructive and duplicating actions live (B11).
+     * The entry detail, which is where the destructive and duplicating actions live.
      *
      * "Clone" writes nothing by itself, but it is the control that leads to a second
      * transaction, so it has to say what it does rather than relying on an icon.
@@ -488,7 +488,7 @@ class AccessibilityTest {
         assertAccessible()
     }
 
-    /** A linked receipt is announced by name, not as "attachment" (B17). */
+    /** A linked receipt is announced by name, not as "attachment". */
     @Test fun aLinkedDocumentIsOfferedByName() {
         val entry = io.github.pintofi.beanbook.core.domain.JournalEntry(
             date = "2026-02-01", flag = "*", payee = "Shop", narration = "coffee",
@@ -506,7 +506,7 @@ class AccessibilityTest {
             )
         }
 
-        // Two ways to reach a document now: read it here, or hand it to another app (B57).
+        // Two ways to reach a document now: read it here, or hand it to another app.
         compose.onNodeWithContentDescription("Share receipt.pdf").performScrollTo().assertExists()
         assertAccessible()
     }
@@ -615,7 +615,7 @@ class AccessibilityTest {
         // LazyColumn: scrolling to the export button at the bottom disposes the project row
         // at the top, and looking for it afterwards finds nothing at all — the failure reads
         // exactly like a missing label. Anything above is checked before anything below.
-        // A prefix: the row also says when it is the open project (B98).
+        // A prefix: the row also says when it is the open project.
         compose.onNodeWithContentDescription(
             "Open Household, ${project.describe()}",
             substring = true,
@@ -697,8 +697,8 @@ class AccessibilityTest {
      */
     @Test fun reportsPutsTheWebViewInTheWiderPaneOnAnExpandedWindow() {
         // ux.md 7: "Fava WebView gets the wider pane". Reports rendered as a single pane at
-        // every width until M14, so on a tablet the report ran the full window and the only
-        // way to another report was Fava's own navigation, folded away inside the page (N8).
+        // every width until it was fixed, so on a tablet the report ran the full window and the only
+        // way to another report was Fava's own navigation, folded away inside the page.
         var chosen: io.github.pintofi.beanbook.core.engine.ReportPath? = null
         render(widthDp = 1000, fontScale = 1f) {
             ReportsPane(
@@ -769,7 +769,7 @@ class AccessibilityTest {
     @Test fun theLicencesScreenIsLabelledAndFitsAtDoubleFontScale() {
         // The one screen in the app whose whole job is to be *readable*: a licence notice
         // that a screen reader cannot reach, or that clips at 200%, has not been given to
-        // anyone (docs/milestones/m14-part15.md).
+        // anyone.
         render(widthDp = 320, fontScale = 2f) { LicencesScreen() }
 
         // A LazyColumn only composes what is near the viewport, so `performScrollTo` — which
@@ -863,7 +863,7 @@ class AccessibilityTest {
             // screens, was plainly visible in a screenshot, and stayed green here through
             // three attempts to make this check see it: the switch's reported bounds are
             // inside the window, because only the painting is cut off. Catching it needs
-            // pixel comparison, which is the screenshot-diff gate M13 owns.
+            // pixel comparison, which is the screenshot-diff gate.
             unmerged.forEach { node ->
                 // A control scrolled out of the viewport has empty bounds; it is brought on
                 // screen first. If it cannot be scrolled to there is nothing to measure.

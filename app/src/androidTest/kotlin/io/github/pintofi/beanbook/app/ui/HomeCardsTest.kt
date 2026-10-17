@@ -28,7 +28,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Home answers what the Journal cannot, and shows what the user asked it to (B71).
+ * Home answers what the Journal cannot, and shows what the user asked it to.
  *
  * The old screen was three figures and five recent entries -- the Journal, shortened. These
  * are the three cards that replaced it and the dialog that decides which of them appear.
@@ -160,7 +160,7 @@ class HomeCardsTest {
     }
 
     @Test fun recentEntriesAreNotACardAnyMore() {
-        // Removed as an option (B78): the Journal is one tap away and is the list.
+        // Removed as an option: the Journal is one tap away and is the list.
         show()
         compose.onNodeWithContentDescription("Choose what Home shows").performScrollTo().performClick()
 
@@ -171,7 +171,7 @@ class HomeCardsTest {
         show()
         compose.onNodeWithContentDescription("Choose what Home shows").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Show Uncleared and pending").performScrollTo().performClick()
-        // Since the sheet (B98) Save is the last thing in its scrolling content, below the fold on a
+        // Since the sheet Save is the last thing in its scrolling content, below the fold on a
         // short window such as API 29's 3-button navigation, so it is scrolled to like the rest.
         compose.onNodeWithContentDescription("Save what Home shows").performScrollTo().performClick()
 
@@ -186,7 +186,7 @@ class HomeCardsTest {
         show()
         compose.onNodeWithContentDescription("Choose what Home shows").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Last 30 days").performScrollTo().performClick()
-        // Since the sheet (B98) Save is the last thing in its scrolling content, below the fold on a
+        // Since the sheet Save is the last thing in its scrolling content, below the fold on a
         // short window such as API 29's 3-button navigation, so it is scrolled to like the rest.
         compose.onNodeWithContentDescription("Save what Home shows").performScrollTo().performClick()
 
@@ -200,7 +200,7 @@ class HomeCardsTest {
         show()
         compose.onNodeWithContentDescription("Choose what Home shows").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Move Needs attention up").performScrollTo().performClick()
-        // Since the sheet (B98) Save is the last thing in its scrolling content, below the fold on a
+        // Since the sheet Save is the last thing in its scrolling content, below the fold on a
         // short window such as API 29's 3-button navigation, so it is scrolled to like the rest.
         compose.onNodeWithContentDescription("Save what Home shows").performScrollTo().performClick()
 

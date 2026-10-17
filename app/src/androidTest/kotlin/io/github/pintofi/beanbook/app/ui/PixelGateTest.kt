@@ -224,7 +224,7 @@ class PixelGateTest {
      *
      * The gate covered two screens because those were the two where a clipped switch had
      * already been found, which is checking the place the bug was rather than the places it
-     * could be (N11). These render at 320dp — narrower than any phone in use — because a
+     * could be. These render at 320dp — narrower than any phone in use — because a
      * layout that survives 320dp survives the rest, and because the defect this catches is
      * one the semantics tree structurally cannot see: a control that is drawn outside its
      * parent still reports sensible bounds.
@@ -233,8 +233,8 @@ class PixelGateTest {
      * Every other screen, at the width where clipping shows up.
      *
      * The gate covered two screens because those were the two where a clipped switch had
-     * already been found, which is checking where the bug was rather than where it could be
-     * (N11). 320dp is narrower than any phone in use: a layout that survives it survives the
+     * already been found, which is checking where the bug was rather than where it could be.
+     * 320dp is narrower than any phone in use: a layout that survives it survives the
      * rest, and the defect this catches is one the semantics tree structurally cannot see —
      * a control drawn outside its parent still reports sensible bounds.
      *

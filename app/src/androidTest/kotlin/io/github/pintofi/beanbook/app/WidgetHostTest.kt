@@ -9,7 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Every widget, bound and hosted the way a launcher binds and hosts one (V10).
+ * Every widget, bound and hosted the way a launcher binds and hosts one.
  *
  * What existed before this inflated the `RemoteViews` directly, which proves the layout is
  * valid and nothing else: it skips `AppWidgetManager` entirely, so a provider that is
@@ -36,7 +36,7 @@ class WidgetHostTest {
     @Test fun theSystemSeesEveryWidgetThisAppDeclares() {
         val declared = providers().map { it.shortClassName.substringAfterLast('.') }.sorted()
 
-        // Two since B93: the multi-account Balance list and the Net worth figure. The separate
+        // Two: the multi-account Balance list and the Net worth figure. The separate
         // "Add an entry" widget was removed -- both widgets carry a + button instead.
         assertTrue(
             "the system lists $declared, which is not the two widgets the app declares",

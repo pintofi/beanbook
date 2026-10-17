@@ -1,4 +1,4 @@
-"""Sharing Reports on the network, behind a sign-in (B93).
+"""Sharing Reports on the network, behind a sign-in.
 
 Run from the repository root:
 

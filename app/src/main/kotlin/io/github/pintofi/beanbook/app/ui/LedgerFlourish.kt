@@ -121,13 +121,13 @@ fun RollingFigure(
     rollInFrom: String? = null,
 ) {
     // A figure in several currencies is one line each. Rolled character by character the line
-    // break drew as nothing, and "669,140.23 PKR" ran into "2,000.00 SAR".
+    // break drew as nothing, and "123,456.78 PKR" ran into "2,000.00 SAR".
     if ('\n' in text) {
         Text(text, style = style, color = color, modifier = modifier)
         return
     }
     // A still figure fits its space rather than being cut at its edge:
-    // `maxLines = 1` alone clipped "2,624,167.69 PKR" to "2,624,167." at 200% text.
+    // `maxLines = 1` alone clipped "2,345,678.90 PKR" to "2,345,678." at 200% text.
     val align = style.textAlign.takeIf { it != androidx.compose.ui.text.style.TextAlign.Unspecified }
         ?: androidx.compose.ui.text.style.TextAlign.Start
     if (!LocalMotionEnabled.current) {

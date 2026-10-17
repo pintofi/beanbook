@@ -14,7 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The differential test M3 owes: every golden-corpus case is parsed on the device and its
+ * The differential test: every golden-corpus case is parsed on the device and its
  * digest compared **byte for byte** against the baseline recorded on the desktop with
  * upstream Beancount (`tools/corpus/differential.py record`).
  *
@@ -144,9 +144,9 @@ class LedgerCorpusTest {
 
         Log.i(TAG, "LARGE size_mb=%.1f cold_ms=%d warm_ms=%d".format(sizeMb, cold, warm))
 
-        // SPEC.md 6 budgets cold engine start at 8 s for ~25k transactions. Measured
+        // The performance budget is 8 s for a cold engine start with ~25k transactions. Measured
         // cold parses on this device range 7.7-11.0 s, so the budget is NOT reliably met
-        // and is tracked as an open risk (docs/milestones/m4.md). The assertion here is a
+        // and is tracked as an open risk. The assertion here is a
         // hard ceiling that catches a real regression; the budget itself is reported.
         if (cold >= 8_000) {
             Log.w(TAG, "BUDGET MISS: cold parse ${cold} ms exceeds the 8 s cold-start budget")

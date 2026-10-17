@@ -56,7 +56,7 @@ data class PostingDraft(
      *
      * Beancount weighs a posting held at cost by its cost and one exchanged at a price by
      * that price; units are the weight only when it has neither. A transaction that converts
-     * 151.88 units of one fund into 710.47 of another balances in rupees and in nothing else,
+     * 150.00 units of one fund into 710.47 of another balances in rupees and in nothing else,
      * so weighing it by units would report every such entry as broken.
      *
      * Cost wins over price when a posting carries both, which is Beancount's own rule: the

@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Turning an entry already in the ledger back into a draft, so it can be entered again (B11).
+ * Turning an entry already in the ledger back into a draft, so it can be entered again.
  *
  * The one decision worth arguing about is the date. A clone is a *new* transaction — the rent
  * paid this month, not a second copy of last month's — so it takes today's date rather than

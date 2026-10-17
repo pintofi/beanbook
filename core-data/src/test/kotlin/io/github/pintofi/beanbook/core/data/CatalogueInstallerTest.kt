@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** Catalogue plugins install and remove one at a time, and only from the pinned archive (B82). */
+/** Catalogue plugins install and remove one at a time, and only from the pinned archive. */
 class CatalogueInstallerTest {
 
     private val root: File = Files.createTempDirectory("catalogue").toFile()

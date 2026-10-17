@@ -5,7 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** Balances narrowed by tags and links, as Fava's filter bar narrows its reports (B78). */
+/** Balances narrowed by tags and links, as Fava's filter bar narrows its reports. */
 class TagBalancesTest {
 
     private fun entry(tags: List<String>, links: List<String>, vararg postings: Pair<String, String>) =

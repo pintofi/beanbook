@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Reading `include` directives, so an import can pick a root deterministically (B9, B22).
+ * Reading `include` directives, so an import can pick a root deterministically.
  *
  * `findLedgerCandidates` claimed in its own docstring that a root is "a file that no other
  * file includes". It was never implemented: the code sorted by filename and path depth and

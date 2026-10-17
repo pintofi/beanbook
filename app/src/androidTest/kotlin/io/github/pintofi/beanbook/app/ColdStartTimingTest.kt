@@ -17,10 +17,10 @@ import org.junit.runner.RunWith
  * against one cash account produce 202 entries and a balance of −200.00 USD. The **timings**
  * are a by-product, logged for `tools/measure-cold-start.sh` to read.
  *
- * They are deliberately not asserted against SPEC §6's 8 s budget. In a suite the interpreter
+ * They are deliberately not asserted against the 8 s cold-start budget. In a suite the interpreter
  * is usually already running, so the same code would measure a warm start and check it against
  * a cold-start threshold — which is how `KeySecrecyTest` came to report a key leak that was its
- * own control's (docs/milestones/m14-part17.md). A number that means something only in a fresh
+ * own control's. A number that means something only in a fresh
  * process is a measurement, and the script is where a measurement belongs.
  */
 @RunWith(AndroidJUnit4::class)
@@ -65,7 +65,7 @@ class ColdStartTimingTest {
         assertEquals("202 directives expected", 202, result[0].asList().size)
         file.delete()
 
-        // The corpus SPEC §6 writes its budget against, if someone has pushed it here. Not
+        // The corpus the cold-start budget is written against, if someone has pushed it here. Not
         // committed to the repository (7.7 MB regenerated on demand) and not present on an
         // emulator by default, so this is skipped by absence rather than by annotation: when
         // it is here it is measured, and when it is not, the assertion above still ran.

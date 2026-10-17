@@ -12,7 +12,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Every catalogue pin downloads on a device, matches its checksum, and yields code (B82).
+ * Every catalogue pin downloads on a device, matches its checksum, and yields code.
  *
  * **Uses the network**, like `WheelFetcherTest`: the pins point at PyPI and GitHub, and whether
  * they still resolve cannot be known any other way. Fails with the list of entries that did not,

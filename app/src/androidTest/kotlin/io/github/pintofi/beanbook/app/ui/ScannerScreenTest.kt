@@ -21,7 +21,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The scanner on CameraX's Compose viewfinder, and pages reordered in its strip (B84).
+ * The scanner on CameraX's Compose viewfinder, and pages reordered in its strip.
  *
  * Runs against whatever camera the device has: the emulator's virtual scene is enough to prove
  * the viewfinder binds and draws, not how a receipt photographs.

@@ -459,7 +459,7 @@ class ScriptRunnerTest(unittest.TestCase):
         self.assertIn("/tmp/main.beancount", result["output"])
 
     def test_a_script_written_as_a_program_runs_as_one(self):
-        """B93: `if __name__ == "__main__"` and `sys.argv[1]`, as on the desktop."""
+        """`if __name__ == "__main__"` and `sys.argv[1]`, as on the desktop."""
         path = self.script(
             "import sys\n"
             "def main(ledger):\n"
@@ -493,7 +493,7 @@ class ScriptRunnerTest(unittest.TestCase):
         self.assertIn("[output cut at", result["output"])
 
     def test_a_script_runs_in_the_folder_of_its_ledger(self):
-        """B92: a relative path in a script names a file beside the ledger, not the app."""
+        """a relative path in a script names a file beside the ledger, not the app."""
         ledger = Path(self.dir, "main.beancount")
         ledger.write_text("")
         Path(self.dir, "statements.csv").write_text("date,amount\n")
@@ -599,7 +599,7 @@ class ScriptRunnerTest(unittest.TestCase):
 
 
 class CompanionLibraryTest(unittest.TestCase):
-    """B93: numpy's libopenblas has to be loaded in the engine process, not the app's."""
+    """numpy's libopenblas has to be loaded in the engine process, not the app's."""
 
     def setUp(self):
         self.dir = tempfile.mkdtemp(prefix="companions-")
@@ -645,7 +645,7 @@ if __name__ == "__main__":
 
 
 class LoaderCacheTest(unittest.TestCase):
-    """Beancount's pickle cache must not survive a change of plugins (B82)."""
+    """Beancount's pickle cache must not survive a change of plugins."""
 
     def setUp(self):
         import tempfile
@@ -693,7 +693,7 @@ class LoaderCacheTest(unittest.TestCase):
         self.assertEqual([], errors, "the cached failure was served after the plugin arrived")
 
     def test_the_cache_stays_out_of_the_project_folder(self):
-        """B89: the cache sat in the project, was mirrored, and conflicted on every load."""
+        """the cache sat in the project, was mirrored, and conflicted on every load."""
         import os
 
         root = self.work / "app-cache"

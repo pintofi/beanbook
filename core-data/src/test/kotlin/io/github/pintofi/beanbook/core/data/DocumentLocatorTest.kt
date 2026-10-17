@@ -7,7 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/** Every way a ledger names a document leads to the file (B79). */
+/** Every way a ledger names a document leads to the file. */
 class DocumentLocatorTest {
 
     private val root: File = Files.createTempDirectory("locate").toFile()

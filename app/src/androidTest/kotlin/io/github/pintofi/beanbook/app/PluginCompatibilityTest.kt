@@ -27,7 +27,7 @@ import org.junit.runner.RunWith
  *
  * These cases use plugins written for the purpose. **No entry in `catalog/plugins.json` is
  * exercised here** — this machine has no network, so none of the 35 catalogued plugins has
- * ever been fetched, and none may be called compatible (CLAUDE.md, forbidden).
+ * ever been fetched, and none may be called compatible (forbidden by the project's rules).
  */
 @RunWith(AndroidJUnit4::class)
 class PluginCompatibilityTest {

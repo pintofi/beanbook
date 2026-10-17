@@ -27,7 +27,7 @@ import org.junit.runner.RunWith
  * (docs/ux.md §8).
  *
  * The assertion is possible because the engine runs in its own process — `:engine`, split
- * out in M5.5 — so "did it start" is a question with a checkable answer.
+ * out in an earlier version — so "did it start" is a question with a checkable answer.
  * `getRunningAppProcesses` returns only this app's own processes on modern Android, which is
  * exactly the scope needed.
  */

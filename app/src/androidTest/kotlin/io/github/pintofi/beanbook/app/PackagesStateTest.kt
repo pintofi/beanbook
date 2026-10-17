@@ -54,7 +54,7 @@ class PackagesStateTest {
 
     @After fun clean() {
         // Stop background refreshes first: a refresh left running reads a project this is
-        // about to delete, and used to crash the process in the next test (B88).
+        // about to delete, and used to crash the process in the next test.
         scope.cancel()
         project.deleteRecursively()
         ownRoot.deleteRecursively()
@@ -63,7 +63,7 @@ class PackagesStateTest {
         // assertion above it fails, and this marker is not inert litter: it makes the real
         // install root look half-merged, so the next test to ask for it is handed nothing
         // and fails for a reason that has nothing to do with itself. Seen for real while
-        // building the negative control for B37.
+        // building the negative control for it.
         io.github.pintofi.beanbook.app.packages.OnDemandPackages
             .marker(io.github.pintofi.beanbook.app.packages.OnDemandPackages.root(context))
             .delete()
@@ -196,7 +196,7 @@ class PackagesStateTest {
     }
 
     /**
-     * A merge that never finished must not look like an install (B37).
+     * A merge that never finished must not look like an install.
      *
      * The bug this pins: unpacking is staged and digest-checked, but the last step copies
      * staging over the install root file by file, which is not atomic. Lose the process
@@ -209,7 +209,7 @@ class PackagesStateTest {
      */
     @Test fun aHalfFinishedMergeIsNotReportedAsInstalled() {
         assumeTrue(
-            "this edition cannot fetch packages, so there is nothing to merge (B99)",
+            "this edition cannot fetch packages, so there is nothing to merge",
             currentPluginPolicy().allowsPackageDownload,
         )
         val root = File(context.cacheDir, "ondemand-b37-${System.nanoTime()}")

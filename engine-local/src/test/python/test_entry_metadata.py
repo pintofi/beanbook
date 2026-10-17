@@ -1,4 +1,4 @@
-"""Metadata on journal entries, and the document links carried in it (B17).
+"""Metadata on journal entries, and the document links carried in it.
 
 Run from the repository root:
 

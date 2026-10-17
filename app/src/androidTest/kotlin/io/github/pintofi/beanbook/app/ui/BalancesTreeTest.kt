@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Balances folds, and folding hides rows rather than money (B46).
+ * Balances folds, and folding hides rows rather than money.
  *
  * The dangerous failure is not a branch that will not open — it is a collapsed branch whose
  * figures vanish from the screen, which reads as a ledger that has lost something.

@@ -16,7 +16,7 @@ import kotlinx.coroutines.runBlocking
  * all text: a project carries PDFs and other attachments beside its ledger. Before this
  * existed the mirror wrote them with a local helper — no journal, no snapshot, no re-parse,
  * no undo entry — and then reported the pass as synced, which is invariants 2, 3 and 8 at
- * once (R1 in docs/pending-verification.md).
+ * once.
  *
  * Text cannot carry those bytes: a String round trip through UTF-8 replaces anything that is
  * not valid UTF-8, so a PDF pulled in through the text API would arrive corrupted and the

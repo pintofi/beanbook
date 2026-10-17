@@ -6,7 +6,7 @@ import kotlin.test.assertTrue
 
 /**
  * Reconciling the files in a project's document folder with the ledger's `document`
- * directives (B18).
+ * directives.
  *
  * The screen listed the folder and nothing else, so it could not say what a document was
  * filed under, and a file the ledger had never heard of looked exactly like one it had.
@@ -114,7 +114,7 @@ class DocumentIndexTest {
         assertEquals(listOf("documents/a.pdf", "documents/b.pdf", "documents/c.pdf"), rows.map { it.path })
     }
 
-    /** B89: the directive and Beancount's own discovery of the same file are one document. */
+    /** the directive and Beancount's own discovery of the same file are one document. */
     @Test
     fun `a document found twice under the same account is listed once`() {
         val path = "/data/project/documents/Expenses/Food/2026-09-13.receipt.pdf"
@@ -130,7 +130,7 @@ class DocumentIndexTest {
         assertEquals(1, rows.size)
     }
 
-    /** B92: unlinking removes the written directive; the folder keeps making one of its own. */
+    /** unlinking removes the written directive; the folder keeps making one of its own. */
     @Test
     fun `a document filed only by its folder is shown as not linked`() {
         val rows = DocumentIndex.reconcile(

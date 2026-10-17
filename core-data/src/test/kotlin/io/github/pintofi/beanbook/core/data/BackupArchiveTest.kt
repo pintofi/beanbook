@@ -245,7 +245,7 @@ class BackupArchiveTest {
         }
     }
 
-    /** B89: Beancount's load cache is rebuilt on every load; mirroring it conflicted forever. */
+    /** Beancount's load cache is rebuilt on every load; mirroring it conflicted forever. */
     @Test
     fun beancountsLoadCacheIsNeverCopied() {
         assertTrue(BackupArchive.isExcluded(".main.beancount.picklecache"))

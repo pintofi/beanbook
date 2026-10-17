@@ -9,7 +9,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * A plugin edited outside the app is not loaded until it is installed again (R4).
+ * A plugin edited outside the app is not loaded until it is installed again.
  *
  * Plugins live at `<project>/plugins/`, which is inside what auto-mirror syncs. A `.py` or a
  * native `.so` dropped into the user's mirrored cloud folder is pulled into the project, and

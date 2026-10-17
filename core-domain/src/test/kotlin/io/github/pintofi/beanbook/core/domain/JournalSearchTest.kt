@@ -6,7 +6,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Finding one entry among thousands (B53).
+ * Finding one entry among thousands.
  *
  * The search is word-by-word rather than a substring of the whole entry, because that is how
  * a transaction is remembered: two fragments — who and roughly where the money went — which

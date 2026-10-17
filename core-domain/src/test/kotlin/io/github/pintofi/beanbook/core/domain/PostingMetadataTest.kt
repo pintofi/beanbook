@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Metadata on a single posting, not only on the transaction (B16).
+ * Metadata on a single posting, not only on the transaction.
  *
  * Beancount allows both, and they mean different things: a key on the transaction describes
  * the whole event, a key on a posting describes that leg of it. The draft could express the

@@ -22,7 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The entry form is a task, and now says so (B61).
+ * The entry form is a task, and now says so.
  *
  * It is opened by the action button and is not a destination, but the bar of destinations
  * went on highlighting whichever one the user had come from — telling them they were on Home
@@ -85,7 +85,7 @@ class AddFormChromeTest {
     }
 
     /**
-     * The name of the open ledger is the control that changes it (B75).
+     * The name of the open ledger is the control that changes it.
      *
      * There used to be a "Switch" button in the right-hand corner of every screen saying
      * the same thing the title already said. Tapping the title does it now, so the corner

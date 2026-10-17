@@ -6,7 +6,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Removing one `document` directive without touching anything else (R2).
+ * Removing one `document` directive without touching anything else.
  *
  * The first version of this filtered lines with `line.contains(path) && line.contains("document")`
  * and rebuilt the file with `readLines().joinToString("\n")`. Two defects came out of that: a

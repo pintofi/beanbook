@@ -16,7 +16,7 @@ class TypedAmountTest {
 
     @Test fun `thousands grouped with commas are accepted, as Beancount accepts them`() {
         assertEquals(BigDecimal("1234.50"), parseTypedAmount("1,234.50"))
-        assertEquals(BigDecimal("-2624167.69"), parseTypedAmount("-2,624,167.69"))
+        assertEquals(BigDecimal("-2345678.90"), parseTypedAmount("-2,345,678.90"))
     }
 
     @Test fun `anything else is refused rather than read as empty`() {

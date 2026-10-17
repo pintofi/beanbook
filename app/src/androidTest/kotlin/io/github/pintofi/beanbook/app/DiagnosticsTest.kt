@@ -10,7 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The record a user can hand over (B62).
+ * The record a user can hand over.
  *
  * The app reported nothing anywhere and kept nothing, so a person who met a bug had nothing
  * to send. This checks the two halves of the answer: the app's own entries survive into the

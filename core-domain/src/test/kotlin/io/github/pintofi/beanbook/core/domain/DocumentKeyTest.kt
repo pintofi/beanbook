@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Naming the metadata key that links a document to a transaction (B17, writing half).
+ * Naming the metadata key that links a document to a transaction.
  *
  * `fava.plugins.link_documents` reads `document` and any `document-*` key, which
  * [JournalEntry.linkedDocuments] mirrors. Attaching a second receipt to one transaction

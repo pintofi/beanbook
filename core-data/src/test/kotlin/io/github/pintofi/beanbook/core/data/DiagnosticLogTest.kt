@@ -8,7 +8,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * The app's own record of what it did (B62).
+ * The app's own record of what it did.
  *
  * Two properties carry the whole feature. **Secrets never reach the file** — redaction on the
  * way in, because a secret that lands in it is a secret in every copy: the backup, the share

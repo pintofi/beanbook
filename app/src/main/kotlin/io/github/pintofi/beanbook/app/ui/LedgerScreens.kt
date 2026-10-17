@@ -176,12 +176,12 @@ internal fun AmountText(
 /**
  * What a posting was held or exchanged at, under its amount.
  *
- * Beside the figure rather than in place of it: `-151.88 ASSF` and `{400.00 PKR} @ 483.0500
+ * Beside the figure rather than in place of it: `-150.00 EIF` and `{400.00 PKR} @ 120.0500
  * PKR` answer different questions, and a row that shows only the first cannot tell two lots
  * of the same fund apart or say what a sale realised. On its own line because a cost, a date,
  * a label and a price do not fit beside an account name on a phone.
  *
- * The date and label are part of the cost's identity -- they are what `{"avcoassf"}` selects
+ * The date and label are part of the cost's identity -- they are what `{"lot-a"}` selects
  * -- so they are shown as the file writes them rather than summarised away.
  */
 @Composable

@@ -14,7 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * beangrow, fetched on demand and computing a real return, on an Android device (D6).
+ * beangrow, fetched on demand and computing a real return, on an Android device.
  *
  * This entry said "cannot be built for Android at all", concluded from SciPy having no
  * CPython 3.13 wheel. SciPy is used for **one call** — a one-dimensional root find for IRR —

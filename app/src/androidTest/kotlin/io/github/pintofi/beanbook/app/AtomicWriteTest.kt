@@ -118,7 +118,7 @@ class AtomicWriteTest {
 
         // Beancount does not raise on garbage: it reports LexerErrors and returns zero
         // entries. The rollback therefore comes from the error delta, not from an
-        // exception (docs/milestones/m4.md).
+        // exception.
         val result = writer.append(projectId, transactions, "2026-13-45 this is not beancount {{{")
 
         assertTrue("unexpected: $result", result is WriteResult.RolledBack)

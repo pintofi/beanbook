@@ -412,7 +412,7 @@ class ImportExportTest {
 
     @Test
     fun `every file is imported, not only what the root includes`() {
-        // B22: taking only what the root reaches would lose a document a `document`
+        // taking only what the root reaches would lose a document a `document`
         // directive points at, and any ledger not yet included.
         val archive = zipOf(
             "main.beancount" to "include \"a.beancount\"\n",

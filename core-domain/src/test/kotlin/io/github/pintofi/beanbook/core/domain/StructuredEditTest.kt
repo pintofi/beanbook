@@ -92,7 +92,7 @@ class StructuredEditTest {
     private fun normalised(text: String) =
         text.lines().map { it.trimEnd() }.filter { it.isNotBlank() }.joinToString("\n")
 
-    // ---- Entries written by hand (B78) ------------------------------------------------------
+    // ---- Entries written by hand ------------------------------------------------------
 
     /** Aligned to the author's own column and indented with four spaces, as hand-written files are. */
     private val handWritten = """
