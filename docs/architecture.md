@@ -62,7 +62,7 @@ project is:
 │  ┌────────────── Kotlin / Compose (Material 3) ──────────────┐           │
 │  │ Onboarding · Project picker · Guided entry · Raw editor   │           │
 │  │ Documents · Backup/Restore · Settings · Safe mode         │           │
-│  │ Widgets (Glance) · Diagnostics · Support notice           │           │
+│  │ Widgets · Diagnostics · Support notice                    │           │
 │  └───────────────┬───────────────────────────┬───────────────┘           │
 │                  │                           │                            │
 │        ┌─────────▼─────────┐       ┌─────────▼──────────┐                │
@@ -74,7 +74,7 @@ project is:
 │        │            EngineClient (interface)            │                │
 │        │   LocalEngineClient  │  RemoteEngineClient     │                │
 │        └─────────┬────────────┴───────────┬─────────────┘                │
-│                  │ Chaquopy JNI            │ OkHttp + strict TLS          │
+│                  │ Chaquopy JNI            │ Platform HTTPS, strict TLS   │
 │  ┌───────────────▼──────────────┐          │                             │
 │  │  CPython 3.13 (Chaquopy)     │          │                             │
 │  │  Fava (cheroot, loopback)    │          │                             │
@@ -117,8 +117,8 @@ Detailed adversary analysis: [threat-model.md](threat-model.md).
 - A 256-bit per-process token is generated at start and required on every request via a
   cookie set from the initial load URL; requests lacking it get `403`. This defends
   against other apps on the device reaching the port (Android's loopback is not
-  app-isolated below API 31 for all cases) and against localhost request forgery.
-- `Referer`/`Origin` are checked on state-changing requests.
+  app-isolated below API 31 for all cases) and against localhost request forgery: it is an
+  `HttpOnly`, `SameSite=Strict` cookie, and the `Host` header must name the bound address.
 - The server is started lazily, stopped when the app is backgrounded beyond a grace
   period, and never runs solely to refresh widgets.
 - WebView configuration: `javaScriptEnabled = true` (Fava requires it),
@@ -185,7 +185,7 @@ Rules:
 
 ### 7.1 GPL-2.0 and Apache-2.0
 
-**Correction (M5).** An earlier version of this section claimed the Apache-2.0 problem
+**Correction.** An earlier version of this section claimed the Apache-2.0 problem
 "narrows to future OCR only". That was wrong, and the mistake matters.
 
 Apache-2.0 is incompatible with GPL-2.0-**only**, and *AndroidX itself is Apache-2.0* —
@@ -215,13 +215,13 @@ Three realistic resolutions, in the order they should be considered:
    practical exposure is that a copyright holder objects; the honest position is that this
    is a real incompatibility under the strict reading, not a solved problem.
 
-### Decision (M14): option 1, separate the processes
+### Decision: option 1, separate the processes
 
 **Resolved.** Beancount, beanquery, Fava and the whole CPython runtime run in `:engine`, a
 separate OS process, reached over a binder. The app process links AndroidX and never links
 GPL-2.0-only code.
 
-This was almost the design already — the AIDL split landed in M5.5 for reliability reasons —
+This was almost the design already — the AIDL split landed earlier for reliability reasons —
 so the decision was mostly about committing to it and then making it true, because it was
 not quite:
 

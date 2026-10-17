@@ -8,56 +8,39 @@ most), `full_description.txt`, `changelogs/<versionCode>.txt` and `images/`. It 
 source for listing text; write to it, not to a store console. A new release adds
 `changelogs/<versionCode>.txt` for its `versionCode`.
 
-**Still to add, at the end of the release work** (they need the final UI): `images/phoneScreenshots/`
-(1.png, 2.png, …), optionally `images/featureGraphic.png` (1024x500), `sevenInchScreenshots/`
-and `tenInchScreenshots/`. `images/icon.png` is in place.
+`images/` holds the icon, the feature graphic and eight phone screenshots. Seven-inch and
+ten-inch screenshots are optional and not present.
 
-## Is F-Droid possible? Not yet submitted, and not verified
+## Status
 
-What is true today (2026-10-11):
+The Expert edition's recipe is in a merge request against `fdroiddata`. Its pipeline passed on
+2026-10-15, including the build job, which cross-built the wheels, built the APK from source
+and checked it against the signed APK on the GitHub release
+([pipeline](https://gitlab.com/fdroid/fdroiddata/-/pipelines/2952392596)). Whether and when
+the listing appears is for F-Droid's maintainers to say.
+
+What F-Droid sees:
 
 - **No proprietary libraries.** Billing and ML Kit are gone; nothing from Google Play services
   is linked.
-- **Licence.** GPL-2.0-only with no additional permissions: the dormant Play Billing exception
-  was withdrawn on 2026-10-12 (nothing is sold, no build links the library), so there is
-  nothing for F-Droid maintainers to ask about.
+- **Licence.** GPL-2.0-only with no additional permissions.
 - **Source build of the Python layer.** The embedded engine needs `beancount` and `watchfiles`
   cross-built for Android (`tools/build-wheels.sh`, pinned sdists and backends) and Chaquopy's
-  Gradle plugin. F-Droid builds from source on its own servers, so its recipe has to run that
-  script and fetch the pinned Chaquopy wheels; none of this has been tried on F-Droid's build
-  server. Expect this to be the hard part.
-- **Edition.** Submit the **Play-flavour code path** (no native package installs, no network
-  code fetching) or the Expert edition with the right anti-feature labels; the Expert edition
-  fetches Python packages from the network only when the user asks, and runs user scripts.
-  Which one F-Droid accepts is for its maintainers to say. `docs/distribution.md` §5 had this
-  as "revisit after v1".
-- **Reproducible build / signing.** The app signing key is a repository secret used by the release workflow, with an offline backup.
-  F-Droid can sign with its own key, or verify a reproducible build against ours; the build
-  is not yet shown to be reproducible.
+  Gradle plugin; the recipe runs that script and fetches the pinned Chaquopy wheels.
+- **Edition.** The Expert edition, which fetches Python packages from the network only when
+  the user asks, and runs user scripts. The Play edition is not submitted here.
+- **Signing.** The app signing key is a repository secret used by the release workflow, with an
+  offline backup. The recipe lists the certificate in `AllowedAPKSigningKeys`, so F-Droid
+  verifies its own build against ours and publishes the signed APK.
 
-Next step when the owner wants it: open an F-Droid "Request for Packaging" with the metadata
-file below and answer the maintainers' questions.
-
-```yaml
-Categories:
-  - Money
-License: GPL-2.0-only
-SourceCode: https://github.com/<owner>/<repo>
-IssueTracker: https://github.com/<owner>/<repo>/issues
-AutoName: Beanbook
-RepoType: git
-Repo: https://github.com/<owner>/<repo>.git
-```
-
-## Draft recipe
+## The recipe
 
 `fdroid/io.github.pintofi.beanbook.expert.yml` is the fdroiddata build recipe for the **Expert
 edition** (application ID `io.github.pintofi.beanbook.expert`). It points `Binaries` at the signed
 APK on the GitHub release and lists the project's signing certificate in
 `AllowedAPKSigningKeys`, so F-Droid can verify its own build against ours and publish the
-signed APK. It is a draft: the `init`/`prebuild` steps that cross-build the wheels have not been
-run on F-Droid's infrastructure, and the build is not yet shown to be reproducible. Expert can
-install Python packages and run user scripts when the user asks; say so to the maintainers.
+signed APK. Expert can install Python packages and run user scripts when the user asks; the
+maintainers have been told.
 
 ### Building the wheels on F-Droid's server
 
@@ -65,9 +48,10 @@ F-Droid's SDK has no Google `cmdline-tools`, which is what the Android CPython t
 to install the NDK. `tools/build-wheels.sh` therefore also accepts an NDK 27 supplied through
 `ANDROID_NDK_HOME` (the recipe's `ndk:` line) and links it into a private SDK directory. The
 recipe installs `rustup` and runs `rustup default stable` so the Android standard library can be
-added for `watchfiles`. The NDK path was checked locally with `beancount`; the Rust half, and the
-whole recipe, are unproven on F-Droid until its build runs. The fix is in the build script, so it
-is in the v1.0.0 tag, which the recipe pins by commit.
+added for `watchfiles`. The recipe asks for NDK r27d; F-Droid's build server does not have it
+preinstalled, so its log says `Android NDK version 'r27d' could not be found!` and then
+downloads and installs it as 27.3.13750724. That warning is expected. The recipe pins the
+v1.0.0 tag by commit.
 
 ### Reproducible wheels
 
@@ -77,5 +61,6 @@ count instead of being random, drops the GNU build-id from beancount's extension
 pins the Rust compiler. The NDK is r27d (27.3.13750724), the same as the release build. Checked
 2026-10-15: two builds on one machine, and a build on a second machine against the wheels
 GitHub's runner built, are identical for all four wheels. An unsigned universal APK built from
-those wheels in two different checkout paths is identical too. Not yet checked against
-F-Droid's own build.
+those wheels in two different checkout paths is identical too. F-Droid's own build of the
+Expert edition was compared with the signed APK in the pipeline above ("compared built
+binary to supplied reference binary successfully").
