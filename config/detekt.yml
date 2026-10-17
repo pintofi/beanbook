@@ -1,8 +1,8 @@
-# detekt, tuned to this codebase as it is actually written (N2).
+# detekt, tuned to this codebase as it is actually written.
 #
 # `buildUponDefaultConfig` is on, so this file only records deviations. Every rule turned
-# off is turned off here, by name and with a reason — CLAUDE.md forbids blanket
-# suppressions, and a `@Suppress` scattered through the source is exactly that in disguise.
+# off is turned off here, by name and with a reason. Blanket suppressions are not used, and a
+# `@Suppress` scattered through the source is exactly that in disguise.
 
 build:
   maxIssues: 0
@@ -89,7 +89,7 @@ style:
     active: true
   ForbiddenComment:
     # This is the rule that would have caught the TODO which sat in verify.yml for thirteen
-    # milestones (docs/milestones/m14-part7.md). It stays on, and stays strict.
+    # milestones. It stays on, and stays strict.
     active: true
     comments:
       - reason: 'an unfinished marker in shipped code is a gap that ships'

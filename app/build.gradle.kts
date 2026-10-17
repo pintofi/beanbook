@@ -12,7 +12,7 @@ val copyCorpusToAssets = tasks.register<Copy>("copyCorpusToAssets") {
     into(layout.buildDirectory.dir("generated/corpusAssets/corpus"))
 }
 
-// The curated plugin catalogue (B82), into the app's own assets so the Plugins screen can list
+// The curated plugin catalogue, into the app's own assets so the Plugins screen can list
 // it with no network. One file, copied rather than duplicated, so catalog/plugins.json stays the
 // single source that tools/plugin-compat/catalogue.py maintains.
 val copyCatalogueToAssets = tasks.register<Copy>("copyCatalogueToAssets") {
@@ -50,7 +50,7 @@ android {
         includeInBundle = false
     }
 
-    // Connected tests install with every runtime permission granted (B99). The app asks for
+    // Connected tests install with every runtime permission granted. The app asks for
     // notifications on first launch (Android 13+), and that dialog sits over the first
     // activity of a fresh install, so the first Compose test found "no compose hierarchies".
     // The prompt itself is exercised by hand; a test run is not the place for it.
@@ -58,7 +58,7 @@ android {
     // ("<dir>_*"). The fava-portfolio-returns overlay lives under `_vendor`, so its SciPy-free
     // returns.py was silently left out of the APK while REMOVES.txt next to it was kept: the
     // plugin installed without SciPy, imported it anyway, and "did not load" for want of a
-    // package that no Android build exists for (B101). The same default minus that one rule.
+    // package that no Android build exists for. The same default minus that one rule.
     androidResources {
         ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
     }
@@ -72,7 +72,7 @@ android {
     // split is deliberate, not drift: the application id is the identity Play records and can
     // never be changed after the first publish, so it moved as soon as the organisation name
     // was settled. The namespace is internal, changeable at any time, and moving it touches
-    // every source file in the repository, so it is its own change (B38).
+    // every source file in the repository, so it is its own change.
     namespace = "io.github.pintofi.beanbook.app"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
@@ -108,7 +108,7 @@ android {
     }
 
     // An App Bundle is split per ABI by Play itself, and Android Gradle Plugin refuses to bundle
-    // while per-ABI APK splits are on ("Multiple shrunk-resources files found", B101): the
+    // while per-ABI APK splits are on ("Multiple shrunk-resources files found"): the
     // splits are off for a bundle build and on for every APK build.
     val bundling = gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) }
 
@@ -118,7 +118,7 @@ android {
             reset()
             include("arm64-v8a", "x86_64")
             // Per-ABI downloads save ~11 MB over the universal APK
-            // (docs/feasibility/s10-size.md). Universal is built for convenience only.
+            //. Universal is built for convenience only.
             isUniversalApk = true
         }
     }
@@ -172,7 +172,7 @@ android {
     buildTypes {
         release {
             // R8 is on. It owns the single largest saving available (26.7 MB of dex before
-            // shrinking) and was left off through M1-M13 because turning it on against
+            // shrinking) and was left off for a long time because turning it on against
             // Chaquopy is exactly the kind of change that fails at runtime rather than at
             // build time — see proguard-rules.pro for what has to be kept and why.
             isMinifyEnabled = true
@@ -263,9 +263,7 @@ apply(from = "$rootDir/gradle/play-boundaries.gradle.kts")
  * Prints the SHA-256 of every release APK.
  *
  * The expert APKs are installed from a file, with no store vouching for them, so the release
- * publishes these values beside the artifacts and a user can check what they downloaded. They
- * used to feed `issue-update.sh` as well, which signed an update manifest for the in-app
- * self-updater; that updater is gone (`UpdateSection`), so this task now has one purpose.
+ * publishes these values beside the artifacts and a user can check what they downloaded.
  *
  * Nothing is signed by this task. The release workflow signs the APKs with the project key,
  * which is held as repository secrets (never in the repository); this task only reports what
@@ -273,7 +271,7 @@ apply(from = "$rootDir/gradle/play-boundaries.gradle.kts")
  */
 tasks.register("releaseChecksums") {
     group = "publishing"
-    description = "SHA-256 of each release APK, for issuing an update manifest."
+    description = "SHA-256 of each release APK, to publish beside the files."
 
     val outputsDir = layout.buildDirectory.dir("outputs/apk")
     doLast {

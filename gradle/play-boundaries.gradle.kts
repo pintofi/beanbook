@@ -9,7 +9,7 @@
 //
 // plus the money rules (docs/distribution.md 4):
 //
-//   M1  no billing library in either edition. Beanbook sells nothing (B81): every feature is
+//   M1  no billing library in either edition. Beanbook sells nothing: every feature is
 //       free, so Play Billing would be a proprietary library with nothing to do.
 //   M2  no third-party payment SDK in either edition, ever.
 //   M3  the play edition names no donation or payment page. Play's Payments policy says apps
@@ -28,7 +28,7 @@ val forbiddenPlayDependencies = listOf(
     "com.google.android.gms:play-services-billing",
 )
 
-/** M1: no billing library on either edition's classpath (B81). */
+/** M1: no billing library on either edition's classpath. */
 val forbiddenExpertDependencies = listOf(
     "com.android.billingclient",
     "com.google.android.gms:play-services-billing",
@@ -39,7 +39,7 @@ val forbiddenPlaySourcePatterns = listOf(
     Regex("""allowsNativeCode\s*=\s*true"""),   // D1
     Regex("""allowsAndroidBridge\s*=\s*true"""), // D2
     Regex("""allowsPackageDownload\s*=\s*true"""), // D1: no fetching code, native or not
-    // M3: no donation or payment page named anywhere compiled into play (B81).
+    // M3: no donation or payment page named anywhere compiled into play.
     Regex("""ko-fi\.com|buymeacoffee\.com|patreon\.com|liberapay\.com|paypal\.(me|com)|github\.com/sponsors"""),
 )
 
@@ -47,7 +47,7 @@ val forbiddenPlaySourcePatterns = listOf(
  * D3, widened: **no** edition may install a package.
  *
  * These three were play-only rules, because Expert shipped a self-updater and needed the API
- * and the permission. That updater is gone (B40): Android already refuses any package not
+ * and the permission. That updater is gone: Android already refuses any package not
  * signed with the key that signed the installed app, which is the check that protects an
  * update, so ours only added a paste-a-code step and a sensitive permission. With no caller
  * left in either flavor, the honest rule is the stronger one — and it is what stops the
@@ -70,7 +70,7 @@ val forbiddenInstallerPatterns = listOf(
  * asserted, not merely not-contradicted.
  */
 val forbiddenSharedSourcePatterns = listOf(
-    // M1: nothing is sold, so no billing code in either edition (B81).
+    // M1: nothing is sold, so no billing code in either edition.
     Regex("""BillingClient"""),
 )
 
@@ -301,7 +301,7 @@ val verifyPlayFlavorBoundaries = tasks.register("verifyPlayFlavorBoundaries") {
                         if (pattern.containsMatchIn(text)) {
                             violations += "D3: /${pattern.pattern}/ in " +
                                 "${source.relativeTo(projectDir)} would install a package; " +
-                                "no edition does that any more (B40)"
+                                "no edition does that any more"
                         }
                     }
                 }
