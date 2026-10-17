@@ -66,8 +66,20 @@ object PageWarp {
 
         val transform = Imgproc.getPerspectiveTransform(from, to)
         val straightened = Mat(height.toInt(), width.toInt(), source.type())
-        Imgproc.warpPerspective(source, straightened, transform, Size(width, height))
-        return applyStyle(straightened, style)
+        try {
+            Imgproc.warpPerspective(source, straightened, transform, Size(width, height))
+            val styled = applyStyle(straightened, style)
+            // The straightened page is only a stepping stone when the style made a new one.
+            if (styled !== straightened) straightened.release()
+            return styled
+        } catch (failure: Throwable) {
+            straightened.release()
+            throw failure
+        } finally {
+            from.release()
+            to.release()
+            transform.release()
+        }
     }
 
     /** The style pass, applied after warping so the filter sees a flat page. */
@@ -78,7 +90,7 @@ object PageWarp {
     }
 
     /**
-     * Paper white, ink dark, shadows gone -- and the edges of the letters kept (B79).
+     * Paper white, ink dark, shadows gone -- and the edges of the letters kept.
      *
      * A photograph of a page is never evenly lit: one corner is in the phone's own shadow.
      * This used to answer that with an adaptive *threshold*, which does remove the shadow but
@@ -96,20 +108,31 @@ object PageWarp {
      */
     private fun documentise(page: Mat): Mat {
         val grey = Mat()
-        Imgproc.cvtColor(page, grey, Imgproc.COLOR_RGBA2GRAY)
-        val stroke = odd(maxOf(7, grey.cols() / 120))
-        val light = odd(maxOf(21, minOf(grey.cols() / 40, 101)))
-
         val background = Mat()
-        val kernel = Imgproc.getStructuringElement(
-            Imgproc.MORPH_RECT,
-            Size(stroke.toDouble(), stroke.toDouble()),
-        )
-        Imgproc.dilate(grey, background, kernel)
-        Imgproc.medianBlur(background, background, light)
-
         val ink = Mat()
-        Core.absdiff(grey, background, ink)
+        try {
+            Imgproc.cvtColor(page, grey, Imgproc.COLOR_RGBA2GRAY)
+            val stroke = odd(maxOf(7, grey.cols() / 120))
+            val light = odd(maxOf(21, minOf(grey.cols() / 40, 101)))
+            val kernel = Imgproc.getStructuringElement(
+                Imgproc.MORPH_RECT,
+                Size(stroke.toDouble(), stroke.toDouble()),
+            )
+            try {
+                Imgproc.dilate(grey, background, kernel)
+            } finally {
+                kernel.release()
+            }
+            Imgproc.medianBlur(background, background, light)
+
+            Core.absdiff(grey, background, ink)
+        } catch (failure: Throwable) {
+            ink.release()
+            throw failure
+        } finally {
+            grey.release()
+            background.release()
+        }
         Core.bitwise_not(ink, ink)
         Core.normalize(ink, ink, 0.0, 255.0, Core.NORM_MINMAX)
         // Paper is everything close to white; lifting it the rest of the way clears the grain
