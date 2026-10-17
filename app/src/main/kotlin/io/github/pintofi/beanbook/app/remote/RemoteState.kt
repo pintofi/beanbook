@@ -194,14 +194,14 @@ class RemoteState(
             is SubmitResult.AlreadyPresent -> {
                 // The retry found it: the first attempt had arrived after all.
                 _pendingRetry.value = null
-                _message.value = "Already saved — the earlier attempt did reach the server."
+                _message.value = "Already saved. The earlier attempt did reach the server."
             }
 
             is SubmitResult.Failed -> {
                 _pendingRetry.value = PendingSubmission(draft, key)
                 Log.w(TAG, "remote submit failed: ${result.failure.javaClass.simpleName}")
                 _message.value = result.failure.describe() +
-                    " Your entry is kept — retrying will check whether it arrived first."
+                    " Your entry is kept. Retrying will check whether it arrived first."
             }
         }
     }

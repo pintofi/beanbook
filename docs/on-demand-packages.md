@@ -15,7 +15,7 @@ genuinely want cost far more than that:
 | `fava-dashboards` | PyYAML | — | — |
 
 Note the second column against the third. Wheels are compressed archives, so **the download
-figure is not the storage figure** — beangrow's closure downloads 37 MB and occupies about
+figure is not the storage figure**: beangrow's closure downloads 37 MB and occupies about
 143 MB unpacked. Quoting only the download would understate what this costs on a phone by
 nearly four times, and storage is the scarcer of the two.
 
@@ -29,7 +29,7 @@ stops: it shows how many packages, which ones, what could not be found for this 
 that they will take noticeably more room unpacked than they do to download. Only then is there
 a **Download** button. Backing out is **Not now**, and it leaves the device exactly as it was.
 
-Fetched packages are removed all at once rather than one at a time — they were resolved as a
+Fetched packages are removed all at once rather than one at a time: they were resolved as a
 closure, so removing one would leave the others importable and broken.
 
 They land in the app's private storage outside any project, so they are never exported with a
@@ -38,7 +38,7 @@ enabled plugins. Under safe mode nothing is handed over, these included: safe mo
 nothing of mine, and a library that shadowed something would make that promise false.
 
 The Play edition shows the section as a sentence explaining that it installs nothing beyond
-what is built in. Hiding the control is not the enforcement — its `WheelFetcher` refusing is.
+what is built in. Hiding the control is not the enforcement; its `WheelFetcher` refusing is.
 
 ## Why not Termux's repositories
 
@@ -76,7 +76,7 @@ A wheel is a zip. Resolving one, checking a digest and unpacking it is a few hun
 bundling pip is several megabytes of machinery for the same result on a device that will run
 it perhaps twice. What is given up is pip's resolver, so `WheelFetcher.resolve` walks the
 metadata itself and the caller is told exactly what will be fetched **before** anything
-crosses the network — which is the difference between a download the user chose and one that
+crosses the network, which is the difference between a download the user chose and one that
 happened to them.
 
 ## What it will and will not fetch
@@ -94,13 +94,13 @@ happened to them.
 A dependency with no Android build is **recorded, not fatal**. beangrow declares `beanprice`,
 which it uses only in its price-downloading commands, and `beanprice` needs a native package
 with no Android build. Refusing the whole install over a dependency the user's actual feature
-never touches would be tidy and useless — so the closure is installed, what could not be
+never touches would be tidy and useless, so the closure is installed, what could not be
 fetched is shown, and anything that does reach for it fails at import with its name.
 
 ## Safety
 
 - **Every wheel's digest is checked before it is unpacked.** PyPI publishes digests;
-  Chaquopy's index publishes none, so the digest is computed from what was received — which
+  Chaquopy's index publishes none, so the digest is computed from what was received, which
   pins nothing about the index and everything about this install.
 - **Archive members that escape the directory are refused.** A wheel is an archive from the
   network, and `../../something` is the oldest trick there is.
@@ -110,7 +110,7 @@ fetched is shown, and anything that does reach for it fails at import with its n
 ## Overlays
 
 `assets/overlays/<package>-<version>/` holds files that replace a fetched package's own,
-applied **only when the installed version matches exactly**. A newer release is left alone —
+applied **only when the installed version matches exactly**. A newer release is left alone,
 an overlay that applies to whatever happens to be there is a way to break a package quietly.
 
 Two exist today, and both are the same change. beangrow imports SciPy for a single call, a
@@ -121,7 +121,7 @@ upstream. `fava-portfolio-returns` vendors its own copy of beangrow, so it carri
 replacement for the vendored file.
 
 Dependencies an overlay makes unnecessary are declared in its own `REMOVES.txt`, beside the
-file that justifies them, rather than as a list inside the resolver — an exclusion that lives
+file that justifies them, rather than as a list inside the resolver. An exclusion that lives
 away from its reason is one nobody can check.
 
 **Both install routes apply them.** A package fetched as a dependency is overlaid by
@@ -129,7 +129,7 @@ away from its reason is one nobody can check.
 `CatalogueOverlay` overlays that after the code is unpacked and drops the removed requirements
 before anything is fetched. Until this was added, installing `fava-portfolio-returns` ended
 with "Parts that need scipy could not be installed" and a vendored file that still imported
-SciPy — for a file the APK already carried a replacement for.
+SciPy, for a file the APK already carried a replacement for.
 
 ## Why the Play edition cannot
 

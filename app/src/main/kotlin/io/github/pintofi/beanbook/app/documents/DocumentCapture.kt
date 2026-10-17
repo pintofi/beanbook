@@ -249,7 +249,7 @@ class DocumentCapture(
             result
                 .onSuccess { stored ->
                     _message.value = if (stored.all { it.alreadyExisted }) {
-                        "Already saved as ${stored.joinToString { it.file }} — nothing was duplicated."
+                        "Already saved as ${stored.joinToString { it.file }}. Nothing was duplicated."
                     } else {
                         "Saved ${stored.joinToString { it.file }}."
                     }
@@ -298,7 +298,7 @@ class DocumentCapture(
             _message.value = if (deleted) {
                 "Deleted $relativePath."
             } else {
-                "Could not delete $relativePath — it is not in this project."
+                "Could not delete $relativePath: it is not in this project."
             }
             onDone(deleted)
         }

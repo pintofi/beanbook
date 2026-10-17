@@ -207,7 +207,7 @@ private fun LicenceText(entry: LicenceEntry, onBack: () -> Unit, modifier: Modif
         ) { Text("← All licences") }
 
         Text(
-            "${entry.name} — ${entry.version}",
+            "${entry.name} ${entry.version}",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { heading() },
         )

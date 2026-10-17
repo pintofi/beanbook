@@ -46,7 +46,7 @@ and on desktop Beancount.
 | D2 | Play user-plugins run with the **Java/Android bridge withheld** | The DNA exception covers interpreters providing *indirect* access to Android APIs. Chaquopy's bridge is direct access, so the Play build withholds it from user code to stay inside the exception. |
 | D3 | No self-update or installer code in `play` | Play apps update through Play. Neither edition has any now, but the gate stays: it is what stops one being reintroduced. |
 
-Everything else — including Fava extensions — is identical across editions. The one other
+Everything else, including Fava extensions, is identical across editions. The one other
 difference, the donation notice, is about money rather than features (4.2).
 
 ### 2.2 Why loading user plugins is permitted on Play
@@ -55,7 +55,7 @@ The DNA prohibition targets *downloading* executable code. This app **never down
 code**: the user selects Python files already on their own device, and the app imports
 them into an embedded interpreter. The policy further states that "apps... with
 interpreted languages (JavaScript, Python, Lua, etc.) loaded at run time... must not allow
-potential violations of Google Play policies" — a compliance obligation on the loaded
+potential violations of Google Play policies", a compliance obligation on the loaded
 code's behaviour, not a prohibition on loading. General-purpose Python interpreters
 (Pydroid 3, QPython) ship on Play on this basis.
 
@@ -85,7 +85,7 @@ fails if:
 
 | Edition | Mechanism |
 |---|---|
-| `play` | Google Play releases only. No self-update, no APK/`.so`/`dex` fetching. Play Feature Delivery may later deliver optional on-device components (the beangrow stack) — from Play, therefore compliant. |
+| `play` | Google Play releases only. No self-update, no APK/`.so`/`dex` fetching. Play Feature Delivery may later deliver optional on-device components (the beangrow stack) from Play, and so compliant. |
 | `expert` | None in the app. It is installed from a file, so it updates like any sideloaded app: the user downloads the new APK themselves and opens it, and Android refuses one not signed with the key that signed the installed build. The About section says which build is installed and where a newer one comes from; both editions have it. |
 
 Android handles both halves of that: it refuses a package signed with a different key, and it

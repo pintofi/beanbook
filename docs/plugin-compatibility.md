@@ -21,7 +21,7 @@ What that does and does not mean:
   Install (§7), which is the user fetching it, not the project shipping it.
 - **A user combining them privately is fine.** The GPL restricts distribution, not what
   someone runs on their own device.
-- **What could not be done is redistribute the combination** — an APK with those plugins
+- **What could not be done is redistribute the combination**: an APK with those plugins
   bundled, or a device image, could not be shipped by anyone.
 
 So they stay in the catalogue, marked, with `licence_note` on each entry. Recommending them
@@ -119,7 +119,7 @@ fetched from the network, and CI's verify job is offline by design.
 
 ## 6. Risk model and controls
 
-Plugins are **not sandboxed** — see [threat-model.md](threat-model.md) §3.2. Controls:
+Plugins are **not sandboxed**, see [threat-model.md](threat-model.md) §3.2. Controls:
 
 - Off by default, per project.
 - Enable requires an explicit warning acknowledgement stating the code can read and
@@ -127,14 +127,14 @@ Plugins are **not sandboxed** — see [threat-model.md](threat-model.md) §3.2. 
 - Provenance card: origin path, import date, SHA-256, size; a changed hash raises an
   alert and re-disables the plugin until re-confirmed.
 - Execution log per invocation: timestamp, working directory, arguments, environment,
-  duration, exit status, stdout/stderr — with secret redaction.
+  duration, exit status, stdout/stderr, with secret redaction.
 - Path guard: writes outside the project and the app-private runtime are refused unless
   the user granted access through a supported Android mechanism.
 - **Safe mode** disables all third-party code and opens ledgers read-only.
 - **Recovery mode** is reachable when a plugin breaks engine startup.
 - **`play` additionally:** pure-Python plugins only (no `.so`), no code fetched from any
   network source, and the Java/Android bridge withheld from the user import context. These
-  are Play-policy compliance measures — they are *not* a security sandbox, and the UI must
+  are Play-policy compliance measures; they are *not* a security sandbox, and the UI must
   not imply otherwise.
 - Timeouts and cancellation for scripts; scheduled work uses `WorkManager` and states
   plainly that Android does not guarantee exact timing.

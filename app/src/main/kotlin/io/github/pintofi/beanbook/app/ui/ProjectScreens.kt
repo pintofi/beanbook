@@ -371,8 +371,8 @@ fun ProjectPickerScreen(
             title = { Text("Delete \"${project.title}\"?") },
             text = {
                 Text(
-                    "This removes ${project.fileCount} file(s) — the whole project, " +
-                        "including any documents — from the app. They are kept in the " +
+                    "This removes ${project.fileCount} file(s), the whole project, " +
+                        "including any documents, from the app. They are kept in the " +
                         "trash so you can put them back, and any copy you exported " +
                         "elsewhere is untouched."
                 )

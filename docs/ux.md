@@ -36,16 +36,16 @@ confirmations) is rendered natively. Web content never asks for trust.
 
 Bottom navigation (phone) / navigation rail (tablet):
 
-1. **Journal** — the default surface. Chronological entries, search, filter, quick-add FAB.
-2. **Balances** — account tree with balances (free), linking to Fava reports.
-3. **Reports** — Fava WebView host: balance sheet, income statement, trial balance,
+1. **Journal**: the default surface. Chronological entries, search, filter, quick-add FAB.
+2. **Balances**: account tree with balances (free), linking to Fava reports.
+3. **Reports**: the Fava WebView host, with balance sheet, income statement, trial balance,
    holdings, commodities, queries, charts, extension pages.
-4. **Files** — the project's file tree with the raw editor.
-5. **More** — documents, backup, import/export, plugins, settings, diagnostics.
+4. **Files**: the project's file tree with the raw editor.
+5. **More**: documents, backup, import/export, plugins, settings, diagnostics.
 
 Project switching lives in the top app bar, showing project name and health (parse status,
 last write, mirror state). A ledger with parse errors is a normal state and is shown as an
-informative banner with a "Show errors" action — never a blocking error screen.
+informative banner with a "Show errors" action, and never a blocking error screen.
 
 ---
 
@@ -54,7 +54,7 @@ informative banner with a "Show errors" action — never a blocking error screen
 One system across native and web: Material 3 with dynamic color where available and a
 consistent brand fallback; matching type scale, spacing, elevation, and semantic colors.
 A generated CSS theme is injected into the Fava WebView so its surfaces adopt the same
-palette, radii, and dark-mode state. The app never fights Fava's layout — it re-skins,
+palette, radii, and dark-mode state. The app never fights Fava's layout; it re-skins,
 does not restructure.
 
 Dark theme is first-class and follows the system setting with a manual override.
@@ -69,14 +69,14 @@ account picker is one tap.
 
 **Full entry**: multi-posting, costs `{}`, prices `@`/`@@`, totals, metadata, tags,
 links, flags. Postings show a running imbalance indicator; the app never silently
-balances a transaction — it shows the residual and offers to add a posting.
+balances a transaction; it shows the residual and offers to add a posting.
 
 **All directive types** have editors: `open`, `close`, `commodity`, `price`, `balance`,
 `pad`, `event`, `note`, `document`, `query`, `custom`. Unknown/custom directives are
 editable as raw text and are never rewritten.
 
 **Completion** is derived from the ledger itself (accounts, payees, narrations,
-commodities, tags, links) — not from a parallel database that could drift.
+commodities, tags, links), not from a parallel database that could drift.
 
 **Templates and recent values** prefill fields but never alter accounting semantics
 (no auto-rounding, no currency substitution, no implicit account creation without the
@@ -97,7 +97,7 @@ opt-in), inline error markers with line/column from Beancount itself, large-file
 handling, and drafts persisted on `onStop`.
 
 Save is refused when the on-disk hash changed since open, with a diff-based conflict UI.
-Save is also refused when the result does not parse — the error appears at the exact
+Save is also refused when the result does not parse; the error appears at the exact
 location, and the buffer is kept.
 
 ---
@@ -114,7 +114,7 @@ location, and the buffer is kept.
 - Contrast meets WCAG AA in both themes, including inside the Fava WebView theme.
 - Content descriptions on charts, plus a data-table fallback for every chart.
 - Localization-ready from day one: no concatenated strings, plurals via resources, RTL
-  layouts, locale-aware dates and number formatting — **with Beancount file content
+  layouts, locale-aware dates and number formatting; **Beancount file content is
   always written in Beancount's own canonical format regardless of locale.**
 
 ---
@@ -140,14 +140,14 @@ box read as neither, and the same numbers belong on the home surface where there
 label them. `WidgetSnapshot` still carries them for that reason.
 
 The balance widget names the account it is showing. Which account is a deterministic default
-— assets first, then alphabetically — because choosing it per widget needs a configuration
+assets first, then alphabetically, because choosing it per widget needs a configuration
 activity that does not exist yet.
 
 Behaviour rules:
 
 - Read exclusively from the compact native cache written after a successful parse.
   **A widget never starts the Fava server.**
-- Show a last-updated timestamp, and a distinct stale or error state — never a plausible
+- Show a last-updated timestamp, and a distinct stale or error state, and never a plausible
   but outdated number presented as current.
 - Amounts can be redacted (configurable, and automatically on the lock screen where the
   platform indicates it).
@@ -161,9 +161,9 @@ Behaviour rules:
 
 Three cards, no account required, no network:
 
-1. **Open an existing project** (free) — SAF folder or archive.
-2. **Create a new project** — generates the starter layout.
-3. **Connect to my Fava server** — remote setup.
+1. **Open an existing project** (free): SAF folder or archive.
+2. **Create a new project**: generates the starter layout.
+3. **Connect to my Fava server**: remote setup.
 
 Followed by a one-screen honest explanation: everything runs on your device, no
 telemetry, files stay plain text and exportable at any time.

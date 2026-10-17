@@ -33,8 +33,8 @@ Two different things get called raw access, and only one of them is possible:
 
 | | Supported? | |
 |---|:--:|---|
-| **In-app raw editing** of every included file — highlighting, search, completion, validation, stale-write detection | ✅ **Yes, free, permanently** | Core to the plain-text promise |
-| **Browsing the canonical files with a file manager or another app** | ❌ **No** | Not a product choice — an Android constraint |
+| **In-app raw editing** of every included file, highlighting, search, completion, validation, stale-write detection | ✅ **Yes, free, permanently** | Core to the plain-text promise |
+| **Browsing the canonical files with a file manager or another app** | ❌ **No** | Not a product choice but an Android constraint |
 
 The canonical store must be app-private because Fava and Beancount need real POSIX paths,
 and app-private storage is not visible to file managers on modern Android
@@ -45,7 +45,7 @@ the directory is reachable, but that is not a supported path.
 
 A consequence worth stating plainly: because the raw editor is free, a user can already
 copy ledger text out of the app by hand. Gating export would therefore be a weak lock that
-mainly inconveniences honest users — which is why manual import, export, backup and
+mainly inconveniences honest users, which is why manual import, export, backup and
 restore are all free. See [distribution.md](distribution.md) §4.4.
 
 ---
@@ -62,7 +62,7 @@ restore are all free. See [distribution.md](distribution.md) §4.4.
 └── documents/      receipts, invoices, statements
 ```
 
-New projects are generated in this shape. **Imported projects keep their own shape** —
+New projects are generated in this shape. **Imported projects keep their own shape**;
 these filenames are a convention for new users, never a requirement. The app discovers
 structure from the root file's `include` graph.
 
@@ -129,9 +129,9 @@ in spirit (the raw editor already accepts pasted text) and impossible to define 
 
 Two forms, both free in every edition:
 
-- **Plain folder export** to a user-chosen SAF tree — ordinary files, readable by desktop
+- **Plain folder export** to a user-chosen SAF tree: ordinary files, readable by desktop
   Beancount. Interoperability first.
-- **Archive export** — see §7.
+- **Archive export**: see §7.
 
 Export writes to a temporary staging name and renames into place per file, and reports
 partial failure explicitly (SAF providers do fail).
@@ -143,7 +143,7 @@ partial failure explicitly (SAF providers do fail).
 Optional. The private workspace stays canonical; after every successful commit, changed
 files are mirrored to the user's SAF folder.
 
-Conflict semantics — the rule is **never silently pick a winner**:
+Conflict semantics: the rule is **never silently pick a winner**:
 
 | Internal changed | External changed | Behaviour |
 |:--:|:--:|---|
@@ -151,7 +151,7 @@ Conflict semantics — the rule is **never silently pick a winner**:
 | ❌ | ✅ | Offer to pull in, showing a diff |
 | ✅ | ✅ | **Conflict**: both versions preserved (`<file>.conflict-<timestamp>`), a conflict card appears, user chooses per file with a diff view. Nothing is overwritten until they choose. |
 
-External change detection uses `DocumentFile` last-modified plus content hash — modified
+External change detection uses `DocumentFile` last-modified plus content hash: modified
 time alone is unreliable across providers. Mirroring is skipped while a write transaction
 is open. Mirror state (per-file hash of the last known-synced version) lives in the cache
 directory, never in the project tree.
@@ -175,11 +175,11 @@ project/…          the portable project tree
 Excluded by default: caches, indexes, logs, runtime binaries, mirror state, credentials.
 
 **Encryption:** optional, off by default. Plain archives are interoperable and
-recoverable without this app — the right default for a plain-text-accounting product.
+recoverable without this app, which is the right default for a plain-text-accounting product.
 When enabled: AES-256-GCM with a key derived by Argon2id from the user's passphrase;
 salt and parameters recorded in the manifest; the manifest itself stays readable so a
 user can identify an archive without the passphrase. The UI warns unmistakably that a
-forgotten passphrase means permanently lost data — we cannot recover it.
+forgotten passphrase means permanently lost data; we cannot recover it.
 
 **Restore is staged, never in-place:**
 
@@ -189,7 +189,7 @@ forgotten passphrase means permanently lost data — we cannot recover it.
 4. Only on explicit confirmation, atomically activate the staged project and retain the
    previous one as a rollback point.
 
-**Never overwrite the only good copy** — activation is a rename, and the prior project is
+**Never overwrite the only good copy**: activation is a rename, and the prior project is
 kept until the user prunes it.
 
 **Scheduled backups** use `WorkManager` with constraints; exact timing is not

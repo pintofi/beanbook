@@ -2,7 +2,7 @@
 
 Read it alongside the [plugin compatibility matrix](plugin-compatibility.md).
 
-This is what the app does not do, does not do well, or does differently from the desktop —
+This is what the app does not do, does not do well, or does differently from the desktop,
 written for someone deciding whether to rely on it, not as a defect list. Anything here
 is a limitation a user can actually meet.
 
@@ -14,7 +14,7 @@ Nothing on this page is a surprise to us. That is the point of writing it down.
 
 **Your files are the database.** There is no import step and no internal copy: the app reads
 and writes the same Beancount text you would edit on a desktop. That is the design, and it
-means the app inherits Beancount's rules exactly — including that a file which does not parse
+means the app inherits Beancount's rules exactly, including that a file which does not parse
 cannot be shown, only reported on with a file, line and column.
 
 **Scale.** Built and measured against roughly 25,000 transactions in about 10 MB across
@@ -25,7 +25,7 @@ cached and re-checked against the contents of your files. Fava reports and BQL q
 a full load every time, so those stay slow on a large ledger.
 
 **Unknown directives are preserved, not understood.** Anything the app does not have an
-editor for — including directives from plugins it has never heard of — survives editing,
+editor for, including directives from plugins it has never heard of, survives editing,
 export and backup byte-for-byte, but is shown as raw text rather than a form.
 
 **No Git.** If your ledger is in a repository, the app edits the working tree and
@@ -37,7 +37,7 @@ leaves version control to you.
 
 **Remote mode is view and quick-add only.** It is a hardened client for a Fava *you* host. It
 keeps no copy of a remote ledger, works only while the server is reachable, and cannot edit
-existing entries — the ledger stays on the server, which is the point of self-hosting it.
+existing entries: the ledger stays on the server, which is the point of self-hosting it.
 There is no offline cache and no two-way sync, deliberately: a sync engine that resolves
 conflicts in a ledger is a way to lose money silently.
 
@@ -67,12 +67,12 @@ Neither edition updates itself: Play updates through Play, and the Expert APK is
 installing a newer signed file.
 
 **beangrow works, in the Expert edition, with its dependencies fetched on demand.** It needs
-numpy, pandas, matplotlib and protobuf — a 37 MB download that occupies about 143 MB once unpacked, which does not belong in every install — so
+numpy, pandas, matplotlib and protobuf. That is a 37 MB download occupying about 143 MB once unpacked, which does not belong in every install, so
 the Expert edition fetches them the first time you open a returns report, once. Verified on a
 device: the same internal rate of return SciPy computes on a desktop.
 
 SciPy itself is not installed and is not needed. beangrow used it for one call, a root find,
-and `patches/` replaces that with a solver agreeing to thirteen decimal places — SciPy has no
+and `patches/` replaces that with a solver agreeing to thirteen decimal places. SciPy has no
 Android build and is an enormous dependency for a root finder.
 
 **The Play edition cannot do this**, because fetching executable code from outside the store
@@ -117,19 +117,19 @@ worked. A failure leaves the previous valid ledger recoverable.
 and it loads it; if that plugin imports something the app does not bundle, it fails at import
 with the missing module named.
 
-**The Expert edition can fetch what a plugin needs, on request** — see
+**The Expert edition can fetch what a plugin needs, on request**: see
 [on-demand-packages.md](on-demand-packages.md). The Play edition cannot, because retrieving
 executable code from outside the store is against its policy.
 
-In practice that means most **Beancount plugins** work out of the box — they import Beancount
-and the standard library — while every catalogued **Fava extension** needs something the app
+In practice that means most **Beancount plugins** work out of the box: they import Beancount
+and the standard library, while every catalogued **Fava extension** needs something the app
 does not bundle: `pandas`, `PyYAML` or `packaging`. The app names the missing module rather
 than failing silently, so the reason is visible.
 
 On the Expert edition those three are fetchable, and a fetched extension does load. Measured
 on 2026-08-28: `fava_investor` installed through the app, `packaging` fetched on the device,
-and Fava mounted the extension's route — HTTP 200, against 404 for the same extension without
-the fetch. On the Play edition, which cannot fetch, none of the four loads.
+and Fava mounted the extension's route (HTTP 200, against 404 for the same extension without
+the fetch). On the Play edition, which cannot fetch, none of the four loads.
 
 So this is a limit of what can be *bundled*, and on Expert it is one the user can lift per
 extension. It is not a bug in the extensions.
@@ -139,7 +139,7 @@ extension. It is not a bug in the extensions.
 ## Importing statements
 
 **File types are recognised by extension, not by content.** `libmagic` is not built for
-Android, so beangulp — which uses it optionally — falls back to matching the filename. Bank
+Android, so beangulp, which uses it optionally, falls back to matching the filename. Bank
 downloads arrive as `.csv`, `.ofx`, `.qfx` or `.pdf`, so in practice this is the same answer;
 a statement saved with the wrong extension, or none, will not be identified.
 
@@ -151,7 +151,7 @@ a statement saved with the wrong extension, or none, will not be identified.
 
 **minSdk 29 (Android 10).** Android 9 is not supported, and the reason is worth stating: the embedded Python runtime is killed by Android 9's seccomp filter before it finishes starting, so the app would install and then fail to open any ledger. Verified working on API 29, 30 and 36.
 
-**Each per-ABI APK carries both ABIs' Python assets** — about 4 MB of waste per download,
+**Each per-ABI APK carries both ABIs' Python assets**: about 4 MB of waste per download,
 because the ABI split does not split Chaquopy's assets. Fixing it means per-ABI builds or an
 App Bundle, which is a release-pipeline change.
 
