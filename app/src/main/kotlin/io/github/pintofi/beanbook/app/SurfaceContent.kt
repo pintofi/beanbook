@@ -576,7 +576,11 @@ internal fun SurfaceContent(
                     // be in place before the page loads, and setting it again each time the
                     // screen redraws only flushes the cookie store.
                     if (token != null) {
-                        remember(serving.origin, token) { installSessionToken(serving.origin, token) }
+                        // Returns the token only because `remember` must not return Unit.
+                        remember(serving.origin, token) {
+                            installSessionToken(serving.origin, token)
+                            token
+                        }
                     }
                     // Starts at the ledger's own index so Fava serves whatever the file's
                     // default-page option asks for; picking a report from the list overrides
