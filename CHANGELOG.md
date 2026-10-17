@@ -4,6 +4,9 @@ All notable changes to Beanbook. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+### Changed
+- Each processor type (arm64-v8a, x86_64) has its own APK with its own version code, so F-Droid and the phone choose the matching one. The universal APK stays on the release page.
+
 ### Fixed
 - The entry form no longer refuses an entry Beancount accepts: the balance check now follows Beancount's own per-currency tolerance rule, including `inferred_tolerance_default`.
 - The project picker no longer fails after restoring a backup.
