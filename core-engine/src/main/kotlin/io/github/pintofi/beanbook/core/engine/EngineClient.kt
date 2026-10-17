@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
  * The single boundary between the app and whatever is serving the ledger: the embedded
  * CPython/Fava engine (local mode) or a self-hosted Fava (remote mode). Keeping this
  * interface free of Android and of Fava's URL scheme is what lets the two modes share UX
- * (docs/architecture.md 2).
+ * (docs/architecture.md section 2).
  */
 interface EngineClient {
 
@@ -19,7 +19,7 @@ interface EngineClient {
      * Stops the engine and releases its resources.
      *
      * Not optional: cheroot's worker threads are not daemon threads, so an engine that is
-     * never stopped keeps the process alive (Phase 0 finding C7).
+     * never stopped keeps the process alive.
      */
     suspend fun stop()
 
@@ -31,7 +31,7 @@ interface EngineClient {
 
     /**
      * The origins the WebView is allowed to load. Anything else is blocked outright
-     * (docs/threat-model.md 3.4).
+     * (docs/threat-model.md section 3.4).
      */
     fun allowedOrigins(): Set<String>
 }
@@ -44,7 +44,7 @@ sealed interface EngineStatus {
      * @param origin scheme://host:port actually bound — the port is ephemeral in local
      *   mode, so it is never assumed.
      * @param ledgerSlug Fava namespaces every report route by ledger slug, discovered at
-     *   startup rather than guessed (Phase 0 finding, S4).
+     *   startup rather than guessed.
      */
     data class Serving(
         val origin: String,
@@ -63,7 +63,7 @@ sealed interface EngineStatus {
 /** Report routes we address by name instead of by hand-built URL. */
 enum class ReportPath(val path: String) {
     /**
-     * The ledger's own index, which Fava redirects to whatever the file asks for (B19).
+     * The ledger's own index, which Fava redirects to whatever the file asks for.
      *
      * Beancount files can set `custom "fava-option" "default-page"`, and Fava's
      * `application.py` already honours it on the index route. Requesting a named report

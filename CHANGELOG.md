@@ -19,6 +19,8 @@ All notable changes to Beanbook. The format follows [Keep a Changelog](https://k
 - A cached answer is no longer reused after a plugin changes or the app is updated.
 - A failed engine start no longer makes every later read wait out its timeout.
 - Displayed amounts round half to even, as Beancount and Fava do.
+- A remote server address typed with capital letters no longer shows blank pages, and a server under a path prefix such as `/fava` is found correctly.
+- A remote server that answers oddly (a hostile ledger name, an endless reply) ends in an error message instead of a crash or a stall.
 
 ## [1.0.0] - 2026-10-15
 

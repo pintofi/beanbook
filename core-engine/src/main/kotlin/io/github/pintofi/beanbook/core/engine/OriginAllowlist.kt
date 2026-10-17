@@ -4,8 +4,8 @@ import java.net.URI
 
 /**
  * Decides whether the WebView may load a URL. Deliberately strict and deliberately
- * testable without a device: this is a security control, and Phase 0 risk R3 is that it
- * was never negatively tested.
+ * testable without a device: this is a security control, so the tests cover what it
+ * refuses as well as what it permits.
  *
  * Rules:
  *  - the scheme must be http or https, so `file:`, `content:`, `javascript:` and `intent:`

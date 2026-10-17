@@ -49,7 +49,7 @@ class RemoteException(
     cause: Throwable? = null,
 ) : IOException(failure.describe(), cause)
 
-/** Credentials for a reverse proxy. Fava itself has no login (docs/feasibility/s12-fava-api.md). */
+/** Credentials for a reverse proxy. Fava itself has no login. */
 data class BasicCredentials(val username: String, val password: CharArray) {
     fun header(): String =
         "Basic " + Base64.getEncoder()
@@ -91,8 +91,8 @@ interface Transport {
  * is not an omission: when a request is `https`, the default verification is the strict one,
  * and every mechanism for weakening it is simply absent from this class, so no future call
  * site can pass a flag that turns it off. A certificate that does not verify raises
- * [RemoteFailure.CertificateRejected] and the request ends there (CLAUDE.md, security rules;
- * docs/threat-model.md §3.5).
+ * [RemoteFailure.CertificateRejected] and the request ends there (docs/threat-model.md
+ * section 3.5).
  *
  * Cleartext is a separate matter and a separate decision. `http` is carried because a user
  * may deliberately choose it for a LAN or VPN host, and the app shows what that means rather
@@ -139,7 +139,7 @@ class PlatformTransport(
                 // request when a connection dies before the response arrives — silently,
                 // inside a single call. Against a Fava that does not deduplicate, that puts
                 // the entry in the ledger twice while the app reports one success. Seen
-                // happening on a device (docs/milestones/m10.md). A streamed body cannot be
+                // happening on a device. A streamed body cannot be
                 // replayed, so the stack raises an IOException instead and the retry becomes
                 // the caller's decision, made with the idempotency key.
                 setFixedLengthStreamingMode(body.toByteArray().size)
@@ -151,7 +151,7 @@ class PlatformTransport(
 
             val status = connection.responseCode
             val stream = if (status in 200..399) connection.inputStream else connection.errorStream
-            val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val text = stream?.use { readBounded(it) }.orEmpty()
 
             if (status == 401 || status == 403) {
                 throw RemoteException(RemoteFailure.Unauthorised(status))
@@ -181,4 +181,25 @@ class PlatformTransport(
         }
     }
 
+    /**
+     * Reads at most [MAX_BODY_BYTES]. Every answer this app needs is small; a server that
+     * keeps sending is not one worth waiting for or holding in memory.
+     */
+    private fun readBounded(stream: java.io.InputStream): String {
+        val out = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        while (true) {
+            val n = stream.read(buffer)
+            if (n < 0) break
+            if (out.size() + n > MAX_BODY_BYTES) {
+                throw RemoteException(RemoteFailure.Unexpected("the server's answer was too large"))
+            }
+            out.write(buffer, 0, n)
+        }
+        return out.toString(Charsets.UTF_8)
+    }
+
+    private companion object {
+        const val MAX_BODY_BYTES = 4 * 1024 * 1024
+    }
 }

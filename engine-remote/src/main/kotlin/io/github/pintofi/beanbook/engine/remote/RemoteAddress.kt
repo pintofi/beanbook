@@ -12,7 +12,7 @@ import java.net.URI
  * and modifiable by anything on the path, and the app cannot tell a home LAN from a hotel
  * network. So cleartext is never a default, never silent, and never inferred — [isCleartext]
  * exists so every surface that shows an address can say what it is
- * (docs/threat-model.md §3.5).
+ * (docs/threat-model.md section 3.5).
  *
  * What has not changed: when the address *is* `https`, verification is strict and a
  * certificate error is fatal. Allowing cleartext is a different decision from accepting
@@ -49,8 +49,9 @@ class RemoteAddress private constructor(
      */
     val allowlistOrigin: String
         get() {
-            val authority = origin.substringAfter("://")
-            if (":" in authority) return origin
+            // Read the port from the parsed URI: looking for a colon in the text mistakes an
+            // IPv6 literal such as [::1] for "has a port".
+            if (URI(origin).port != -1) return origin
             return "$origin:" + if (isCleartext) "80" else "443"
         }
 
@@ -93,11 +94,14 @@ class RemoteAddress private constructor(
             if (scheme != "https" && scheme != "http") {
                 return failure(Problem.UnsupportedScheme(scheme))
             }
-            val host = uri.host ?: return failure(Problem.NoHost)
+            // Lower-cased because the origin allowlist compares lower-cased hosts: keeping
+            // "Fava.Example.com" as typed blocked every page the server served.
+            val host = uri.host?.lowercase() ?: return failure(Problem.NoHost)
             if (host.isBlank()) return failure(Problem.NoHost)
 
             val port = if (uri.port == -1) "" else ":${uri.port}"
-            val path = uri.path.orEmpty().trimEnd('/')
+            // The raw path: the decoded one turns "%20" into a space, which is not a URL.
+            val path = uri.rawPath.orEmpty().trimEnd('/')
 
             return Result.success(RemoteAddress("$scheme://$host$port", path))
         }
