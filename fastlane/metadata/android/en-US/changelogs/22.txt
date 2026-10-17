@@ -1,0 +1,6 @@
+Fixes found in a full review of the code.
+• The entry form accepts what Beancount accepts, including its per-currency tolerance.
+• Saves interrupted by the screen closing are finished or put back, never left undecided.
+• Backups, restores and Undo are safer, and CRLF ledgers keep their line endings.
+• Remote server addresses with capitals or a path prefix work.
+• Smaller downloads: one APK per processor type.

@@ -64,3 +64,41 @@ GitHub's runner built, are identical for all four wheels. An unsigned universal 
 those wheels in two different checkout paths is identical too. F-Droid's own build of the
 Expert edition was compared with the signed APK in the pipeline above ("compared built
 binary to supplied reference binary successfully").
+
+### One APK per processor type (from 1.0.1)
+
+From 1.0.1 the recipe builds the arm64-v8a and x86_64 APKs separately, instead of the universal
+one, so a phone downloads only its own libraries. Each file has its own `versionCode`, derived
+in `app/build.gradle.kts` as the release number times ten plus a suffix: 1 for x86_64, 2 for
+arm64-v8a, and 0 for the universal APK and the Play bundle. Release 2 (version 1.0.1) is
+therefore 21 and 22. Version 1.0.0 shipped as a single universal APK with versionCode 1, which
+is below every later code, so existing installs update.
+
+The release workflow checks each APK's code with `aapt2` before it publishes anything. The store
+text for a code is read from `changelogs/<versionCode>.txt`, so each release adds one file for
+each of its three codes.
+
+For each release the recipe gets one `Builds` entry per ABI, each pointing at its own file on
+the GitHub release through `binary:`. This is the shape to submit to `fdroiddata` once the
+release commit exists; the commit, and the final recipe text, are filled in at release time, and
+F-Droid's server has not yet built this layout:
+
+```yaml
+Builds:
+  - versionName: 1.0.1
+    versionCode: 21
+    commit: <commit that v1.0.1 points at>
+    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-x86_64.apk
+    output: build/outputs/apk/expert/release/*x86_64*.apk
+    # subdir, sudo, init, gradle, prebuild and ndk as in the 1.0.0 entry
+  - versionName: 1.0.1
+    versionCode: 22
+    commit: <commit that v1.0.1 points at>
+    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
+    output: build/outputs/apk/expert/release/*arm64-v8a*.apk
+    # the same remaining fields
+```
+
+`Binaries` at the top of the recipe is replaced by these per-entry `binary:` lines, and
+`CurrentVersionCode` becomes 22. How `AutoUpdateMode` should produce the second entry is for
+F-Droid's maintainers to say; the first 1.0.1 recipe is written by hand.
