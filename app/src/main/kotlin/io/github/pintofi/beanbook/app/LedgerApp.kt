@@ -126,7 +126,7 @@ internal fun showsAddAction(selected: Surface, adding: Boolean, hasLedger: Boole
  * The places the app can be. Adding an entry is deliberately not one of them: it is an
  * action, and Material puts an action of the highest importance in a FAB rather than in the
  * navigation bar, which is for destinations. Removing it is also what brings the bar to the
- * five destinations Material asks for (B26).
+ * five destinations Material asks for.
  */
 internal enum class Surface(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     HOME("Home", Icons.Outlined.Home),
@@ -139,7 +139,7 @@ internal enum class Surface(val label: String, val icon: androidx.compose.ui.gra
 }
 
 /**
- * How one place in the app becomes another (B76).
+ * How one place in the app becomes another.
  *
  * Three cases, in the order they take precedence. Opening or closing the entry form is
  * hierarchical whatever else changes, because the form is a thing on top of a destination.
@@ -189,7 +189,7 @@ internal fun LedgerApp(
     engineStatus: EngineStatus,
     ledger: LedgerSnapshot?,
     token: String?,
-    /** The surface a launching widget asked for, if any (B2). */
+    /** The surface a launching widget asked for, if any. */
     openOn: String? = null,
     debuggingAllowed: Boolean,
     onOpenExternally: (Uri) -> Unit,
@@ -251,7 +251,7 @@ internal fun LedgerApp(
     pluginSafeMode: Boolean,
     pluginMessage: String?,
     packages: io.github.pintofi.beanbook.app.packages.PackagesUi,
-    /** The period Balances is showing, and the way to change it (B53). */
+    /** The period Balances is showing, and the way to change it. */
     dateFrom: String,
     dateTo: String,
     onDateRange: (String, String) -> Unit,
@@ -267,7 +267,7 @@ internal fun LedgerApp(
     onSetPluginEnabled: (String, Boolean) -> Unit,
     onRemovePlugin: (String) -> Unit,
     onSetPluginSafeMode: (Boolean) -> Unit,
-    /** Modules the open ledger names, and the way to add or remove one (B60). */
+    /** Modules the open ledger names, and the way to add or remove one. */
     recoveryNotice: String?,
     onDismissRecovery: () -> Unit,
     onRemoteConnect: (String, String?, CharArray?) -> Unit,
@@ -277,11 +277,11 @@ internal fun LedgerApp(
     onRemoteDiscard: () -> Unit,
     onSaveDirective: (io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit,
     saveState: String?,
-    /** Entries committed from the form this session; a change closes the form (B77). */
+    /** Entries committed from the form this session; a change closes the form. */
     entryCommits: Int = 0,
-    /** An entry already in the file, open in the entry form (B79); null when none is. */
+    /** An entry already in the file, open in the entry form; null when none is. */
     editSession: EntryEditSession? = null,
-    /** Ends the engine and the app and opens it again (B77). */
+    /** Ends the engine and the app and opens it again. */
     onRestartApp: () -> Unit = {},
     onEngineRetry: () -> Unit = {},
     onDeleteEntries: (List<io.github.pintofi.beanbook.core.domain.JournalEntry>) -> Unit = {},
@@ -318,7 +318,7 @@ internal fun LedgerApp(
     var adding by remember(openOn) { mutableStateOf(openOn == "ADD") }
 
     // Whether anything has been typed into the open form, and what to do once the user has
-    // decided (B61). Leaving a half-written entry by tapping a destination is one tap away
+    // decided. Leaving a half-written entry by tapping a destination is one tap away
     // now that the bar works while the form is open, so it asks first -- nothing is written
     // to the ledger either way, but retyping an entry is the user's time.
     var addDirty by remember { mutableStateOf(false) }
@@ -329,7 +329,7 @@ internal fun LedgerApp(
         if (adding && addDirty) confirmingLeave = then else then()
     }
 
-    // A save that committed closes the form and shows the entry where it now lives (B77). The
+    // A save that committed closes the form and shows the entry where it now lives. The
     // form stayed open after every save and still counted as holding something, so closing
     // it asked whether to discard an entry that was already in the file.
     //
@@ -353,7 +353,7 @@ internal fun LedgerApp(
         selected = Surface.JOURNAL
     }
 
-    // Editing opens the entry form, the same one Add uses (B79), and leaving the form -- by
+    // Editing opens the entry form, the same one Add uses, and leaving the form -- by
     // saving, discarding, Back or a destination -- ends the edit.
     var editOpen by remember { mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(editSession?.editing?.original) {
@@ -370,7 +370,7 @@ internal fun LedgerApp(
         if (!adding) editSession?.onClose?.invoke()
     }
 
-    // An entry being entered again (B11). Held here because applying it means switching to
+    // An entry being entered again. Held here because applying it means switching to
     // the Add surface, which this composable owns; cleared once the form has taken it.
     var pendingClone by remember { mutableStateOf<TransactionDraft?>(null) }
 
@@ -389,7 +389,7 @@ internal fun LedgerApp(
         }
     }
     // A destination tap goes to that destination's own root. Leaving More and coming back to
-    // a section opened minutes ago is not where anybody means to arrive (B92).
+    // a section opened minutes ago is not where anybody means to arrive.
     fun goTo(surface: Surface) {
         adding = false
         moreStack = emptyList()
@@ -397,7 +397,7 @@ internal fun LedgerApp(
     }
 
     // Back walks out the way the user came in, rather than leaving the app from wherever
-    // they happen to be standing (B8). One handler over one stack: this was four handlers
+    // they happen to be standing. One handler over one stack: this was four handlers
     // whose `enabled` conditions each repeated every condition above them, so opening a
     // fifth thing meant editing the other four -- and forgetting one silently broke Back,
     // which is what happened when the add form became a button.
@@ -436,24 +436,24 @@ internal fun LedgerApp(
     // mode rather than a destination: you enter it, shoot a stack of pages, and leave, and
     // chrome around the viewfinder would make it look like a form with a camera in it.
     //
-    // Drawn *over* the app rather than instead of it (B79). Returning early took the entry
+    // Drawn *over* the app rather than instead of it. Returning early took the entry
     // form out of composition, and everything typed into it went with it: fill in a payee
     // and two postings, scan the receipt, and come back to an empty form holding one page.
     // Underneath, the app stays composed and keeps its state; it is hidden from accessibility
     // services while the scanner is up, so a screen reader does not wander into a form the
     // camera is covering.
     val scanning = documentCapture.scanning
-    // The add button steps aside while the page is read downwards (design-direction §7). Reset
+    // The add button steps aside while the page is read downwards. Reset
     // on every move, so a destination always opens with its button in view.
     val actionScroll = remember { ActionScroll() }
     androidx.compose.runtime.LaunchedEffect(selected, adding, moreSection, ledger) { actionScroll.reset() }
     val addable = showsAddAction(selected, adding, hasLedger = ledger != null)
-    // What the form's save bar says: only what happened since this form opened (B98). The
+    // What the form's save bar says: only what happened since this form opened. The
     // message is shared with deletes and document filing, and a refused delete from the
     // Journal used to greet the next new entry in red on its sticky bar.
     val staleMessage = remember(adding, editSession) { saveState }
     val formMessage = saveState.takeIf { it != staleMessage }
-    // A tap on empty page lets go of the field being typed in (B98), as platform text fields
+    // A tap on empty page lets go of the field being typed in, as platform text fields
     // do: the keyboard and the suggestions under the field go with it. It sees only taps no
     // control took -- a button, a field or a row consumes its own -- so it never steals one.
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -473,7 +473,7 @@ internal fun LedgerApp(
             )
         }
 
-    // Whether the open ledger went from errors to none while the app was running (B87), for
+    // Whether the open ledger went from errors to none while the app was running, for
     // the stamp in the top bar. Watched here, above the destinations,, because the last error is usually fixed
     // somewhere else -- the file editor, a plugin install -- and Home is not on screen then.
     // Not in SurfaceContent: each destination gets its own, so leaving Home forgot what it had
@@ -499,7 +499,7 @@ internal fun LedgerApp(
         if (errorCount > 0) balancedAgain = false
         lastErrors = errorCount
     }
-    // Shown on Home, in the line that says nothing needs attention (B87): it takes no row of its
+    // Shown on Home, in the line that says nothing needs attention: it takes no row of its
     // own and covers no figure. Leaving Home, opening the form or a new error takes it away.
     var stampShowing by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(balancedAgain, selected, adding, errorCount) {
@@ -511,21 +511,21 @@ internal fun LedgerApp(
         if (!onHome || (errorCount ?: 0) > 0) stampShowing = false
     }
     Scaffold(
-        // The keyboard is handled once, here, for every screen inside (B54). Each form used
+        // The keyboard is handled once, here, for every screen inside. Each form used
         // to apply `imePadding()` itself while the Scaffold went on reserving space for a
         // bottom bar the keyboard had covered, so the inset was counted twice: a band of
         // empty screen the height of the navigation bar sat above the keyboard, and the last
         // field of a form could not be scrolled into it. Insetting the whole Scaffold lifts
         // the bar and the content together, which is what Material describes.
         modifier = Modifier.weight(1f).keyboardPadding(),
-        // The keyboard's height is applied once, by `imePadding` above (B68). `Scaffold`'s
+        // The keyboard's height is applied once, by `imePadding` above. `Scaffold`'s
         // default content insets are `safeDrawing`, which *includes* the IME, so the content
         // was being pushed up by the keyboard twice: once by the modifier and again by the
         // padding the Scaffold handed its content. The second copy is the blank band that
         // appeared under the form -- roughly the height of the keyboard, left behind when the
         // keyboard went away and the animation settled.
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets.exclude(WindowInsets.ime),
-        // Undo, over any screen, above the bar and under the lifted add button (B98).
+        // Undo, over any screen, above the bar and under the lifted add button.
         snackbarHost = { UndoBar() },
         topBar = {
             LedgerTopBar(
@@ -547,8 +547,8 @@ internal fun LedgerApp(
         floatingActionButton = {
             // The button grows in and shrinks back out rather than blinking: it disappears
             // whenever the form opens, and a control that vanishes between frames reads as a
-            // glitch rather than as the thing that became the page in front of you (B76).
-            // On the rail layout it lives in the rail's header instead (design-direction §8);
+            // glitch rather than as the thing that became the page in front of you.
+            // On the rail layout it lives in the rail's header instead;
             // here it also steps aside while the page is read downwards, and while the
             // keyboard is up, where it sat between the list and the keys covering rows.
             @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -564,12 +564,12 @@ internal fun LedgerApp(
         },
         bottomBar = {
             if (layout != PaneLayout.COMPACT) return@Scaffold
-            // Gone while the keyboard is up (B54). A destination bar above an open keyboard
+            // Gone while the keyboard is up. A destination bar above an open keyboard
             // is a row nobody can reach without dismissing the keyboard first, and it costs
             // a form the one thing it is short of on a phone: height.
             @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
             if (androidx.compose.foundation.layout.WindowInsets.isImeVisible) return@Scaffold
-            // One bar at every text size (design-direction §5). At 200% it used to become a
+            // One bar at every text size. At 200% it used to become a
             // scrolling row of words with the icons gone and "More" cut to "M"; the labels now
             // stop growing at 150% and shrink to fit their item, and every icon stays.
             //
@@ -589,7 +589,7 @@ internal fun LedgerApp(
         ) {
             // The banner makes room for itself rather than appearing in place, so the page
             // under it is pushed down by something arriving instead of being covered by
-            // something that was always there (B76).
+            // something that was always there.
             io.github.pintofi.beanbook.app.ui.LedgerReveal(
                 visible = recoveryNotice != null,
                 label = "recovery",
@@ -605,14 +605,14 @@ internal fun LedgerApp(
             // back into it. The pair being animated between is what decides that, so an
             // interrupted transition is still going the right way.
             val reportsPage = androidx.compose.runtime.remember { io.github.pintofi.beanbook.app.web.RetainedWebView() }
-            // Reports is not reloaded when a file changes on disk (B93). Fava watches the
+            // Reports is not reloaded when a file changes on disk. Fava watches the
             // ledger itself and redraws the open report when it changes; reloading the page
             // from here as well threw the editor's "Leave this page?" guard every time its own
             // Save wrote the file, because the save is itself a change on disk.
             androidx.compose.runtime.CompositionLocalProvider(
                 io.github.pintofi.beanbook.app.web.LocalReportsPage provides reportsPage,
             ) {
-            // Each page keeps where it was while it is on the stack (B98): back from a More
+            // Each page keeps where it was while it is on the stack: back from a More
             // section lands on More scrolled where it was left, and a destination keeps its
             // place between tab switches. A section's state goes when the section leaves the
             // stack, so opening it again starts at its top, as a fresh page does; the entry
@@ -804,7 +804,7 @@ internal fun LedgerApp(
                     onClick = {
                         confirmingLeave = null
                         addDirty = false
-                        // The pages go with the words (B79). They live in the capture session,
+                        // The pages go with the words. They live in the capture session,
                         // not in the form, so discarding the entry left them behind -- and the
                         // next Add opened already holding the receipt for the entry thrown away.
                         if (!documentCapture.pages.isEmpty) onDiscardPages()
@@ -827,7 +827,7 @@ internal fun LedgerApp(
 }
 
 /**
- * The keyboard's height, applied only while the keyboard is actually showing (B78).
+ * The keyboard's height, applied only while the keyboard is actually showing.
  *
  * `imePadding()` follows the keyboard's *animated* inset, frame by frame. When that animation
  * does not reach its end -- the keyboard shown and hidden quickly across several fields, a
@@ -849,7 +849,7 @@ private fun Modifier.keyboardPadding(): Modifier =
     if (WindowInsets.isImeVisible) this.imePadding() else this
 
 /**
- * An entry being edited in the entry form (B79).
+ * An entry being edited in the entry form.
  *
  * @property editing what the form needs to know: the entry, and whether saving reformats it.
  * @property onSave writes the edited entry over the original.

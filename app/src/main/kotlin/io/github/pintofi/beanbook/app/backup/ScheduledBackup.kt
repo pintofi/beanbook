@@ -38,12 +38,16 @@ class ScheduledBackupWorker(
         val folderUri = settings.folderUri() ?: return Result.failure()
         val projectId = app.registry.activeProjectId() ?: return Result.success()
 
+        // Set once the file exists, so a failure can take the unfinished one away: a truncated
+        // `.bcaz` in the folder looks like a backup and is not one.
+        var started: DocumentFile? = null
         return runCatching {
             val folder = DocumentFile.fromTreeUri(applicationContext, Uri.parse(folderUri))
                 ?: error("the backup folder is no longer reachable")
             val name = app.backupController.suggestedName(projectId)
             val document = folder.createFile(MIME_TYPE, name)
                 ?: error("could not create $name in the backup folder")
+            started = document
 
             val title = app.registry.summarise(projectId).title
             applicationContext.contentResolver.openOutputStream(document.uri, "wt")?.use { out ->
@@ -64,6 +68,7 @@ class ScheduledBackupWorker(
             Result.success()
         }.getOrElse { failure ->
             Log.w(TAG, "scheduled backup failed", failure)
+            runCatching { started?.delete() }
             settings.recordRun(
                 Instant.now(),
                 success = false,

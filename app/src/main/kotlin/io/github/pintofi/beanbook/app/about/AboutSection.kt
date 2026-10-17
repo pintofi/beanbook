@@ -48,7 +48,7 @@ private const val CONTACT_EMAIL = "pintofinan@gmail.com"
 /**
  * Who made this, what it is built on, and how a new version arrives.
  *
- * This was the Updates section until the self-updater was removed (B40). With nothing left to
+ * This was the Updates section until the self-updater was removed. With nothing left to
  * update, what remained was the screen every app has and this one did not: the identity of the
  * thing you are running. That matters more here than in most apps, because Beanbook is GPL
  * software handling your accounts — the licence entitles you to the source, so the source is a
@@ -96,7 +96,7 @@ fun AboutSection(onOpenLicences: () -> Unit, modifier: Modifier = Modifier) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // The mark in the theme's own colours (design-direction §4): it was fixed teal
+                // The mark in the theme's own colours: it was fixed teal
                 // while the rest of the app wore the wallpaper's colour (device audit 2026-10-10).
                 io.github.pintofi.beanbook.app.ui.BeanbookMark(size = 72.dp)
                 Text("Beanbook", style = MaterialTheme.typography.headlineSmallEmphasized)
@@ -118,7 +118,7 @@ fun AboutSection(onOpenLicences: () -> Unit, modifier: Modifier = Modifier) {
                     io.github.pintofi.beanbook.app.ui.FolioRow(
                         title = "Source",
                         detail = "The code on GitHub, in your browser",
-                        // On a badge like every row beside it (B98): the GitHub mark trailing
+                        // On a badge like every row beside it: the GitHub mark trailing
                         // on its own left this one row without the column of badges.
                         icon = androidx.compose.material.icons.Icons.Filled.Code,
                         onClick = { open(SOURCE_URL) },
@@ -138,7 +138,7 @@ fun AboutSection(onOpenLicences: () -> Unit, modifier: Modifier = Modifier) {
                 }
             }
 
-            // Only where the edition names support pages: never the Play edition (B101, B102).
+            // Only where the edition names support pages: never the Play edition.
             if (EditionFacts.SUPPORT_LINKS.isNotEmpty()) {
                 io.github.pintofi.beanbook.app.ui.FolioHeading("Support development")
                 io.github.pintofi.beanbook.app.ui.FolioGroup {

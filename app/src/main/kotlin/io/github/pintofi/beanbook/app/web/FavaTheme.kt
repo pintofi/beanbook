@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.toArgb
 import io.github.pintofi.beanbook.app.ui.theme.LedgerColours
 
 /**
- * Makes Fava's reports look like the rest of the app (docs/ux.md §3, design-direction §10).
+ * Makes Fava's reports look like the rest of the app (docs/ux.md §3).
  *
  * **Re-skinned, never restructured.** Fava themes itself through CSS custom properties and
  * honours an explicit `:root[data-color-scheme=dark|light]`. Almost everything here sets one of
@@ -38,7 +38,7 @@ object FavaTheme {
      * `evaluateJavascript` is the app running its own script *in* the page. It is not a
      * bridge: nothing here exposes an app object to page JavaScript, there is no
      * `addJavascriptInterface` anywhere in this file or its caller, and the rule that forbids
-     * one is about the other direction (CLAUDE.md, security rules).
+     * one is about the other direction (the project's security rules).
      *
      * Every value interpolated below is a `#rrggbb` string this file generates from a
      * [ColorScheme]. None of it comes from a ledger, a filename, or anything a user typed, so
@@ -98,7 +98,7 @@ object FavaTheme {
             variable("placeholder-background", if (dark) scheme.surfaceContainerHigh else scheme.surfaceContainerLowest)
 
             // The gain/loss *text* colour, so a difference keeps its colour across the line
-            // between the app's own screens and Fava's (design-direction §4): green up, carmine
+            // between the app's own screens and Fava's: green up, carmine
             // down, never red and green alone -- the sign carries the meaning.
             //
             // `--diff-green`/`--diff-red` rather than `--diff-positive`/`--diff-negative`: Fava

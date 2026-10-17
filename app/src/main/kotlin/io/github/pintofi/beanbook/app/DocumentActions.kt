@@ -21,7 +21,7 @@ import androidx.lifecycle.lifecycleScope
 
 internal fun MainActivity.refreshDocuments(app: BeancountApplication, projectId: String) {
     lifecycleScope.launch {
-        // Including the folders `option "documents"` names (B70): Beancount files what it
+        // Including the folders `option "documents"` names: Beancount files what it
         // finds in those, so a screen that read only the app's own folder reported them as
         // links to files that were not there.
         val roots = app.ledgerState.snapshot.value?.documentRoots.orEmpty()
@@ -32,7 +32,7 @@ internal fun MainActivity.refreshDocuments(app: BeancountApplication, projectId:
 /**
  * Files the captured pages as a PDF, then writes the `document` directive that points at
  * it — in that order, so the ledger never names a file that does not exist yet
- * (CLAUDE.md, invariant 5).
+ * (a link is never written before its file exists).
  */
 internal fun MainActivity.attachDocument(
     app: BeancountApplication,
@@ -42,7 +42,7 @@ internal fun MainActivity.attachDocument(
 ) {
     app.documentCapture.save(projectId, account, label = label) { paths ->
         lifecycleScope.launch {
-            // In files/documents.beancount rather than the main file (B89), where a folder of
+            // In files/documents.beancount rather than the main file, where a folder of
             // receipts filed over a year had been piling up between the options and plugins.
             val ledger = documentsLedger(app, projectId) {
                 attachDocument(app, projectId, account, label)
@@ -57,7 +57,7 @@ internal fun MainActivity.attachDocument(
             }
             saveText(app, projectId, directives, operation = "attach-document", target = ledger) { outcome ->
                 if (outcome.startsWith("Saved")) {
-                    // A toast, and only what happened (B89): the count of ledger errors that
+                    // A toast, and only what happened: the count of ledger errors that
                     // "Saved, with 3 ledger error(s)" carried is about the ledger, not about
                     // the document just filed, and it read as if filing had gone wrong.
                     saveMessage = null
@@ -79,18 +79,11 @@ internal fun MainActivity.attachDocument(
 }
 
 /**
- * Removes the link, not the file.
- *
- * The directive is deleted from whichever included file holds it and the write goes
- * through the ordinary protocol, so an unlink is snapshotted and undoable like any other
- * edit. The PDF stays exactly where it was.
- */
-/**
  * The ledger file holding a real `document` directive, and [rewrite]'s result for it.
  *
  * [rewrite] returns `null` for a file with no such directive, which is what makes this
  * narrow: a file merely *mentioning* the path -- in a comment, or in a transaction's own
- * `document:` metadata -- is not a match, and rewriting it would be the R2 defect again.
+ * `document:` metadata -- is not a match, and rewriting it would corrupt an unrelated entry.
  *
  * Shared by unlinking and refiling because both must agree on which file to touch. A ledger
  * split by `include` may have many, and picking a different one for each operation would
@@ -105,7 +98,7 @@ private fun findDocumentDirective(
         .filter { it.isFile && (it.extension == "beancount" || it.extension == "bean") }
         .mapNotNull { file ->
             val text = file.readText()
-            // A directive names its file relative to the file it is written in (B89), so the
+            // A directive names its file relative to the file it is written in, so the
             // one in files/documents.beancount says "../documents/…" for the same document.
             (rewrite(text, path) ?: pathAsNamedIn(file, projectDir, path)?.let { rewrite(text, it) })
                 ?.let { file to it }
@@ -121,7 +114,7 @@ internal fun pathAsNamedIn(file: File, projectDir: File, path: String): String? 
 }
 
 /**
- * Where a `document` directive filing a document under an account is written (B89):
+ * Where a `document` directive filing a document under an account is written:
  * files/documents.beancount, created and included from the main file the first time.
  *
  * Returns the file and the path the directive must use for [projectPath], which is relative to
@@ -131,7 +124,7 @@ internal suspend fun MainActivity.documentsLedger(
     app: BeancountApplication,
     projectId: String,
     /**
-     * What to do once the include line is in place (B96). Without it the person had to find
+     * What to do once the include line is in place. Without it the person had to find
      * the filing button again and tap it a second time, and nothing on the Documents screen
      * said so: the page showed "Saved ….pdf" and the ledger never got its directive.
      */
@@ -148,12 +141,12 @@ internal suspend fun MainActivity.documentsLedger(
         !Regex("""(?m)^\s*include\s+"${Regex.escape(include)}"""").containsMatchIn(main.readText())
     }
     if (needsInclude) {
-        // Never silently (B92): this changes which files the ledger is made of, so it is shown
+        // Never silently: this changes which files the ledger is made of, so it is shown
         // and approved before it happens. Filing continues on the next attempt, after the line
         // is in place.
         val line = "include \"$include\""
         // Said where the save was tapped as well, so a form waiting on this is not left
-        // showing "Saving…" behind the dialog (B93).
+        // showing "Saving…" behind the dialog.
         saveMessage = "Not saved yet: $include needs to be included in ${main.name} first."
         pendingLedgerEdit = MainActivity.LedgerEdit(
             file = main.name,
@@ -185,6 +178,13 @@ internal suspend fun MainActivity.documentsLedger(
 internal fun documentPathIn(ledger: File, projectDir: File, projectPath: String): String =
     pathAsNamedIn(ledger, projectDir, projectPath) ?: projectPath
 
+/**
+ * Removes the link, not the file.
+ *
+ * The directive is deleted from whichever included file holds it and the write goes
+ * through the ordinary protocol, so an unlink is snapshotted and undoable like any other
+ * edit. The PDF stays exactly where it was.
+ */
 internal fun MainActivity.unlinkDocument(
     app: BeancountApplication,
     projectId: String,
@@ -196,7 +196,7 @@ internal fun MainActivity.unlinkDocument(
         // first: a `document` directive files it under an account, and a `document:` metadata
         // key attaches it to a transaction -- which is what the Add form writes. Removing the
         // directive and stopping left the entry still pointing at the file, so Organize went
-        // on listing it as "Attached to ..." and offered no way to finish the job (B69).
+        // on listing it as "Attached to ..." and offered no way to finish the job.
         //
         // Both are removed, in as many passes as it takes: a file may be named by several
         // entries, and a half-unlinked document is exactly the broken state this action
@@ -205,7 +205,7 @@ internal fun MainActivity.unlinkDocument(
         var failure: String? = null
         while (removed < MAX_LINKS_PER_DOCUMENT) {
             val projectDir = app.workspace.projectDir(projectId)
-            // Metadata first, then the directive (B93). Under Fava's link_documents plugin an
+            // Metadata first, then the directive. Under Fava's link_documents plugin an
             // entry's `document:` key must match a `document` directive, so removing the
             // directive while the key still named the file added "Document not found" to the
             // ledger, the write was rolled back as it should be, and Unlink appeared to do
@@ -243,7 +243,7 @@ internal fun MainActivity.unlinkDocument(
         }
         saveMessage = outcome
         // Said on the Documents screen too, where the Unlink was tapped, the way a deleted
-        // file is (B93). The app-wide message alone left Organize looking unchanged.
+        // file is. The app-wide message alone left Organize looking unchanged.
         app.documentCapture.report(outcome)
         app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
         // The list is built from the folder as well as the ledger, and nothing refreshed it:
@@ -262,7 +262,7 @@ internal fun MainActivity.unlinkDocument(
 private const val MAX_LINKS_PER_DOCUMENT = 10
 
 /**
- * Files an already-attached document under a different account (B18).
+ * Files an already-attached document under a different account.
  *
  * A refile is one directive rewritten in place, not an unlink followed by an attach: the
  * two-step version would leave the document unreferenced between the writes, and a failure
@@ -333,10 +333,10 @@ internal fun MainActivity.shareDocument(app: BeancountApplication, projectId: St
     val projectDir = app.workspace.projectDir(projectId)
     val file = documentFile(app, projectId, path)
     // Only out of a documents folder, and only from inside it: the app's own, or one the
-    // ledger names with `option "documents"` (B79). The FileProvider is configured over
+    // ledger names with `option "documents"`. The FileProvider is configured over
     // `projects/`, because it cannot express `projects/*/documents`, so this call site is
     // where the narrower rule actually lives: without it, any path this function is handed
-    // becomes a content:// URI another app can read -- a ledger included (R9).
+    // becomes a content:// URI another app can read -- a ledger included.
     val roots = (listOf(io.github.pintofi.beanbook.core.domain.DocumentName.ROOT) +
         app.ledgerState.snapshot.value?.documentRoots.orEmpty())
         .map { File(projectDir, it).canonicalPath + File.separator }
@@ -368,7 +368,44 @@ internal fun MainActivity.shareDocument(app: BeancountApplication, projectId: St
 
 
 /**
- * Deletes several entries at once, from the Journal's selection (B89).
+ * Whether the entry found at a line is the one the person was looking at.
+ *
+ * The list shows an entry as it was when the ledger was last read, and the position it carries
+ * is a line number. If the file has changed since -- a sync, a mirror pull, an edit elsewhere --
+ * the same line can now hold a different entry, and deleting or editing "the entry at line 40"
+ * would take the wrong one. The slice's own first line must still start with the entry's date,
+ * and name its payee and narration, before anything is computed from it.
+ */
+internal fun sliceMatches(
+    entry: io.github.pintofi.beanbook.core.domain.JournalEntry,
+    sliceText: String,
+): Boolean {
+    if (!sliceText.startsWith(entry.date)) return false
+    // Beancount strings escape a quote and a backslash; the entry carries them unescaped.
+    val plain = sliceText.replace("\\\"", "\"").replace("\\\\", "\\")
+    fun named(value: String?) = value.isNullOrBlank() || plain.contains(value)
+    return named(entry.payee) && named(entry.narration)
+}
+
+/**
+ * Whether the entry at [slice] is still exactly what [slice] says it is.
+ *
+ * Asks the engine for the entry at that line again and compares Fava's hash of it, so an edit
+ * form that has been open for minutes cannot write its text over lines that now hold something
+ * else.
+ */
+internal suspend fun stillThere(
+    app: BeancountApplication,
+    projectId: String,
+    slice: io.github.pintofi.beanbook.engine.local.EntrySlice,
+): Boolean {
+    val mainFile = app.workspace.mainFile(projectId).absolutePath
+    val now = runCatching { app.editor.sliceAt(mainFile, slice.file, slice.startLine) }.getOrNull()
+    return now != null && now.sha256 == slice.sha256 && now.endLine == slice.endLine
+}
+
+/**
+ * Deletes several entries at once, from the Journal's selection.
  *
  * Every entry is found in the files as they are now, then each file is rewritten once with its
  * entries taken out from the bottom up -- so removing one never moves the lines of the next --
@@ -386,9 +423,11 @@ internal fun MainActivity.deleteEntries(
             val file = entry.file ?: return@mapNotNull null
             val line = entry.line ?: return@mapNotNull null
             runCatching { app.editor.sliceAt(mainFile, file, line) }.getOrNull()
+                ?.takeIf { sliceMatches(entry, it.text) }
         }
         if (slices.size != entries.size) {
-            saveMessage = "Some of those entries could not be found in the files. Nothing was deleted."
+            saveMessage = "Some of those entries could not be found in the files, or the files " +
+                "have changed since the list was read. Nothing was deleted."
             return@launch
         }
         var deleted = 0
@@ -432,13 +471,13 @@ internal fun MainActivity.deleteEntries(
             else -> "Deleted $deleted of ${entries.size} entries, then stopped: $failure."
         }
         // Undo is offered when the delete was one write: with several files only the last
-        // could be taken back, which would leave the rest deleted (B97).
+        // could be taken back, which would leave the rest deleted.
         if (failure == null && committedWrites == 1) {
             lastCommitted?.let {
                 app.undo.offerFor(projectId, it, if (deleted == 1) "deleted 1 entry" else "deleted $deleted entries")
             }
         } else {
-            // Said over the Journal, where the delete was asked for (B98): the save message is
+            // Said over the Journal, where the delete was asked for: the save message is
             // shown only in the entry form, so a refused delete used to say nothing at all.
             saveMessage?.let(app.undo::tell)
         }
@@ -447,7 +486,7 @@ internal fun MainActivity.deleteEntries(
 }
 
 /**
- * Removes one transaction from the ledger (B11).
+ * Removes one transaction from the ledger.
  *
  * The extent comes from the engine's `entry_slice`, which is Beancount's own idea of where an
  * entry starts and stops — including its metadata and any blank line inside it. Deleting by
@@ -472,8 +511,10 @@ internal fun MainActivity.deleteEntry(
     lifecycleScope.launch {
         val mainFile = app.workspace.mainFile(projectId).absolutePath
         val slice = runCatching { app.editor.sliceAt(mainFile, file, line) }.getOrNull()
+            ?.takeIf { sliceMatches(entry, it.text) }
         if (slice == null) {
-            saveMessage = "Could not find that entry in the file. Nothing was changed."
+            saveMessage = "Could not find that entry in the file, or the file has changed since " +
+                "the list was read. Nothing was changed."
             return@launch
         }
 
@@ -499,7 +540,7 @@ internal fun MainActivity.deleteEntry(
                 "Not deleted: ${result.reason}. Your ledger is unchanged."
             is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> "Not deleted: ${result.reason}"
         }
-        // The confirmation promised Undo; the bar keeps that promise (B98). A refusal is said
+        // The confirmation promised Undo; the bar keeps that promise. A refusal is said
         // there too, since the entry page closes and the form's message line is not on screen.
         if (result is io.github.pintofi.beanbook.core.data.WriteResult.Committed) {
             app.undo.offerFor(projectId, result, "deleted 1 entry")
@@ -511,8 +552,7 @@ internal fun MainActivity.deleteEntry(
 }
 
 /**
- * Opens one entry for editing: as fields where that is provably safe, as text otherwise
- * (B11, B45).
+ * Opens one entry for editing: as fields where that is provably safe, as text otherwise.
  *
  * A form is friendlier and much more dangerous than a text box, because a draft models a
  * fixed set of things and would silently drop anything else the entry carries -- a comment
@@ -537,12 +577,14 @@ internal fun MainActivity.beginEntryEdit(
     lifecycleScope.launch {
         val mainFile = app.workspace.mainFile(projectId).absolutePath
         val slice = runCatching { app.editor.sliceAt(mainFile, file, line) }.getOrNull()
+            ?.takeIf { sliceMatches(entry, it.text) }
         if (slice == null) {
-            saveMessage = "Could not find that entry in the file. Nothing was changed."
+            saveMessage = "Could not find that entry in the file, or the file has changed since " +
+                "the list was read. Nothing was changed."
             return@launch
         }
         editingEntry = slice
-        // Hand-written entries too (B78): an entry whose only difference from the app's own
+        // Hand-written entries too: an entry whose only difference from the app's own
         // rendering is its spacing opens as fields, and the form says the spacing will change.
         editingDraft = io.github.pintofi.beanbook.core.domain.StructuredEdit
             .editableDraftOf(entry, slice.text)
@@ -552,9 +594,10 @@ internal fun MainActivity.beginEntryEdit(
 /**
  * Writes an edited entry back over the range it came from.
  *
- * The file's SHA is checked by the write protocol, so an edit computed against a file that
- * has since changed underneath -- a sync, a pull, an edit in the raw editor -- is refused
- * rather than applied to the wrong bytes.
+ * The entry is looked up again first ([stillThere]): the form may have been open for minutes,
+ * and an edit computed against lines that now hold something else is refused. The file's SHA,
+ * taken before that check, is then enforced by the write protocol, so a change between the
+ * check and the write is refused too rather than applied to the wrong bytes.
  */
 internal fun MainActivity.saveEntryEdit(
     app: BeancountApplication,
@@ -562,7 +605,7 @@ internal fun MainActivity.saveEntryEdit(
     slice: io.github.pintofi.beanbook.engine.local.EntrySlice,
     newText: String,
     /**
-     * Whether the entry form saved this (B79). The form closes itself once the save has been
+     * Whether the entry form saved this. The form closes itself once the save has been
      * seen to land, the way Add does, and stays open with the reason when it did not; the text
      * dialog closes either way, as it always has.
      */
@@ -570,6 +613,14 @@ internal fun MainActivity.saveEntryEdit(
 ) {
     lifecycleScope.launch {
         val target = java.io.File(slice.file)
+        // The file as it is before anything is checked or computed: the write is refused if it
+        // is not this by the time it lands.
+        val expectedSha = io.github.pintofi.beanbook.core.data.WriteJournal.sha256(target)
+        if (!stillThere(app, projectId, slice)) {
+            saveMessage = "Not saved: the entry changed in the file after you opened it. " +
+                "Your ledger is unchanged; open the entry again to edit the current version."
+            return@launch
+        }
         val updated = runCatching {
             app.editor.contentWithReplacement(slice.file, slice.startLine, slice.endLine, newText)
         }.getOrElse {
@@ -580,7 +631,7 @@ internal fun MainActivity.saveEntryEdit(
         val result = app.writer.replace(
             projectId = projectId,
             file = target,
-            expectedSha = io.github.pintofi.beanbook.core.data.WriteJournal.sha256(target),
+            expectedSha = expectedSha,
             newContent = updated,
             operation = "edit-entry",
         )
@@ -605,7 +656,7 @@ internal fun MainActivity.saveEntryEdit(
 }
 
 /**
- * The entry editor, when one is open (B11, B45).
+ * The entry editor, when one is open.
  *
  * An extension rather than a member: it reads the activity's editing state and nothing else,
  * and the activity is already the largest class in the app.
@@ -617,7 +668,7 @@ internal fun MainActivity.EntryEditor(
 ) {
     val slice = editingEntry ?: return
     if (projectId == null) return
-    // An entry the form can hold is edited in the form, full screen (B79); this dialog is the
+    // An entry the form can hold is edited in the form, full screen; this dialog is the
     // text editor, for the entries it cannot hold and for anyone who asks for the text.
     if (editingDraft != null) return
     io.github.pintofi.beanbook.app.ui.EntryEditDialog(
@@ -631,7 +682,7 @@ internal fun MainActivity.EntryEditor(
 }
 
 /**
- * The entry open in the form, when it is one the form can hold (B79).
+ * The entry open in the form, when it is one the form can hold.
  *
  * Built here rather than in the activity, which is already the largest class in the app.
  */
@@ -658,14 +709,14 @@ internal fun MainActivity.entryEditSession(
 }
 
 /**
- * Ends the engine process and starts a new one on the open project (B49).
+ * Ends the engine process and starts a new one on the open project.
  *
  * An extension rather than a member: `MainActivity` is already the largest class in the app,
  * and this reads the same two collaborators every other action here does.
  */
 internal fun MainActivity.restartEngine(app: BeancountApplication, projectId: String?) {
     val id = projectId ?: return
-    // Quiet (B89): this now follows every plugin install and removal on its own, and the
+    // Quiet: this now follows every plugin install and removal on its own, and the
     // Plugins screen already says what was installed.
     app.engineManager.restart()
     app.engineRestart.cleared()
@@ -677,7 +728,7 @@ internal fun MainActivity.restartEngine(app: BeancountApplication, projectId: St
 }
 
 /**
- * Ends every process the app runs and opens it again, reading everything from disk (B77).
+ * Ends every process the app runs and opens it again, reading everything from disk.
  *
  * The engine restart above keeps the app's own process, which is right after installing a
  * plugin and not enough when the app itself is in a bad state -- a stuck screen, a keyboard
@@ -705,7 +756,7 @@ internal fun MainActivity.restartApp() {
 }
 
 /**
- * A document reference from the ledger, as a file on disk (B57, B79).
+ * A document reference from the ledger, as a file on disk.
  *
  * Resolved by [io.github.pintofi.beanbook.core.data.DocumentLocator], which reads a reference
  * the ways Beancount and Fava do -- a directive's path, a bare file name in `document:`
@@ -726,7 +777,7 @@ internal fun MainActivity.documentFile(
 }
 
 /**
- * Which entries attach which documents, by the path each one names (B57).
+ * Which entries attach which documents, by the path each one names.
  *
  * The reconciliation between folder and ledger knows about `document` **directives**; a
  * receipt attached while entering a transaction is a `document:` key on that entry instead,
@@ -748,7 +799,7 @@ internal fun documentAttachments(
 }
 
 /**
- * The capture style chosen at the shutter, as the page model records it (B58).
+ * The capture style chosen at the shutter, as the page model records it.
  *
  * Two enums rather than one because `:core-domain` may not learn about OpenCV and `:scanner`
  * may not be what the page model depends on; this is the seam, and it is one function.
@@ -765,7 +816,7 @@ internal fun pageStyleOf(
 }
 
 /**
- * Everything a screen needs to photograph, edit and file a document, as one value (B58).
+ * Everything a screen needs to photograph, edit and file a document, as one value.
  *
  * Built here rather than in `MainActivity`: the same callbacks are wanted by the documents
  * screen, by transaction entry and by the scanner, and threading a dozen lambdas through the
@@ -792,7 +843,7 @@ internal fun MainActivity.captureHandle(
                 // crop is a description of the photograph, never a rewrite of
                 // it: the file on disk stays the one the camera produced, so
                 // a wrong detection is a drag away from being corrected
-                // rather than something that destroyed the original (J3).
+                // rather than something that destroyed the original.
                 if (file.length() > 0) {
                     app.documentCapture.add(file, pageStyleOf(style), crop = quad)
                 }
@@ -818,14 +869,14 @@ internal fun MainActivity.captureHandle(
             onRemoveFile = { app.documentCapture.removeFile(it) },
             onFile = { account, label, onFiled ->
                 // The entry carries the link as its `document:` metadata, so no separate
-                // `document` directive is written for it (B89) -- with the documents option,
+                // `document` directive is written for it -- with the documents option,
                 // Beancount finds the PDF in the folder anyway, and the directive only made the
                 // same receipt appear twice. The one exception is a ledger using Fava's
-                // link_documents plugin, which rejects metadata that no Document entry backs
-                // (B66); there the directive still goes to files/documents.beancount.
+                // link_documents plugin, which rejects metadata that no Document entry backs;
+                // there the directive still goes to files/documents.beancount.
                 val id = projectId.orEmpty()
                 app.documentCapture.save(id, account, label = label, attached = true) { paths ->
-                    // The application's scope, like the save that follows (B93).
+                    // The application's scope, like the save that follows.
                     app.workScope.launch {
                         val main = app.workspace.mainFile(id)
                         val linksDocuments = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -872,7 +923,7 @@ internal fun MainActivity.captureHandle(
         )
 
 /**
- * The diagnostics screen's data and actions (B62).
+ * The diagnostics screen's data and actions.
  *
  * An extension rather than a member for the reason every other one here is: `MainActivity` is
  * the largest class in the app and detekt's `LargeClass` bites whenever anything is threaded
@@ -928,7 +979,7 @@ internal fun MainActivity.shareDiagnostics() {
 }
 
 /**
- * Reads the ledger again when a file under the open project changes on disk (B92).
+ * Reads the ledger again when a file under the open project changes on disk.
  *
  * The watcher reports the change; this decides what follows from it. The document list is
  * rebuilt with the ledger because half of it comes from the folder, and the folders being
@@ -970,7 +1021,7 @@ internal fun MainActivity.FollowDiskChanges(app: BeancountApplication, activeId:
 }
 
 /**
- * What the app is about to add to a ledger file, and the chance to say no (B92).
+ * What the app is about to add to a ledger file, and the chance to say no.
  *
  * The app does not edit a person's Beancount files behind their back. The one line it ever
  * needs to add by itself -- an `include` that makes a new file part of the ledger -- is shown

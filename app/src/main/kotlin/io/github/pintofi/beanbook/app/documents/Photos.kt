@@ -8,7 +8,7 @@ import android.util.Log
 import java.io.File
 
 /**
- * Reading a photograph the way it was taken (B55).
+ * Reading a photograph the way it was taken.
  *
  * A camera writes the sensor's own orientation into EXIF and leaves the pixels alone, so a
  * page photographed in portrait is stored sideways with a tag saying so. `BitmapFactory`

@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** One write that can still be taken back, and the words for it (B97). */
+/** One write that can still be taken back, and the words for it. */
 data class UndoOffer(val projectId: String, val txnId: String, val what: String)
 
 /**
@@ -42,7 +42,7 @@ class UndoController(
 
     /**
      * Says the outcome of a write that offers no undo -- a refused delete -- in the same place
-     * an undo's outcome is said, so it is on screen wherever the person is (B98).
+     * an undo's outcome is said, so it is on screen wherever the person is.
      */
     fun tell(message: String) {
         _offer.value = null

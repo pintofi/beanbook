@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Drives the raw editor: opening a file, keeping drafts, and saving through M4's protocol.
+ * Drives the raw editor: opening a file, keeping drafts, and saving through the write protocol.
  *
  * Saving uses [ErrorPolicy.KEEP_AND_REPORT]. This is the one place in the app where a write
  * that introduces errors is *kept*: the user typed it deliberately, and refusing to save
@@ -31,7 +31,7 @@ class EditorController(
     private val writer: ProjectWriter,
     private val drafts: DraftStore,
     private val scope: CoroutineScope,
-    /** Told when a save committed, so an Undo can be offered for it (B97). */
+    /** Told when a save committed, so an Undo can be offered for it. */
     private val onCommitted: (projectId: String, result: WriteResult.Committed) -> Unit = { _, _ -> },
 ) {
     private val _state = MutableStateFlow<EditorState>(EditorState.Idle)
@@ -50,7 +50,7 @@ class EditorController(
             // With the separator: without it "projects/foo-other" passes the check for
             // project "foo", and Beancount permits `include "../..."`, so a crafted ledger
             // could list a neighbouring project's files. Writes are refused by ProjectWriter
-            // regardless, so this was read exposure rather than a write path (R9).
+            // regardless, so this was read exposure rather than a write path.
             .filter {
                 it.isFile &&
                     it.canonicalPath.startsWith(projectDir.canonicalPath + File.separator)
@@ -134,11 +134,22 @@ class EditorController(
                     val newSha = withContext(Dispatchers.IO) {
                         WriteJournal.sha256(File(editing.file.absolutePath))
                     }
-                    _state.value = editing.copy(
+                    // The text as it is now, not as it was when Save was tapped: a write and its
+                    // re-parse take seconds on a large ledger, and what was typed meanwhile is
+                    // not in the file. Keeping the older text here, and clearing the draft
+                    // above, lost those keystrokes.
+                    val now = (_state.value as? EditorState.Editing)
+                        ?.takeIf { it.file == editing.file } ?: editing
+                    _state.value = now.copy(
                         baseSha = newSha,
                         restoredDraft = false,
                         draftIsStale = false,
                     )
+                    if (now.text != editing.text) {
+                        withContext(Dispatchers.IO) {
+                            drafts.save(projectId, editing.file.relativePath, now.text, newSha)
+                        }
+                    }
                     onSaved()
                     if (result.warnings.isEmpty()) "Saved."
                     else "Saved. Beancount reports ${result.warnings.size} error(s) — see above."

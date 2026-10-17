@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Receipt capture (M8). Optional hardware: a tablet without a camera still runs the
+    <!-- Receipt capture. Optional hardware: a tablet without a camera still runs the
          whole app, so this must not narrow the device list on Play. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <!--
-      Finishing what the user started after they leave the app (B93): a plugin install or a
+      Finishing what the user started after they leave the app: a plugin install or a
       save runs under a short foreground service with a notification, and a partial wake lock
       with a timeout keeps it going with the screen off. See work/KeepWorking.kt.
     -->
@@ -14,11 +14,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!--
       Android 13+ hides every notification, including a foreground service's, until the user
-      allows them. Without this declaration the app could not even ask (B94).
+      allows them. Without this declaration the app could not even ask.
     -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!--
-      Sharing Reports on Wi-Fi (B93): off until the user turns it on. The network state is
+      Sharing Reports on Wi-Fi: off until the user turns it on. The network state is
       read to find this device's own Wi-Fi address; the special-use foreground service keeps
       the share alive, with a notification naming the address, only while it is on.
     -->
@@ -68,7 +68,7 @@
         <!--
           Exported, because a launcher in another process is what starts a widget's
           configuration screen; there is no way to offer one otherwise. It is the second
-          exported component this app has, after the launcher activity (B34), so the
+          exported component this app has, after the launcher activity, so the
           app-widget id it is handed is validated against our own provider before anything
           is written; the activity says how.
 
@@ -78,7 +78,7 @@
         <activity
             android:name=".widget.BalanceWidgetConfigureActivity"
             android:exported="true"
-            android:label="Which balance?"
+            android:label="Which balances?"
             android:theme="@style/Theme.Beancount">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
@@ -124,7 +124,7 @@
             android:exported="false" />
 
         <!--
-          Supplies the rows of the multi-account balance widget (B93), so the list scrolls.
+          Supplies the rows of the multi-account balance widget, so the list scrolls.
           Bound only by the launcher, with this app's own BIND_REMOTEVIEWS permission, and it
           reads the widget cache and nothing else: no engine, no network.
         -->

@@ -5,11 +5,11 @@ import kotlinx.coroutines.launch
 
 // Writing text to the open project, and what the form is told afterwards. Moved out of
 // MainActivity, which detekt holds under its size limit, when the entry form learned to close
-// itself on a committed save (B77).
+// itself on a committed save.
 
 /**
  * Where a new entry is written: the project's transactions file when the ledger reads it, and
- * the main file when it does not (B77).
+ * the main file when it does not.
  *
  * Entries always went to `files/transactions.beancount`, which the starter layout includes. A
  * ledger brought in from elsewhere has no such include, so an entry was written to a file
@@ -27,7 +27,7 @@ internal fun entryTarget(
 }
 
 /**
- * Where a directive from the Add form goes (B94). A commodity belongs in the file the ledger
+ * Where a directive from the Add form goes. A commodity belongs in the file the ledger
  * keeps its commodities in, `files/commodities.beancount`, when the ledger reads it; it used
  * to land in the transactions file with everything else.
  */
@@ -45,7 +45,7 @@ internal fun directiveTarget(
     return entryTarget(app, projectId, ledger)
 }
 
-/** The two writes the entry form makes, and the only ones that close it (B77). */
+/** The two writes the entry form makes, and the only ones that close it. */
 internal const val ENTRY_OPERATION = "quick-add"
 internal const val DIRECTIVE_OPERATION = "add-directive"
 private val ENTRY_OPERATIONS = setOf(ENTRY_OPERATION, DIRECTIVE_OPERATION)
@@ -61,7 +61,7 @@ internal fun MainActivity.saveText(
     target: java.io.File = app.workspace.projectDir(projectId).resolve("files/transactions.beancount"),
     /**
      * Whether to read the ledger again afterwards. False only for a write that another write
-     * follows at once (B93): the document directive written just before its entry. Reading
+     * follows at once: the document directive written just before its entry. Reading
      * the whole ledger between the two made a save with a receipt wait for a parse whose
      * result was out of date the moment the entry landed.
      */
@@ -69,7 +69,7 @@ internal fun MainActivity.saveText(
     onResult: (String) -> Unit = { saveMessage = it },
 ) {
     val ledgerPath = app.workspace.mainFile(projectId).absolutePath
-    // In the application's scope and kept alive until written (B93): tapping Save and then
+    // In the application's scope and kept alive until written: tapping Save and then
     // leaving the app, or turning the screen off, must still save the entry.
     app.workScope.launch {
         saveMessage = "Saving…"
@@ -107,7 +107,7 @@ internal fun MainActivity.saveText(
 }
 
 
-/** The first two errors by name, so a refusal says what is wrong and not only how many (B96). */
+/** The first two errors by name, so a refusal says what is wrong and not only how many. */
 private fun named(errors: List<String>): String {
     val shown = errors.map { it.trim() }.filter { it.isNotEmpty() }.take(2)
     if (shown.isEmpty()) return ""

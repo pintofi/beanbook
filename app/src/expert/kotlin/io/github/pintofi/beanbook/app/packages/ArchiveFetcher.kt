@@ -5,7 +5,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Downloads a catalogue plugin's pinned archive (B82). Expert edition only.
+ * Downloads a catalogue plugin's pinned archive. Expert edition only.
  *
  * Only from the two hosts the catalogue pins to -- PyPI's file host and GitHub's archive host --
  * only over HTTPS, and never more than [MAX_BYTES]. The caller checks the SHA-256 against the
@@ -20,6 +20,10 @@ class ArchiveFetcher {
         }
         val connection = address.openConnection() as HttpURLConnection
         try {
+            // Not followed: the host check above is made on the address we were given, and a
+            // redirect would move the download to a host nobody checked. The catalogue pins
+            // direct file URLs, so a redirect from either host is an error, not a route.
+            connection.instanceFollowRedirects = false
             connection.connectTimeout = 20_000
             connection.readTimeout = 60_000
             val code = connection.responseCode

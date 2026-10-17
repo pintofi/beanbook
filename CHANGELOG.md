@@ -21,6 +21,13 @@ All notable changes to Beanbook. The format follows [Keep a Changelog](https://k
 - Displayed amounts round half to even, as Beancount and Fava do.
 - A remote server address typed with capital letters no longer shows blank pages, and a server under a path prefix such as `/fava` is found correctly.
 - A remote server that answers oddly (a hostile ledger name, an endless reply) ends in an error message instead of a crash or a stall.
+- A link in a report opens in the browser only after you confirm it, and only if it is a web address.
+- Deleting or editing an entry checks that the file still holds the entry you were looking at, instead of acting on a line number from an older list.
+- Text typed in the file editor while a save is running is no longer lost.
+- The report view recovers when Android closes it to free memory, instead of taking the app down.
+- A plugin picked from a file manager cannot be named so that it lands outside the install folder.
+- A failed backup says what it left behind and removes the unfinished file; copies of backups, imports and script output no longer stay in the app's cache.
+- Saving a remote password recovers from an unusable Keystore key and reports a failure instead of crashing.
 
 ## [1.0.0] - 2026-10-15
 

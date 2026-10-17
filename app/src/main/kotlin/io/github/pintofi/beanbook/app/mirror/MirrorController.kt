@@ -64,11 +64,11 @@ class MirrorController(
 
     private val historyStore = MirrorHistory(context.filesDir.resolve("state"))
 
-    /** The last ten things the mirror did for the open project, newest first (B102). */
+    /** The last ten things the mirror did for the open project, newest first. */
     val history: StateFlow<List<MirrorHistoryEntry>> = historyStore.entries
 
     private val _status = MutableStateFlow<MirrorStatus>(MirrorStatus.Off)
-    /** What mirroring is doing right now, for a screen that says so at all times (B65). */
+    /** What mirroring is doing right now, for a screen that says so at all times. */
     val status: StateFlow<MirrorStatus> = _status.asStateFlow()
 
     init {
@@ -79,7 +79,7 @@ class MirrorController(
 
     /**
      * Points the mirror at [projectId]'s own folder and forgets the previous project's
-     * conflicts, which belong to files that are no longer open (B96).
+     * conflicts, which belong to files that are no longer open.
      */
     fun useProject(projectId: String) {
         settings.use(projectId)
@@ -123,7 +123,7 @@ class MirrorController(
 
     fun sync(projectId: String, announce: Boolean = true) {
         // A pass for a project the settings are not answering for would copy it into
-        // another project's folder (B96).
+        // another project's folder.
         if (settings.project != projectId) return
         val folder = folderUri ?: run {
             if (announce) _message.value = "Choose a folder to mirror into first."
@@ -171,14 +171,7 @@ class MirrorController(
         }
     }
 
-    /**
-     * What happened, counted from what committed rather than from what was planned.
-     *
-     * A pass used to report `plan.automatic.size` files synced whatever the writes did. A
-     * file the write protocol refused or rolled back was still counted, so "3 file(s) synced"
-     * could mean none of them were.
-     */
-    /** File names and what happened to them, for the Mirror page's recent activity (B102). */
+    /** File names and what happened to them, for the Mirror page's recent activity. */
     private fun recordHistory(result: MirrorPassOutcome) {
         val now = System.currentTimeMillis()
         val added = buildList {
@@ -192,6 +185,13 @@ class MirrorController(
         historyStore.record(added)
     }
 
+    /**
+     * What happened, counted from what committed rather than from what was planned.
+     *
+     * A pass used to report `plan.automatic.size` files synced whatever the writes did. A
+     * file the write protocol refused or rolled back was still counted, so "3 file(s) synced"
+     * could mean none of them were.
+     */
     private fun describe(result: MirrorPassOutcome): String {
         val plan = result.plan
         val landed = plan.pushes.size + result.committed.size
@@ -319,13 +319,18 @@ class MirrorController(
         // A conflict copy is a new file inside the user's project, so it goes through the
         // same protocol as any other. Its name is not a Beancount extension, so it is not
         // parsed or included, but it is still theirs and still has to be recoverable.
-        writer.replaceBytes(
+        val result = writer.replaceBytes(
             projectId = projectId,
             file = copy,
             expectedSha = "",
             newContent = read(external),
             operation = "mirror-conflict-copy",
         )
+        // The history says "both versions kept", so it has to be true. Nothing is overwritten
+        // while the conflict stands, but a copy that was refused is worth a line in the log.
+        if (result !is WriteResult.Committed) {
+            Log.w(TAG, "conflict copy of ${conflict.path} not kept: ${describeFailure(result)}")
+        }
     }
 
     /** Resolves one conflict by keeping this device's version and copying it out. */
@@ -356,7 +361,7 @@ class MirrorController(
             _message.value = "Choose the mirror folder again, then resolve \"$path\"."
             return
         }
-        // Said at once (B89): the choice waits for any sync pass already running, and a button
+        // Said at once: the choice waits for any sync pass already running, and a button
         // that answers only when that pass ends looked as if it had not been pressed.
         _message.value = "Resolving \"$path\"…"
         scope.launch {
@@ -419,7 +424,19 @@ class MirrorController(
         }
     }
 
-    private fun hash(document: DocumentFile): String = BackupArchive.sha256(read(document))
+    /** Streamed, so a large PDF is hashed without being held in memory whole. */
+    private fun hash(document: DocumentFile): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        context.contentResolver.openInputStream(document.uri)?.use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        } ?: error("could not read ${document.name}")
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
 
     private fun read(document: DocumentFile): ByteArray =
         context.contentResolver.openInputStream(document.uri)?.use { it.readBytes() }
@@ -441,14 +458,13 @@ class MirrorController(
             ?: error("the provider refused to write \"$path\"")
     }
 
-    /** Local writes go through a temporary file, like every other durable write here. */
     private companion object {
         const val TAG = "MirrorController"
     }
 }
 
 /**
- * Whether mirroring is on, and where it points, **for one project** (B96).
+ * Whether mirroring is on, and where it points, **for one project**.
  *
  * It used to be one folder for the whole app, so opening or creating a second project made
  * the mirror reconcile that project against the first one's folder: a new project pulled in
@@ -516,7 +532,7 @@ class MirrorSettings(private val stateDir: File) {
 }
 
 /**
- * What mirroring is doing, at every moment (B65).
+ * What mirroring is doing, at every moment.
  *
  * The screen used to say nothing at all between passes: a message appeared after one and
  * stayed until something replaced it, so "3 file(s) synced" was on screen for a folder that

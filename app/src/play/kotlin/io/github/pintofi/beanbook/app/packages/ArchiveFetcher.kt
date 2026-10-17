@@ -1,7 +1,7 @@
 package io.github.pintofi.beanbook.app.packages
 
 /**
- * Google Play edition: catalogue plugins are listed, never downloaded (B82).
+ * Google Play edition: catalogue plugins are listed, never downloaded.
  *
  * Retrieving executable code from anywhere other than the store is what the Device and Network
  * Abuse policy prohibits (docs/distribution.md 2.1, D1). The Play edition shows the catalogue

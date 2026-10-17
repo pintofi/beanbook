@@ -9,7 +9,7 @@ import io.github.pintofi.beanbook.core.data.WidgetCache
 import io.github.pintofi.beanbook.core.data.WidgetSnapshot
 
 /**
- * The rows of the multi-account balance widget, so the list can scroll (B93).
+ * The rows of the multi-account balance widget, so the list can scroll.
  *
  * Bound by the launcher when it draws the list, never by the app. Like every other widget
  * path it reads the cache the app writes after a successful parse and nothing else: no engine,
@@ -43,20 +43,25 @@ class WidgetRowsService : RemoteViewsService() {
 
         override fun getCount(): Int = accounts.size
 
-        override fun getViewAt(position: Int): RemoteViews =
-            WidgetRenderer.row(
+        override fun getViewAt(position: Int): RemoteViews {
+            // Read once: the launcher can ask for a row while the list is being reread.
+            val shown = accounts
+            val account = shown.getOrNull(position)
+                ?: return RemoteViews(context.packageName, io.github.pintofi.beanbook.app.R.layout.widget_balance_row)
+            return WidgetRenderer.row(
                 context,
-                accounts[position],
+                account,
                 snapshot,
                 redacted,
                 palette ?: WidgetPalette.of(context),
             )
+        }
 
         override fun getLoadingView(): RemoteViews? = null
 
         override fun getViewTypeCount(): Int = 1
 
-        override fun getItemId(position: Int): Long = accounts[position].hashCode().toLong()
+        override fun getItemId(position: Int): Long = accounts.getOrNull(position).hashCode().toLong()
 
         override fun hasStableIds(): Boolean = true
     }
