@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * SPEC §6: a report renders in under two seconds once the engine is ready.
+ * The budget: a report renders in under two seconds once the engine is ready.
  *
  * Never measured. It is the one budget that cannot be inferred from a parse time, because it
  * is Fava building a page and a WebView laying it out — the ledger is already loaded before

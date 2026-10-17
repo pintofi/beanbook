@@ -8,7 +8,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The plugin overlays are really in the APK (B101).
+ * The plugin overlays are really in the APK.
  *
  * Android's asset packaging drops directories whose names start with an underscore, and the
  * fava-portfolio-returns overlay lives under `_vendor`: the SciPy-free `returns.py` was

@@ -24,7 +24,7 @@ import org.junit.runner.RunWith
 
 /**
  * The crop editor shows a sampled photograph, off the main thread, and keeps corners in the
- * full photograph's pixels (B83).
+ * full photograph's pixels.
  */
 @RunWith(AndroidJUnit4::class)
 class CropPageTest {
@@ -69,7 +69,7 @@ class CropPageTest {
             assertEquals(expected.y, actual.y, 2f)
         }
     }
-    /** Moving a second corner keeps the first where it was put (B85). */
+    /** Moving a second corner keeps the first where it was put. */
     @Test fun movingOneCornerThenAnotherKeepsBoth() {
         val file = File(dir, "page.jpg")
         val bitmap = Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888)

@@ -1,4 +1,4 @@
-"""A ledger's own display rules, reported rather than guessed (B59).
+"""A ledger's own display rules, reported rather than guessed.
 
 Run from the repository root:
 

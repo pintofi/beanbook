@@ -315,7 +315,7 @@ object WidgetRenderer {
  * A figure a widget can show whole, in its one-figure box or a balance row.
  *
  * In Units a net worth is one line per commodity, and the widget's two lines showed whichever
- * of them landed in the middle of the box -- "80.00 AIRSF-E" under "Net worth", with the
+ * of them landed in the middle of the box -- "80.00 EGF-E" under "Net worth", with the
  * operating currency cut off above it. Two lines or fewer are shown as they are; more become
  * the first line and how many were left out, the same "+N more" Home uses. Nothing is
  * reformatted: the lines are the ledger's own.

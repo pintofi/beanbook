@@ -6,7 +6,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 /**
- * Refiling a document under a different account (B18).
+ * Refiling a document under a different account.
  *
  * The account is the only token that may move. Everything else on the line — the date, the
  * spacing, the quoted path, a trailing comment — and every other line in the file is the

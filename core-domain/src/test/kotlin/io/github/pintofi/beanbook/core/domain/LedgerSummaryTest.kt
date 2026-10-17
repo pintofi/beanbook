@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
- * The three figures the home surface and the widgets both show (B10).
+ * The three figures the home surface and the widgets both show.
  *
  * One definition, in one place. `WidgetCache` computed these privately, and its own comment
  * warned that formatting them somewhere else is "how two places start disagreeing about what

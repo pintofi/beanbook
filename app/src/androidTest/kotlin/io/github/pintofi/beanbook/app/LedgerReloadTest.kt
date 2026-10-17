@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Reloading an open ledger picks up a change made outside the app (B26).
+ * Reloading an open ledger picks up a change made outside the app.
  *
  * This is the whole point of pull-to-refresh here, and it is worth an end-to-end test rather
  * than a test of the gesture: the app has no file watcher, so a mirror pull, a restore, or an
@@ -91,7 +91,7 @@ class LedgerReloadTest {
 
     private companion object {
         // The engine may be cold on the first case, and a cold start is seconds not
-        // milliseconds (SPEC 6).
+        // milliseconds.
         const val TIMEOUT = 90_000L
     }
 }

@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** Invariant 1 (SPEC.md 5): decimal only, never binary floating point. */
+/** Invariant 1: decimal only, never binary floating point. */
 class AmountTest {
 
     @Test

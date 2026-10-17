@@ -123,7 +123,7 @@ class FavaThemeTest {
     @Test fun favaAdoptsTheAppsColourForItsOwnHeaderVariable() {
         val header = computed(dark = false, property = "--header-background")
 
-        // Fava's own blue is #0065a3. Since the redesign (B98) the header is the app's top
+        // Fava's own blue is #0065a3. Since the redesign the header is the app's top
         // band, so it takes the app's light band colour, not a primary.
         assertEquals("#edf1ec", header)
     }
@@ -136,7 +136,7 @@ class FavaThemeTest {
     @Test fun theDarkPaletteIsUsedWhenTheAppIsDark() {
         val header = computed(dark = true, property = "--header-background")
 
-        // The app's dark band (B98), not Fava's #004f80 and not the light #edf1ec — which
+        // The app's dark band, not Fava's #004f80 and not the light #edf1ec — which
         // together prove both that the override applied and that it picked the right scheme.
         assertEquals("#101615", header)
     }

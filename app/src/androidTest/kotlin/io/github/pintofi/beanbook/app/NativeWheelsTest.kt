@@ -20,9 +20,9 @@ import org.junit.runner.RunWith
  * a prebuilt wheel from Chaquopy.
  *
  * That makes them the thing that quietly breaks when the build is changed — a new NDK, a
- * different backend version, a remapped path. Until M14 nothing on a device touched
+ * different backend version, a remapped path. Until this test existed nothing on a device touched
  * `watchfiles`' native watcher at all: the spike that first proved it works
- * (docs/feasibility/s3-fava-closure.md) is disposable code that no longer runs.
+ * is disposable code that no longer runs.
  *
  * These tests import the extension modules and use them, rather than asserting that a file
  * exists. A wheel can be present, correctly named, and still fail at `import`.

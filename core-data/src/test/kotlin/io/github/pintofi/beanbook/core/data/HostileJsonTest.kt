@@ -9,7 +9,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Malformed JSON is rejected, not thrown out of (R9).
+ * Malformed JSON is rejected, not thrown out of.
  *
  * `Json.parse` reads `plugins/installed.json`, which arrives inside an imported project, and
  * `PluginStore.list` calls it without a `runCatching`. A truncated `\u` escape ran

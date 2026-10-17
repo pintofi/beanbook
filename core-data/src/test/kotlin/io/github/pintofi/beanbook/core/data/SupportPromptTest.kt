@@ -8,7 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** The donation notice comes after a week of use, and only once (B81). */
+/** The donation notice comes after a week of use, and only once. */
 class SupportPromptTest {
 
     private val dir = Files.createTempDirectory("support").toFile()

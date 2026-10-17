@@ -26,7 +26,7 @@ import org.junit.runner.RunWith
 import org.junit.Assert.assertTrue
 
 /**
- * Fava's editor renders, and `100vh` means something inside the app's WebView (B47).
+ * Fava's editor renders, and `100vh` means something inside the app's WebView.
  *
  * The editor came up blank while its whole document was present in the DOM, which is why
  * this measures **layout** rather than content: `AndroidView` measures its view once with an

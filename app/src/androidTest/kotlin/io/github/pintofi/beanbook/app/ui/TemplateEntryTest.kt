@@ -71,7 +71,7 @@ class TemplateEntryTest {
             .assertTextContains("2026-09-01 * \"Landlord\" \"Monthly rent\"", substring = true)
         preview().assertTextContains("750.00 EUR", substring = true)
 
-        // On the sticky save bar since B98: always on screen, and outside the scroll.
+        // On the sticky save bar: always on screen, and outside the scroll.
         compose.onNodeWithText("Save entry").assertIsEnabled()
         compose.onNodeWithText("Save entry").performClick()
 
@@ -95,7 +95,7 @@ class TemplateEntryTest {
         var captured: EntryTemplate? = null
         show(onSaveTemplate = { captured = it })
 
-        // The form no longer preselects accounts (B77), so they are typed, the way someone
+        // The form no longer preselects accounts, so they are typed, the way someone
         // building a template would pick them.
         compose.onNodeWithText("Payee").performTextInput("Landlord")
         compose.onNodeWithContentDescription("Account for posting 1").performTextInput("Expenses:Rent")
@@ -133,7 +133,7 @@ class TemplateEntryTest {
         compose.onNodeWithText("Template name").performTextInput("Broken")
 
         // The same wording appears on the form behind the dialog, so both are expected.
-        // Case-blind: the save bar sets the same check as a sentence (B98).
+        // Case-blind: the save bar sets the same check as a sentence.
         compose.onAllNodesWithText("a transaction needs at least two postings", substring = true, ignoreCase = true)
             .assertCountEquals(2)
         compose.onNodeWithText("Save template").assertIsNotEnabled()

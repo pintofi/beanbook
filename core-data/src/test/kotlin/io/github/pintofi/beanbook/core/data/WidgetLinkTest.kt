@@ -63,7 +63,7 @@ class WidgetLinkTest {
         assertNull(WidgetLink.resolve("home", "ADD", knownProjects = emptyList(), activeProject = null))
     }
 
-    /** Home is a surface a widget may ask for: net worth's own figure lives there (B54). */
+    /** Home is a surface a widget may ask for: net worth's own figure lives there. */
     @Test fun homeIsAnAllowedSurface() {
         val target = WidgetLink.resolve(
             requestedProject = "home",

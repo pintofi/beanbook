@@ -17,14 +17,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The script runner, from the app's side (N10).
+ * The script runner, from the app's side.
  *
  * The engine's own tests cover `run_script`; these cover the part that did not exist — that
  * the app can actually reach it, that output comes back, and that a script which will not
  * stop is reported honestly rather than silently abandoned.
  *
  * Everything goes through the `:engine` process, so this also exercises the AIDL path that
- * the R9 split makes the only route to Python.
+ * the engine process split makes the only route to Python.
  */
 @RunWith(AndroidJUnit4::class)
 class ScriptRunnerTest {

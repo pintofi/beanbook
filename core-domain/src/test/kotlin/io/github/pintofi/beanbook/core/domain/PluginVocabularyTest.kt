@@ -4,7 +4,7 @@ import java.math.BigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** What the Add forms offer follows the plugins a ledger turns on (B95). */
+/** What the Add forms offer follows the plugins a ledger turns on. */
 class PluginVocabularyTest {
 
     private fun ledger(vararg plugins: String) = LedgerSnapshot(

@@ -15,7 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * A holding is units and the lot they belong to (B63), on the device that has to show it.
+ * A holding is units and the lot they belong to, on the device that has to show it.
  *
  * The ledger below is the conversion a user sent: a sale out of a lot named by a label, at a
  * price, with the proceeds worked out by arithmetic in the file and one leg left for
@@ -29,9 +29,9 @@ class LotAndPriceTest {
     private val reader = LedgerReader(context)
 
     private val equity =
-        "Assets:Non-Current:Investments:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund"
+        "Assets:Non-Current:Investments:Mutual-Funds:Equity:Example-Index-Fund"
     private val debt =
-        "Assets:Non-Current:Investments:Mutual-Funds:Debt:Al-Ameen-Islamic-Cash-Fund"
+        "Assets:Non-Current:Investments:Mutual-Funds:Debt:Example-Cash-Fund"
 
     private fun ledger(): String {
         val dir = File(context.cacheDir, "lots").apply {
@@ -45,18 +45,18 @@ class LotAndPriceTest {
 
             2020-01-01 open $equity
             2020-01-01 open $debt
-            2020-01-01 open Income:Capital-Gains:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund:Sale
-            2020-01-01 open Income:Capital-Gains:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund:Cost
+            2020-01-01 open Income:Capital-Gains:Mutual-Funds:Equity:Example-Index-Fund:Sale
+            2020-01-01 open Income:Capital-Gains:Mutual-Funds:Equity:Example-Index-Fund:Cost
             2020-01-01 open Assets:Bank
 
             2025-01-01 * "UBL Funds" "Purchase"
-              $equity  151.88 ASSF {"avcoassf", 400.00 PKR}
+              $equity  150.00 EIF {"lot-a", 400.00 PKR}
               Assets:Bank
 
-            2026-09-03 * "UBL Funds" "Coversion from ASSF to AICF"
-              $equity  -151.88 ASSF {"avcoassf"} @ 483.0500 PKR
-              Income:Capital-Gains:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund:Sale  -151.88*483.0500 PKR
-              Income:Capital-Gains:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund:Cost
+            2026-09-03 * "UBL Funds" "Coversion from EIF to AICF"
+              $equity  -150.00 EIF {"lot-a"} @ 120.0500 PKR
+              Income:Capital-Gains:Mutual-Funds:Equity:Example-Index-Fund:Sale  -150.00*120.0500 PKR
+              Income:Capital-Gains:Mutual-Funds:Equity:Example-Index-Fund:Cost
               $debt  710.47 AICF {103.2642 PKR, 2026-09-03}
             """.trimIndent(),
         )
@@ -77,16 +77,16 @@ class LotAndPriceTest {
         // Newest first, as the journal is shown.
         val sale = snapshot.journal.first().postings.first()
 
-        assertEquals(BigDecimal("-151.88"), sale.amount?.number)
-        assertEquals("ASSF", sale.amount?.currency)
+        assertEquals(BigDecimal("-150.00"), sale.amount?.number)
+        assertEquals("EIF", sale.amount?.currency)
         val cost = sale.cost
         assertNotNull("the sale carries no cost", cost)
         requireNotNull(cost)
         assertEquals(BigDecimal("400.00"), cost.amount.number)
         assertEquals("PKR", cost.amount.currency)
         assertEquals("2025-01-01", cost.date)
-        assertEquals("avcoassf", cost.label)
-        assertEquals(BigDecimal("483.0500"), sale.price?.number)
+        assertEquals("lot-a", cost.label)
+        assertEquals(BigDecimal("120.0500"), sale.price?.number)
     }
 
     @Test
@@ -106,9 +106,9 @@ class LotAndPriceTest {
         val snapshot = runBlocking { reader.read(ledger()) }.getOrThrow()
         val postings = snapshot.journal.first().postings
 
-        // Written in the file as `-151.88*483.0500 PKR`, and as the empty line under it.
-        assertEquals(BigDecimal("-73365.634000"), postings[1].amount?.number)
-        assertEquals(BigDecimal("60751.517826"), postings[2].amount?.number)
+        // Written in the file as `-150.00*120.0500 PKR`, and as the empty line under it.
+        assertEquals(BigDecimal("-18007.500000"), postings[1].amount?.number)
+        assertEquals(BigDecimal("4641.383826"), postings[2].amount?.number)
         assertNull(postings[2].cost)
     }
 
@@ -134,7 +134,7 @@ class LotAndPriceTest {
         // have refused to write it.
         assertEquals(clone.validate().joinToString { it.describe() }, 0, clone.validate().size)
         val text = clone.render()
-        assertTrue(text, text.contains("{400.00 PKR, 2025-01-01, \"avcoassf\"} @ 483.0500 PKR"))
+        assertTrue(text, text.contains("{400.00 PKR, 2025-01-01, \"lot-a\"} @ 120.0500 PKR"))
         assertTrue(text, text.contains("{103.2642 PKR, 2026-09-03}"))
     }
 }

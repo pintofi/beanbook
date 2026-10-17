@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * A batch of wheels that fails part-way leaves nothing behind (R7).
+ * A batch of wheels that fails part-way leaves nothing behind.
  *
  * `install` unpacked each wheel straight into the install root. A digest mismatch at wheel
  * *n* returned a failure with wheels 1..n-1 already unpacked and nothing deleting them, so

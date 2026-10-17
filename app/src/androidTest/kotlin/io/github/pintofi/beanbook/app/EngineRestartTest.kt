@@ -13,7 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Restarting the engine ends the interpreter, rather than just the server (B49).
+ * Restarting the engine ends the interpreter, rather than just the server.
  *
  * The distinction is the whole feature. Python answers an import once and caches the answer,
  * so a package fetched after the process started is invisible to it and an upgraded one keeps

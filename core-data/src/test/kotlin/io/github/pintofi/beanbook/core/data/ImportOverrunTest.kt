@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 
 /**
- * An archive that lies about how big it is (R3).
+ * An archive that lies about how big it is.
  *
  * Every size limit in `plan` is read from the container's own metadata — a zip central
  * directory's `size` and `compressedSize`, which the archive itself supplies and an attacker

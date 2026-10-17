@@ -354,7 +354,7 @@ private fun RootHeader(
 
 /**
  * A label and its figures: side by side with a gap between them, or -- at large text, where
- * the two crowded each other into "Opening-Balances61,480.23 PKR" (device audit 2026-10-10) --
+ * the two crowded each other into "Opening-Balances51,234.56 PKR" (device audit 2026-10-10) --
  * the figures on their own line under the label, still against the end edge.
  */
 @Composable

@@ -4,7 +4,7 @@ import kotlin.io.path.createTempDirectory
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** The Mirror page shows the last ten things it did, per project (B102). */
+/** The Mirror page shows the last ten things it did, per project. */
 class MirrorHistoryTest {
 
     private fun entry(at: Long, path: String) = MirrorHistoryEntry(at, MirrorHistoryEntry.Kind.SENT, path)

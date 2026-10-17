@@ -8,7 +8,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The header's health line and rule, now that report extensions count (B97, B98). */
+/** The header's health line and rule, now that report extensions count. */
 class LedgerHealthTest {
 
     private fun ledger(errors: Int = 0, extensions: Map<String, String?> = emptyMap()) = LedgerSnapshot(

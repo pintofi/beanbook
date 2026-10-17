@@ -205,7 +205,7 @@ class WidgetCache(stateDir: File) {
                 // owe as a negative balance. Negating it made debt increase net worth, which
                 // is the most cheerful possible way to be wrong about someone's finances.
                 // In Home's headline order: operating currencies first, then the largest.
-                // Alphabetical put "80.00 AIRSF-E" above the rupees, and a widget with room for
+                // Alphabetical put "80.00 EGF-E" above the rupees, and a widget with room for
                 // one line showed that line.
                 netWorth = headlineOrder(ledger, valuation) ?: summary.netWorth,
                 periodIncome = summary.income,

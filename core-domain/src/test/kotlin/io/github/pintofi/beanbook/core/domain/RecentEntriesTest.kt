@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The "Recent entries" list on the home screen (D9).
+ * The "Recent entries" list on the home screen.
  *
  * Found by looking at the app with a real ledger in it: the list was headed "Recent entries",
  * captioned "showing the last 5", and showed the five *oldest*. Every layer was individually

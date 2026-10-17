@@ -1,4 +1,4 @@
-"""Deleting an entry takes the blank line that set it apart (B99)."""
+"""Deleting an entry takes the blank line that set it apart."""
 
 import json
 import sys

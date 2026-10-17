@@ -22,7 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * An error is marked on the entry it is about (B64), in date order, with a filter (B77).
+ * An error is marked on the entry it is about, in date order, with a filter.
  *
  * The ledger's errors were a list at the top of the screen naming a file and a line. The
  * entry they were about sat in date order among thousands of entries that were fine, looking
@@ -30,7 +30,7 @@ import org.junit.runner.RunWith
  * journal's own order whenever the file had a problem, so now they stay where they belong,
  * marked, and a filter shows only them.
  *
- * The lot on the last posting is here for B63: a journal row that shows units alone cannot
+ * The lot on the last posting is here because a journal row that shows units alone cannot
  * tell two lots of the same fund apart.
  */
 @RunWith(AndroidJUnit4::class)
@@ -69,10 +69,10 @@ class JournalErrorMarkingTest {
                 "Bought a fund",
                 line = 10,
                 posting = JournalPosting(
-                    account = "Assets:Investments:ASSF",
-                    amount = Amount(BigDecimal("151.88"), "ASSF"),
-                    cost = Cost(Amount(BigDecimal("400.00"), "PKR"), "2025-01-01", "avcoassf"),
-                    price = Amount(BigDecimal("483.0500"), "PKR"),
+                    account = "Assets:Investments:EIF",
+                    amount = Amount(BigDecimal("150.00"), "EIF"),
+                    cost = Cost(Amount(BigDecimal("400.00"), "PKR"), "2025-01-01", "lot-a"),
+                    price = Amount(BigDecimal("120.0500"), "PKR"),
                 ),
             ),
         ),
@@ -159,7 +159,7 @@ class JournalErrorMarkingTest {
     @Test fun aPostingShowsWhatItWasHeldAndExchangedAt() {
         compose.setContent { MaterialTheme { JournalScreen(snapshot(emptyList())) } }
 
-        compose.onNodeWithText("{400.00 PKR, 2025-01-01, \"avcoassf\"} @ 483.0500 PKR")
+        compose.onNodeWithText("{400.00 PKR, 2025-01-01, \"lot-a\"} @ 120.0500 PKR")
             .assertIsDisplayed()
     }
 

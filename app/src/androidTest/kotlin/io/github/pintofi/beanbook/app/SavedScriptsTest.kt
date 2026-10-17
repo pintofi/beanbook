@@ -12,7 +12,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Scripts survive the launch that picked them (B49).
+ * Scripts survive the launch that picked them.
  *
  * A SAF grant is good for this process and this launch, so before this a script run weekly
  * had to be found in the picker weekly, and the runner deleted its copy the moment the run

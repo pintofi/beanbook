@@ -3,7 +3,7 @@ package io.github.pintofi.beanbook.app.ui
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** What the Plugins screen says about a catalogue plugin after a load (B97 data, B98 screen). */
+/** What the Plugins screen says about a catalogue plugin after a load. */
 class PluginStatusTest {
 
     private fun status(

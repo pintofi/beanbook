@@ -282,7 +282,7 @@ private fun FiguresCard(
         // and a word as two unrelated things.
         //
         // Side by side while a figure fits beside another; one above the other at large text,
-        // where two tiles in one row clipped "2,624,167.69 PKR" to "2,624,167." (audit).
+        // where two tiles in one row clipped "2,345,678.90 PKR" to "2,345,678." (audit).
         val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
         val income: @Composable (Modifier) -> Unit = { tile ->
             SupportingFigure(

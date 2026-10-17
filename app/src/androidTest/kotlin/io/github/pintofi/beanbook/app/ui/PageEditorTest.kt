@@ -27,7 +27,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The page editor: one page at a time, with the things you do to a page (B58).
+ * The page editor: one page at a time, with the things you do to a page.
  *
  * The arrangement is OSS-DocumentScanner's — swipe the batch, act on what is in front of you
  * — in this app's own controls. What is tested is that each control reports the page it is
@@ -161,7 +161,7 @@ class PageEditorTest {
         compose.onNodeWithText("Page 1 of 2").assertIsDisplayed()
     }
 
-    /** Swiping turns pages, stops at either end, and the counter follows (B86). */
+    /** Swiping turns pages, stops at either end, and the counter follows. */
     @Test fun swipingTurnsPagesAndStopsAtTheEnds() {
         compose.setContent {
             MaterialTheme {

@@ -14,7 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * SPEC.md Q8, answered on a device: **can the Java/Android bridge be withheld from user
+ * An open question, answered on a device: **can the Java/Android bridge be withheld from user
  * plugin code reliably enough to be a build-verifiable property?**
  *
  * The desktop tests cannot answer it. There is no Chaquopy there, so `import java` fails

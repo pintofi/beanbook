@@ -8,7 +8,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * What a home screen can say that a journal cannot (B71).
+ * What a home screen can say that a journal cannot.
  *
  * The Journal lists entries; these are the totals, the comparison and the to-do list that a
  * person would otherwise work out by eye. The arithmetic lives here, in pure Kotlin, because

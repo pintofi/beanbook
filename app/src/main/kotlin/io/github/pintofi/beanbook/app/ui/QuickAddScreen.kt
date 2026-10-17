@@ -961,7 +961,7 @@ private fun PostingEditor(
                     value = row.details,
                     onValueChange = { row.details = it },
                     label = { Text("Commodity details") },
-                    placeholder = { Text("{400.00 PKR} @ 483.05 PKR") },
+                    placeholder = { Text("{400.00 PKR} @ 120.05 PKR") },
                     supportingText = { Text("Written after the amount, as the file writes a lot or price") },
                     singleLine = true,
                     textStyle = LedgerType.source,

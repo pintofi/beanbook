@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** PyPI's own Android wheels are taken when they fit this interpreter and device (B82). No network. */
+/** PyPI's own Android wheels are taken when they fit this interpreter and device. No network. */
 @RunWith(AndroidJUnit4::class)
 class AndroidWheelTagTest {
 

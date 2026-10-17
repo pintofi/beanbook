@@ -6,9 +6,9 @@ import java.net.URLDecoder
  * A folder the person chose, in the words they would use for it.
  *
  * The Mirror page printed the grant itself --
- * `content://com.android.externalstorage.documents/tree/primary%3ADocuments%2FHamza%2FBeanbook`
+ * `content://com.android.externalstorage.documents/tree/primary%3ADocuments%2FSam%2FBeanbook`
  * -- which is Android's handle for the folder, not its name (device audit 2026-10-10). This
- * turns it back into "Documents/Hamza/Beanbook". Display only: the grant is what the app keeps
+ * turns it back into "Documents/Sam/Beanbook". Display only: the grant is what the app keeps
  * and uses, and nothing here is ever written back.
  *
  * Pure string work, so it is tested on the JVM: the tree id after `/tree/` is decoded, the

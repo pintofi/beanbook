@@ -1,4 +1,4 @@
-"""The `document` directives a ledger declares (B18).
+"""The `document` directives a ledger declares.
 
 Run from the repository root, with an interpreter that has beancount:
 
@@ -81,7 +81,7 @@ class DocumentDirectiveTest(unittest.TestCase):
             self.assertTrue(Path(document["path"]).is_absolute(), document["path"])
 
     def test_a_transactions_document_metadata_is_not_a_directive(self):
-        # The transaction links receipt.pdf through metadata. That is the B17 convention and
+        # The transaction links receipt.pdf through metadata. That is Fava's convention and
         # a different thing: exactly one `document` directive names receipt.pdf.
         naming = [d for d in self.payload["documents"] if d["path"].endswith("receipt.pdf")]
         self.assertEqual(1, len(naming))
@@ -97,7 +97,7 @@ class DocumentDirectiveTest(unittest.TestCase):
             self.assertFalse(document["auto"], document["path"])
 
     def test_a_document_found_by_the_documents_option_is_marked_automatic(self):
-        """B92: the app has to tell a line somebody wrote from one the folder produced.
+        """the app has to tell a line somebody wrote from one the folder produced.
 
         Unlinking removes the written line. The automatic one comes back on the next load, so
         a screen that could not tell them apart went on saying "Filed under ..." about a

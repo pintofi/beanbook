@@ -7,7 +7,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * A ledger may call its five trees whatever it likes (B70).
+ * A ledger may call its five trees whatever it likes.
  *
  * `option "name_expenses" "Ausgaben"` is ordinary Beancount, and the app had the English five
  * written into six places: the Balances headings and their totals, the home figures, the

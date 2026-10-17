@@ -9,7 +9,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * A widget figure with more than one currency in it (B3).
+ * A widget figure with more than one currency in it.
  *
  * `format` joined every currency onto one line with two spaces between them, and the widget
  * renders that string into a single `TextView` a few centimetres wide. With one currency it
@@ -66,7 +66,7 @@ class MultiCurrencyWidgetTest {
 }
 
 /**
- * Which balance the balance widget shows (B1).
+ * Which balance the balance widget shows.
  *
  * It took `balances.entries.firstOrNull()`, an arbitrary entry of a map, and rendered the
  * figure with no account name — so the widget showed an unlabelled number that could change

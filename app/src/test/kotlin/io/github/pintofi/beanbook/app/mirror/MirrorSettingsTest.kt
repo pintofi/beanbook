@@ -8,7 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The mirror answers for one project at a time (B96). */
+/** The mirror answers for one project at a time. */
 class MirrorSettingsTest {
 
     private fun dir(): File = createTempDirectory("mirror").toFile()

@@ -24,7 +24,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Typing less (B53): a calendar on every date, the ledger's own words under every field that
+ * Typing less: a calendar on every date, the ledger's own words under every field that
  * is not an amount, and a search over the journal.
  */
 @RunWith(AndroidJUnit4::class)
@@ -106,7 +106,7 @@ class InputFieldsTest {
     }
 
     /**
-     * A chosen suggestion leaves the cursor after its last character (B77).
+     * A chosen suggestion leaves the cursor after its last character.
      *
      * The field held a plain string, so choosing "Expenses:Food:Coffee" after typing "coff"
      * kept the cursor at index 4 -- in the middle of the word the person had just finished.
@@ -136,7 +136,7 @@ class InputFieldsTest {
         compose.onAllNodesWithContentDescription("Use Expenses:Food:Coffee").assertCountEqualsZero()
     }
 
-    /** A tag cannot contain a space in Beancount, so a typed space never reaches the file (B77). */
+    /** A tag cannot contain a space in Beancount, so a typed space never reaches the file. */
     @Test fun aFieldCanRefuseCharactersAsTheyAreTyped() {
         var value = ""
         compose.setContent {
@@ -182,7 +182,7 @@ class InputFieldsTest {
             }
         }
 
-        // The period is in the filter sheet since B98, one tap from the summary control.
+        // The period is in the filter sheet, one tap from the summary control.
         compose.onNodeWithContentDescription("Filters: period, tags and links").performClick()
         compose.onNodeWithContentDescription("Pick From from a calendar").assertIsDisplayed()
         compose.onNodeWithContentDescription("Pick To from a calendar").assertIsDisplayed()

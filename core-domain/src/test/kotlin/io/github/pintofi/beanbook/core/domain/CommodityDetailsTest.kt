@@ -8,7 +8,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The part of a posting line after the units, typed as the file writes it (B77).
+ * The part of a posting line after the units, typed as the file writes it.
  *
  * The form used to take a cost and a price as four boxes, which could not say a total cost, a
  * total price, an acquisition date, a lot label, or an empty `{}`. It takes the text now, and
@@ -35,7 +35,7 @@ class CommodityDetailsTest {
     @Test fun `a date and a label in the lot are read past`() {
         val details = CommodityDetails.parse("{400.00 PKR, 2025-01-01, \"avco, assf\"}")
 
-        assertEquals(amount("4000.00", "PKR"), details.weight(amount("10", "ASSF")))
+        assertEquals(amount("4000.00", "PKR"), details.weight(amount("10", "EIF")))
     }
 
     @Test fun `cost wins over price, as it does in Beancount`() {

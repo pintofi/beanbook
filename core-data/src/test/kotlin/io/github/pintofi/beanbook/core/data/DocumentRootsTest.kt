@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** The documents folder a ledger names is there before Beancount looks for it (B79). */
+/** The documents folder a ledger names is there before Beancount looks for it. */
 class DocumentRootsTest {
 
     private val root: File = Files.createTempDirectory("roots").toFile()

@@ -167,7 +167,7 @@ class DocumentFlowTest {
     fun documents_in_a_folder_the_file_names_are_listed_too() {
         // `option "documents" "belege"` is where Beancount also looks, so a file there is
         // filed as far as the ledger is concerned. Listing only the app's own folder reported
-        // those as links to files that were not there (B70).
+        // those as links to files that were not there.
         val project = workspace.projectDir("p")
         File(project, "belege/2026").apply { mkdirs() }
         File(project, "belege/2026/statement.pdf").writeText("PDF")

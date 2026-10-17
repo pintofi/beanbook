@@ -13,7 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The screen shows the log as it is now, not as it was at start-up (B62).
+ * The screen shows the log as it is now, not as it was at start-up.
  *
  * The first build read the file where the screen's values were assembled, which is at app
  * start: the screen then reported a single "app started" line for the rest of the run, which

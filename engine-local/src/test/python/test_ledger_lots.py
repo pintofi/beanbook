@@ -1,4 +1,4 @@
-"""Held at cost, sold at a price: what a posting was worth, not just how much of it (B63).
+"""Held at cost, sold at a price: what a posting was worth, not just how much of it.
 
 Run from the repository root:
 
@@ -23,21 +23,21 @@ import ledger  # noqa: E402
 CONVERSION = """
 option "operating_currency" "PKR"
 
-2020-01-01 open Assets:Non-Current:Investments:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund
-2020-01-01 open Assets:Non-Current:Investments:Mutual-Funds:Debt:Al-Ameen-Islamic-Cash-Fund
-2020-01-01 open Income:Capital-Gains:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund:Sale
-2020-01-01 open Income:Capital-Gains:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund:Cost
+2020-01-01 open Assets:Non-Current:Investments:Mutual-Funds:Equity:Example-Index-Fund
+2020-01-01 open Assets:Non-Current:Investments:Mutual-Funds:Debt:Example-Cash-Fund
+2020-01-01 open Income:Capital-Gains:Mutual-Funds:Equity:Example-Index-Fund:Sale
+2020-01-01 open Income:Capital-Gains:Mutual-Funds:Equity:Example-Index-Fund:Cost
 2020-01-01 open Assets:Bank
 
 2025-01-01 * "UBL Funds" "Purchase"
-  Assets:Non-Current:Investments:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund  151.88 ASSF {"avcoassf", 400.00 PKR}
+  Assets:Non-Current:Investments:Mutual-Funds:Equity:Example-Index-Fund  150.00 EIF {"lot-a", 400.00 PKR}
   Assets:Bank
 
-2026-09-03 * "UBL Funds" "Coversion from ASSF to AICF"
-  Assets:Non-Current:Investments:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund  -151.88 ASSF {"avcoassf"} @ 483.0500 PKR
-  Income:Capital-Gains:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund:Sale  -151.88*483.0500 PKR
-  Income:Capital-Gains:Mutual-Funds:Equity:Al-Ameen-Shariah-Stock-Fund:Cost
-  Assets:Non-Current:Investments:Mutual-Funds:Debt:Al-Ameen-Islamic-Cash-Fund  710.47 AICF {103.2642 PKR, 2026-09-03}
+2026-09-03 * "UBL Funds" "Coversion from EIF to AICF"
+  Assets:Non-Current:Investments:Mutual-Funds:Equity:Example-Index-Fund  -150.00 EIF {"lot-a"} @ 120.0500 PKR
+  Income:Capital-Gains:Mutual-Funds:Equity:Example-Index-Fund:Sale  -150.00*120.0500 PKR
+  Income:Capital-Gains:Mutual-Funds:Equity:Example-Index-Fund:Cost
+  Assets:Non-Current:Investments:Mutual-Funds:Debt:Example-Cash-Fund  710.47 AICF {103.2642 PKR, 2026-09-03}
 """
 
 TOTAL_PRICE = """
@@ -65,15 +65,15 @@ class PostingLotsTest(unittest.TestCase):
 
     def test_a_reduction_carries_the_lot_it_matched(self):
         sale = self.conversion()[0]
-        self.assertEqual("-151.88", sale["number"])
-        self.assertEqual("ASSF", sale["currency"])
-        # The file says `{"avcoassf"}`; Beancount books that label against the lot, and the
+        self.assertEqual("-150.00", sale["number"])
+        self.assertEqual("EIF", sale["currency"])
+        # The file says `{"lot-a"}`; Beancount books that label against the lot, and the
         # whole cost is what the app has to show -- the label alone says nothing about value.
         self.assertEqual("400.00", sale["cost"]["number"])
         self.assertEqual("PKR", sale["cost"]["currency"])
         self.assertEqual("2025-01-01", sale["cost"]["date"])
-        self.assertEqual("avcoassf", sale["cost"]["label"])
-        self.assertEqual({"number": "483.0500", "currency": "PKR"}, sale["price"])
+        self.assertEqual("lot-a", sale["cost"]["label"])
+        self.assertEqual({"number": "120.0500", "currency": "PKR"}, sale["price"])
 
     def test_an_acquisition_carries_the_lot_it_creates(self):
         purchase = self.conversion()[3]
@@ -84,12 +84,12 @@ class PostingLotsTest(unittest.TestCase):
         self.assertIsNone(purchase["price"])
 
     def test_arithmetic_arrives_as_the_number_it_evaluates_to(self):
-        # `-151.88*483.0500 PKR` is arithmetic Beancount evaluates while parsing.
-        self.assertEqual("-73365.634000", self.conversion()[1]["number"])
+        # `-150.00*120.0500 PKR` is arithmetic Beancount evaluates while parsing.
+        self.assertEqual("-18007.500000", self.conversion()[1]["number"])
 
     def test_an_interpolated_posting_carries_no_cost_of_its_own(self):
         residual = self.conversion()[2]
-        self.assertEqual("60751.517826", residual["number"])
+        self.assertEqual("4641.383826", residual["number"])
         self.assertIsNone(residual["cost"])
 
     def test_a_total_price_arrives_per_unit(self):

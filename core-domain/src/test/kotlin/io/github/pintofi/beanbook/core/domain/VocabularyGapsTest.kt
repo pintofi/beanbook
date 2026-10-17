@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * What the Add form offers, and where it was offering too little (B5, B6, B7).
+ * What the Add form offers, and where it was offering too little.
  *
  * Three separate complaints with one shape: the vocabulary knows more than the form shows.
  */

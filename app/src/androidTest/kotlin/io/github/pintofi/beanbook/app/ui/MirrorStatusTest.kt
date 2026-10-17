@@ -17,7 +17,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Mirroring says what it is doing, at the top, at all times (B65).
+ * Mirroring says what it is doing, at the top, at all times.
  *
  * The screen used to open with settings and say nothing about state: a pass in flight looked
  * exactly like one that had never run, and the only report was a message left over from the

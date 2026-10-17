@@ -25,7 +25,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Exporting a project through a **real** DocumentsProvider (V14).
+ * Exporting a project through a **real** DocumentsProvider.
  *
  * Every other export test writes through `DirectoryExportTarget`, which is `java.io.File`
  * and proves nothing about SAF. `SafExportTarget` — creating nested folders through

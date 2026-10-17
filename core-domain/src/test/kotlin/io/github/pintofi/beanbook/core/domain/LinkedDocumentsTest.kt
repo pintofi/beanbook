@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Recognising a receipt attached to a transaction (B17).
+ * Recognising a receipt attached to a transaction.
  *
  * `fava.plugins.link_documents` records the link as a `document` metadata key on the entry,
  * so that is what the app looks for. It is a convention rather than a Beancount language
