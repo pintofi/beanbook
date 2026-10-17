@@ -109,7 +109,7 @@
       <section class="section">
         <div class="shell reading prose">
           <p>
-            <strong>Applies to both the Play and Expert editions. Last updated 19 September 2026.</strong>
+            <strong>Applies to both the Play and Expert editions. Last updated 17 October 2026.</strong>
           </p>
 
           <h2 class="total">What the developer collects</h2>
@@ -138,15 +138,16 @@
           </p>
           <p>
             Remote credentials and tokens are stored through Android Keystore,
-            and are excluded from logs, backups, screenshots, widget previews,
-            and diagnostics.
+            and are excluded from logs, backups, widget previews, and
+            diagnostics.
           </p>
 
           <h2 class="total">When data leaves the device</h2>
           <p>
-            The repository audit found two outbound code paths: the address
-            entered for remote mode and, in the Expert edition only, downloading a plugin or an optional package when you ask for it. User-initiated sharing can also send a selected
-            document to an app the user chooses.
+            There are two outbound code paths: the address entered for remote
+            mode and, in the Expert edition only, downloading a plugin or an
+            optional package when you ask for it. User-initiated sharing can
+            also send a selected document to an app the user chooses.
           </p>
 
           <h3>Your Fava server</h3>
@@ -166,7 +167,7 @@
 
           <h3>Plugins and optional packages in Expert</h3>
           <p>
-            The Expert edition can make network requests to download a plugin you choose to install from its list, from GitHub or the Python package index, and optional Python packages, from the Python package index. Nothing is downloaded unless you ask.
+            The Expert edition can make network requests to download a plugin you choose to install from its list, from GitHub or the Python package index, and optional Python packages, from the Python package index or Chaquopy's index of Android builds (chaquo.com). Each download is checked against a recorded hash before it is unpacked. Nothing is downloaded unless you ask.
           </p>
 
           <h3>Updates</h3>
@@ -206,9 +207,10 @@
           <h2 class="total">Diagnostics</h2>
           <p>
             Diagnostics remain on the device until the user chooses to share
-            them. The bundle is redacted by default: it excludes ledger content,
-            amounts, account names, credentials, and other
-            secrets, and it is shown before sharing.
+            them. The report is a log of what the app did. Credentials, tokens
+            and cookies are redacted, and it is shown on screen before you can
+            share it. It can still contain file names and messages from the
+            engine, so read it before you send it.
           </p>
 
           <h2 class="total">Permissions</h2>
@@ -223,8 +225,17 @@
               user-initiated network cases above.
             </li>
             <li>
-              <strong>Notifications:</strong> used for backup and script
-              results.
+              <strong>Notifications, foreground service and wake lock:</strong>
+              used to show that a save, an install or sharing is still going
+              after you leave the app. The wake lock has a timeout.
+            </li>
+            <li>
+              <strong>Network state:</strong> used to find the Wi-Fi address
+              when you share Reports.
+            </li>
+            <li>
+              <strong>Run at start-up:</strong> added by the scheduler library
+              so scheduled backups survive a restart. Nothing else uses it.
             </li>
           </ul>
           <p>
