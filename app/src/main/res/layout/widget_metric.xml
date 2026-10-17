@@ -4,10 +4,10 @@
   what they are given, not in how they look.
 
   The paper and the rule are ImageViews rather than a background drawable so the renderer can
-  colour them from the app's appearance settings: wallpaper accent, dark, AMOLED (B92).
+  colour them from the app's appearance settings: wallpaper accent, dark, AMOLED.
   RemoteViews can tint an ImageView on every supported API; a background tint needs API 31.
 
-  The + in the corner adds an entry (B93). It replaced a widget of its own that did nothing
+  The + in the corner adds an entry. It replaced a widget of its own that did nothing
   else, so adding an entry is one tap from the figures a person already keeps on the screen.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -73,7 +73,7 @@
                     android:textColor="@color/widget_rule" />
             </LinearLayout>
 
-            <!-- The figure shrinks to the height it has, and the footnote keeps to one line (B98):
+            <!-- The figure shrinks to the height it has, and the footnote keeps to one line:
                  at 2 x 1 on a Pixel launcher a two-line footnote left the figure no room at all,
                  and the widget showed "Net worth" with no number under it. -->
             <TextView
