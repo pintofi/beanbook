@@ -622,7 +622,9 @@ class CompanionLibraryTest(unittest.TestCase):
                 return False
 
         found = [
+            # Multiarch distributions (Debian, Ubuntu) keep it one directory down.
             p for p in glob.glob("/usr/lib*/libz.so.1") + glob.glob("/lib*/libz.so.1")
+            + glob.glob("/usr/lib*/*/libz.so.1") + glob.glob("/lib*/*/libz.so.1")
             if loads(p)
         ]
         if not found:
