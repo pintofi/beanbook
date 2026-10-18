@@ -93,7 +93,7 @@ Builds:
     commit: <commit that v1.0.1 points at>
     binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
     output: build/outputs/apk/expert/release/*arm64-v8a*.apk
-    # subdir, sudo, init, gradle, prebuild and ndk as in the 1.0.0 entry
+    # subdir, sudo, init, gradle, prebuild and ndk as in the recipe file
   - versionName: 1.0.1
     versionCode: 22
     commit: <commit that v1.0.1 points at>
