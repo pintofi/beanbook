@@ -10,11 +10,11 @@ AutoName: Beanbook
 
 RepoType: git
 Repo: https://github.com/pintofi/beanbook.git
+
 Builds:
   - versionName: 1.0.1
     versionCode: 21
     commit: 52f3486c5821f824d85492574d7608700cf8e59a
-    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
     subdir: app
     sudo:
       - apt-get update
@@ -23,13 +23,13 @@ Builds:
     gradle:
       - expert
     output: build/outputs/apk/expert/release/*arm64-v8a*.apk
+    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
     prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
     ndk: r27d
 
   - versionName: 1.0.1
     versionCode: 22
     commit: 52f3486c5821f824d85492574d7608700cf8e59a
-    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-x86_64.apk
     subdir: app
     sudo:
       - apt-get update
@@ -38,6 +38,7 @@ Builds:
     gradle:
       - expert
     output: build/outputs/apk/expert/release/*x86_64*.apk
+    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-x86_64.apk
     prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
     ndk: r27d
 
@@ -45,5 +46,8 @@ AllowedAPKSigningKeys: d7039d79b2afa3ffc81aeba7bc8dbf45a73b07b94f982ca913d65028b
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
+VercodeOperation:
+  - 10 * %c + 1
+  - 10 * %c + 2
 CurrentVersion: 1.0.1
 CurrentVersionCode: 22
