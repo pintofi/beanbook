@@ -211,14 +211,17 @@ A release is a tag, but the text is written before it. For version `x.y.z`:
 2. Move the Unreleased entries in `CHANGELOG.md` under a dated `[x.y.z]` heading, and add one
    `fastlane/metadata/android/en-US/changelogs/<code>.txt` for each of the three codes (`<code>` is
    the release number followed by 0, 1 and 2).
-3. Write the highlights in `release-notes/x.y.z.md`, following the shape of the earlier ones: a
-   one-line summary, then short **New** and **Fixed** lists in plain words. The release workflow
-   stops if the file is missing.
+3. Write the notes in `release-notes/x.y.z.md`, following the shape of the earlier ones: the
+   sections `### Fixed`, `### New`, `### Changed` and `### Maintenance` (leave out an empty one),
+   one line per change in plain words, each ending with the pull request or issue number
+   (`(#93, fixes #69)`). A patch release (x.y.z) leads with Fixed and has no summary. A minor or
+   major release leads with New and may open with a short summary paragraph. The release
+   workflow stops if the file is missing.
 4. Update `ROADMAP.md` and the README checklist, and the builds in
    `fdroid/io.github.pintofi.beanbook.expert.yml`.
-5. Tag `vx.y.z`. The workflow builds and signs the APKs and drafts the release with the notes from
-   `.github/release-notes-template.md`, the highlights file, the certificate fingerprint and the
-   checksums. A person reads the draft and publishes it.
+5. Tag `vx.y.z`. The workflow builds and signs the APKs and drafts the release from
+   `.github/release-notes-template.md`: your notes, a download table, the certificate fingerprint,
+   the checksums and a link to the changes since the previous release. A person reads the draft and publishes it.
 
 ## Pull requests
 
