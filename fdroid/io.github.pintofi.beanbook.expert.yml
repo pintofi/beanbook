@@ -28,7 +28,7 @@ Builds:
 
   - versionName: 1.0.1
     versionCode: 21
-    commit: 5016fced82ad55e2eca3f833281ba472a7807de0
+    commit: 52f3486c5821f824d85492574d7608700cf8e59a
     binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
     subdir: app
     sudo:
@@ -43,7 +43,7 @@ Builds:
 
   - versionName: 1.0.1
     versionCode: 22
-    commit: 5016fced82ad55e2eca3f833281ba472a7807de0
+    commit: 52f3486c5821f824d85492574d7608700cf8e59a
     binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-x86_64.apk
     subdir: app
     sudo:
