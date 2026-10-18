@@ -83,6 +83,7 @@ fun OnboardingScreen(
     onOpenArchive: () -> Unit,
     modifier: Modifier = Modifier,
     busyMessage: String? = null,
+    trash: ProjectTrash = ProjectTrash(),
 ) {
     var showingWaysIn by rememberSaveable { mutableStateOf(false) }
 
@@ -95,6 +96,7 @@ fun OnboardingScreen(
             onOpenArchive = onOpenArchive,
             modifier = modifier,
             busyMessage = busyMessage,
+            trash = trash,
         )
     } else {
         WelcomePage(onContinue = { showingWaysIn = true }, modifier = modifier)
@@ -154,6 +156,7 @@ private fun WaysInPage(
     onOpenArchive: () -> Unit,
     modifier: Modifier = Modifier,
     busyMessage: String? = null,
+    trash: ProjectTrash = ProjectTrash(),
 ) {
     var title by remember { mutableStateOf("My Ledger") }
 
@@ -231,6 +234,10 @@ private fun WaysInPage(
             }
 
             busyMessage?.let { StatusLine(it) }
+
+            // Deleting the only project lands here. Its files are in the trash, and this is
+            // the one place a person who has no projects will look.
+            TrashSection(trash)
         }
     }
 }
@@ -242,6 +249,17 @@ class ProjectTrash(
     val onRestore: (String) -> Unit = {},
     val onDeleteForever: (String) -> Unit = {},
     val onEmpty: () -> Unit = {},
+)
+
+/** The trash wired to [ProjectsState]; [onRestored] is told the id of a project that came back. */
+fun io.github.pintofi.beanbook.app.engine.ProjectsState.trashUi(
+    items: List<TrashedProject>,
+    onRestored: (String) -> Unit = {},
+) = ProjectTrash(
+    items = items,
+    onRestore = { folder -> restore(folder, onRestored) },
+    onDeleteForever = { folder -> deleteForever(folder) },
+    onEmpty = { emptyTrash() },
 )
 
 /**
@@ -268,8 +286,6 @@ fun ProjectPickerScreen(
     trash: ProjectTrash = ProjectTrash(),
 ) {
     var pendingDelete by remember { mutableStateOf<ProjectSummary?>(null) }
-    var pendingForever by remember { mutableStateOf<TrashedProject?>(null) }
-    var confirmEmpty by remember { mutableStateOf(false) }
     var newTitle by remember { mutableStateOf("") }
 
     Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -356,51 +372,7 @@ fun ProjectPickerScreen(
                 }
             }
 
-            if (trash.items.isNotEmpty()) {
-                val total = trash.items.sumOf { it.totalBytes }
-                FolioHeading("Trash")
-                FolioGroup {
-                    trash.items.forEach { item ->
-                        item {
-                            FolioRow(
-                                title = item.title,
-                                detail = "Deleted ${trashedOn(item.trashedAt)} · ${item.describe()}",
-                                icon = Icons.Outlined.Folder,
-                                onClick = { trash.onRestore(item.folder) },
-                                describe = "Restore ${item.title}, ${item.describe()}",
-                            ) {
-                                IconButton(
-                                    onClick = { pendingForever = item },
-                                    modifier = Modifier.semantics {
-                                        contentDescription = "Delete ${item.title} for good"
-                                    },
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Delete,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    item {
-                        FolioRow(
-                            title = "Empty the trash",
-                            detail = "${trash.items.size} project${if (trash.items.size == 1) "" else "s"}, " +
-                                "${describeBytes(total)}, deleted for good",
-                            icon = Icons.Outlined.Delete,
-                            tone = FolioTone.PLAIN,
-                            onClick = { confirmEmpty = true },
-                            describe = "Empty the trash, ${trash.items.size} projects, ${describeBytes(total)}",
-                        )
-                    }
-                }
-                FolioNote(
-                    "Tap a deleted project to put it back. Anything you exported from it is " +
-                        "not in here and is not affected.",
-                )
-            }
+            TrashSection(trash)
 
             if (activeId != null) {
                 FolioHeading("The open project")
@@ -421,52 +393,6 @@ fun ProjectPickerScreen(
         }
     }
 
-    pendingForever?.let { item ->
-        AlertDialog(
-            onDismissRequest = { pendingForever = null },
-            title = { Text("Delete \"${item.title}\" for good?") },
-            text = {
-                Text(
-                    "This deletes its ${item.fileCount} file(s), including any documents, " +
-                        "${describeBytes(item.totalBytes)} in all. It cannot be undone. A copy " +
-                        "you exported elsewhere is untouched."
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { trash.onDeleteForever(item.folder); pendingForever = null },
-                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) { Text("Delete for good") }
-            },
-            dismissButton = { TextButton(onClick = { pendingForever = null }) { Text("Keep it") } },
-        )
-    }
-
-    if (confirmEmpty) {
-        val names = trash.items.joinToString(", ") { "\"${it.title}\"" }
-        AlertDialog(
-            onDismissRequest = { confirmEmpty = false },
-            title = { Text("Empty the trash?") },
-            text = {
-                Text(
-                    "This deletes $names for good: ${trash.items.sumOf { it.fileCount }} file(s), " +
-                        "${describeBytes(trash.items.sumOf { it.totalBytes })} in all. It cannot be " +
-                        "undone. Copies you exported elsewhere are untouched."
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { trash.onEmpty(); confirmEmpty = false },
-                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) { Text("Empty the trash") }
-            },
-            dismissButton = { TextButton(onClick = { confirmEmpty = false }) { Text("Keep them") } },
-        )
-    }
 
     // Invariant 7: a destructive action names its exact scope, and this one is reversible —
     // the files move to the trash rather than being deleted.
@@ -601,3 +527,109 @@ private fun describeBytes(bytes: Long): String = when {
 
 private fun trashedOn(millis: Long): String =
     java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()
+
+/**
+ * Deleted projects: put one back, delete one for good, or empty the lot. Shown on the project
+ * list and, when there are no projects at all, on the Add a ledger page, so that deleting the
+ * only project is never a one-way door. Draws nothing when the trash is empty.
+ */
+@Composable
+internal fun TrashSection(trash: ProjectTrash) {
+    var pendingForever by remember { mutableStateOf<TrashedProject?>(null) }
+    var confirmEmpty by remember { mutableStateOf(false) }
+
+    if (trash.items.isNotEmpty()) {
+        val total = trash.items.sumOf { it.totalBytes }
+        FolioHeading("Trash")
+        FolioGroup {
+            trash.items.forEach { item ->
+                item {
+                    FolioRow(
+                        title = item.title,
+                        // A no-break space before the unit: when the line has to wrap, "799 B" moves down whole.
+                        detail = "Deleted ${trashedOn(item.trashedAt)} · ${item.describe()}"
+                            .replace(Regex(" (B|KB|MB)$"), "\u00a0$1"),
+                        icon = Icons.Outlined.Folder,
+                        onClick = { trash.onRestore(item.folder) },
+                        describe = "Restore ${item.title}, ${item.describe()}",
+                    ) {
+                        IconButton(
+                            onClick = { pendingForever = item },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Delete ${item.title} for good"
+                            },
+                        ) {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                FolioRow(
+                    title = "Empty the trash",
+                    detail = "${trash.items.size} project${if (trash.items.size == 1) "" else "s"}, " +
+                        "${describeBytes(total)}, deleted for good",
+                    icon = Icons.Outlined.Delete,
+                    tone = FolioTone.PLAIN,
+                    onClick = { confirmEmpty = true },
+                    describe = "Empty the trash, ${trash.items.size} projects, ${describeBytes(total)}",
+                )
+            }
+        }
+        FolioNote(
+            "Tap a deleted project to put it back. Anything you exported from it is " +
+                "not in here and is not affected.",
+        )
+    }
+
+    pendingForever?.let { item ->
+        AlertDialog(
+            onDismissRequest = { pendingForever = null },
+            title = { Text("Delete \"${item.title}\" for good?") },
+            text = {
+                Text(
+                    "This deletes its ${item.fileCount} file(s), including any documents, " +
+                        "${describeBytes(item.totalBytes)} in all. It cannot be undone. A copy " +
+                        "you exported elsewhere is untouched."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { trash.onDeleteForever(item.folder); pendingForever = null },
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) { Text("Delete for good") }
+            },
+            dismissButton = { TextButton(onClick = { pendingForever = null }) { Text("Keep it") } },
+        )
+    }
+
+    if (confirmEmpty) {
+        val names = trash.items.joinToString(", ") { "\"${it.title}\"" }
+        AlertDialog(
+            onDismissRequest = { confirmEmpty = false },
+            title = { Text("Empty the trash?") },
+            text = {
+                Text(
+                    "This deletes $names for good: ${trash.items.sumOf { it.fileCount }} file(s), " +
+                        "${describeBytes(trash.items.sumOf { it.totalBytes })} in all. It cannot be " +
+                        "undone. Copies you exported elsewhere are untouched."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { trash.onEmpty(); confirmEmpty = false },
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) { Text("Empty the trash") }
+            },
+            dismissButton = { TextButton(onClick = { confirmEmpty = false }) { Text("Keep them") } },
+        )
+    }
+}

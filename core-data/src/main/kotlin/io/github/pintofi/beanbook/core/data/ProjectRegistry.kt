@@ -122,8 +122,15 @@ class ProjectRegistry(
         return target
     }
 
+    /**
+     * Puts a trashed project back and returns the id it now has. The id it had is reused when
+     * it is free. When a newer project has taken it, the restored one gets the next free id
+     * (`my-ledger-2`) rather than being refused: the trash is the only copy, and a name clash
+     * is no reason to leave it there.
+     */
     fun restoreFromTrash(trashed: File): String {
-        val projectId = trashed.name.substringBeforeLast('-')
+        val wanted = trashed.name.substringBeforeLast('-')
+        val projectId = if (workspace.exists(wanted)) idFor(wanted, workspace.listProjects().toSet()) else wanted
         val target = workspace.projectDir(projectId)
         require(!target.exists()) { "a project with that id already exists: $projectId" }
         check(trashed.renameTo(target)) { "could not restore ${trashed.name}" }
@@ -143,7 +150,7 @@ class ProjectRegistry(
         )
     }
 
-    /** Puts a trashed project back; returns its id. Refused if the id is taken. */
+    /** Puts a trashed project back; returns its id, which differs from the old one if that was taken. */
     fun restoreFromTrash(folderName: String): String = restoreFromTrash(trashFolder(folderName))
 
     /** Deletes one trashed project for good. Returns whether it was there. */
