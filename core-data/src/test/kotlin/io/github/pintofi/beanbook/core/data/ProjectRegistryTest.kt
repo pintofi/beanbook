@@ -142,6 +142,35 @@ class ProjectRegistryTest {
     }
 
     @Test
+    fun `restoring a project whose id was reused comes back under the next free id`() {
+        workspace.createProject("ledger", title = "Ledger")
+        val old = registry.moveToTrash("ledger")
+        val oldText = old.resolve(ProjectWorkspace.MAIN_FILE).readText()
+        workspace.createProject("ledger", title = "Ledger")
+        val newerText = workspace.mainFile("ledger").readText()
+
+        val restored = registry.restoreFromTrash(old)
+
+        assertEquals("ledger-2", restored)
+        assertEquals(oldText, workspace.mainFile("ledger-2").readText(), "the trashed files come back intact")
+        assertEquals(newerText, workspace.mainFile("ledger").readText(), "the newer project is untouched")
+        assertTrue(registry.trashSummaries().isEmpty(), "nothing is left in the trash")
+    }
+
+    @Test
+    fun `restoring twice over the same id counts upward`() {
+        workspace.createProject("p", title = "P")
+        val first = registry.moveToTrash("p")
+        Thread.sleep(2)
+        workspace.createProject("p", title = "P")
+        val second = registry.moveToTrash("p")
+        workspace.createProject("p", title = "P")
+
+        assertEquals("p-2", registry.restoreFromTrash(first))
+        assertEquals("p-3", registry.restoreFromTrash(second))
+    }
+
+    @Test
     fun `emptying the trash removes every trashed project and nothing else`() {
         workspace.createProject("keep", title = "Keep")
         workspace.createProject("x", title = "X")

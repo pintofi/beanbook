@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.pintofi.beanbook.app.engine.LedgerState
 import io.github.pintofi.beanbook.app.plugins.collectUi
 import io.github.pintofi.beanbook.app.engine.RecoveryOnStart
+import io.github.pintofi.beanbook.app.ui.trashUi
 import io.github.pintofi.beanbook.app.ui.OnboardingScreen
 import io.github.pintofi.beanbook.app.backup.ScheduledBackupWorker
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
@@ -529,6 +530,7 @@ class MainActivity : ComponentActivity() {
                             onOpenFolder = { folderPicker.launch(null) },
                             onOpenArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
                             busyMessage = projectMessage,
+                            trash = app.projectsState.trashUi(trashedProjects) { openProject(app, it) },
                         )
                         return@Surface
                     }
@@ -764,12 +766,7 @@ class MainActivity : ComponentActivity() {
                         onImportFolder = { folderPicker.launch(null) },
                         onImportArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
                         onDeleteProject = { id -> app.projectsState.delete(id) },
-                        projectTrash = io.github.pintofi.beanbook.app.ui.ProjectTrash(
-                            items = trashedProjects,
-                            onRestore = { folder -> app.projectsState.restore(folder) },
-                            onDeleteForever = { folder -> app.projectsState.deleteForever(folder) },
-                            onEmpty = { app.projectsState.emptyTrash() },
-                        ),
+                        projectTrash = app.projectsState.trashUi(trashedProjects),
                         editorState = editorState,
                         editorMessage = editorMessage,
                         editorFiles = app.editorController.filesFor(

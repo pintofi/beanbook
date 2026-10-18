@@ -41,6 +41,7 @@ All notable changes to Beanbook. The format follows [Keep a Changelog](https://k
 - Restore cannot be started twice; removing fetched packages or a saved script asks first; a sharing user name can contain a space.
 - Deleted projects are listed in a Trash section on the Projects screen, with their size, and can be put back or deleted for good, one at a time or all together, after a confirmation that names what goes. Until now they stayed on the phone with no way to remove or restore them.
 - Receipt photos and attached copies are deleted from the app's cache once the document is filed, instead of staying until Android clears the cache.
+- Restoring a deleted project whose name has been reused brings it back under the next free name instead of refusing, and the Trash is shown on the Add a ledger page when there are no projects, so deleting the only project can be undone.
 - Unlinking a document no longer removes the link of a different document that has the same file name; a bare name in an entry is matched only when it is unique, and Unlink says so when it is not.
 
 ## [1.0.0] - 2026-10-15

@@ -180,15 +180,23 @@ class ProjectsState(
         }
     }
 
-    /** Puts a deleted project back. Refused, with the reason, if its id has been reused since. */
-    fun restore(folder: String) {
+    /**
+     * Puts a deleted project back. If a newer project has taken its id it comes back under the
+     * next free one, and the message says so. [onRestored] gets the id, so the first-run screen
+     * can open the project it just brought back.
+     */
+    fun restore(folder: String, onRestored: (String) -> Unit = {}) {
         scope.launch {
             val outcome = withContext(Dispatchers.IO) { runCatching { registry.restoreFromTrash(folder) } }
             refresh()
             _message.value = outcome.fold(
-                onSuccess = { "Restored \"$it\"." },
+                onSuccess = { id ->
+                    val wanted = folder.substringBeforeLast('-')
+                    if (id == wanted) "Restored \"$id\"." else "Restored as \"$id\", because \"$wanted\" is in use."
+                },
                 onFailure = { "Not restored: ${it.message}" },
             )
+            outcome.getOrNull()?.let(onRestored)
         }
     }
 
