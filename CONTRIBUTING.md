@@ -208,13 +208,19 @@ rebasable. The project does not fork upstream.
 A release is a tag, but the text is written before it. For version `x.y.z`:
 
 1. Raise `versionName` and `versionCode` in `app/build.gradle.kts` (the code by one).
-2. Move the Unreleased entries in `CHANGELOG.md` under a dated `[x.y.z]` heading, and add one
-   `fastlane/metadata/android/en-US/changelogs/<code>.txt` for each of the three codes (`<code>` is
-   the release number followed by 0, 1 and 2). Every entry ends with the pull request or issue it came
-   from, written as `([#93], fixes [#69])`. Then run `tools/changelog-links.py`, which writes the link
-   definitions at the bottom, so the `[x.y.z]` and `[Unreleased]` headings (each to its release page) and each `[#N]` are links.
-   CI fails when an entry has no reference or a definition is missing or stale, and it runs again
-   on the tag.
+2. Move the `[Unreleased]` entries of `CHANGELOG.md` under a new `## [x.y.z] - YYYY-MM-DD`
+   heading, newest version first, and leave `[Unreleased]` empty at the top. The file follows
+   [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) and Semantic Versioning. Group
+   entries under `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed` and
+   `### Security`, and leave out a section with nothing in it. List every deprecation, removal and
+   breaking change, even a small one. A release that had to be pulled keeps its heading with
+   ` [YANKED]` after the date. Write for the people who use the app, not as a commit log. Every
+   entry ends with the pull request or issue it came from, written as `([#93], fixes [#69])`. Add
+   one `fastlane/metadata/android/en-US/changelogs/<code>.txt` for each of the three codes (`<code>`
+   is the release number followed by 0, 1 and 2). Then run `tools/changelog-links.py`, which writes
+   the link definitions at the bottom, so each `[x.y.z]`, `[Unreleased]` and `[#N]` is a link. CI runs
+   the same script with `--check` and fails on a missing date, an unknown or empty section, an entry
+   with no reference, or a stale link; it runs again on the tag.
 3. Write the notes in `release-notes/x.y.z.md`, following the shape of the earlier ones: the
    sections `### Fixed`, `### New`, `### Changed` and `### Maintenance` (leave out an empty one),
    one line per change in plain words, each ending with the pull request or issue number
