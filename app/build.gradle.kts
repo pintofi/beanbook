@@ -81,7 +81,7 @@ android {
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         // The release number. Each APK adds a one-digit ABI suffix to it (see androidComponents
-        // below), so 2 produces 20, 21 and 22. Raise this by one for every release, and
+        // below), so 2 produces 20 (universal), 21 (arm64-v8a) and 22 (x86_64). Raise this by one for every release, and
         // versionName with it.
         versionCode = 2
         versionName = "1.0.0"
@@ -221,9 +221,11 @@ android {
 // Each ABI APK needs its own versionCode: F-Droid and Android treat the files as separate
 // builds, and a phone must be offered the one that matches it. The code is the release number
 // times ten plus a suffix, so a later release always sorts above an earlier one whatever the
-// ABI. The universal APK, and the bundle Play splits itself, take the plain release number
+// ABI. x86_64 gets the higher suffix: a device that runs both (an emulator, a Chromebook with
+// ARM translation) installs the highest code it can run, and that has to be the native build,
+// not the translated one. The universal APK, and the bundle Play splits itself, take the plain release number
 // times ten.
-val abiVersionSuffix = mapOf("x86_64" to 1, "arm64-v8a" to 2)
+val abiVersionSuffix = mapOf("arm64-v8a" to 1, "x86_64" to 2)
 
 androidComponents {
     onVariants { variant ->
