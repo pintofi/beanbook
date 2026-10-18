@@ -23,7 +23,8 @@ Builds:
     gradle:
       - expert
     output: build/outputs/apk/expert/release/*arm64-v8a*.apk
-    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
+    binary: 
+      https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
     prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
     ndk: r27d
 
