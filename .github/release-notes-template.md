@@ -1,4 +1,4 @@
-{{HIGHLIGHTS}}
+{{CHANGES}}
 
 ### Download
 

@@ -138,9 +138,9 @@ jobs:
           test -s checksums.txt
 
       - name: Write the release notes
-        # The text comes from .github/release-notes-template.md and release-notes/<version>.md.
-        # The step fails if that highlights file is missing, so a release is never drafted
-        # with nothing but checksums.
+        # The changes come from the version's section in CHANGELOG.md, and the rest from
+        # .github/release-notes-template.md. The step fails if the section is missing or empty, so a
+        # release is never drafted with nothing but checksums.
         run: python3 -I tools/release-notes.py "${GITHUB_REF_NAME#v}" checksums.txt > release-notes.md
 
       - name: Publish
