@@ -69,9 +69,11 @@ binary to supplied reference binary successfully").
 
 From 1.0.1 the recipe builds the arm64-v8a and x86_64 APKs separately, instead of the universal
 one, so a phone downloads only its own libraries. Each file has its own `versionCode`, derived
-in `app/build.gradle.kts` as the release number times ten plus a suffix: 1 for x86_64, 2 for
-arm64-v8a, and 0 for the universal APK and the Play bundle. Release 2 (version 1.0.1) is
-therefore 21 and 22. Version 1.0.0 shipped as a single universal APK with versionCode 1, which
+in `app/build.gradle.kts` as the release number times ten plus a suffix: 1 for arm64-v8a, 2 for
+x86_64, and 0 for the universal APK and the Play bundle. Release 2 (version 1.0.1) is
+therefore 21 and 22. x86_64 has the higher suffix on purpose: a device that can run both ABIs
+(an emulator, a Chromebook with ARM translation) installs the highest code it can run, and that
+must be its native build. Version 1.0.0 shipped as a single universal APK with versionCode 1, which
 is below every later code, so existing installs update.
 
 The release workflow checks each APK's code with `aapt2` before it publishes anything. The store
@@ -88,14 +90,14 @@ Builds:
   - versionName: 1.0.1
     versionCode: 21
     commit: <commit that v1.0.1 points at>
-    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-x86_64.apk
-    output: build/outputs/apk/expert/release/*x86_64*.apk
+    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
+    output: build/outputs/apk/expert/release/*arm64-v8a*.apk
     # subdir, sudo, init, gradle, prebuild and ndk as in the 1.0.0 entry
   - versionName: 1.0.1
     versionCode: 22
     commit: <commit that v1.0.1 points at>
-    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
-    output: build/outputs/apk/expert/release/*arm64-v8a*.apk
+    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-x86_64.apk
+    output: build/outputs/apk/expert/release/*x86_64*.apk
     # the same remaining fields
 ```
 
