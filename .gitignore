@@ -59,4 +59,3 @@ engine-local/requirements-local.lock
 
 # Scratch directories written by local audit tooling; per-run output, not versioned.
 .scratch/
-.claude/worktrees/

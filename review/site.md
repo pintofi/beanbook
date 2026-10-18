@@ -51,7 +51,7 @@ Area `site` of [#16](https://github.com/pintofi/beanbook/issues/16). Method and 
 
 - **S-1 (S1): the privacy policy, the page Google Play asks for by address, understated or overstated several things.** It said diagnostics exclude account names and amounts (a report is a log; it can contain file names and engine messages, and the page now says to read it first), listed three permissions where the APK declares nine, named GitHub and PyPI as download sources but not Chaquopy's index, and said credentials are kept out of screenshots (the app does not block screenshots). All now match `docs/privacy.md` and the manifest. The "last updated" date is changed.
 - **S-2 (S2): the Support page loaded an image from Ko-fi's servers whenever it was opened,** which contradicts the site's own claim that it keeps to itself. It is now a link that contacts Ko-fi only when clicked.
-- **S-3 (S3):** one sentence said a backup "can be protected with a passphrase" without saying that scheduled backups cannot; and 16 HTML comments naming private source documents (`CLAUDE.md`, "site brief", a missing `docs/support-model.md`) were removed from the published pages.
+- **S-3 (S3):** one sentence said a backup "can be protected with a passphrase" without saying that scheduled backups cannot; and 16 HTML comments naming private source documents (an internal project guide, "site brief", a missing `docs/support-model.md`) were removed from the published pages.
 
 ## Accepted, with the reason
 

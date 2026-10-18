@@ -899,7 +899,7 @@
       "tested": {
         "on": "2026-08-28",
         "how": "tools/plugin-compat/run_catalog.py, desktop CPython + Beancount 3.2.3",
-        "reason": "a Fava extension (fava_classy_portfolio) that does not import against Fava 1.30.15: ImportError: cannot import name 'cost_or_value' from 'fava.template_filters' (<home>/.claude/jobs/4627fca9/tmp/compat-venv/lib/python3.14/site-packages/fava/template_filters.py)",
+        "reason": "a Fava extension (fava_classy_portfolio) that does not import against Fava 1.30.15: ImportError: cannot import name 'cost_or_value' from 'fava.template_filters' (site-packages/fava/template_filters.py)",
         "version": "master",
         "on_device": "the failure was found on Android first: CatalogManifestTest imported it on the emulator (API 36, 2026-08-28) and got ImportError: cannot import name 'cost_or_value' from 'fava.template_filters'. The desktop harness had called it partial because it only searched the source text for FavaExtensionBase without importing anything; it imports extensions now and agrees"
       },

@@ -4,7 +4,11 @@ All notable changes to Beanbook. The format follows [Keep a Changelog](https://k
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-18
+
 ### Changed
+- The bundled Python runtime is 3.13.16 (Chaquopy 17.1.0).
+- Gradle dependencies are checked against recorded checksums, so a changed artifact fails the build.
 - Each processor type (arm64-v8a, x86_64) has its own APK with its own version code, so F-Droid and the phone choose the matching one. The universal APK stays on the release page.
 
 ### Fixed
