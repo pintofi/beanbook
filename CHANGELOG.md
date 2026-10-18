@@ -74,7 +74,7 @@ All notable changes to Beanbook. The format follows [Keep a Changelog](https://k
 - Widgets keep each project's figures.
 
 [Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.1...HEAD
-[1.0.1]: https://github.com/pintofi/beanbook/compare/v1.0.0...v1.0.1
+[1.0.1]: https://github.com/pintofi/beanbook/releases/tag/v1.0.1
 [1.0.0]: https://github.com/pintofi/beanbook/releases/tag/v1.0.0
 [#48]: https://github.com/pintofi/beanbook/issues/48
 [#52]: https://github.com/pintofi/beanbook/issues/52

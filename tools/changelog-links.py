@@ -5,7 +5,7 @@ Keep a Changelog headings such as `## [1.0.1] - 2026-10-18` only become links wh
 with a definition for each one. This script writes those definitions from the headings alone:
 
     [Unreleased]: .../compare/v<newest>...HEAD
-    [<version>]:  .../compare/v<previous>...v<version>     (the oldest: .../releases/tag/v<version>)
+    [<version>]:  .../releases/tag/v<version>   (the release page: notes, downloads, a compare link)
 
 It also checks that every entry under [Unreleased] and under 1.0.1 or later ends with the pull
 request or issue it came from, such as `([#93], fixes [#69])`; the definitions of those [#N] links are written below the version ones. 1.0.0 predates pull requests and is
@@ -38,11 +38,8 @@ if not versions:
     sys.exit("CHANGELOG.md has no released version")
 
 wanted = [f"[Unreleased]: {REPO}/compare/v{versions[0]}...HEAD"]
-for i, version in enumerate(versions):
-    if i + 1 < len(versions):
-        wanted.append(f"[{version}]: {REPO}/compare/v{versions[i + 1]}...v{version}")
-    else:
-        wanted.append(f"[{version}]: {REPO}/releases/tag/v{version}")
+for version in versions:
+    wanted.append(f"[{version}]: {REPO}/releases/tag/v{version}")
 
 lines = text.rstrip("\n").split("\n")
 while lines and (DEFINITION.match(lines[-1]) or not lines[-1].strip()):

@@ -212,7 +212,7 @@ A release is a tag, but the text is written before it. For version `x.y.z`:
    `fastlane/metadata/android/en-US/changelogs/<code>.txt` for each of the three codes (`<code>` is
    the release number followed by 0, 1 and 2). Every entry ends with the pull request or issue it came
    from, written as `([#93], fixes [#69])`. Then run `tools/changelog-links.py`, which writes the link
-   definitions at the bottom, so the `[x.y.z]` and `[Unreleased]` headings and each `[#N]` are links.
+   definitions at the bottom, so the `[x.y.z]` and `[Unreleased]` headings (each to its release page) and each `[#N]` are links.
    CI fails when an entry has no reference or a definition is missing or stale, and it runs again
    on the tag.
 3. Write the notes in `release-notes/x.y.z.md`, following the shape of the earlier ones: the
