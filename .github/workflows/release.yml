@@ -117,7 +117,7 @@ jobs:
         run: |
           AAPT2="$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)"
           release="$(sed -n 's/^ *versionCode = \([0-9]*\)$/\1/p' app/build.gradle.kts | head -1)"
-          for pair in universal:0 x86_64:1 arm64-v8a:2; do
+          for pair in universal:0 arm64-v8a:1 x86_64:2; do
             abi="${pair%%:*}"; want=$((release * 10 + ${pair##*:}))
             got="$("$AAPT2" dump badging "app/build/outputs/apk/expert/release/app-expert-$abi-release.apk" | sed -n "s/^package:.* versionCode='\([0-9]*\)'.*/\1/p")"
             echo "$abi: versionCode $got (expected $want)"
