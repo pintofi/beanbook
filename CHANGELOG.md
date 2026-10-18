@@ -72,3 +72,7 @@ All notable changes to Beanbook. The format follows [Keep a Changelog](https://k
 - Filing a scan finishes by itself once the include line is added.
 - A refused save names the errors it would add; accounts the ledger has not opened are refused.
 - Widgets keep each project's figures.
+
+[Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/pintofi/beanbook/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/pintofi/beanbook/releases/tag/v1.0.0
