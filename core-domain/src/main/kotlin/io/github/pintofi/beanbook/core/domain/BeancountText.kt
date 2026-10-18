@@ -202,22 +202,38 @@ object BeancountText {
      * Whole lines only, and only lines whose value is exactly the path: a comment mentioning
      * the filename, or a key whose value merely contains it, is left alone. Returns null when
      * nothing matched, so a caller can tell "removed" from "there was nothing there".
+     *
+     * The entry form writes a bare file name, so a value with no folder in it also matches when
+     * [bareNameIsUnique] says no other document in the project has that name. Two documents
+     * called `invoice.pdf` in different folders make a bare `invoice.pdf` ambiguous, and then
+     * it is left alone rather than guessed at (see [namesDocumentByBareName]).
      */
-    fun removeDocumentMetadata(source: String, path: String): String? {
+    fun removeDocumentMetadata(
+        source: String,
+        path: String,
+        bareNameIsUnique: Boolean = false,
+    ): String? {
         val leaf = path.substringAfterLast('/')
-        val line = Regex(
-            """^\s*document(-\d+)?\s*:\s*"(?<value>[^"]*)"\s*$""",
-        )
         var removed = false
         val kept = source.lines().filter { text ->
-            val match = line.matchEntire(text) ?: return@filter true
-            val value = match.groups["value"]?.value.orEmpty()
-            val names = value == path || value.substringAfterLast('/') == leaf
+            val value = documentMetadataValue(text) ?: return@filter true
+            val names = value == path ||
+                (bareNameIsUnique && '/' !in value && value == leaf)
             if (names) removed = true
             !names
         }
         return if (removed) kept.joinToString("\n") else null
     }
+
+    /** Whether some `document:` line in [source] names [leaf] with no folder in front of it. */
+    fun namesDocumentByBareName(source: String, leaf: String): Boolean =
+        source.lines().any { documentMetadataValue(it) == leaf }
+
+    private val DOCUMENT_METADATA_LINE =
+        Regex("""^\s*document(-\d+)?\s*:\s*"(?<value>[^"]*)"\s*$""")
+
+    private fun documentMetadataValue(line: String): String? =
+        DOCUMENT_METADATA_LINE.matchEntire(line)?.groups?.get("value")?.value
 
     /**
      * The metadata key to link one more document to a transaction, given the keys it has.

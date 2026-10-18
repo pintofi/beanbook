@@ -81,4 +81,37 @@ class DocumentAttachmentTest {
         )
         assertEquals("Not linked to any account yet", rows.single().summary)
     }
+
+    private val bare = """
+        2026-09-07 * "Grocer" "weekly shop"
+          document: "invoice.pdf"
+          Expenses:Food   12.00 USD
+          Assets:Cash
+    """.trimIndent()
+
+    @Test fun `a bare name is removed when it is the only document with that name`() {
+        val out = BeancountText.removeDocumentMetadata(
+            bare, "documents/a/invoice.pdf", bareNameIsUnique = true,
+        )
+        assertTrue(out != null && !out.contains("document:"), "the link survived: $out")
+    }
+
+    @Test fun `a bare name is left alone when another document has the same name`() {
+        assertNull(
+            BeancountText.removeDocumentMetadata(
+                bare, "documents/a/invoice.pdf", bareNameIsUnique = false,
+            ),
+        )
+        assertTrue(BeancountText.namesDocumentByBareName(bare, "invoice.pdf"))
+    }
+
+    @Test fun `a link to the same file name in another folder is not removed`() {
+        val other = bare.replace("\"invoice.pdf\"", "\"documents/b/invoice.pdf\"")
+        assertNull(
+            BeancountText.removeDocumentMetadata(
+                other, "documents/a/invoice.pdf", bareNameIsUnique = true,
+            ),
+        )
+        assertTrue(!BeancountText.namesDocumentByBareName(other, "invoice.pdf"))
+    }
 }
