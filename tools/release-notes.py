@@ -3,13 +3,15 @@
 
 Usage: tools/release-notes.py <version> <checksums-file>
 
-The notes come from release-notes/<version>.md, which a person writes for each release. They are
-sections (### Fixed, ### New, ### Changed, ### Maintenance) with a pull request or issue number at
-the end of each line. A minor or major release may start with a short summary paragraph above the
-first heading; a patch release usually does not.
-The certificate fingerprint is read from the F-Droid recipe, so it lives in one place. The
-output goes to stdout. A missing highlights file stops the release rather than publishing a
-draft with nothing but checksums.
+The changes come straight from the version's section of CHANGELOG.md, so the file is the one place
+they are written: its `###` headings (Added, Changed, Fixed, Security and so on) and its entries,
+with the `[#123]` references turned into plain #123, which GitHub links in a release.
+
+A minor or major release may add a short summary above them, in release-notes/<version>.md. A
+patch release has none, and the file is not needed.
+
+The certificate fingerprint is read from the F-Droid recipe, so it lives in one place. The output
+goes to stdout. A version with no section, or an empty one, in the changelog stops the release.
 """
 import re
 import sys
@@ -18,16 +20,20 @@ from pathlib import Path
 root = Path(__file__).resolve().parent.parent
 version, checksums = sys.argv[1], Path(sys.argv[2])
 
-highlights_file = root / "release-notes" / f"{version}.md"
-if not highlights_file.is_file():
-    sys.exit(f"missing {highlights_file.relative_to(root)}: write the release highlights first")
+changelog = (root / "CHANGELOG.md").read_text()
+section = re.search(rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|^\[Unreleased\]:|\Z)", changelog, re.M | re.S)
+if not section or "- " not in section.group(1):
+    sys.exit(f"CHANGELOG.md has no entries under [{version}]")
+changes = re.sub(r"\[#(\d+)\]", r"#\1", section.group(1)).strip()
+
+summary_file = root / "release-notes" / f"{version}.md"
+summary = summary_file.read_text().strip() + "\n\n" if summary_file.is_file() else ""
 
 recipe = (root / "fdroid" / "io.github.pintofi.beanbook.expert.yml").read_text()
 cert = re.search(r"^AllowedAPKSigningKeys:\s*([0-9a-f]{64})\s*$", recipe, re.M)
 if not cert:
     sys.exit("no signing certificate fingerprint in the F-Droid recipe")
 
-changelog = (root / "CHANGELOG.md").read_text()
 versions = re.findall(r"^## \[(\d+\.\d+\.\d+)\]", changelog, re.M)
 if version not in versions:
     sys.exit(f"CHANGELOG.md has no [{version}] section")
@@ -38,7 +44,7 @@ text = (root / ".github" / "release-notes-template.md").read_text()
 if previous is None:
     text = "\n".join(line for line in text.split("\n") if "{{PREVIOUS}}" not in line)
 text = text.replace("{{PREVIOUS}}", previous or "").replace("{{VERSION}}", version)
-text = text.replace("{{HIGHLIGHTS}}", highlights_file.read_text().strip())
+text = text.replace("{{CHANGES}}", summary + changes)
 text = text.replace("{{CERT_SHA256}}", cert.group(1))
 
 # One row per APK: the file name links to the release asset, and the column beside it holds its
