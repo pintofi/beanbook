@@ -84,7 +84,7 @@ android {
         // below), so 2 produces 20 (universal), 21 (arm64-v8a) and 22 (x86_64). Raise this by one for every release, and
         // versionName with it.
         versionCode = 2
-        versionName = "1.0.0"
+        versionName = "1.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }

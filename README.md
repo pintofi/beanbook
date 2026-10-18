@@ -421,6 +421,7 @@ and the status of every item.
 
 - [x] **1.0**: local Beancount and Fava on the phone, entry forms, documents and scanning, backup,
       mirror, remote Fava, plugins and extensions, Share on Wi-Fi
+- [x] **1.0.1**: one APK per processor type, Trash for deleted projects, and fixes from the repository review
 - [ ] **1.1 Trust and polish** (now)
   - [x] Review every file in the repository: 15 of 15 areas done ([#16](https://github.com/pintofi/beanbook/issues/16))
   - [ ] Fava's own editor saves outside the app's write protocol ([#17](https://github.com/pintofi/beanbook/issues/17))

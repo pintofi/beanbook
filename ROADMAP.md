@@ -13,6 +13,7 @@ milestone), **in progress**, **shipped in x.y.z**.
 
 ## Shipped
 
+- **1.0.1** (2026-10-18): one APK per processor type for F-Droid, a Trash list for deleted projects, receipt-photo cleanup, a safer document Unlink, a more careful balance check, and about twenty other fixes from the repository review. See the [changelog](CHANGELOG.md).
 - **1.0.0** (2026-10-15): local Beancount and Fava on the phone, entry forms and editors, documents and scanning, backup and restore, mirror, remote Fava, plugins and Fava extensions (Expert), Share on Wi-Fi. See the [changelog](CHANGELOG.md).
 
 ## Now: 1.1 Trust and polish
@@ -71,4 +72,4 @@ when a milestone takes it. A bug is not a roadmap item: use the
 [bug form](https://github.com/pintofi/beanbook/issues/new?template=bug_report.yml). Security
 problems go through [SECURITY.md](SECURITY.md).
 
-Last reviewed: 2026-10-16. The README carries a shorter checklist of the same plan; this page is the detail.
+Last reviewed: 2026-10-18. The README carries a shorter checklist of the same plan; this page is the detail.
