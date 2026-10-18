@@ -115,10 +115,17 @@ object DocumentIndex {
             .distinctBy { (path, directive) -> path to directive.account }
         val present = onDisk.toSet()
 
-        // Matched on the leaf as well as the whole path: a `document:` key is written
-        // relative to the project, but a ledger edited elsewhere may name it differently.
-        fun attachedTo(path: String): List<String> =
-            attachments[path] ?: attachments[path.substringAfterLast('/')].orEmpty()
+        // The entry form writes a bare file name, so an attachment is matched on the leaf as
+        // well as the whole path -- but only when no other document has that name. With two
+        // `invoice.pdf` in different folders a bare `invoice.pdf` could mean either, and
+        // showing it against both (or the wrong one) is worse than showing it against neither.
+        val leafCounts = (present + filed.map { it.first })
+            .groupingBy { it.substringAfterLast('/') }.eachCount()
+        fun attachedTo(path: String): List<String> {
+            val leaf = path.substringAfterLast('/')
+            return attachments[path]
+                ?: if (leafCounts[leaf] == 1) attachments[leaf].orEmpty() else emptyList()
+        }
 
         val fromDirectives = filed.map { (path, directive) ->
             DocumentRow(
