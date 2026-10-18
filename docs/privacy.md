@@ -24,6 +24,9 @@ your browser, on Ko-fi, and the app learns nothing about it.
 - **Ledger files.** Plain Beancount text in the project you created or imported.
 - **Documents and receipt photos**, stored inside the project tree. The app never reads your
   photo library; it sees images you capture in it or choose yourself in the system picker.
+  The camera originals wait in the app's cache while you put a document together and are
+  deleted once it is filed. Pages you abandon stay there until you discard them or Android
+  clears the cache.
 - **Backups**, written where you choose, encrypted with your passphrase if you ask for that.
 - **Settings**, including your theme.
 - **One date**: when the app was first opened, so the single mention of donations comes after

@@ -72,7 +72,7 @@ internal fun MainActivity.attachDocument(
                     app.documentCapture.report(outcome)
                 }
             }
-            app.documentCapture.reset()
+            app.documentCapture.finish()
             refreshDocuments(app, projectId)
         }
     }
@@ -902,7 +902,7 @@ internal fun MainActivity.captureHandle(
                         }
                         if (!linksDocuments) {
                             onFiled(paths)
-                            app.documentCapture.reset()
+                            app.documentCapture.finish()
                             refreshDocuments(app, id)
                             return@launch
                         }
@@ -930,7 +930,7 @@ internal fun MainActivity.captureHandle(
                             // entry pointing at a document the file does not declare.
                             if (outcome.startsWith("Saved")) {
                                 onFiled(paths)
-                                app.documentCapture.reset()
+                                app.documentCapture.finish()
                                 refreshDocuments(app, id)
                             }
                             },

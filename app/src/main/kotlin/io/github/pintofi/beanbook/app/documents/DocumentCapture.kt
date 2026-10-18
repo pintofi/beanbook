@@ -283,6 +283,20 @@ class DocumentCapture(
         }
     }
 
+    /**
+     * Ends the session after a document has been filed, and deletes the camera originals and
+     * attached copies it used.
+     *
+     * The PDF in the project is the record by then, and a photograph of a receipt is personal
+     * data sitting in a folder nobody looks at. Only the files this session named are deleted,
+     * not the whole folder, so a new capture started straight away is left alone.
+     */
+    fun finish() {
+        val used = _pages.value.pages.map { it.source } + _files.value.map { it.source }
+        reset()
+        scope.launch { withContext(Dispatchers.IO) { deleteCaptureFiles(captureDir, used) } }
+    }
+
     fun clearMessage() {
         _message.value = null
     }
@@ -314,3 +328,10 @@ class DocumentCapture(
         const val PREVIEW_EDGE = 1600
     }
 }
+
+/** Deletes [names] from [dir]; a name that would leave [dir] is ignored. Returns how many went. */
+internal fun deleteCaptureFiles(dir: File, names: List<String>): Int =
+    names.count { name ->
+        val file = File(dir, name)
+        file.parentFile?.canonicalFile == dir.canonicalFile && file.delete()
+    }
