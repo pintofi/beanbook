@@ -164,6 +164,7 @@ internal fun SurfaceContent(
     onImportFolder: () -> Unit,
     onImportArchive: () -> Unit,
     onDeleteProject: (String) -> Unit,
+    projectTrash: io.github.pintofi.beanbook.app.ui.ProjectTrash = io.github.pintofi.beanbook.app.ui.ProjectTrash(),
     engineStatus: EngineStatus,
     ledger: LedgerSnapshot?,
     token: String?,
@@ -322,6 +323,7 @@ internal fun SurfaceContent(
                             onOpenArchive = onImportArchive,
                             onExport = onExportProject,
                             onDelete = onDeleteProject,
+                            trash = projectTrash,
                             busyMessage = projectMessage,
                         )
 
