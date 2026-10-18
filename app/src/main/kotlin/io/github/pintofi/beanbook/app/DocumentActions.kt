@@ -203,6 +203,11 @@ internal fun MainActivity.unlinkDocument(
         // exists to clear.
         var removed = 0
         var failure: String? = null
+        // A bare `invoice.pdf` in an entry names this file only if no other document in the
+        // project is called the same; otherwise it is left for the user to make explicit.
+        val leaf = path.substringAfterLast('/')
+        val bareNameIsUnique = app.workspace.projectDir(projectId).walkTopDown()
+            .count { it.isFile && it.name == leaf } <= 1
         while (removed < MAX_LINKS_PER_DOCUMENT) {
             val projectDir = app.workspace.projectDir(projectId)
             // Metadata first, then the directive. Under Fava's link_documents plugin an
@@ -212,7 +217,7 @@ internal fun MainActivity.unlinkDocument(
             // nothing. In this order every step leaves a ledger that reads cleanly.
             val holder = findDocumentDirective(projectDir, path) { text, named ->
                 io.github.pintofi.beanbook.core.domain.BeancountText
-                    .removeDocumentMetadata(text, named)
+                    .removeDocumentMetadata(text, named, bareNameIsUnique = bareNameIsUnique)
             } ?: findDocumentDirective(projectDir, path) { text, named ->
                 io.github.pintofi.beanbook.core.domain.BeancountText
                     .removeDocumentDirective(text, named, from = from)
@@ -238,6 +243,15 @@ internal fun MainActivity.unlinkDocument(
 
         val outcome = when {
             failure != null -> "Not unlinked: $failure"
+            removed == 0 && !bareNameIsUnique && app.workspace.projectDir(projectId).walkTopDown()
+                .filter { it.isFile && (it.extension == "beancount" || it.extension == "bean") }
+                .any {
+                    io.github.pintofi.beanbook.core.domain.BeancountText
+                        .namesDocumentByBareName(it.readText(), leaf)
+                } ->
+                "Not unlinked: an entry names \"$leaf\" without a folder, and another document " +
+                    "has the same name, so it cannot tell which one is meant. Give the entry " +
+                    "the full path first."
             removed == 0 -> "Nothing in the ledger links to $path."
             else -> "Unlinked $path. The file is still in the project."
         }

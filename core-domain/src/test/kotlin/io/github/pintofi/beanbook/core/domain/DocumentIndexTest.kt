@@ -171,5 +171,38 @@ class DocumentIndexTest {
         assertEquals(true, row.linked)
         assertEquals("Filed under Expenses:Food", row.summary)
     }
-}
 
+    @Test
+    fun `a bare attachment is shown on the one document with that name`() {
+        val rows = DocumentIndex.reconcile(
+            root = root,
+            onDisk = listOf("documents/a/invoice.pdf"),
+            directives = emptyList(),
+            attachments = mapOf("invoice.pdf" to listOf("2026-09-07 Grocer")),
+        )
+        assertEquals(listOf("2026-09-07 Grocer"), rows.single().attachedTo)
+    }
+
+    @Test
+    fun `a bare attachment is not guessed onto either of two documents with the same name`() {
+        val rows = DocumentIndex.reconcile(
+            root = root,
+            onDisk = listOf("documents/a/invoice.pdf", "documents/b/invoice.pdf"),
+            directives = emptyList(),
+            attachments = mapOf("invoice.pdf" to listOf("2026-09-07 Grocer")),
+        )
+        assertTrue(rows.all { it.attachedTo.isEmpty() })
+    }
+
+    @Test
+    fun `a full-path attachment still finds its document when the name is shared`() {
+        val rows = DocumentIndex.reconcile(
+            root = root,
+            onDisk = listOf("documents/a/invoice.pdf", "documents/b/invoice.pdf"),
+            directives = emptyList(),
+            attachments = mapOf("documents/b/invoice.pdf" to listOf("2026-09-07 Grocer")),
+        )
+        assertEquals(emptyList(), rows.first { it.path.contains("/a/") }.attachedTo)
+        assertEquals(listOf("2026-09-07 Grocer"), rows.first { it.path.contains("/b/") }.attachedTo)
+    }
+}
