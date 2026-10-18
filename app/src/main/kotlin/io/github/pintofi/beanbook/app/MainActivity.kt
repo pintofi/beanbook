@@ -461,6 +461,7 @@ class MainActivity : ComponentActivity() {
                     val ledger by app.ledgerState.snapshot.collectAsStateWithLifecycle()
                     val ledgerLoading by app.ledgerState.loading.collectAsStateWithLifecycle()
                     val projects by app.projectsState.projects.collectAsStateWithLifecycle()
+                    val trashedProjects by app.projectsState.trash.collectAsStateWithLifecycle()
                     val activeId by app.projectsState.activeId.collectAsStateWithLifecycle()
                     val projectMessage by app.projectsState.message.collectAsStateWithLifecycle()
                     val editorState by app.editorController.state.collectAsStateWithLifecycle()
@@ -763,6 +764,12 @@ class MainActivity : ComponentActivity() {
                         onImportFolder = { folderPicker.launch(null) },
                         onImportArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
                         onDeleteProject = { id -> app.projectsState.delete(id) },
+                        projectTrash = io.github.pintofi.beanbook.app.ui.ProjectTrash(
+                            items = trashedProjects,
+                            onRestore = { folder -> app.projectsState.restore(folder) },
+                            onDeleteForever = { folder -> app.projectsState.deleteForever(folder) },
+                            onEmpty = { app.projectsState.emptyTrash() },
+                        ),
                         editorState = editorState,
                         editorMessage = editorMessage,
                         editorFiles = app.editorController.filesFor(
