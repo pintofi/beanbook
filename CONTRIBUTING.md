@@ -72,7 +72,7 @@ changes that file, in the same pull request. Regenerate it by running the tasks 
 or change should appear.
 
 ```bash
-./gradlew --write-verification-metadata sha256 -Pbeancount.wheelDir=~/tools/wheels \
+./gradlew --write-verification-metadata sha256 -Pbeancount.wheelDir="$HOME/tools/wheels" \
   :app:assembleExpertRelease :app:assemblePlayRelease :app:assembleExpertDebugAndroidTest \
   :app:assemblePlayDebugAndroidTest :app:lintPlayDebug :app:lintExpertDebug \
   :app:testPlayDebugUnitTest :core-domain:test :core-data:test :core-engine:test detekt
