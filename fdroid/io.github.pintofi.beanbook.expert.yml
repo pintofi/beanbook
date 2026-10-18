@@ -11,21 +11,6 @@ AutoName: Beanbook
 RepoType: git
 Repo: https://github.com/pintofi/beanbook.git
 Builds:
-  - versionName: 1.0.0
-    versionCode: 1
-    commit: 7e8cd29418872201feb90cc6b838675de620c77f
-    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-universal.apk
-    subdir: app
-    sudo:
-      - apt-get update
-      - apt-get install -y python3.13 python3.13-venv rustup m4 gcc libc6-dev
-    init: ../tools/build-wheels.sh --out ../wheels
-    gradle:
-      - expert
-    output: build/outputs/apk/expert/release/*universal*.apk
-    prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
-    ndk: r27d
-
   - versionName: 1.0.1
     versionCode: 21
     commit: 52f3486c5821f824d85492574d7608700cf8e59a
