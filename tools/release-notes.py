@@ -40,5 +40,25 @@ if previous is None:
 text = text.replace("{{PREVIOUS}}", previous or "").replace("{{VERSION}}", version)
 text = text.replace("{{HIGHLIGHTS}}", highlights_file.read_text().strip())
 text = text.replace("{{CERT_SHA256}}", cert.group(1))
-text = text.replace("{{CHECKSUMS}}", checksums.read_text().strip())
+
+# One row per APK: the file name links to the release asset, and the column beside it holds its
+# checksum. The link is the release-download address, which is the same before and after the
+# draft is published.
+ORDER = ["arm64-v8a", "x86_64", "universal"]
+base = f"https://github.com/pintofi/beanbook/releases/download/v{version}"
+sums = {}
+for line in checksums.read_text().splitlines():
+    if line.strip():
+        digest, name = line.split(None, 1)
+        sums[name.strip().lstrip("*")] = digest
+
+
+def rank(name):
+    return next((i for i, abi in enumerate(ORDER) if abi in name), len(ORDER))
+
+
+rows = ["| File | SHA-256 |", "|---|---|"]
+for name in sorted(sums, key=lambda n: (rank(n), n)):
+    rows.append(f"| [{name}]({base}/{name}) | `{sums[name]}` |")
+text = text.replace("{{DOWNLOADS}}", "\n".join(rows))
 sys.stdout.write(text)
