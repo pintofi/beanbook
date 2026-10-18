@@ -63,6 +63,24 @@ Release signing material is not in this repository and never will be. A build wi
 succeeds and produces an **unsigned** APK, so that anyone can build without being able to sign
 as the project.
 
+### Gradle dependency checksums
+
+`gradle/verification-metadata.xml` holds the SHA-256 of every library and plugin the build
+downloads, and Gradle refuses one that does not match. A dependency change therefore also
+changes that file, in the same pull request. Regenerate it by running the tasks CI runs with
+`--write-verification-metadata sha256`, then review the diff: only the artifacts you meant to add
+or change should appear.
+
+```bash
+./gradlew --write-verification-metadata sha256 -Pbeancount.wheelDir=~/tools/wheels \
+  :app:assembleExpertRelease :app:assemblePlayRelease :app:assembleExpertDebugAndroidTest \
+  :app:assemblePlayDebugAndroidTest :app:lintPlayDebug :app:lintExpertDebug \
+  :app:testPlayDebugUnitTest :core-domain:test :core-data:test :core-engine:test detekt
+```
+
+The checksums are recorded the first time an artifact is seen, so they catch a later change to
+an artifact, not one that was already wrong when first downloaded. Signatures are not checked.
+
 ## Testing
 
 Kotlin unit tests, which is what CI runs:
