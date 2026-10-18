@@ -8,7 +8,7 @@ Verified against upstream on **2026-08-16**.
 
 | Component | Pinned version | License | Android status |
 |---|---|---|---|
-| Chaquopy | 17.0.0 (2025-12-01) | MIT | Python 3.10–3.14, minSdk 24, AGP 7.3–9.2 |
+| Chaquopy | 17.1.0 (2026-10-12) | MIT | Python 3.10–3.14, minSdk 24, AGP 7.3–9.2 |
 | CPython | 3.13 (via Chaquopy) | PSF | Runtime supplied by Chaquopy |
 | Beancount | 3.2.3 | **GPL-2.0-only** | ❌ No Android wheel: **must cross-build** (meson-python, bison ≥3.8, flex ≥2.6.4, C++) |
 | Fava | 1.30.15 | MIT | ✅ pure-Python `any` wheel |
