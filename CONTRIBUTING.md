@@ -225,6 +225,9 @@ A release is a tag, but the text is written before it. For version `x.y.z`:
 
 ## Pull requests
 
+Everyone taking part in issues, pull requests and discussions is expected to follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
 - Keep commits small and descriptive.
 - Versions are pinned. Upgrades are their own change, with the golden corpus re-run, rather
   than a drive-by bump inside a feature.
