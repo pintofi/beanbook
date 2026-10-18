@@ -137,12 +137,18 @@ jobs:
           (cd dist && sha256sum beanbook-*.apk) | tee checksums.txt
           test -s checksums.txt
 
+      - name: Write the release notes
+        # The text comes from .github/release-notes-template.md and release-notes/<version>.md.
+        # The step fails if that highlights file is missing, so a release is never drafted
+        # with nothing but checksums.
+        run: python3 -I tools/release-notes.py "${GITHUB_REF_NAME#v}" checksums.txt > release-notes.md
+
       - name: Publish
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: |
             dist/*.apk
             checksums.txt
-          body_path: checksums.txt
+          body_path: release-notes.md
           draft: true
           fail_on_unmatched_files: true

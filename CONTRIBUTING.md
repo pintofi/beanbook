@@ -203,6 +203,23 @@ position as well as for stability; `docs/architecture.md` §5 and §7.1 explain 
 Patches to upstream Python packages live in `patches/`, one file per patch, documented and
 rebasable. The project does not fork upstream.
 
+## Releasing
+
+A release is a tag, but the text is written before it. For version `x.y.z`:
+
+1. Raise `versionName` and `versionCode` in `app/build.gradle.kts` (the code by one).
+2. Move the Unreleased entries in `CHANGELOG.md` under a dated `[x.y.z]` heading, and add one
+   `fastlane/metadata/android/en-US/changelogs/<code>.txt` for each of the three codes (`<code>` is
+   the release number followed by 0, 1 and 2).
+3. Write the highlights in `release-notes/x.y.z.md`, following the shape of the earlier ones: a
+   one-line summary, then short **New** and **Fixed** lists in plain words. The release workflow
+   stops if the file is missing.
+4. Update `ROADMAP.md` and the README checklist, and the builds in
+   `fdroid/io.github.pintofi.beanbook.expert.yml`.
+5. Tag `vx.y.z`. The workflow builds and signs the APKs and drafts the release with the notes from
+   `.github/release-notes-template.md`, the highlights file, the certificate fingerprint and the
+   checksums. A person reads the draft and publishes it.
+
 ## Pull requests
 
 - Keep commits small and descriptive.

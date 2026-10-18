@@ -56,7 +56,6 @@ Builds:
     prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
     ndk: r27d
 
-# SHA-256 of the project's APK signing certificate (lowercase hex, no colons).
 AllowedAPKSigningKeys: d7039d79b2afa3ffc81aeba7bc8dbf45a73b07b94f982ca913d65028b9b2ff55
 
 AutoUpdateMode: Version
