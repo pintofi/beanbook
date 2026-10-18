@@ -110,4 +110,58 @@ class ProjectRegistryTest {
 
         assertEquals(listOf("newer", "older"), registry.summaries().map { it.id })
     }
+
+    @Test
+    fun `the trash lists what is in it with its title and size`() {
+        workspace.createProject("old", title = "Old books")
+        registry.moveToTrash("old")
+
+        val item = registry.trashSummaries().single()
+
+        assertEquals("old", item.projectId)
+        assertEquals("Old books", item.title)
+        assertTrue(item.fileCount >= 1)
+        assertTrue(item.totalBytes > 0)
+    }
+
+    @Test
+    fun `a trashed project is restored by name and one can be deleted for good`() {
+        workspace.createProject("a", title = "A")
+        workspace.createProject("b", title = "B")
+        registry.moveToTrash("a")
+        Thread.sleep(2)
+        registry.moveToTrash("b")
+        val (b, a) = registry.trashSummaries()
+
+        assertEquals("a", registry.restoreFromTrash(a.folder))
+        assertTrue(workspace.exists("a"))
+
+        assertTrue(registry.deleteFromTrash(b.folder))
+        assertTrue(registry.trashSummaries().isEmpty())
+        assertFalse(workspace.exists("b"))
+    }
+
+    @Test
+    fun `emptying the trash removes every trashed project and nothing else`() {
+        workspace.createProject("keep", title = "Keep")
+        workspace.createProject("x", title = "X")
+        workspace.createProject("y", title = "Y")
+        registry.moveToTrash("x")
+        registry.moveToTrash("y")
+
+        assertEquals(2, registry.emptyTrash())
+
+        assertTrue(registry.trashSummaries().isEmpty())
+        assertTrue(workspace.exists("keep"))
+    }
+
+    @Test
+    fun `a trash name cannot reach outside the trash`() {
+        workspace.createProject("safe", title = "Safe")
+
+        assertFailsWith<IllegalArgumentException> { registry.deleteFromTrash("../projects/safe") }
+        assertFailsWith<IllegalArgumentException> { registry.deleteFromTrash("..") }
+
+        assertTrue(workspace.exists("safe"))
+    }
 }

@@ -29,6 +29,24 @@ data class ProjectSummary(
 }
 
 /**
+ * A deleted project waiting in the trash. [folder] is its name there, which is all the
+ * trash operations take: it is `<project id>-<time deleted>`.
+ */
+data class TrashedProject(
+    val folder: String,
+    val projectId: String,
+    val title: String,
+    val fileCount: Int,
+    val totalBytes: Long,
+    val trashedAt: Long,
+) {
+    fun describe(): String = ProjectSummary(
+        id = projectId, title = title, mainFile = File(folder), fileCount = fileCount,
+        totalBytes = totalBytes, lastModified = trashedAt,
+    ).describe()
+}
+
+/**
  * Tracks which project is open and lists the others.
  *
  * The active project id is stored outside the project tree, like every other piece of
@@ -110,6 +128,36 @@ class ProjectRegistry(
         require(!target.exists()) { "a project with that id already exists: $projectId" }
         check(trashed.renameTo(target)) { "could not restore ${trashed.name}" }
         return projectId
+    }
+
+    /** What is in the trash: names, sizes and when each went in, newest first. */
+    fun trashSummaries(): List<TrashedProject> = trashed().map { folder ->
+        val files = folder.walkTopDown().filter { it.isFile }.toList()
+        TrashedProject(
+            folder = folder.name,
+            projectId = folder.name.substringBeforeLast('-'),
+            title = readTitle(File(folder, ProjectWorkspace.MAIN_FILE)) ?: folder.name.substringBeforeLast('-'),
+            fileCount = files.size,
+            totalBytes = files.sumOf { it.length() },
+            trashedAt = folder.name.substringAfterLast('-').toLongOrNull() ?: folder.lastModified(),
+        )
+    }
+
+    /** Puts a trashed project back; returns its id. Refused if the id is taken. */
+    fun restoreFromTrash(folderName: String): String = restoreFromTrash(trashFolder(folderName))
+
+    /** Deletes one trashed project for good. Returns whether it was there. */
+    fun deleteFromTrash(folderName: String): Boolean = trashFolder(folderName).deleteRecursively()
+
+    /** Deletes everything in the trash for good. Returns how many projects went. */
+    fun emptyTrash(): Int = trashed().count { it.deleteRecursively() }
+
+    /** [name] as a folder directly inside the trash, and nothing else: a name cannot reach out of it. */
+    private fun trashFolder(name: String): File {
+        val trash = File(stateDir, "trash").canonicalFile
+        val folder = File(trash, name).canonicalFile
+        require(folder.parentFile == trash && folder.isDirectory) { "not in the trash: $name" }
+        return folder
     }
 
     fun trashed(): List<File> =

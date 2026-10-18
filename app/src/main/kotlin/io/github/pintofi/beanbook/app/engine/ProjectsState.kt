@@ -11,6 +11,7 @@ import io.github.pintofi.beanbook.core.data.ProjectImporter
 import io.github.pintofi.beanbook.core.data.ProjectRegistry
 import io.github.pintofi.beanbook.core.data.ProjectSummary
 import io.github.pintofi.beanbook.core.data.ProjectWorkspace
+import io.github.pintofi.beanbook.core.data.TrashedProject
 import io.github.pintofi.beanbook.core.data.ZipImportSource
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -43,9 +44,13 @@ class ProjectsState(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    private val _trash = MutableStateFlow<List<TrashedProject>>(emptyList())
+    val trash: StateFlow<List<TrashedProject>> = _trash.asStateFlow()
+
     fun refresh() {
         _projects.value = registry.summaries()
         _activeId.value = registry.activeProjectId()
+        _trash.value = registry.trashSummaries()
     }
 
     fun open(projectId: String) {
@@ -172,6 +177,36 @@ class ProjectsState(
             refresh()
             _message.value = "Moved to the trash. Nothing was deleted from any export you made."
             Log.i(TAG, "project moved to trash: ${trashed.name}")
+        }
+    }
+
+    /** Puts a deleted project back. Refused, with the reason, if its id has been reused since. */
+    fun restore(folder: String) {
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) { runCatching { registry.restoreFromTrash(folder) } }
+            refresh()
+            _message.value = outcome.fold(
+                onSuccess = { "Restored \"$it\"." },
+                onFailure = { "Not restored: ${it.message}" },
+            )
+        }
+    }
+
+    /** Deletes one trashed project for good. The caller has already asked. */
+    fun deleteForever(folder: String) {
+        scope.launch {
+            withContext(Dispatchers.IO) { registry.deleteFromTrash(folder) }
+            refresh()
+            _message.value = "Deleted for good."
+        }
+    }
+
+    /** Deletes everything in the trash for good. The caller has already asked. */
+    fun emptyTrash() {
+        scope.launch {
+            val count = withContext(Dispatchers.IO) { registry.emptyTrash() }
+            refresh()
+            _message.value = "Emptied the trash: $count project${if (count == 1) "" else "s"} deleted for good."
         }
     }
 
