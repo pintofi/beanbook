@@ -82,8 +82,9 @@ each of its three codes.
 
 For each release the recipe gets one `Builds` entry per ABI, each pointing at its own file on
 the GitHub release through `binary:`. This is the shape to submit to `fdroiddata` once the
-release commit exists; the commit, and the final recipe text, are filled in at release time, and
-F-Droid's server has not yet built this layout:
+release commit exists; the commit, and the final recipe text, are filled in at release time. The finished
+entries are in `fdroid/io.github.pintofi.beanbook.expert.yml`; F-Droid's server has not yet built
+this layout:
 
 ```yaml
 Builds:
