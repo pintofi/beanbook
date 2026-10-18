@@ -103,5 +103,19 @@ Builds:
 ```
 
 `Binaries` at the top of the recipe is replaced by these per-entry `binary:` lines, and
-`CurrentVersionCode` becomes 22. How `AutoUpdateMode` should produce the second entry is for
-F-Droid's maintainers to say; the first 1.0.1 recipe is written by hand.
+`CurrentVersionCode` becomes 22.
+
+`checkupdates` reads `versionCode = 2` from `app/build.gradle.kts` at the tag, which is the
+release number, not the code of either APK. Without help it reports "current version is newer:
+old vercode=22, new vercode=2" and fails. The recipe therefore carries
+
+```yaml
+VercodeOperation:
+  - 10 * %c + 1
+  - 10 * %c + 2
+```
+
+which turns the 2 into 21 and 22, the same arithmetic as `app/build.gradle.kts`. The entries
+must stay in ascending order of code (arm64-v8a, then x86_64), because `AutoUpdateMode` copies
+the last entries and gives them the sorted codes in that order. With this, `fdroid rewritemeta`
+leaves the file unchanged and `fdroid checkupdates` reports no error against `v1.0.1`.
