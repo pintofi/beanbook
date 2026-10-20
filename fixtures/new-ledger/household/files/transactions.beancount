@@ -1,0 +1,12 @@
+; Your transactions. Add them here, or let Beanbook write them for you.
+
+;; Opening balances
+; What each account held as these books begin. The pad line fills the account
+; from Equity:Opening-Balances, and the balance line checks the result.
+; To correct an opening balance, change the figure on its balance line.
+
+2026-09-30 pad Assets:Bank:Checking Equity:Opening-Balances
+2026-10-01 balance Assets:Bank:Checking           1250.00 EUR
+
+2026-09-30 pad Liabilities:CreditCard Equity:Opening-Balances
+2026-10-01 balance Liabilities:CreditCard         -310.40 EUR

@@ -1,0 +1,11 @@
+; The accounts in this ledger. An account has to be opened before an entry can
+; use it. The currency after a name is the only one that account accepts;
+; leave it off to accept any. Accounts you open in Beanbook are added at the end.
+
+2026-09-30 open Assets:Cash                 EUR
+2026-09-30 open Assets:Bank:Checking        EUR
+2026-09-30 open Income:Salary               EUR
+2026-09-30 open Expenses:Food:Groceries     EUR
+2026-09-30 open Expenses:Home:Rent          EUR
+2026-09-30 open Expenses:Transport          EUR
+2026-09-30 open Equity:Opening-Balances     EUR
