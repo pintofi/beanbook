@@ -1,0 +1,62 @@
+; Yen books
+;
+; The top of your ledger: Beancount and Fava start reading here.
+; It is plain text and yours to edit, in Beanbook or on a computer. Beanbook
+; never rewrites parts of it you did not change. Lines that start with a
+; semicolon are comments, and Beancount ignores them.
+
+option "title" "Yen books"
+
+;; Currencies
+; The first operating currency is the one totals and the dashboard use.
+; Add another operating_currency line to see reports in that currency too.
+option "operating_currency" "JPY"
+
+; How a sale chooses which purchase it comes from. STRICT asks you whenever it
+; is not clear. Others: FIFO, LIFO, HIFO, STRICT_WITH_SIZE. One account can
+; differ: put the method after its currency in its open line.
+option "booking_method" "STRICT"
+
+;; Precision
+; How far apart the two sides of an entry may be and still balance, when the
+; amounts do not say (an amount written as 12, with no decimals).
+; https://beancount.github.io/docs/precision_tolerances.html
+option "inferred_tolerance_default" "JPY:0.5"
+
+; How many decimal places figures are shown with.
+option "display_precision" "JPY:1"
+
+;; Documents
+; Receipts and statements are kept in this folder, one folder per account.
+option "documents" "documents"
+
+;; Plugins
+; Plugins check or add to entries as the ledger loads. Their order matters.
+
+; Opens the receipt named in an entry's document: line. Part of Fava.
+plugin "fava.plugins.link_documents"
+
+; More checks. Remove the semicolon at the start of a line to turn one on.
+; Every currency needs a commodity line in files/commodities.beancount:
+; plugin "beancount.plugins.check_commodity"
+; Post only to the last level of an account, Expenses:Food:Groceries and not Expenses:Food:
+; plugin "beancount.plugins.leafonly"
+; Two different prices for one commodity on the same day are an error:
+; plugin "beancount.plugins.unique_prices"
+; A sale at a price must post its gain or loss to an Income account:
+; plugin "beancount.plugins.sellgains"
+; Every opened account must be used. Turn on once your accounts are in use:
+; plugin "beancount.plugins.nounused"
+
+;; Fava
+; Settings for the reports. Fava reads them from these dated lines; the date
+; means nothing else.
+2026-03-31 custom "fava-option" "default-file" "files/transactions.beancount"
+; The day your financial year ends, as month-day. 12-31 when left out.
+; 2026-03-31 custom "fava-option" "fiscal-year-end" "06-30"
+
+;; Files
+include "files/commodities.beancount"
+include "files/accounts.beancount"
+include "prices/prices.beancount"
+include "files/transactions.beancount"

@@ -1,0 +1,2 @@
+; Prices, one per line, for example:  2026-10-01 price USD  0.92 EUR
+; Beanbook does not fetch prices. Write them here, or point a price fetcher at this file.
