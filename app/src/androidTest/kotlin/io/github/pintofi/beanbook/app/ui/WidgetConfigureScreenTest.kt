@@ -75,4 +75,36 @@ class WidgetConfigureScreenTest {
 
         compose.onNodeWithText("Open the app once", substring = true).assertIsDisplayed()
     }
+
+    /** An account holding two commodities lets either be chosen, like an account. */
+    @Test fun anAccountWithTwoCommoditiesLetsOneBePicked() {
+        var option: io.github.pintofi.beanbook.app.widget.WidgetOption? = null
+        var chosen: List<String>? = null
+        compose.setContent {
+            ChooseAccounts(
+                accounts = listOf("Assets:Cash", "Assets:Bank"),
+                commodities = mapOf("Assets:Cash" to listOf("PKR", "SAR")),
+                onChoose = { list, o -> chosen = list; option = o },
+            )
+        }
+        // Not offered until the account is chosen.
+        compose.onNodeWithContentDescription("Show only SAR for Assets:Cash").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Show the balance of Assets:Cash").performClick()
+        compose.onNodeWithContentDescription("Show only SAR for Assets:Cash").assertIsDisplayed()
+        // Untick PKR: only SAR is left.
+        compose.onNodeWithContentDescription("Show only PKR for Assets:Cash").performClick()
+        compose.onNodeWithText("Add this widget").performClick()
+
+        assertEquals(listOf("Assets:Cash"), chosen)
+        assertEquals(setOf("SAR"), option!!.commodities["Assets:Cash"])
+    }
+
+    @Test fun theBasisIsChosenOnTheSameScreen() {
+        var option: io.github.pintofi.beanbook.app.widget.WidgetOption? = null
+        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { _, o -> option = o }) }
+        compose.onNodeWithContentDescription("Show figures: At cost").performClick()
+        compose.onNodeWithText("Assets:Bank:Current").performClick()
+        compose.onNodeWithText("Add this widget").performClick()
+        assertEquals(io.github.pintofi.beanbook.core.domain.Valuation.COST, option!!.basis)
+    }
 }

@@ -98,12 +98,13 @@ fun DocumentsScreen(
     names: io.github.pintofi.beanbook.core.domain.AccountNames =
         io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
     /**
-     * The tab somebody asked to land on, once: the Home card for a document that is not linked
-     * sends them to Organize, where it is fixed, not to Add, where a new one is made. [onShown]
-     * clears the request, so coming back later opens the tab last used.
+     * The tab, when the caller keeps it. Home's card for a document that is not linked sends
+     * people to Organize, where it is fixed, and a request that the screen consumes once is lost
+     * whenever the screen is composed more than once on the way in. Held by the caller, the tab is
+     * simply what it was set to. Null leaves the screen to remember it itself.
      */
-    requestedMode: DocumentsMode? = null,
-    onRequestShown: () -> Unit = {},
+    mode: DocumentsMode? = null,
+    onModeChange: (DocumentsMode) -> Unit = {},
 ) {
     var account by remember {
         mutableStateOf(
@@ -115,12 +116,11 @@ fun DocumentsScreen(
     var label by rememberSaveable { mutableStateOf("") }
     var granted by remember(hasCamera) { mutableStateOf(hasCamera) }
     var pendingRemoval by remember { mutableStateOf<Pair<DocumentRow, DocumentRemoval>?>(null) }
-    var mode by rememberSaveable { mutableStateOf(requestedMode ?: DocumentsMode.ADD) }
-    androidx.compose.runtime.LaunchedEffect(requestedMode) {
-        if (requestedMode != null) {
-            mode = requestedMode
-            onRequestShown()
-        }
+    var ownMode by rememberSaveable { mutableStateOf(DocumentsMode.ADD) }
+    val shownMode = mode ?: ownMode
+    fun showMode(next: DocumentsMode) {
+        ownMode = next
+        onModeChange(next)
     }
     var refiling by remember { mutableStateOf<DocumentRow?>(null) }
     var expanded by remember { mutableStateOf(emptySet<String>()) }
@@ -161,17 +161,17 @@ fun DocumentsScreen(
         // both, and the secondary one keeps the indicator these tabs already had. The
         // primary variant draws a wider, rounded indicator, which would be a visual
         // change smuggled in under a deprecation fix.
-        SecondaryTabRow(selectedTabIndex = mode.ordinal) {
+        SecondaryTabRow(selectedTabIndex = shownMode.ordinal) {
             DocumentsMode.entries.forEach { entry ->
                 Tab(
-                    selected = mode == entry,
-                    onClick = { mode = entry },
+                    selected = shownMode == entry,
+                    onClick = { showMode(entry) },
                     text = { Text(entry.label) },
                 )
             }
         }
 
-        if (mode == DocumentsMode.ADD) {
+        if (shownMode == DocumentsMode.ADD) {
         Text("Attach a document", style = MaterialTheme.typography.titleMedium)
 
         if (!granted) {
@@ -286,7 +286,7 @@ fun DocumentsScreen(
 
         message?.let { StatusLine(it) }
 
-        if (mode == DocumentsMode.ORGANIZE && documents.isEmpty()) {
+        if (shownMode == DocumentsMode.ORGANIZE && documents.isEmpty()) {
             EmptyState(
                 title = "No documents yet",
                 detail = "Scan a receipt or attach a file on the Add tab to file it under an account.",
@@ -294,7 +294,7 @@ fun DocumentsScreen(
             )
         }
 
-        if (mode == DocumentsMode.ORGANIZE && documents.isNotEmpty()) {
+        if (shownMode == DocumentsMode.ORGANIZE && documents.isNotEmpty()) {
             LedgerHeading("Documents in this project")
             documents.forEachIndexed { index, row ->
                 val path = row.path
