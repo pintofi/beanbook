@@ -220,21 +220,25 @@ object StructuredEdit {
         if (draft.payee != entry.payee?.takeIf { it.isNotBlank() }) return false
         if (draft.narration != entry.narration?.takeIf { it.isNotBlank() }) return false
         if (!entry.tags.containsAll(draft.tags) || !entry.links.containsAll(draft.links)) return false
-        var next = 0
-        draft.postings.forEachIndexed { index, posting ->
-            val booked = entry.postings.getOrNull(next) ?: return false
-            if (booked.account != posting.account) return false
-            next++
-            val amount = posting.amount
-            if (amount != null) {
-                val figure = booked.amount ?: return false
-                if (figure.currency != amount.currency || figure.number.compareTo(amount.number) != 0) return false
-            } else {
-                val left = draft.postings.size - index - 1
-                while (entry.postings.size - next > left && entry.postings.getOrNull(next)?.account == posting.account) next++
+        // Beancount books a transaction's postings grouped by currency, so the parsed entry lists
+        // them in a different order from the text. Compared as a set: every posting with an amount
+        // finds its match, and what is left is what the one elided posting was booked into.
+        val pool = entry.postings.toMutableList()
+        for (posting in draft.postings) {
+            val amount = posting.amount ?: continue
+            val at = pool.indexOfFirst {
+                it.account == posting.account && it.amount?.currency == amount.currency &&
+                    it.amount.number.compareTo(amount.number) == 0
             }
+            if (at < 0) return false
+            pool.removeAt(at)
         }
-        return next == entry.postings.size
+        val elided = draft.postings.filter { it.amount == null }
+        return when (elided.size) {
+            0 -> pool.isEmpty()
+            1 -> pool.isNotEmpty() && pool.all { it.account == elided.single().account }
+            else -> false
+        }
     }
 
     private class Header(
