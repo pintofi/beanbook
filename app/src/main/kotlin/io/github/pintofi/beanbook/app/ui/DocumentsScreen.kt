@@ -138,6 +138,14 @@ fun DocumentsScreen(
     }
     val attachedFiles by capture.attachedFiles.collectAsState()
     val hasDocuments = !capture.pages.isEmpty || attachedFiles.isNotEmpty()
+    // Back to how the page opened once what was being filed is gone -- filed, or discarded -- so
+    // the next document does not start with the last one's account and name already in the boxes.
+    androidx.compose.runtime.LaunchedEffect(hasDocuments) {
+        if (!hasDocuments) {
+            label = ""
+            account = vocabulary.accounts.firstOrNull { it.startsWith(names.expenses) }.orEmpty()
+        }
+    }
 
     Column(
         modifier = modifier
