@@ -306,3 +306,29 @@ class StructuredEditTest {
         assertEquals("the \"big\"  shop", editable.draft.narration)
     }
 }
+
+class StructuredEditOpeningTest {
+    @Test fun `the opening entry of a two currency ledger opens as fields`() {
+        val source = """
+            2026-08-01 * "Opening" "Opening balances"
+              Assets:Current:Cash                 5,000.00 PKR
+              Assets:Current:Cash                   200.00 SAR
+              Assets:Current:Bank:Meezan        250,000.00 PKR
+              Equity:Opening-Balances
+        """.trimIndent() + "\n"
+        fun p(a: String, n: String, c: String) = JournalPosting(a, Amount(BigDecimal(n), c))
+        val entry = JournalEntry(
+            date = "2026-08-01", flag = "*", payee = "Opening", narration = "Opening balances",
+            tags = emptyList(), links = emptyList(),
+            postings = listOf(
+                // In the order Beancount reports them: grouped by currency, not as written.
+                p("Assets:Current:Cash", "5000.00", "PKR"), p("Assets:Current:Bank:Meezan", "250000.00", "PKR"),
+                p("Equity:Opening-Balances", "-255000.00", "PKR"),
+                p("Assets:Current:Cash", "200.00", "SAR"), p("Equity:Opening-Balances", "-200.00", "SAR"),
+            ),
+            file = "f", line = 1,
+        )
+        assertNotNull(StructuredEdit.draftFromSource(source), "parse")
+        assertNotNull(StructuredEdit.editableDraftOf(entry, source))
+    }
+}
