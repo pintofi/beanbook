@@ -95,7 +95,7 @@ fun DiagnosticsScreen(
                             contentDescription = "Copy the diagnostic report"
                         },
                     ) { Text("Copy") }
-                    TextButton(
+                    SecondaryButton(
                         onClick = { confirmingClear = true },
                         modifier = Modifier.semantics { contentDescription = "Clear the recorded log" },
                     ) { Text("Clear") }

@@ -124,7 +124,7 @@ private fun AccountRow(account: AccountBalance, canClose: Boolean, onClose: () -
             )
         }
         if (canClose && empty && account.opened != null) {
-            TextButton(
+            SecondaryButton(
                 onClick = onClose,
                 modifier = Modifier.semantics { contentDescription = "Close the account ${account.name}" },
             ) { Text("Close") }

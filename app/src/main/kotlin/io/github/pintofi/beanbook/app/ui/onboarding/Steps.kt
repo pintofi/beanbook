@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.app.ui.onboarding
 
+import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -18,7 +19,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -85,20 +85,18 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
         onValueChange = { extra = it.uppercase(Locale.ROOT) },
         label = "Other currencies",
         suggestions = currencyCodes - draft.currencies.toSet(),
-        trailingIcon = {
-            TextButton(
-                onClick = {
-                    val code = extra.trim()
-                    if (CommodityName.isValid(code) && code !in draft.currencies) {
-                        update { it.copy(otherCurrencies = it.otherCurrencies + code) }
-                    }
-                    extra = ""
-                },
-                enabled = CommodityName.isValid(extra.trim()),
-            ) { Text("Add") }
-        },
     )
     Hint("Only if you hold or spend in more than one currency. You can add more later.")
+    SecondaryButton(
+        onClick = {
+            val code = extra.trim()
+            if (CommodityName.isValid(code) && code !in draft.currencies) {
+                update { it.copy(otherCurrencies = it.otherCurrencies + code) }
+            }
+            extra = ""
+        },
+        enabled = CommodityName.isValid(extra.trim()),
+    ) { Text("Add currency") }
     if (draft.otherCurrencies.isNotEmpty()) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             draft.otherCurrencies.forEach { code ->
@@ -121,7 +119,7 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
     Hint("Entries before this date are not expected. Opening balances are dated the day before.")
 
     var fine by rememberSaveable { mutableStateOf(false) }
-    TextButton(onClick = { fine = !fine }) { Text(if (fine) "Hide fine-tuning" else "Fine-tune") }
+    SecondaryButton(onClick = { fine = !fine }) { Text(if (fine) "Hide fine-tuning" else "Fine-tune") }
     if (!fine) return
     draft.currencies.forEach { code ->
         OutlinedTextField(
@@ -385,7 +383,7 @@ internal fun FinishPage(
                 OutlinedButton(onClick = onDefaults, modifier = Modifier.fillMaxWidth()) {
                     Text("Create with defaults instead")
                 }
-                TextButton(onClick = onBack) { Text("Back to my answers") }
+                SecondaryButton(onClick = onBack) { Text("Back to my answers") }
             }
         }
     }

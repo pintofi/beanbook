@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.app
 
+import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -478,7 +479,7 @@ internal fun RecoveryBanner(message: String, onDismiss: () -> Unit) {
                 contentDescription = "$message"
             },
         )
-        TextButton(
+        SecondaryButton(
             onClick = onDismiss,
             modifier = Modifier.semantics { contentDescription = "Dismiss this notice" },
         ) { Text("Dismiss") }

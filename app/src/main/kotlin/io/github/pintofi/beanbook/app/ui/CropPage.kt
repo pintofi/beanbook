@@ -19,7 +19,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -157,9 +156,11 @@ fun CropPageScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.Start,
         ) {
-            TextButton(
+            SecondaryButton(
                 onClick = { onCropped(null) },
                 modifier = Modifier.semantics { contentDescription = "Use the whole photo" },
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White),
             ) { Text("Use the whole photo", color = Color.White) }
         }
     }

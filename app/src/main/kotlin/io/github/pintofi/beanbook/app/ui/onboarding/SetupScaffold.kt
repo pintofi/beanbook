@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.app.ui.onboarding
 
+import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,7 +78,7 @@ internal fun SetupPage(
                     modifier = Modifier.semantics { heading() },
                 )
             }
-            if (secondaryLabel != null) TextButton(onClick = onSecondary) { Text(secondaryLabel) }
+            if (secondaryLabel != null) SecondaryButton(onClick = onSecondary) { Text(secondaryLabel) }
         }
         StepRules(step)
         Column(

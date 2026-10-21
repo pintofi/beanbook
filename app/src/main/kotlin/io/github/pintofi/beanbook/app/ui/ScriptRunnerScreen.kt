@@ -17,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -187,7 +186,7 @@ private fun SavedScriptCard(
                     contentDescription = "Run the saved script ${script.name}"
                 },
             ) { Text("Run") }
-            TextButton(
+            SecondaryButton(
                 onClick = { confirming = true },
                 modifier = Modifier.semantics {
                     contentDescription = "Remove the saved script ${script.name}"

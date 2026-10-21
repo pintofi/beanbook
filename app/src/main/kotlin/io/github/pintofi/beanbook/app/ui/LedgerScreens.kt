@@ -312,7 +312,7 @@ fun JournalScreen(
                 modifier = Modifier.weight(1f)
                     .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
             )
-            androidx.compose.material3.TextButton(
+            SecondaryButton(
                 onClick = { confirmingDelete = true },
                 modifier = Modifier.semantics { contentDescription = "Delete the selected entries" },
             ) { Text("Delete") }

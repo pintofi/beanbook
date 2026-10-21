@@ -6,7 +6,6 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.modifiers.TextAutoSizeLayoutScope
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -162,7 +161,7 @@ fun HeadlineFigure(
             if (onMore != null) {
                 // Flush with the figures above it: a text button's own inset set "+4 more" a
                 // step to the right of the column it belongs to. The target stays 48dp.
-                TextButton(
+                SecondaryButton(
                     onClick = onMore,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         start = 0.dp,
