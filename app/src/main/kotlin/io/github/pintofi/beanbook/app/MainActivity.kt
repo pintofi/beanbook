@@ -31,7 +31,8 @@ import io.github.pintofi.beanbook.app.engine.LedgerState
 import io.github.pintofi.beanbook.app.plugins.collectUi
 import io.github.pintofi.beanbook.app.engine.RecoveryOnStart
 import io.github.pintofi.beanbook.app.ui.trashUi
-import io.github.pintofi.beanbook.app.ui.OnboardingScreen
+import io.github.pintofi.beanbook.app.ui.onboarding.OnboardingFlow
+import io.github.pintofi.beanbook.app.ui.onboarding.SetupActions
 import io.github.pintofi.beanbook.app.backup.ScheduledBackupWorker
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import io.github.pintofi.beanbook.app.ui.DocumentCaptureHandle
@@ -243,6 +244,64 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
+    /** The folder chosen for the new ledger's copy; applied once the ledger exists. */
+    private val setupMirrorPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        val app = application as BeancountApplication
+        uri?.let {
+            contentResolver.takePersistableUriPermission(
+                it,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+            app.newLedgerSetup.update { d -> d.copy(mirrorFolder = it.toString()) }
+        }
+    }
+
+    private fun setupActions(app: BeancountApplication): SetupActions {
+        val setup = app.newLedgerSetup
+        fun create(draft: io.github.pintofi.beanbook.app.onboarding.SetupDraft) {
+            lifecycleScope.launch {
+                setup.creating(io.github.pintofi.beanbook.app.onboarding.Creation.Working("Writing the files and having Beancount read them"))
+                val blueprint = draft.toBlueprint(
+                    java.time.LocalDate.now(),
+                    io.github.pintofi.beanbook.app.onboarding.NewLedgerSetup.commodityNames(draft.currencies),
+                )
+                app.projectsState.createFromBlueprint(blueprint)
+                    .onSuccess { id ->
+                        draft.mirrorFolder?.let { folder ->
+                            app.mirror.useProject(id)
+                            app.mirror.setFolder(folder)
+                            app.mirror.setEnabled(true)
+                        }
+                        setup.finished(id, io.github.pintofi.beanbook.app.onboarding.NewLedgerSetup.summary(blueprint))
+                    }
+                    .onFailure {
+                        setup.creating(io.github.pintofi.beanbook.app.onboarding.Creation.Failed(it.message ?: "The ledger could not be created."))
+                    }
+            }
+        }
+        return SetupActions(
+            onCreate = { create(setup.draft.value) },
+            onCreateWithDefaults = {
+                val name = setup.draft.value.name
+                setup.update { io.github.pintofi.beanbook.app.onboarding.NewLedgerSetup.fresh().copy(name = name, step = io.github.pintofi.beanbook.app.onboarding.SetupStep.FINISH) }
+                create(setup.draft.value)
+            },
+            onOpenFolder = { folderPicker.launch(null) },
+            onOpenArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
+            onPickMirrorFolder = { setupMirrorPicker.launch(null) },
+            onAskNotifications = { askForNotifications(force = true) },
+            onThemeChoice = { app.themeSettings.setChoice(it) },
+            onFinish = { id, addEntry ->
+                setup.reset()
+                openProject(app, id)
+                if (addEntry) requestedSurface = "ADD"
+            },
+        )
+    }
+
     /** Opens a project: engine, ledger, and the active-project record all move together. */
     /** The name the picker shows, so an installed plugin is recognisable later. */
     private fun displayNameOf(uri: android.net.Uri): String =
@@ -287,6 +346,7 @@ class MainActivity : ComponentActivity() {
         // Before anything can sync: the mirror answers for this project only.
         app.mirror.useProject(projectId)
         app.undo.dismiss()
+        askForNotifications()   // once, and only when there is a ledger for it to be about
         mirrorFolder = app.mirror.folderUri
         mirrorEnabled = app.mirror.enabled
         app.templatesState.open(projectId)
@@ -360,12 +420,12 @@ class MainActivity : ComponentActivity() {
      * allows it, and the app never asked. Asked once: a refusal is respected, and the
      * work still runs -- only the "Beanbook keeps working" notice is not shown.
      */
-    private fun askForNotifications() {
+    private fun askForNotifications(force: Boolean = false) {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return
         val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
         val prefs = getSharedPreferences("prompts", MODE_PRIVATE)
-        if (granted || prefs.getBoolean("asked_notifications", false)) return
+        if (granted || (!force && prefs.getBoolean("asked_notifications", false))) return
         prefs.edit().putBoolean("asked_notifications", true).apply()
         notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
     }
@@ -381,10 +441,10 @@ class MainActivity : ComponentActivity() {
         // safeDrawingPadding at the root, not from here.
         enableEdgeToEdge()
 
-        askForNotifications()
-
         val app = application as BeancountApplication
 
+        // A setup killed mid-creation leaves a staging folder; nothing else would ever remove it.
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { runCatching { app.workspace.sweepStaleStaging() } }
         app.projectsState.refresh()
         hideWidgetAmounts = io.github.pintofi.beanbook.app.widget.WidgetPreferences(this).hideAmounts()
         backupFolder = app.backupSettings.folderUri()
@@ -524,13 +584,11 @@ class MainActivity : ComponentActivity() {
                         // Outside the Scaffold, so it takes the insets itself. This is the
                         // first screen anybody sees and the one where the title once sat
                         // flush against the status bar.
-                        OnboardingScreen(
+                        OnboardingFlow(
+                            setup = app.newLedgerSetup,
                             modifier = Modifier.safeDrawingPadding(),
-                            onCreateNew = { title ->
-                                app.projectsState.createNew(title) { openProject(app, it) }
-                            },
-                            onOpenFolder = { folderPicker.launch(null) },
-                            onOpenArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
+                            themeChoice = themeChoice,
+                            actions = setupActions(app),
                             busyMessage = projectMessage,
                             trash = app.projectsState.trashUi(trashedProjects) { openProject(app, it) },
                         )

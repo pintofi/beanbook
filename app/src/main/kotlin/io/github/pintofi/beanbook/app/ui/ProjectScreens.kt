@@ -62,187 +62,6 @@ import androidx.compose.material.icons.outlined.DriveFolderUpload
 import androidx.compose.material.icons.outlined.FolderZip
 import androidx.compose.material.icons.outlined.Output
 
-/**
- * First run, in two pages: what this is, and then the ways in.
- *
- * It used to be one scroll — a heading, a sentence, and two cards asking you to open or
- * create a project. The welcome that now precedes those cards made the page long, and a
- * page that both introduces the app and asks for a decision does neither well: the
- * introduction is skimmed to reach the controls, and the controls are met before there is
- * any reason to care about them.
- *
- * So the first page only introduces, and carries a single action. The second only asks.
- * Nothing is created or read until the second page, so going back costs nothing and the
- * back arrow is real rather than decorative — `BackHandler` gives the system gesture the
- * same meaning, which is what a person will reach for first.
- */
-@Composable
-fun OnboardingScreen(
-    onCreateNew: (String) -> Unit,
-    onOpenFolder: () -> Unit,
-    onOpenArchive: () -> Unit,
-    modifier: Modifier = Modifier,
-    busyMessage: String? = null,
-    trash: ProjectTrash = ProjectTrash(),
-) {
-    var showingWaysIn by rememberSaveable { mutableStateOf(false) }
-
-    if (showingWaysIn) {
-        BackHandler { showingWaysIn = false }
-        WaysInPage(
-            onBack = { showingWaysIn = false },
-            onCreateNew = onCreateNew,
-            onOpenFolder = onOpenFolder,
-            onOpenArchive = onOpenArchive,
-            modifier = modifier,
-            busyMessage = busyMessage,
-            trash = trash,
-        )
-    } else {
-        WelcomePage(onContinue = { showingWaysIn = true }, modifier = modifier)
-    }
-}
-
-/**
- * Page one: the mark, what the app is, and one way onward.
- *
- * An **extended** FAB rather than a plain one. The page scrolls at larger font sizes, so a
- * button at the end of the content would be below the fold exactly when it matters most,
- * and a floating circle with an arrow in it tells a first-time user nothing about what
- * pressing it does. The label is the whole point of the control here.
- */
-@Composable
-private fun WelcomePage(onContinue: () -> Unit, modifier: Modifier = Modifier) {
-    Scaffold(
-        modifier = modifier,
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onContinue,
-                icon = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) },
-                text = { Text("Get started") },
-                modifier = Modifier.semantics {
-                    contentDescription = "Get started. Opens the ways to add a ledger."
-                },
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            // Room at the end for the floating button, which draws over the content.
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            WelcomeHeader()
-            WhatThisIs()
-            Spacer(Modifier.height(72.dp))
-        }
-    }
-}
-
-/**
- * Page two: import what you already keep, or start something new.
- *
- * The back arrow is auto-mirrored so it points the other way in a right-to-left layout,
- * matching every other back control in the app.
- */
-@Composable
-private fun WaysInPage(
-    onBack: () -> Unit,
-    onCreateNew: (String) -> Unit,
-    onOpenFolder: () -> Unit,
-    onOpenArchive: () -> Unit,
-    modifier: Modifier = Modifier,
-    busyMessage: String? = null,
-    trash: ProjectTrash = ProjectTrash(),
-) {
-    var title by remember { mutableStateOf("My Ledger") }
-
-    Column(modifier = modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 8.dp, end = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.semantics { contentDescription = "Back to the welcome" },
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-            }
-            Text("Add a ledger", style = MaterialTheme.typography.titleLarge)
-        }
-
-        // Scrollable, not just tall: at 200% font the "Start a new project" card falls below
-        // the fold, and without this it cannot be reached at all.
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            RuledColumn(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
-                run {
-                    Text(
-                        "Open an existing project",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = Measure.snug),
-                    )
-                    Text(
-                        "Import a folder or a .zip you already keep, on this device or in " +
-                            "cloud storage.",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    // Wraps rather than squeezing: side by side these two buttons stop fitting
-                    // at large font sizes, and a button squashed until its label breaks
-                    // mid-word is not a usable control.
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        OutlinedButton(onClick = onOpenFolder) { Text("Choose folder") }
-                        OutlinedButton(onClick = onOpenArchive) { Text("Choose .zip") }
-                    }
-                }
-            }
-
-            RuledColumn {
-                run {
-                    Text(
-                        "Start a new project",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = Measure.snug),
-                    )
-                    OutlinedTextField(
-                        value = title,
-                        onValueChange = { title = it },
-                        label = { Text("Name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    // Filled, where "Choose folder" and "Choose .zip" are outlined. On the first
-                    // screen of the app every control had the same weight, so nothing said which
-                    // one to press (Von Restorff). Creating is the path for somebody who has
-                    // no ledger yet, which is who this screen is for.
-                    Button(
-                        onClick = { onCreateNew(title) },
-                        enabled = title.isNotBlank(),
-                    ) { Text("Create") }
-                }
-            }
-
-            busyMessage?.let { StatusLine(it) }
-
-            // Deleting the only project lands here. Its files are in the trash, and this is
-            // the one place a person who has no projects will look.
-            TrashSection(trash)
-        }
-    }
-}
-
-
 /** The trash as the project list needs it: what is in it, and what can be done to it. */
 class ProjectTrash(
     val items: List<TrashedProject> = emptyList(),
@@ -435,7 +254,7 @@ fun ProjectPickerScreen(
  * the same arithmetic as the About screen.
  */
 @Composable
-private fun WelcomeHeader() {
+internal fun WelcomeHeader() {
     // Left-aligned, like every other page in the app. Centred type is what a marketing
     // splash does; this is the first page of a ledger, and a ledger has a margin.
     Column(
@@ -468,7 +287,7 @@ private fun WelcomeHeader() {
  * not reached yet teaches nothing they can act on.
  */
 @Composable
-private fun WhatThisIs() {
+internal fun WhatThisIs() {
     // Four facts hung off one rule, separated by hairlines: the same page the app uses for
     // everything it states, so the first screen already teaches the second.
     RuledColumn {

@@ -52,6 +52,12 @@ class NewLedgerSetup(private val file: File) {
         _creation.value = state
     }
 
+    /** The ledger exists: the saved answers (opening balances among them) are deleted, the page stays. */
+    fun finished(projectId: String, summary: String) {
+        _creation.value = Creation.Done(projectId, summary)
+        runCatching { file.delete() }
+    }
+
     /** Forgets every answer and the file they were saved in. */
     fun reset() {
         _creation.value = Creation.Idle
