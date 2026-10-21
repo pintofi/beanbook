@@ -70,7 +70,7 @@ class LineEndingsTest(unittest.TestCase):
         self.assertEqual(b"2026-01-01 open Assets:Cash\n2026-01-03 close Assets:Cash\n", out)
 
     def test_the_slice_of_such_an_entry_counts_its_lines_as_beancount_does(self):
-        # entry_slice reports an end line from the text it was given.
+        # An entry's extent is counted in lines the way Beancount counts them.
         source = '2026-01-02 * "pasted x"\n  Assets:Cash  1 USD\n  Equity:Opening\n'
         self.assertEqual(3, len(writer.split_lines(source)))
 

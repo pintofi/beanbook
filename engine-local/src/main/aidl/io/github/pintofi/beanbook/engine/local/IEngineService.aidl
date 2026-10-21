@@ -102,9 +102,6 @@ interface IEngineService {
 
     String validate(String mainFile);
 
-    /** Locates an entry's source extent. Returns a small JSON object. */
-    String entrySlice(String mainFile, String targetFile, int line);
-
     /**
      * Computes edited file content without writing to the project, and puts it at
      * outPath. op is "replace" or "delete".
