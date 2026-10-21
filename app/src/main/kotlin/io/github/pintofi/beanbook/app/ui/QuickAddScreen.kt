@@ -874,6 +874,17 @@ private fun SmallAction(text: String, describe: String, onClick: () -> Unit) {
 }
 
 /**
+ * Where a remove button sits beside a text field: the top of the row, pushed down so its centre
+ * is the centre of the field's box.
+ *
+ * A row centred its button on the whole field, and a field with a hint or an error under it is
+ * taller than its box, so the button slid down to the middle of box plus hint and no longer lined
+ * up with anything. An outlined field is 56dp tall with 8dp above it for the floating label; the
+ * button is 48dp, so (8 + 28) - 24 = 12dp puts the two centres together whatever sits below.
+ */
+private val RemoveButtonInset = 12.dp
+
+/**
  * A remove button that looks like one.
  *
  * It was a "×" typed into a text button: a character the size of the label text, the colour of
@@ -881,10 +892,10 @@ private fun SmallAction(text: String, describe: String, onClick: () -> Unit) {
  * the full 48dp target Material asks for, with an icon that reads as removal at a glance.
  */
 @Composable
-private fun RemoveButton(describe: String, onClick: () -> Unit) {
+private fun RemoveButton(describe: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     androidx.compose.material3.FilledTonalIconButton(
         onClick = onClick,
-        modifier = Modifier.semantics { contentDescription = describe },
+        modifier = modifier.semantics { contentDescription = describe },
     ) {
         Icon(
             androidx.compose.material.icons.Icons.Filled.Close,
@@ -912,7 +923,7 @@ private fun PostingEditor(
     onRemove: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.Top) {
             SuggestingField(
                 value = row.account,
                 onValueChange = { row.account = it },
@@ -923,20 +934,17 @@ private fun PostingEditor(
             )
             if (removable) {
                 androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
-                RemoveButton("Remove posting ${index + 1}", onRemove)
+                RemoveButton("Remove posting ${index + 1}", Modifier.padding(top = RemoveButtonInset), onRemove)
             }
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(Measure.snug),
             verticalAlignment = Alignment.Top,
         ) {
-            OutlinedTextField(
+            AmountField(
                 value = row.amount,
                 onValueChange = { row.amount = it },
-                label = { Text("Amount") },
-                placeholder = if (index == 0) null else { { Text("optional") } },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                placeholder = if (index == 0) null else "optional",
                 // Even halves: at 3:2 the commodity box was too narrow for "Commodity · PKR",
                 // and the default it falls back to was cut off its own label.
                 modifier = Modifier.weight(1f),
@@ -956,7 +964,7 @@ private fun PostingEditor(
             )
         }
         if (row.showDetails) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.Top) {
                 OutlinedTextField(
                     value = row.details,
                     onValueChange = { row.details = it },
@@ -970,7 +978,10 @@ private fun PostingEditor(
                         .semantics { contentDescription = "Commodity details for posting ${index + 1}" },
                 )
                 androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
-                RemoveButton("Remove commodity details from posting ${index + 1}") {
+                RemoveButton(
+                    "Remove commodity details from posting ${index + 1}",
+                    Modifier.padding(top = RemoveButtonInset),
+                ) {
                     row.details = ""
                     row.showDetails = false
                 }
@@ -1021,7 +1032,7 @@ private fun WordEditor(
     suggestions: List<String>,
 ) {
     rows.forEachIndexed { index, word ->
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.Top) {
             SuggestingField(
                 value = word.value,
                 onValueChange = { word.value = it },
@@ -1033,7 +1044,10 @@ private fun WordEditor(
                 modifier = Modifier.weight(1f),
             )
             androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
-            RemoveButton("Remove ${kind.lowercase()} ${index + 1}") { rows.removeAt(index) }
+            RemoveButton(
+                "Remove ${kind.lowercase()} ${index + 1}",
+                Modifier.padding(top = RemoveButtonInset),
+            ) { rows.removeAt(index) }
         }
     }
 }
@@ -1225,7 +1239,7 @@ private fun MetadataEditor(
     rows.forEachIndexed { index, meta ->
         Row(
             horizontalArrangement = Arrangement.spacedBy(Measure.snug),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
             OutlinedTextField(
                 value = meta.key,
@@ -1245,7 +1259,10 @@ private fun MetadataEditor(
                     contentDescription = "Detail ${index + 1} value for ${describe()}"
                 },
             )
-            RemoveButton("Remove detail ${index + 1} from ${describe()}") { rows.removeAt(index) }
+            RemoveButton(
+                "Remove detail ${index + 1} from ${describe()}",
+                Modifier.padding(top = RemoveButtonInset),
+            ) { rows.removeAt(index) }
         }
     }
 }

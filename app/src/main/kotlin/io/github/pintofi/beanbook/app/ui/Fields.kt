@@ -10,6 +10,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -172,9 +174,12 @@ fun SuggestingField(
         } else {
             suggestions.filter { it.contains(needle, ignoreCase = true) }
         }
-        // A single suggestion identical to what is typed says nothing; showing it makes the
-        // list look stuck open at the end of every entry.
-        matching.filterNot { it.equals(needle, ignoreCase = true) }.take(MAX_SUGGESTIONS)
+        // The suggestion that is exactly what was typed stays, first. It used to be dropped as
+        // "saying nothing", so typing "Samue" showed Samuel and typing the last letter took it
+        // away, with nothing left to tap. It does say something: the ledger already has this
+        // name, which for an account is the difference between valid and "not an account in
+        // this ledger". Tapping it also settles the capitalisation to the ledger's own.
+        matching.sortedBy { !it.equals(needle, ignoreCase = true) }.take(MAX_SUGGESTIONS)
     }
     val open = focused && !chosen && offered.isNotEmpty()
 
@@ -257,3 +262,49 @@ private val SUGGESTION_LIST_HEIGHT = 240.dp
 
 /** Enough to be useful, few enough that the menu does not become its own screen. */
 private const val MAX_SUGGESTIONS = 40
+
+/**
+ * `value` with its sign switched: a leading minus is removed, a leading plus becomes a minus, and
+ * anything else gets a minus in front. An empty box becomes a lone "-" to type the digits after.
+ */
+internal fun withSignToggled(value: String): String {
+    val text = value.trim()
+    return when {
+        text.startsWith("-") -> text.removePrefix("-").trimStart()
+        text.startsWith("+") -> "-" + text.removePrefix("+").trimStart()
+        else -> "-$text"
+    }
+}
+
+/**
+ * An amount box with a button that switches it between positive and negative.
+ *
+ * The number keyboard Android shows for a decimal field has digits and a point and no minus, so a
+ * posting could be typed positive but never negative without switching to the full keyboard.
+ * Compose has no flag for the signed number keyboard, and not every keyboard app honours it, so
+ * the sign is a control of the form's own: always there, whichever keyboard is installed.
+ */
+@Composable
+fun AmountField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String = "Amount",
+    placeholder: String? = null,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = placeholder?.let { { Text(it) } },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        trailingIcon = {
+            IconButton(
+                onClick = { onValueChange(withSignToggled(value)) },
+                modifier = Modifier.semantics { contentDescription = "Switch the $label between positive and negative" },
+            ) { Text("\u00B1", style = MaterialTheme.typography.titleMedium) }
+        },
+        modifier = modifier,
+    )
+}
