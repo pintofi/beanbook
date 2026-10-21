@@ -3,6 +3,7 @@ package io.github.pintofi.beanbook.engine.local
 import android.content.Context
 import io.github.pintofi.beanbook.core.data.LedgerUnavailable
 import io.github.pintofi.beanbook.core.data.LedgerValidator
+import io.github.pintofi.beanbook.core.domain.EntrySlices
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -72,18 +73,23 @@ class BeancountEditor(
     private val connection: EngineConnection = EngineConnection(context),
 ) {
 
+    /**
+     * The entry that starts at [line] of [file], read from the file itself. [mainFile] is kept for
+     * callers that pass it; nothing needs the ledger loaded to cut an entry out of a text file.
+     */
+    @Suppress("UNUSED_PARAMETER")
     suspend fun sliceAt(mainFile: String, file: String, line: Int): EntrySlice? =
         withContext(io) {
-            val json = connection.withEngine { it.entrySlice(mainFile, file, line) }
-                .getOrElse { error("engine unavailable: ${it.message}") }
-            val root = JSONObject(json)
-            if (!root.optBoolean("found")) return@withContext null
+            val source = java.io.File(file)
+            if (!source.isFile) return@withContext null
+            val slice = EntrySlices.at(EntrySlices.linesOf(source.readText()), line)
+                ?: return@withContext null
             EntrySlice(
-                file = root.getString("file"),
-                startLine = root.getInt("start_line"),
-                endLine = root.getInt("end_line"),
-                text = root.getString("text"),
-                sha256 = root.getString("sha256"),
+                file = source.path,
+                startLine = slice.startLine,
+                endLine = slice.endLine,
+                text = slice.text,
+                sha256 = slice.sha256,
             )
         }
 
