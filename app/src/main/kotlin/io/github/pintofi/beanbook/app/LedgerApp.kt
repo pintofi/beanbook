@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.app
 
+import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
@@ -40,7 +41,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.material3.TextButton
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalConfiguration
@@ -805,7 +805,7 @@ internal fun LedgerApp(
                 )
             },
             confirmButton = {
-                TextButton(
+                androidx.compose.material3.Button(
                     onClick = {
                         confirmingLeave = null
                         addDirty = false
@@ -825,7 +825,7 @@ internal fun LedgerApp(
                 ) { Text("Discard") }
             },
             dismissButton = {
-                TextButton(onClick = { confirmingLeave = null }) { Text("Keep editing") }
+                SecondaryButton(onClick = { confirmingLeave = null }) { Text("Keep editing") }
             },
         )
     }

@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.Close
@@ -378,7 +377,7 @@ fun JournalScreen(
                 }
             },
             confirmButton = {
-                androidx.compose.material3.TextButton(
+                androidx.compose.material3.Button(
                     onClick = {
                         confirmingDelete = false
                         picked = emptySet()
@@ -393,7 +392,7 @@ fun JournalScreen(
                 ) { Text("Delete") }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { confirmingDelete = false }) { Text("Cancel") }
+                SecondaryButton(onClick = { confirmingDelete = false }) { Text("Cancel") }
             },
         )
     }

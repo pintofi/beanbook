@@ -13,7 +13,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -83,7 +82,7 @@ fun DateField(
         DatePickerDialog(
             onDismissRequest = { picking = false },
             confirmButton = {
-                TextButton(
+                androidx.compose.material3.Button(
                     onClick = {
                         // UTC throughout: the picker hands back midnight UTC for the day the
                         // user tapped, and reading it back in the device's zone can land on
@@ -98,7 +97,7 @@ fun DateField(
                     },
                 ) { Text("Use this date") }
             },
-            dismissButton = { TextButton(onClick = { picking = false }) { Text("Cancel") } },
+            dismissButton = { SecondaryButton(onClick = { picking = false }) { Text("Cancel") } },
         ) {
             DatePicker(state = state)
         }

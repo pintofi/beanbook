@@ -23,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -526,7 +525,7 @@ fun DocumentsScreen(
                 }
             },
             confirmButton = {
-                TextButton(
+                androidx.compose.material3.Button(
                     onClick = {
                         // A directive Beancount made from the folder is not one that can be
                         // rewritten, so this writes the first one instead of moving it.
@@ -538,7 +537,7 @@ fun DocumentsScreen(
                     enabled = BeancountText.ACCOUNT.matches(target.trim()),
                 ) { Text(if (row.linked) "Refile" else "File") }
             },
-            dismissButton = { TextButton(onClick = { refiling = null }) { Text("Cancel") } },
+            dismissButton = { SecondaryButton(onClick = { refiling = null }) { Text("Cancel") } },
         )
     }
 
@@ -569,7 +568,7 @@ fun DocumentsScreen(
                 Text(removal.describe(path) + folderNote)
             },
             confirmButton = {
-                TextButton(
+                androidx.compose.material3.Button(
                     onClick = {
                         when (removal) {
                             DocumentRemoval.UNLINK -> onUnlink(path, row.account)
@@ -587,7 +586,7 @@ fun DocumentsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
+                SecondaryButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
             },
         )
     }

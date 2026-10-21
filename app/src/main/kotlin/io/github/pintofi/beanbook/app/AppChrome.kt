@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.TextButton
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -439,7 +438,7 @@ internal fun MoreMenu(
                 )
             },
             confirmButton = {
-                androidx.compose.material3.TextButton(
+                androidx.compose.material3.Button(
                     onClick = {
                         confirmingRestart = false
                         onRestartApp()
@@ -448,7 +447,7 @@ internal fun MoreMenu(
                 ) { Text("Restart") }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { confirmingRestart = false }) {
+                SecondaryButton(onClick = { confirmingRestart = false }) {
                     Text("Cancel")
                 }
             },

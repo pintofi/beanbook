@@ -19,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -228,7 +227,7 @@ fun ProjectPickerScreen(
                 )
             },
             confirmButton = {
-                TextButton(
+                androidx.compose.material3.Button(
                     onClick = {
                         onDelete(project.id)
                         pendingDelete = null
@@ -239,7 +238,7 @@ fun ProjectPickerScreen(
                 ) { Text("Move to trash") }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) { Text("Keep it") }
+                SecondaryButton(onClick = { pendingDelete = null }) { Text("Keep it") }
             },
         )
     }
@@ -417,14 +416,14 @@ internal fun TrashSection(trash: ProjectTrash) {
                 )
             },
             confirmButton = {
-                TextButton(
+                androidx.compose.material3.Button(
                     onClick = { trash.onDeleteForever(item.folder); pendingForever = null },
                     colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error,
                     ),
                 ) { Text("Delete for good") }
             },
-            dismissButton = { TextButton(onClick = { pendingForever = null }) { Text("Keep it") } },
+            dismissButton = { SecondaryButton(onClick = { pendingForever = null }) { Text("Keep it") } },
         )
     }
 
@@ -441,14 +440,14 @@ internal fun TrashSection(trash: ProjectTrash) {
                 )
             },
             confirmButton = {
-                TextButton(
+                androidx.compose.material3.Button(
                     onClick = { trash.onEmpty(); confirmEmpty = false },
                     colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error,
                     ),
                 ) { Text("Empty the trash") }
             },
-            dismissButton = { TextButton(onClick = { confirmEmpty = false }) { Text("Keep them") } },
+            dismissButton = { SecondaryButton(onClick = { confirmEmpty = false }) { Text("Keep them") } },
         )
     }
 }

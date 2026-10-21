@@ -13,7 +13,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -142,7 +141,7 @@ fun DiagnosticsScreen(
                 )
             },
             confirmButton = {
-                TextButton(
+                androidx.compose.material3.Button(
                     onClick = {
                         confirmingClear = false
                         onClear()
@@ -152,7 +151,7 @@ fun DiagnosticsScreen(
                 ) { Text("Clear it") }
             },
             dismissButton = {
-                TextButton(onClick = { confirmingClear = false }) { Text("Keep it") }
+                SecondaryButton(onClick = { confirmingClear = false }) { Text("Keep it") }
             },
         )
     }
