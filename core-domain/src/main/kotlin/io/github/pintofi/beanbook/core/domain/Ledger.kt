@@ -116,6 +116,14 @@ data class LedgerSnapshot(
  * behaviour, and the honest one: presenting a purchase price as a current valuation would be
  * wrong every day after the purchase.
  */
+/** One commodity held in an account: its units, and what they come to at cost and at market value. */
+data class Holding(
+    val commodity: String,
+    val units: List<Amount>,
+    val atCost: List<Amount>,
+    val atValue: List<Amount>,
+)
+
 data class AccountBalance(
     val name: String,
     val positions: List<Amount>,
@@ -130,6 +138,15 @@ data class AccountBalance(
      * more than one figure — which is honest, and rare.
      */
     val atOperating: List<Amount> = positions,
+    /**
+     * What each commodity the account holds comes to on its own, in every basis.
+     *
+     * Empty for a ledger read before this was reported, and for balances computed from a subset
+     * of the entries. A surface that needs a commodity apart from the others (a widget showing
+     * only the rupees in a cash account) uses it when it is there and shows the whole account
+     * when it is not.
+     */
+    val holdings: List<Holding> = emptyList(),
 ) {
     /** The last segment, for display in a tree: "Assets:Bank:Checking" -> "Checking". */
     val leaf: String get() = name.substringAfterLast(':')

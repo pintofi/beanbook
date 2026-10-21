@@ -39,12 +39,13 @@ object WidgetRenderer {
         nowEpochMs: Long = System.currentTimeMillis(),
         chosenAccounts: List<String> = emptyList(),
         widgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID,
+        option: WidgetOption = WidgetOption(),
     ): RemoteViews {
         // Several accounts on one widget is its own layout: a row each, rather than one
         // figure with a label. One account keeps the original single-figure shape,
         // which reads better at the size most people place a balance widget at.
         if (metric == WidgetMetric.BALANCE && chosenAccounts.size > 1) {
-            return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs, widgetId)
+            return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs, widgetId, option)
         }
         val chosenAccount = chosenAccounts.firstOrNull()
         val views = RemoteViews(context.packageName, R.layout.widget_metric)
@@ -66,8 +67,12 @@ object WidgetRenderer {
         } else {
             null
         }
-        val label = account?.substringAfterLast(':')?.let { "${metric.label} · $it" }
-            ?: metric.label
+        val shownCommodities = account?.let { option.commodities[it] }.orEmpty().sorted()
+        val label = listOfNotNull(
+            account?.substringAfterLast(':')?.let { "${metric.label} · $it" } ?: metric.label,
+            shownCommodities.joinToString(" ").takeIf { it.isNotEmpty() },
+            option.basis?.label,
+        ).joinToString(" · ")
         views.setTextViewText(R.id.widget_label, label)
         // The whole widget, not just the figure: a home-screen tile is one target, and a tap
         // that lands on the label or the footnote and does nothing reads as a broken widget.
@@ -81,8 +86,8 @@ object WidgetRenderer {
         }
 
         val value = when (metric) {
-            WidgetMetric.NET_WORTH -> snapshot.netWorth
-            WidgetMetric.BALANCE -> account?.let { snapshot.balances[it] }
+            WidgetMetric.NET_WORTH -> option.basis?.let { snapshot.netWorthBy[it.name] } ?: snapshot.netWorth
+            WidgetMetric.BALANCE -> account?.let { figureFor(snapshot, it, option) }
         }
 
         views.setTextViewText(
@@ -121,6 +126,7 @@ object WidgetRenderer {
         redacted: Boolean,
         nowEpochMs: Long,
         widgetId: Int,
+        option: WidgetOption,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_balances)
         views.paint(WidgetPalette.of(context))
@@ -152,7 +158,7 @@ object WidgetRenderer {
             return views
         }
 
-        val missing = accounts.filter { snapshot.balances[it] == null }
+        val missing = accounts.filter { snapshot.balances[it] == null && snapshot.holdings[it].isNullOrEmpty() }
         views.setTextViewText(
             R.id.widget_footnote,
             if (missing.isNotEmpty()) {
@@ -177,12 +183,13 @@ object WidgetRenderer {
         snapshot: WidgetSnapshot?,
         redacted: Boolean,
         palette: WidgetPalette,
+        option: WidgetOption = WidgetOption(),
     ): RemoteViews {
         val row = RemoteViews(context.packageName, R.layout.widget_balance_row)
         row.setTextColor(R.id.row_account, palette.label)
         row.setTextColor(R.id.row_amount, palette.value)
         row.setTextViewText(R.id.row_account, account.substringAfterLast(':'))
-        val value = snapshot?.balances?.get(account)
+        val value = snapshot?.let { figureFor(it, account, option) }
         row.setTextViewText(
             R.id.row_amount,
             when {
@@ -309,6 +316,28 @@ object WidgetRenderer {
     const val SURFACE_BALANCES = "BALANCES"
     const val SURFACE_JOURNAL = "JOURNAL"
     const val SURFACE_HOME = "HOME"
+}
+
+/**
+ * The figure for [account] as this widget is set to show it.
+ *
+ * Without a choice of basis or commodities this is the text the cache already holds, exactly as
+ * before. With one, it is built from the account's holdings: only the chosen commodities, on the
+ * chosen basis, added up per currency and formatted the way the ledger writes numbers. A cache
+ * with no holdings for the account (written before they were kept) can only show what it has, so
+ * the choice is ignored rather than showing nothing.
+ */
+internal fun figureFor(snapshot: WidgetSnapshot, account: String, option: WidgetOption): String? {
+    val holdings = snapshot.holdings[account].orEmpty()
+    val chosen = option.commodities[account].orEmpty()
+    if (holdings.isEmpty() || (option.basis == null && chosen.isEmpty())) return snapshot.balances[account]
+    val basis = option.basis
+        ?: snapshot.valuation?.let { runCatching { io.github.pintofi.beanbook.core.domain.Valuation.valueOf(it) }.getOrNull() }
+        ?: io.github.pintofi.beanbook.core.domain.Valuation.VALUE
+    val picked = if (chosen.isEmpty()) holdings else holdings.filter { it.commodity in chosen }
+    if (picked.isEmpty()) return null
+    val summed = io.github.pintofi.beanbook.core.domain.LedgerSummary.sumByCurrency(picked.flatMap { it.of(basis) })
+    return io.github.pintofi.beanbook.core.domain.LedgerSummary.format(summed, snapshot.formatting.toLedgerFormat())
 }
 
 /**

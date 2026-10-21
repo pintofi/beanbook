@@ -3,6 +3,7 @@ package io.github.pintofi.beanbook.engine.local
 import android.content.Context
 import android.util.Log
 import io.github.pintofi.beanbook.core.domain.AccountBalance
+import io.github.pintofi.beanbook.core.domain.Holding
 import io.github.pintofi.beanbook.core.domain.AccountNames
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.Cost
@@ -243,7 +244,18 @@ class LedgerReader(
         atCost = optJSONArray("at_cost").map { it.toAmount() }.filterNotNull(),
         atValue = optJSONArray("at_value").map { it.toAmount() }.filterNotNull(),
         atOperating = optJSONArray("at_operating").map { it.toAmount() }.filterNotNull(),
+        holdings = optJSONArray("holdings").map { it.toHolding() }.filterNotNull(),
     )
+
+    private fun JSONObject.toHolding(): Holding? {
+        val commodity = optStringOrNull("currency") ?: return null
+        return Holding(
+            commodity = commodity,
+            units = optJSONArray("units").map { it.toAmount() }.filterNotNull(),
+            atCost = optJSONArray("at_cost").map { it.toAmount() }.filterNotNull(),
+            atValue = optJSONArray("at_value").map { it.toAmount() }.filterNotNull(),
+        )
+    }
 
     private fun JSONObject.toAmount(): Amount? {
         val number = optStringOrNull("number") ?: return null

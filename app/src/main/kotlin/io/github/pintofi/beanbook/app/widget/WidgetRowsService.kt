@@ -27,6 +27,7 @@ class WidgetRowsService : RemoteViewsService() {
         private var snapshot: WidgetSnapshot? = null
         private var redacted = true
         private var palette: WidgetPalette? = null
+        private var option = WidgetOption()
 
         override fun onCreate() = Unit
 
@@ -37,6 +38,7 @@ class WidgetRowsService : RemoteViewsService() {
             // Hidden unless it is known not to be: a lock-screen list is no place to guess.
             redacted = WidgetRenderer.shouldRedact(context, widgetId, WidgetPreferences(context).hideAmounts())
             palette = WidgetPalette.of(context)
+            option = WidgetOptions(context).optionFor(widgetId)
         }
 
         override fun onDestroy() = Unit
@@ -54,6 +56,7 @@ class WidgetRowsService : RemoteViewsService() {
                 snapshot,
                 redacted,
                 palette ?: WidgetPalette.of(context),
+                option,
             )
         }
 

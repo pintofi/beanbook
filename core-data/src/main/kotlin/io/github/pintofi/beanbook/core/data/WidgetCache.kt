@@ -19,6 +19,47 @@ import java.math.BigDecimal
  * plausible but outdated number presented as current is the failure mode this whole design
  * is arranged against: someone glances at a balance to decide whether to buy something.
  */
+/** One commodity held in an account, in every basis, so a widget can show some of them. */
+data class WidgetHolding(
+    val commodity: String,
+    val units: List<Amount>,
+    val atCost: List<Amount>,
+    val atValue: List<Amount>,
+) {
+    fun of(valuation: io.github.pintofi.beanbook.core.domain.Valuation): List<Amount> = when (valuation) {
+        io.github.pintofi.beanbook.core.domain.Valuation.UNITS -> units
+        io.github.pintofi.beanbook.core.domain.Valuation.COST -> atCost
+        io.github.pintofi.beanbook.core.domain.Valuation.VALUE -> atValue
+    }
+}
+
+/**
+ * How the ledger writes a number, as much of it as a widget needs to format a figure it adds up
+ * itself: grouping, the separators, and the places per commodity.
+ */
+data class WidgetFormatting(
+    val groupThousands: Boolean = false,
+    val groupSeparator: Char = ',',
+    val decimalSeparator: Char = '.',
+    val precision: Map<String, Int> = emptyMap(),
+) {
+    fun toLedgerFormat() = io.github.pintofi.beanbook.core.domain.LedgerFormat(
+        groupThousands = groupThousands,
+        precision = precision,
+        groupSeparator = groupSeparator,
+        decimalSeparator = decimalSeparator,
+    )
+
+    companion object {
+        fun of(format: io.github.pintofi.beanbook.core.domain.LedgerFormat) = WidgetFormatting(
+            groupThousands = format.groupThousands,
+            groupSeparator = format.groupSeparator,
+            decimalSeparator = format.decimalSeparator,
+            precision = format.precision,
+        )
+    }
+}
+
 data class WidgetSnapshot(
     val projectId: String,
     val projectTitle: String,
@@ -30,6 +71,16 @@ data class WidgetSnapshot(
     val periodExpense: String?,
     /** True when the ledger parsed with no errors; a widget says so when it did not. */
     val clean: Boolean,
+    /**
+     * Each account's holdings, one per commodity, in every basis. Empty in a cache written
+     * before this was kept; a widget then shows [balances] as it always did.
+     */
+    val holdings: Map<String, List<WidgetHolding>> = emptyMap(),
+    /** The basis [balances] and [netWorth] are in: a name from `Valuation`, or null if not known. */
+    val valuation: String? = null,
+    /** Net worth on each basis, by `Valuation` name, for a widget that picks its own. */
+    val netWorthBy: Map<String, String> = emptyMap(),
+    val formatting: WidgetFormatting = WidgetFormatting(),
 ) {
     /**
      * Whether this is too old to show as current.
@@ -55,7 +106,45 @@ data class WidgetSnapshot(
             netWorth?.let { put("net_worth", Json.Str(it)) }
             periodIncome?.let { put("period_income", Json.Str(it)) }
             periodExpense?.let { put("period_expense", Json.Str(it)) }
+            valuation?.let { put("valuation", Json.Str(it)) }
+            if (netWorthBy.isNotEmpty()) put("net_worth_by", Json.Obj(netWorthBy.mapValues { Json.Str(it.value) }))
+            if (holdings.isNotEmpty()) {
+                put(
+                    "holdings",
+                    Json.Obj(
+                        holdings.mapValues { (_, list) ->
+                            Json.Arr(
+                                list.map { holding ->
+                                    Json.Obj(
+                                        mapOf(
+                                            "commodity" to Json.Str(holding.commodity),
+                                            "units" to amountsJson(holding.units),
+                                            "at_cost" to amountsJson(holding.atCost),
+                                            "at_value" to amountsJson(holding.atValue),
+                                        ),
+                                    )
+                                },
+                            )
+                        },
+                    ),
+                )
+            }
+            put(
+                "format",
+                Json.Obj(
+                    mapOf(
+                        "group" to Json.Bool(formatting.groupThousands),
+                        "group_separator" to Json.Str(formatting.groupSeparator.toString()),
+                        "decimal_separator" to Json.Str(formatting.decimalSeparator.toString()),
+                        "precision" to Json.Obj(formatting.precision.mapValues { Json.Num(it.value.toDouble()) }),
+                    ),
+                ),
+            )
         },
+    )
+
+    private fun amountsJson(amounts: List<Amount>): Json = Json.Arr(
+        amounts.map { Json.Obj(mapOf("n" to Json.Str(it.number.toPlainString()), "c" to Json.Str(it.currency))) },
     )
 
     /**
@@ -96,6 +185,43 @@ data class WidgetSnapshot(
                 periodIncome = obj.string("period_income"),
                 periodExpense = obj.string("period_expense"),
                 clean = (obj["clean"] as? Json.Bool)?.value ?: false,
+                holdings = readHoldings(obj),
+                valuation = obj.string("valuation"),
+                netWorthBy = (obj["net_worth_by"] as? Json.Obj)?.fields.orEmpty()
+                    .mapNotNull { (name, value) -> (value as? Json.Str)?.let { name to it.value } }.toMap(),
+                formatting = readFormatting(obj),
+            )
+        }
+
+        private fun readAmounts(json: Json?): List<Amount> =
+            (json as? Json.Arr)?.items.orEmpty().mapNotNull { item ->
+                val entry = item as? Json.Obj ?: return@mapNotNull null
+                val number = entry.string("n")?.let { runCatching { BigDecimal(it) }.getOrNull() }
+                    ?: return@mapNotNull null
+                Amount(number, entry.string("c") ?: return@mapNotNull null)
+            }
+
+        private fun readHoldings(obj: Json.Obj): Map<String, List<WidgetHolding>> =
+            (obj["holdings"] as? Json.Obj)?.fields.orEmpty().mapValues { (_, list) ->
+                (list as? Json.Arr)?.items.orEmpty().mapNotNull { item ->
+                    val entry = item as? Json.Obj ?: return@mapNotNull null
+                    WidgetHolding(
+                        commodity = entry.string("commodity") ?: return@mapNotNull null,
+                        units = readAmounts(entry["units"]),
+                        atCost = readAmounts(entry["at_cost"]),
+                        atValue = readAmounts(entry["at_value"]),
+                    )
+                }
+            }
+
+        private fun readFormatting(obj: Json.Obj): WidgetFormatting {
+            val format = obj.obj("format") ?: return WidgetFormatting()
+            return WidgetFormatting(
+                groupThousands = (format["group"] as? Json.Bool)?.value ?: false,
+                groupSeparator = format.string("group_separator")?.singleOrNull() ?: ',',
+                decimalSeparator = format.string("decimal_separator")?.singleOrNull() ?: '.',
+                precision = format.obj("precision")?.fields.orEmpty()
+                    .mapNotNull { (name, value) -> (value as? Json.Num)?.let { name to it.value.toInt() } }.toMap(),
             )
         }
     }
@@ -211,6 +337,19 @@ class WidgetCache(stateDir: File) {
                 periodIncome = summary.income,
                 periodExpense = summary.expenses,
                 clean = ledger.errors.isEmpty(),
+                holdings = ledger.accounts
+                    .filter { it.name in wanted && it.holdings.isNotEmpty() }
+                    .associate { account ->
+                        account.name to account.holdings.map {
+                            WidgetHolding(it.commodity, it.units, it.atCost, it.atValue)
+                        }
+                    },
+                valuation = valuation.name,
+                netWorthBy = io.github.pintofi.beanbook.core.domain.Valuation.entries.mapNotNull { basis ->
+                    (headlineOrder(ledger, basis) ?: LedgerSummary.of(ledger, basis).netWorth)
+                        ?.let { basis.name to it }
+                }.toMap(),
+                formatting = WidgetFormatting.of(ledger.format),
             )
         }
 
