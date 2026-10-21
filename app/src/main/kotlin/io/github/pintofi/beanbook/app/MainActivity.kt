@@ -434,6 +434,7 @@ class MainActivity : ComponentActivity() {
                     app.documentCapture.preview(page)
                 },
                 io.github.pintofi.beanbook.app.ui.LocalLedgerFilter provides app.ledgerFilter,
+                io.github.pintofi.beanbook.app.ui.LocalDocumentsTab provides app.documentsTab,
             ) {
                 // What actually keeps content clear of the bars. At the root rather than per
                 // screen, because onboarding and the project picker render outside the

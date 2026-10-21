@@ -201,10 +201,8 @@ internal fun SurfaceContent(
                 all.journal.flatMap { it.links }.distinct().sorted().map { "^$it" }
         }.orEmpty()
     }
-    // The tab the Documents screen is on. Held here so Home can send people to Organize.
-    var documentsTab by androidx.compose.runtime.saveable.rememberSaveable {
-        mutableStateOf(io.github.pintofi.beanbook.app.ui.DocumentsMode.ADD)
-    }
+    // The tab the Documents screen is on, held above this function so Home can send people to Organize.
+    val documentsTabState = io.github.pintofi.beanbook.app.ui.LocalDocumentsTab.current
     run {
         // `null` is the add form, open over `selected`. Written this way so the form is one
         // branch beside the destinations rather than a second copy of this dispatch.
@@ -232,7 +230,7 @@ internal fun SurfaceContent(
                     onOpenDocuments = {
                         // Home only offers this for a document with a problem to fix (not
                         // linked, or its file gone), and that is done in Organize.
-                        documentsTab = io.github.pintofi.beanbook.app.ui.DocumentsMode.ORGANIZE
+                        documentsTabState.tab = io.github.pintofi.beanbook.app.ui.DocumentsMode.ORGANIZE
                         onSelectSurface(Surface.MORE)
                         onMoreSection(MoreSection.DOCUMENTS)
                     },
@@ -512,8 +510,8 @@ internal fun SurfaceContent(
                                 onShare = onShareDocument,
                                 fileForDocument = fileForDocument,
                                 message = documentMessage,
-                                mode = documentsTab,
-                                onModeChange = { documentsTab = it },
+                                mode = documentsTabState.tab,
+                                onModeChange = { documentsTabState.tab = it },
                             )
                         }
 
