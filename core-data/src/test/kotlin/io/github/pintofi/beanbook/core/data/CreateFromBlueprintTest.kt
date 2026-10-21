@@ -30,7 +30,8 @@ class CreateFromBlueprintTest {
         assertTrue(main.isFile)
         val dir = workspace.projectDir("books")
         blueprint.render().keys.forEach { assertTrue(dir.resolve(it).isFile, "missing $it") }
-        listOf("files", "documents", "prices", "scripts", "plugins").forEach { assertTrue(dir.resolve(it).isDirectory, it) }
+        listOf("files", "documents", "prices", "scripts", "plugins")
+            .forEach { assertTrue(dir.resolve(it).isDirectory, it) }
         assertEquals(blueprint.render().getValue("main.beancount"), main.readText())
     }
 
