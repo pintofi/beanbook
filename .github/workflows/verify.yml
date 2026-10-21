@@ -88,10 +88,10 @@ jobs:
           python-version: '3.13'
       - name: The writer, the engine gate, the ledger reader and the plugin runner
         # The tests of engine-local/src/main/python, which holds the logic that computes what
-        # gets written to a ledger. They need Beancount at the version the app ships and
-        # nothing else.
+        # gets written to a ledger. They need Beancount and Fava at the versions the app ships:
+        # the new-ledger golden test loads a ledger that uses Fava's link_documents plugin.
         run: |
-          pip install --quiet "beancount==3.2.3"
+          pip install --quiet "beancount==3.2.3" "fava==1.30.15"
           python -m unittest discover -s engine-local/src/test/python
 
   workflows:
