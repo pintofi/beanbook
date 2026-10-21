@@ -102,10 +102,17 @@ private class PostingRow(
 
     /** Keys describing this leg only. Empty for almost every posting. */
     val metadata = mutableStateListOf<MetadataRow>()
+
+    /**
+     * What the file has on this posting that the form has no box for: a comment at the end of the
+     * line, and full-line comments above it. Carried through an edit so saving never drops them.
+     */
+    var comment: String? = null
+    var notesBefore: List<String> = emptyList()
 }
 
 /** One editable metadata pair, on a transaction or on a posting. */
-private class MetadataRow(key: String = "", value: String = "") {
+private class MetadataRow(key: String = "", value: String = "", /** Written bare in the file (`trip-days: 5`). */ val bare: Boolean = false) {
     var key by mutableStateOf(key)
     var value by mutableStateOf(value)
 }
@@ -192,6 +199,11 @@ fun QuickAddScreen(
     // Transaction-level metadata, as editable rows so a half-typed key cannot be committed
     // by accident.
     val metaRows = remember { mutableStateListOf<MetadataRow>() }
+    // Comments the entry being edited carries. No box for them: held, written back where they
+    // were, and said so on screen.
+    var headerComment by remember { mutableStateOf<String?>(null) }
+    var leadingNotes by remember { mutableStateOf<List<String>>(emptyList()) }
+    var trailingNotes by remember { mutableStateOf<List<String>>(emptyList()) }
     // Tags and links, one box each, shown only once one is asked for.
     val tagRows = remember { mutableStateListOf<WordRow>() }
     val linkRows = remember { mutableStateListOf<WordRow>() }
@@ -219,8 +231,15 @@ fun QuickAddScreen(
         metadata = metaRows
             .filter { it.key.isNotBlank() }
             .associate { it.key.trim() to it.value.trim() },
+        headerComment = headerComment,
+        notes = leadingNotes,
+        trailingNotes = trailingNotes,
+        bareMetadata = metaRows.filter { it.bare && it.key.isNotBlank() }.map { it.key.trim() }.toSet(),
         postings = rows.filter { it.account.isNotBlank() }.map { row ->
             PostingDraft(
+                comment = row.comment,
+                notesBefore = row.notesBefore,
+                bareMetadata = row.metadata.filter { it.bare && it.key.isNotBlank() }.map { it.key.trim() }.toSet(),
                 metadata = row.metadata
                     .filter { it.key.isNotBlank() }
                     .associate { it.key.trim() to it.value.trim() },
@@ -326,7 +345,10 @@ fun QuickAddScreen(
             // metadata by design; an entry being edited arrives with it, and a detail that
             // was not shown would be dropped by the save.
             metaRows.clear()
-            draft.metadata.forEach { (key, value) -> metaRows.add(MetadataRow(key, value)) }
+            draft.metadata.forEach { (key, value) -> metaRows.add(MetadataRow(key, value, key in draft.bareMetadata)) }
+            headerComment = draft.headerComment
+            leadingNotes = draft.notes
+            trailingNotes = draft.trailingNotes
             draft.postings.firstOrNull()?.amount?.currency?.let { commodity = it }
             rows.clear()
             draft.postings.forEach { posting ->
@@ -343,7 +365,11 @@ fun QuickAddScreen(
                         details = posting.details
                             ?: CommodityDetails.textOf(posting.cost, posting.price),
                     ).also { row ->
-                        posting.metadata.forEach { (key, value) -> row.metadata.add(MetadataRow(key, value)) }
+                        posting.metadata.forEach { (key, value) ->
+                            row.metadata.add(MetadataRow(key, value, key in posting.bareMetadata))
+                        }
+                        row.comment = posting.comment
+                        row.notesBefore = posting.notesBefore
                     },
                 )
             }
@@ -434,6 +460,18 @@ fun QuickAddScreen(
                 Text(
                     "This entry was written by hand. Saving it here keeps every word and " +
                         "figure, and lines it up the way the app writes entries.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+
+        val keptComments = (if (headerComment != null) 1 else 0) + leadingNotes.size + trailingNotes.size +
+            rows.sumOf { it.notesBefore.size + (if (it.comment != null) 1 else 0) }
+        if (editing != null && keptComments > 0) {
+            Notice(NoticeTone.QUIET, modifier = Modifier.padding(bottom = Measure.gap)) {
+                Text(
+                    "This entry has ${if (keptComments == 1) "a comment" else "$keptComments comments"}. " +
+                        "They are kept where they are when you save.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }

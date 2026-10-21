@@ -142,9 +142,129 @@ class StructuredEditTest {
         assertTrue(editable.draft.render().contains("100 EUR @@ 108.50 USD"))
     }
 
-    @Test fun `a comment still sends a hand-written entry to the text editor`() {
+    @Test fun `a comment inside a hand-written entry is kept, so the entry opens as fields`() {
         val source = handWritten.replace("    Assets:Cash", "    ; paid in coins\n    Assets:Cash")
+        val editable = assertNotNull(StructuredEdit.editableDraftOf(entry, source))
+        assertEquals(listOf(" paid in coins"), editable.draft.postings.last().notesBefore)
+        // Editing a figure must not cost the entry its comment.
+        val changed = editable.draft.copy(
+            postings = editable.draft.postings.map { it.copy(amount = Amount(BigDecimal("13.00"), "USD")) },
+        )
+        assertTrue(changed.render().contains("; paid in coins"))
+    }
+
+    private fun sourceEditable(source: String, parsed: JournalEntry = entry) =
+        assertNotNull(StructuredEdit.editableDraftOf(parsed, source), "expected the form to open for:\n$source")
+
+    private fun parsedAs(
+        payee: String?,
+        narration: String?,
+        vararg postings: Pair<String, String?>,
+        date: String = "2026-01-05",
+    ) = JournalEntry(
+        date = date, flag = "*", payee = payee, narration = narration,
+        tags = emptyList(), links = emptyList(),
+        postings = postings.map { (account, figure) ->
+            JournalPosting(account, figure?.let { Amount(BigDecimal(it.substringBefore(' ')), it.substringAfter(' ')) })
+        },
+        file = "main.beancount", line = 1,
+    )
+
+    @Test fun `a comment on a posting line and one on the first line are kept`() {
+        val source = """
+            2026-01-05 * "Grocer" "Weekly shop"  ; the good shop
+              Expenses:Food    12.50 USD  ; coffee
+              Assets:Cash
+        """.trimIndent() + "\n"
+        val editable = sourceEditable(source)
+        assertEquals(" the good shop", editable.draft.headerComment)
+        assertEquals("coffee", editable.draft.postings.first().comment)
+        assertTrue(editable.draft.render().contains("; coffee"))
+        assertTrue(editable.draft.render().contains(";  the good shop") || editable.draft.render().contains("; the good shop"))
+    }
+
+    @Test fun `comments before the first posting and after the last are kept in place`() {
+        val source = """
+            2026-01-05 * "Grocer" "Weekly shop"
+              ; about the whole entry
+              Expenses:Food    12.50 USD
+              Assets:Cash
+              ; closing remark
+        """.trimIndent() + "\n"
+        val rendered = sourceEditable(source).draft.render()
+        assertTrue(rendered.indexOf("about the whole entry") < rendered.indexOf("Expenses:Food"))
+        assertTrue(rendered.indexOf("closing remark") > rendered.indexOf("Assets:Cash"))
+    }
+
+    @Test fun `metadata on a posting is read from the text`() {
+        val source = """
+            2026-01-05 * "Landlord" "Rent"
+              Expenses:Home    50000.00 USD
+                period: "2026-08"
+              Assets:Cash
+        """.trimIndent() + "\n"
+        val rent = parsedAs("Landlord", "Rent", "Expenses:Home" to "50000.00 USD", "Assets:Cash" to "-50000.00 USD")
+        val editable = sourceEditable(source, rent)
+        assertEquals(mapOf("period" to "2026-08"), editable.draft.postings.first().metadata)
+        assertTrue(editable.draft.postings.last().metadata.isEmpty())
+    }
+
+    @Test fun `a number written bare as metadata stays a number`() {
+        val source = """
+            2026-01-05 * "Trip" "Days"
+              trip-days: 5
+              Expenses:Food    12.50 USD
+              Assets:Cash
+        """.trimIndent() + "\n"
+        val trip = parsedAs("Trip", "Days", "Expenses:Food" to "12.50 USD", "Assets:Cash" to "-12.50 USD")
+        val editable = sourceEditable(source, trip)
+        assertTrue("trip-days" in editable.draft.bareMetadata)
+        assertTrue(editable.draft.render().contains("trip-days: 5\n"))
+        // A string it could be mistaken for keeps its quotes.
+        val quoted = source.replace("trip-days: 5", "trip-days: \"5\"")
+        assertTrue(sourceEditable(quoted, trip).draft.render().contains("trip-days: \"5\""))
+    }
+
+    @Test fun `a posting Beancount split across currencies opens as one elided posting`() {
+        // The elided leg of an entry with two currencies is booked into two postings, which is why
+        // an entry-derived draft cannot reproduce the text; the text itself is unambiguous.
+        val source = """
+            2026-01-01 * "Opening" "Balances"
+              Assets:Cash        5,000.00 PKR
+              Assets:Cash          200.00 SAR
+              Equity:Opening
+        """.trimIndent() + "\n"
+        val booked = parsedAs(
+            "Opening", "Balances",
+            "Assets:Cash" to "5000.00 PKR", "Assets:Cash" to "200.00 SAR",
+            "Equity:Opening" to "-5000.00 PKR", "Equity:Opening" to "-200.00 SAR",
+            date = "2026-01-01",
+        )
+        val editable = sourceEditable(source, booked)
+        assertEquals(3, editable.draft.postings.size)
+        assertTrue(editable.draft.postings.last().isElided)
+    }
+
+    @Test fun `a text that is not the entry Beancount parsed is not edited as fields`() {
+        val source = "2026-01-05 * \"Grocer\" \"Weekly shop\"\n  Expenses:Food    99.00 USD\n  Assets:Cash\n"
         assertEquals(null, StructuredEdit.editableDraftOf(entry, source))
+    }
+
+    @Test fun `shapes the draft cannot hold still go to the text editor`() {
+        listOf(
+            // a flag on a posting
+            "2026-01-05 * \"G\" \"W\"\n  ! Expenses:Food    12.50 USD\n  Assets:Cash\n",
+            // an amount that is an expression
+            "2026-01-05 * \"G\" \"W\"\n  Expenses:Food    (10 + 2.50) USD\n  Assets:Cash\n",
+            // the old `txn` keyword
+            "2026-01-05 txn \"G\" \"W\"\n  Expenses:Food    12.50 USD\n  Assets:Cash\n",
+            // a line that is neither a posting, metadata nor a comment
+            "2026-01-05 * \"G\" \"W\"\n  Expenses:Food    12.50 USD\n  ^stray\n  Assets:Cash\n",
+            // a comment between a posting and its own metadata has no place in a draft
+            "2026-01-05 * \"G\" \"W\"\n  Expenses:Food    12.50 USD\n  ; odd\n    note: \"x\"\n  Assets:Cash\n",
+        ).forEach { source ->
+            assertEquals(null, StructuredEdit.editableDraftOf(entry, source), "opened as fields: $source")
+        }
     }
 
     @Test fun `a different figure is not mistaken for different spacing`() {

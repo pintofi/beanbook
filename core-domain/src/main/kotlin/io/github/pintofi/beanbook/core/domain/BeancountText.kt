@@ -351,6 +351,38 @@ object BeancountText {
     fun quote(value: String): String =
         "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
+    /**
+     * Whether [value] can be written without quotes as a metadata value: it is one the file wrote
+     * that way (a number, a date, an account, a currency, `TRUE`), and a string it could be
+     * mistaken for is never turned into one by accident. Kept loose on purpose -- the entry is
+     * re-parsed before any write is committed -- but never anything that would end the line or
+     * open a string.
+     */
+    fun isBareMetadataValue(value: String): Boolean {
+        val text = value.trim()
+        return text.isNotEmpty() && text == value && '"' !in text && ';' !in text && '\n' !in text
+    }
+
+    /** A metadata value as it is written: bare when the file wrote it bare and it still can be. */
+    fun metadataValue(value: String, bare: Boolean): String =
+        if (bare && isBareMetadataValue(value)) value else quote(value)
+
+    /** The text of a double-quoted Beancount string that starts at [from], and where it ends. */
+    fun unquoteAt(text: String, from: Int): Pair<String, Int>? {
+        if (from >= text.length || text[from] != '"') return null
+        val out = StringBuilder()
+        var i = from + 1
+        while (i < text.length) {
+            val ch = text[i]
+            when {
+                ch == '\\' && i + 1 < text.length -> { out.append(text[i + 1]); i += 2 }
+                ch == '"' -> return out.toString() to (i + 1)
+                else -> { out.append(ch); i++ }
+            }
+        }
+        return null
+    }
+
     /** Pads [left] so [right] ends at [column], with at least one space between. */
     fun alignRight(left: String, right: String, column: Int): String {
         val padding = (column - left.length - right.length).coerceAtLeast(1)

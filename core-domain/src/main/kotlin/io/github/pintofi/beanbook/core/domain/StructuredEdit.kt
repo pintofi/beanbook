@@ -111,9 +111,224 @@ object StructuredEdit {
         candidates.firstOrNull { normalise(it.render()) == normalise(source) }
             ?.let { return Editable(it, reformats = false) }
         val wanted = content(source)
-        return candidates.firstOrNull { content(it.render()) == wanted }
-            ?.let { Editable(it, reformats = true) }
+        candidates.firstOrNull { content(it.render()) == wanted }
+            ?.let { return Editable(it, reformats = true) }
+        // What the parsed entry cannot say -- a comment, a posting's own metadata, a value
+        // written as a number rather than a string -- is in the entry's text. Read from there,
+        // and held to the same proof: it is offered only if it renders back to the same words.
+        val fromText = draftFromSource(source)?.takeIf { describes(entry, it) } ?: return null
+        if (normalise(fromText.render()) == normalise(source)) return Editable(fromText, reformats = false)
+        return fromText.takeIf { content(it.render()) == wanted }?.let { Editable(it, reformats = true) }
     }
+
+    /**
+     * The draft an entry's own text describes, or null when the text has a shape the draft cannot
+     * hold. Nothing is guessed: whatever this reads is rendered back and compared with the text by
+     * the caller, so a misreading is refused rather than saved.
+     *
+     * Held beyond what the form shows, so that editing the fields never costs the entry what the
+     * form has no box for: full-line comments (above a posting, before the first line of
+     * content, after the last posting), a comment at the end of the first line or of a posting,
+     * metadata on a posting, and metadata written bare, as in `trip-days: 5`.
+     */
+    fun draftFromSource(source: String): TransactionDraft? {
+        val lines = source.lines().dropWhile { it.isBlank() }.dropLastWhile { it.isBlank() }
+        val head = lines.firstOrNull() ?: return null
+        val header = readHeader(head) ?: return null
+
+        val notes = mutableListOf<String>()
+        val metadata = linkedMapOf<String, String>()
+        val bare = mutableSetOf<String>()
+        val postings = mutableListOf<PostingDraft>()
+        var pending = mutableListOf<String>()
+        var base = -1
+
+        for (raw in lines.drop(1)) {
+            if (raw.isBlank()) return null
+            val indent = raw.length - raw.trimStart().length
+            val text = raw.trim()
+            if (indent == 0) return null
+            if (text.startsWith(";")) {
+                pending += text.removePrefix(";")
+                continue
+            }
+            if (base < 0) base = indent
+            if (indent < base) return null
+            val meta = METADATA_LINE.matchEntire(text)
+            if (indent > base || (meta != null && postings.isEmpty())) {
+                // A key and its value: on the entry (no posting yet, at the posting depth) or on
+                // the posting above (deeper). Comments among the metadata have nowhere to go.
+                meta ?: return null
+                if (pending.isNotEmpty() && (postings.isNotEmpty() || metadata.isNotEmpty())) return null
+                val (key, value, isBare) = readMetadata(meta) ?: return null
+                if (indent > base) {
+                    val last = postings.lastOrNull() ?: return null
+                    if (key in last.metadata) return null
+                    postings[postings.lastIndex] = last.copy(
+                        metadata = last.metadata + (key to value),
+                        bareMetadata = if (isBare) last.bareMetadata + key else last.bareMetadata,
+                    )
+                } else {
+                    if (key in metadata) return null
+                    metadata[key] = value
+                    if (isBare) bare += key
+                    notes += pending
+                    pending = mutableListOf()
+                }
+                continue
+            }
+            val posting = readPosting(text) ?: return null
+            if (postings.isEmpty() && metadata.isEmpty()) {
+                notes += pending
+            } else {
+                // Comments between the entry's metadata and its first posting have no slot in a
+                // draft; one above a later posting belongs to it.
+                if (postings.isEmpty() && pending.isNotEmpty()) return null
+            }
+            postings += if (postings.isEmpty() && metadata.isEmpty()) posting
+            else posting.copy(notesBefore = pending.takeIf { postings.isNotEmpty() }?.toList() ?: emptyList())
+            pending = mutableListOf()
+        }
+
+        return TransactionDraft(
+            date = header.date,
+            flag = header.flag,
+            payee = header.payee,
+            narration = header.narration,
+            tags = header.tags,
+            links = header.links,
+            metadata = metadata,
+            postings = postings,
+            headerComment = header.comment,
+            notes = notes,
+            trailingNotes = pending,
+            bareMetadata = bare,
+        )
+    }
+
+    /**
+     * Whether [draft], read from the entry's text, is the entry Beancount parsed: the same date,
+     * flag, strings, accounts and figures. A text that disagrees with the parsed entry is a file
+     * that changed under the list, or something read wrongly, and neither is edited as fields.
+     *
+     * Tags and links a plugin added are in the entry and not in the text, so the draft's own
+     * must be among the entry's rather than equal to them. One elided posting may stand for
+     * several booked ones, which is what Beancount does with a leg in two currencies.
+     */
+    private fun describes(entry: JournalEntry, draft: TransactionDraft): Boolean {
+        if (draft.date != entry.date || draft.flag != (entry.flag ?: "*")) return false
+        if (draft.payee != entry.payee?.takeIf { it.isNotBlank() }) return false
+        if (draft.narration != entry.narration?.takeIf { it.isNotBlank() }) return false
+        if (!entry.tags.containsAll(draft.tags) || !entry.links.containsAll(draft.links)) return false
+        var next = 0
+        draft.postings.forEachIndexed { index, posting ->
+            val booked = entry.postings.getOrNull(next) ?: return false
+            if (booked.account != posting.account) return false
+            next++
+            val amount = posting.amount
+            if (amount != null) {
+                val figure = booked.amount ?: return false
+                if (figure.currency != amount.currency || figure.number.compareTo(amount.number) != 0) return false
+            } else {
+                val left = draft.postings.size - index - 1
+                while (entry.postings.size - next > left && entry.postings.getOrNull(next)?.account == posting.account) next++
+            }
+        }
+        return next == entry.postings.size
+    }
+
+    private class Header(
+        val date: String,
+        val flag: String,
+        val payee: String?,
+        val narration: String?,
+        val tags: List<String>,
+        val links: List<String>,
+        val comment: String?,
+    )
+
+    /** `2026-08-01 * "Payee" "Narration" #tag ^link ; comment`. Anything else is not read. */
+    private fun readHeader(line: String): Header? {
+        if (line.first().isWhitespace()) return null
+        var i = 0
+        fun skipSpaces() { while (i < line.length && line[i] == ' ') i++ }
+        fun word(): String {
+            val start = i
+            while (i < line.length && !line[i].isWhitespace()) i++
+            return line.substring(start, i)
+        }
+        val date = word()
+        if (!BeancountText.DATE.matches(date)) return null
+        skipSpaces()
+        val flag = word()
+        if (flag != "*" && flag != "!") return null
+        val strings = mutableListOf<String>()
+        val tags = mutableListOf<String>()
+        val links = mutableListOf<String>()
+        var comment: String? = null
+        while (true) {
+            skipSpaces()
+            if (i >= line.length) break
+            when {
+                line[i] == '"' -> {
+                    val (value, end) = BeancountText.unquoteAt(line, i) ?: return null
+                    if (tags.isNotEmpty() || links.isNotEmpty() || strings.size == 2) return null
+                    strings += value
+                    i = end
+                }
+                line[i] == '#' -> { val w = word().removePrefix("#"); if (!BeancountText.TAG.matches(w)) return null; tags += w }
+                line[i] == '^' -> { val w = word().removePrefix("^"); if (!BeancountText.TAG.matches(w)) return null; links += w }
+                line[i] == ';' -> { comment = line.substring(i + 1); i = line.length }
+                else -> return null
+            }
+        }
+        return Header(
+            date = date,
+            flag = flag,
+            payee = if (strings.size == 2) strings[0] else null,
+            narration = strings.lastOrNull(),
+            tags = tags,
+            links = links,
+            comment = comment,
+        )
+    }
+
+    private fun readMetadata(match: MatchResult): Triple<String, String, Boolean>? {
+        val key = match.groupValues[1]
+        val rest = match.groupValues[2].trim()
+        if (rest.isEmpty()) return null
+        if (rest.startsWith("\"")) {
+            val (value, end) = BeancountText.unquoteAt(rest, 0) ?: return null
+            if (rest.substring(end).isNotBlank()) return null
+            return Triple(key, value, false)
+        }
+        if (!BeancountText.isBareMetadataValue(rest)) return null
+        return Triple(key, rest, true)
+    }
+
+    /** `Account  12.50 USD {lot} @ price  ; comment`, with the account alone for an elided amount. */
+    private fun readPosting(text: String): PostingDraft? {
+        val comment = text.indexOf(';').takeIf { it >= 0 }
+        val body = (if (comment != null) text.substring(0, comment) else text).trim()
+        val remark = comment?.let { text.substring(it + 1).trim() }?.takeIf { it.isNotEmpty() }
+        val account = body.substringBefore(' ').substringBefore('\t')
+        if (!BeancountText.ACCOUNT.matches(account)) return null
+        val rest = body.removePrefix(account).trim()
+        if (rest.isEmpty()) return PostingDraft(account = account, comment = remark)
+        val match = POSTING_TAIL.matchEntire(rest) ?: return null
+        val number = runCatching { java.math.BigDecimal(match.groupValues[1].replace(",", "")) }.getOrNull()
+            ?: return null
+        val details = match.groupValues[3].trim()
+        if (details.isNotEmpty() && !details.startsWith("{") && !details.startsWith("@")) return null
+        return PostingDraft(
+            account = account,
+            amount = Amount(number, match.groupValues[2]),
+            details = details.ifEmpty { null },
+            comment = remark,
+        )
+    }
+
+    private val METADATA_LINE = Regex("""([a-z][A-Za-z0-9\-_]*):(?:\s+(.*))?""")
 
     private fun writtenIn(header: String, sigil: String, word: String): Boolean =
         Regex("""(^|\s)${Regex.escape(sigil + word)}(\s|$)""").containsMatchIn(header)
