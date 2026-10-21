@@ -56,7 +56,8 @@ val LocalLedgerFilter = staticCompositionLocalOf<LedgerFilterState?> { null }
 
 /** The app's shared filter, or a private one for a screen shown without it. */
 @Composable
-fun ledgerFilter(): LedgerFilterState = LocalLedgerFilter.current ?: androidx.compose.runtime.remember { LedgerFilterState() }
+fun ledgerFilter(): LedgerFilterState =
+    LocalLedgerFilter.current ?: androidx.compose.runtime.remember { LedgerFilterState() }
 
 /**
  * What the three screens are filtered by, one chip each with a cross, and a way to drop them all.
