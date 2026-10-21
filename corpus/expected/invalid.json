@@ -20,6 +20,29 @@
           "number": "-45.00"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "-45.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "-45.00"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "-45.00"
+            }
+          ]
+        }
+      ],
       "name": "Assets:Bank:Checking",
       "positions": [
         {
@@ -47,6 +70,29 @@
           "number": "42.30"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "42.30"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "42.30"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "42.30"
+            }
+          ]
+        }
+      ],
       "name": "Expenses:Food:Groceries",
       "positions": [
         {
@@ -72,6 +118,29 @@
         {
           "currency": "USD",
           "number": "5.00"
+        }
+      ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "5.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "5.00"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "5.00"
+            }
+          ]
         }
       ],
       "name": "Expenses:Unopened:Account",

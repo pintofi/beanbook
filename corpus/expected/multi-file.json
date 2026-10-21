@@ -20,6 +20,29 @@
           "number": "1744.80"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "1744.80"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "1744.80"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "1744.80"
+            }
+          ]
+        }
+      ],
       "name": "Assets:Bank:Checking",
       "positions": [
         {
@@ -45,6 +68,29 @@
         {
           "currency": "USD",
           "number": "-3000.00"
+        }
+      ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "-3000.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "-3000.00"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "-3000.00"
+            }
+          ]
         }
       ],
       "name": "Equity:Opening-Balances",
@@ -74,6 +120,29 @@
           "number": "55.20"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "55.20"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "55.20"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "55.20"
+            }
+          ]
+        }
+      ],
       "name": "Expenses:Food:Groceries",
       "positions": [
         {
@@ -99,6 +168,29 @@
         {
           "currency": "USD",
           "number": "1200.00"
+        }
+      ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "1200.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "1200.00"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "1200.00"
+            }
+          ]
         }
       ],
       "name": "Expenses:Home:Rent",
