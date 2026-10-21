@@ -59,15 +59,23 @@ class ProjectRegistry(
 
     private val activeFile: File get() = File(stateDir, "active-project")
 
+    /**
+     * The open project, or null. A file that is empty (a write the device lost power in the middle of)
+     * or names a project that is gone means no project is open; it never stops the app starting.
+     */
     fun activeProjectId(): String? =
-        activeFile.takeIf { it.isFile }?.readText()?.trim()?.takeIf { workspace.exists(it) }
+        activeFile.takeIf { it.isFile }?.readText()?.trim()
+            ?.takeIf { it.isNotEmpty() && runCatching { workspace.exists(it) }.getOrDefault(false) }
 
     fun setActive(projectId: String) {
         require(workspace.exists(projectId)) { "no such project: $projectId" }
         stateDir.mkdirs()
+        // Flushed before it is named, like the ledger itself: an unflushed write killed with the
+        // device leaves an empty file where the choice was.
         val tmp = File(stateDir, "active-project.tmp")
-        tmp.writeText(projectId)
+        Durable.writeText(tmp, projectId)
         tmp.renameTo(activeFile)
+        Durable.syncDirectory(stateDir)
     }
 
     fun summaries(): List<ProjectSummary> =

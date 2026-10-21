@@ -33,6 +33,21 @@ class ProjectRegistryTest {
     }
 
     @Test
+    fun `an empty or blank active-project file means no project is open and does not throw`() {
+        workspace.createProject("household", title = "Household")
+        val state = root.resolve("state").also { it.mkdirs() }
+
+        state.resolve("active-project").writeText("")
+        assertNull(registry.activeProjectId())
+
+        state.resolve("active-project").writeText("  \n")
+        assertNull(registry.activeProjectId())
+
+        registry.setActive("household")
+        assertEquals("household", registry.activeProjectId())
+    }
+
+    @Test
     fun `a quoted title survives the round trip through the file`() {
         workspace.createProject("q", title = """Bob "B" Ltd""")
         assertEquals("""Bob "B" Ltd""", registry.summarise("q").title)
