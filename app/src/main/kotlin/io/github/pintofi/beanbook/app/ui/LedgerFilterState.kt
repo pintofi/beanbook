@@ -57,32 +57,35 @@ val LocalLedgerFilter = staticCompositionLocalOf { LedgerFilterState() }
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun LedgerFilterBar(modifier: Modifier = Modifier) {
+fun LedgerFilterBar(modifier: Modifier = Modifier, inset: androidx.compose.ui.unit.Dp = Measure.gutter) {
     val state = LocalLedgerFilter.current
     val filter = state.filter
     if (!filter.isActive) return
-    FlowRow(
-        modifier = modifier.padding(horizontal = Measure.gutter),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
-        if (filter.query.isNotBlank()) {
-            FilterChipWithCross("Search: ${filter.query.trim()}", "Remove the search ${filter.query.trim()}") { state.setQuery("") }
+    // One block, so a parent that spaces its children out does not pull the chips and the
+    // sentence beneath them apart.
+    androidx.compose.foundation.layout.Column(modifier = modifier.padding(horizontal = inset)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            if (filter.query.isNotBlank()) {
+                FilterChipWithCross("Search: ${filter.query.trim()}", "Remove the search ${filter.query.trim()}") { state.setQuery("") }
+            }
+            if (filter.tags.isNotBlank()) {
+                FilterChipWithCross("Tags: ${filter.tags.trim()}", "Remove the tags and links ${filter.tags.trim()}") { state.setTags("") }
+            }
+            TextButton(
+                onClick = state::clear,
+                modifier = Modifier.semantics { contentDescription = "Remove every filter" },
+            ) { Text("Clear all") }
         }
-        if (filter.tags.isNotBlank()) {
-            FilterChipWithCross("Tags: ${filter.tags.trim()}", "Remove the tags and links ${filter.tags.trim()}") { state.setTags("") }
-        }
-        TextButton(
-            onClick = state::clear,
-            modifier = Modifier.semantics { contentDescription = "Remove every filter" },
-        ) { Text("Clear all") }
+        Text(
+            "Home, Journal and Balances show only the matching entries. Balances are at cost while this is on.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = Measure.snug),
+        )
     }
-    Text(
-        "Home, Journal and Balances show only the matching entries. Balances are at cost while this is on.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = Measure.gutter).padding(bottom = Measure.snug),
-    )
 }
 
 @Composable
