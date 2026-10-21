@@ -781,7 +781,7 @@ private fun CustomiseHomeSheet(
                                 .padding(start = Measure.tight, end = Measure.tight),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Checkbox(
+                            SquircleCheckbox(
                                 checked = on,
                                 onCheckedChange = { checked ->
                                     cards = if (checked) cards + card else cards - card

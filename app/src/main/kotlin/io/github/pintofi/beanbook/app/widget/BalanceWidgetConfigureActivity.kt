@@ -204,7 +204,7 @@ internal fun ChooseAccounts(
                 ListItem(
                     headlineContent = { Text(account) },
                     trailingContent = {
-                        Checkbox(
+                        io.github.pintofi.beanbook.app.ui.SquircleCheckbox(
                             checked = isPicked,
                             // Null, so the row owns the click: a checkbox with its own
                             // handler beside a clickable row gives a screen reader two

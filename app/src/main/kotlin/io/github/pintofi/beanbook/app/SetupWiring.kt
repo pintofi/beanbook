@@ -4,6 +4,7 @@ import androidx.lifecycle.lifecycleScope
 import io.github.pintofi.beanbook.app.onboarding.Creation
 import io.github.pintofi.beanbook.app.onboarding.NewLedgerSetup
 import io.github.pintofi.beanbook.app.onboarding.SetupDraft
+import io.github.pintofi.beanbook.app.onboarding.SetupFailure
 import io.github.pintofi.beanbook.app.onboarding.SetupStep
 import io.github.pintofi.beanbook.app.ui.onboarding.SetupActions
 import java.time.LocalDate
@@ -27,7 +28,7 @@ private fun MainActivity.createLedger(app: BeancountApplication, draft: SetupDra
                 }
                 setup.finished(id, NewLedgerSetup.summary(blueprint))
             }
-            .onFailure { setup.creating(Creation.Failed(it.message ?: "The ledger could not be created.")) }
+            .onFailure { setup.creating(Creation.Failed(failureWords(it))) }
     }
 }
 
@@ -83,4 +84,15 @@ internal fun remoteNote(
     "Connected to ${app.remoteState.savedAddress}."
 } else {
     message
+}
+
+/** Remembers the answer to the notification prompt, so the setup can show "Granted". */
+internal fun MainActivity.noteNotificationAnswer(granted: Boolean) {
+    (application as BeancountApplication).newLedgerSetup.notificationsGranted.value = granted
+}
+
+/** What the Finish page says when creating failed: Beancount's complaint in words, or the plain reason. */
+private fun failureWords(failure: Throwable): String = when (failure) {
+    is io.github.pintofi.beanbook.core.data.BlueprintRejected -> SetupFailure.explain(failure.errors)
+    else -> failure.message ?: "The ledger could not be created."
 }

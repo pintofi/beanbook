@@ -23,6 +23,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
@@ -78,6 +79,9 @@ fun OnboardingFlow(
 ) {
     val draft by setup.draft.collectAsState()
     val creation by setup.creation.collectAsState()
+    val notificationsGranted by setup.notificationsGranted.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(draft.step) { if (notificationsAllowed(context)) setup.notificationsGranted.value = true }
     val update = setup::update
     when (draft.step) {
         SetupStep.WELCOME -> WelcomePage(
@@ -118,7 +122,7 @@ fun OnboardingFlow(
             primaryLabel = "Create my ledger",
             onPrimary = { setup.go(SetupStep.FINISH); actions.onCreate() },
             modifier = modifier,
-        ) { GetSetStep(draft, update, themeChoice, actions) }
+        ) { GetSetStep(draft, update, themeChoice, actions, notificationsGranted) }
         SetupStep.FINISH -> FinishPage(
             creation = creation,
             onBack = {
@@ -251,3 +255,11 @@ private fun WaysInPage(
         }
     }
 }
+
+/** Whether notifications may be shown already: always before Android 13, which has no prompt. */
+private fun notificationsAllowed(context: android.content.Context): Boolean =
+    android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU ||
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.POST_NOTIFICATIONS,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED

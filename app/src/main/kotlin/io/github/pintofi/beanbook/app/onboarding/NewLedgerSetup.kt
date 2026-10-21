@@ -35,6 +35,9 @@ class NewLedgerSetup(private val file: File) {
     private val _draft = MutableStateFlow(saved ?: fresh())
     val draft: StateFlow<SetupDraft> = _draft.asStateFlow()
 
+    /** Whether the notification permission has been given, as the Get set step shows it. */
+    val notificationsGranted = MutableStateFlow(false)
+
     private val _creation = MutableStateFlow<Creation>(Creation.Idle)
     val creation: StateFlow<Creation> = _creation.asStateFlow()
 
