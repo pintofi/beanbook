@@ -54,6 +54,8 @@ data class SetupDraft(
     val accounts: List<AccountChoice> = starterChoices(),
     /** What each chosen account held on the first day, as typed. A liability is typed as what is owed. */
     val opening: Map<String, String> = emptyMap(),
+    /** A folder to keep a copy of the ledger in (a content URI), chosen on the last step. */
+    val mirrorFolder: String? = null,
 ) {
 
     /** The currencies the ledger names, main first. */
@@ -134,6 +136,7 @@ data class SetupDraft(
             },
         ),
         "opening" to Json.Obj(opening.mapValues { Json.of(it.value) }),
+        "mirror" to (mirrorFolder?.let { Json.of(it) } ?: Json.Null),
     )
 
     companion object {
@@ -191,6 +194,7 @@ data class SetupDraft(
                 accounts = accounts,
                 opening = obj.obj("opening")?.fields.orEmpty()
                     .mapNotNull { (k, v) -> (v as? Json.Str)?.let { k to it.value } }.toMap(),
+                mirrorFolder = obj.string("mirror"),
             )
         }
     }

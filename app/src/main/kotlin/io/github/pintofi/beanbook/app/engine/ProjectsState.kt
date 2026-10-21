@@ -34,6 +34,8 @@ class ProjectsState(
     private val registry: ProjectRegistry,
     private val importer: ProjectImporter,
     private val scope: CoroutineScope,
+    /** Reads a staged new ledger with Beancount before it is put in place; null where there is no engine. */
+    private val validator: io.github.pintofi.beanbook.core.data.LedgerValidator? = null,
 ) {
     private val _projects = MutableStateFlow<List<ProjectSummary>>(emptyList())
     val projects: StateFlow<List<ProjectSummary>> = _projects.asStateFlow()
@@ -67,6 +69,29 @@ class ProjectsState(
             open(id)
             onOpened(id)
         }
+    }
+
+    /**
+     * Creates a ledger from the answers the first-run setup collected, and has Beancount read it before
+     * it is put in place. The result is the new project's id, or the reason it was not
+     * made: a ledger the app generated that Beancount will not read is the app's mistake, and
+     * nothing is left behind.
+     */
+    suspend fun createFromBlueprint(
+        blueprint: io.github.pintofi.beanbook.core.domain.LedgerBlueprint,
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val id = ProjectRegistry.idFor(blueprint.title, workspace.listProjects().toSet())
+        runCatching {
+            workspace.createFromBlueprint(id, blueprint) { staged ->
+                validator?.validate(staged.absolutePath)
+                    ?: Result.failure(io.github.pintofi.beanbook.core.data.LedgerUnavailable("no engine"))
+            }
+            id
+        }.onSuccess {
+            // Listed, not opened: opening takes the person off the setup, and the Finish page is
+            // where they are told it worked.
+            refresh()
+        }.onFailure { Log.w(TAG, "creating a ledger failed", it) }
     }
 
     /** Imports a SAF folder tree. */

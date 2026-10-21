@@ -92,6 +92,11 @@ class BeancountApplication : Application() {
     /** The filter Home, Journal and Balances share, kept for as long as the app runs. */
     val ledgerFilter = io.github.pintofi.beanbook.app.ui.LedgerFilterState()
 
+    /** The first-run setup's answers, kept across rotation and a killed process until a ledger exists. */
+    val newLedgerSetup: io.github.pintofi.beanbook.app.onboarding.NewLedgerSetup by lazy {
+        io.github.pintofi.beanbook.app.onboarding.NewLedgerSetup(filesDir.resolve("state/setup-draft.json"))
+    }
+
     /** Which tab of Documents is showing; Home can send people to Organize. */
     val documentsTab = io.github.pintofi.beanbook.app.ui.DocumentsTabState()
 
@@ -278,7 +283,10 @@ class BeancountApplication : Application() {
     }
 
     val projectsState: ProjectsState by lazy {
-        ProjectsState(workspace, registry, ProjectImporter(workspace), appScope)
+        ProjectsState(
+            workspace, registry, ProjectImporter(workspace), appScope,
+            validator = BeancountValidator(this, connection = engineConnection),
+        )
     }
 
     val editor: BeancountEditor by lazy { BeancountEditor(this, connection = engineConnection) }
