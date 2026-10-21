@@ -382,9 +382,15 @@ fun QuickAddScreen(
     // recomputed itself with no pages mid-save: the `document:` line left the preview and
     // "Save entry with 1 page" became a greyed "Save entry", as if the pages had been lost.
     var saving by remember { mutableStateOf<SavingForm?>(null) }
+    // The preview of the save that just succeeded, kept while the form still holds exactly what was
+    // saved. Once the pages are filed the capture is empty, so the live preview loses the
+    // `document:` lines they made -- for the moment before the form closes or clears, the entry
+    // that had just been written looked as if it had been written without its document.
+    var savedPreview by remember { mutableStateOf<String?>(null) }
     var retryable by remember { mutableStateOf(false) }
     LaunchedEffect(saveState) {
         if (saving != null && saveState != null && !saveState.startsWith("Saving")) {
+            savedPreview = if (saveState.startsWith("Saved")) saving?.preview else null
             saving = null
             // A save that did not happen can be tried again as it stands. The duplicate
             // guard below is for a save that *did* (invariant 6).
@@ -698,8 +704,14 @@ fun QuickAddScreen(
             Text(
                 // The entry, with the `document:` line its attachments will carry. No separate
                 // `document` directive: an attachment belongs to this entry.
-                text = saving?.preview ?: previewDraft.render(),
+                text = saving?.preview
+                    ?: savedPreview?.takeIf { draft == submitted }
+                    ?: previewDraft.render(),
                 style = LedgerType.source,
+                // One line per line of the entry, however long: a long account name wrapped
+                // under itself and made the preview look different from what is written. The box
+                // scrolls sideways instead.
+                softWrap = false,
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainerLow)
@@ -711,6 +723,7 @@ fun QuickAddScreen(
                         key = committed.takeIf { it > committedBefore },
                         colour = BeancountTheme.ledger.rule,
                     )
+                    .horizontalScroll(rememberScrollState())
                     .padding(Measure.indent)
                     .semantics { contentDescription = "Preview of the entry to be saved" },
             )

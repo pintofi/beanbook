@@ -97,6 +97,13 @@ fun DocumentsScreen(
     /** What this ledger calls its five trees, for the account this screen pre-selects. */
     names: io.github.pintofi.beanbook.core.domain.AccountNames =
         io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
+    /**
+     * The tab somebody asked to land on, once: the Home card for a document that is not linked
+     * sends them to Organize, where it is fixed, not to Add, where a new one is made. [onShown]
+     * clears the request, so coming back later opens the tab last used.
+     */
+    requestedMode: DocumentsMode? = null,
+    onRequestShown: () -> Unit = {},
 ) {
     var account by remember {
         mutableStateOf(
@@ -108,7 +115,13 @@ fun DocumentsScreen(
     var label by rememberSaveable { mutableStateOf("") }
     var granted by remember(hasCamera) { mutableStateOf(hasCamera) }
     var pendingRemoval by remember { mutableStateOf<Pair<DocumentRow, DocumentRemoval>?>(null) }
-    var mode by rememberSaveable { mutableStateOf(DocumentsMode.ADD) }
+    var mode by rememberSaveable { mutableStateOf(requestedMode ?: DocumentsMode.ADD) }
+    androidx.compose.runtime.LaunchedEffect(requestedMode) {
+        if (requestedMode != null) {
+            mode = requestedMode
+            onRequestShown()
+        }
+    }
     var refiling by remember { mutableStateOf<DocumentRow?>(null) }
     var expanded by remember { mutableStateOf(emptySet<String>()) }
     var cropping by remember { mutableStateOf<Int?>(null) }

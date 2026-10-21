@@ -249,10 +249,12 @@ fun DirectiveEntryScreen(
             Text(
                 text = draft.render(),
                 style = LedgerType.source,
+                softWrap = false,
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainerLow)
                     .filedSweep(key = committed.takeIf { it > 0 }, colour = BeancountTheme.ledger.rule)
+                    .horizontalScroll(rememberScrollState())
                     .padding(Measure.indent)
                     .semantics { contentDescription = "Preview of the directive to be saved" },
             )
