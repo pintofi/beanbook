@@ -254,7 +254,7 @@ fun ProjectPickerScreen(
  * the same arithmetic as the About screen.
  */
 @Composable
-internal fun WelcomeHeader() {
+internal fun WelcomeHeader(mark: @Composable () -> Unit = { BeanbookMark(size = 72.dp) }) {
     // Left-aligned, like every other page in the app. Centred type is what a marketing
     // splash does; this is the first page of a ledger, and a ledger has a margin.
     Column(
@@ -263,7 +263,7 @@ internal fun WelcomeHeader() {
     ) {
         // In the theme's colours, so the first thing the app shows is in the palette of
         // everything after it.
-        BeanbookMark(size = 72.dp)
+        mark()
         Text("Beanbook", style = MaterialTheme.typography.displaySmall)
         Text(
             "Plain-text double-entry accounting, on your device.",

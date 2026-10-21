@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 sealed interface Creation {
     data object Idle : Creation
     data class Working(val what: String) : Creation
-    data class Done(val projectId: String, val summary: String) : Creation
+    data class Done(val projectId: String, val summary: String, val imported: Boolean = false) : Creation
     data class Failed(val message: String) : Creation
 }
 
@@ -53,8 +53,8 @@ class NewLedgerSetup(private val file: File) {
     }
 
     /** The ledger exists: the saved answers (opening balances among them) are deleted, the page stays. */
-    fun finished(projectId: String, summary: String) {
-        _creation.value = Creation.Done(projectId, summary)
+    fun finished(projectId: String, summary: String, imported: Boolean = false) {
+        _creation.value = Creation.Done(projectId, summary, imported)
         runCatching { file.delete() }
     }
 

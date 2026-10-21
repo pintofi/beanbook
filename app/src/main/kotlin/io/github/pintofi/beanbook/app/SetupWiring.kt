@@ -52,3 +52,20 @@ internal fun MainActivity.setupActions(app: BeancountApplication): SetupActions 
         },
     )
 }
+
+/**
+ * What happens when an import has finished. From the first-run screen (no ledger is open yet) the
+ * Finish page says what came in and asks what to do next; from anywhere else the imported ledger
+ * simply opens, as it always did.
+ */
+internal fun MainActivity.afterImport(app: BeancountApplication, id: String) {
+    if (app.projectsState.activeId.value != null) {
+        openProject(app, id)
+        return
+    }
+    val setup = app.newLedgerSetup
+    val title = app.projectsState.projects.value.firstOrNull { it.id == id }?.title ?: id
+    setup.go(SetupStep.FINISH)
+    val summary = "Imported $title. Your files were copied as they are; nothing in them was changed."
+    setup.finished(id, summary, imported = true)
+}

@@ -135,7 +135,7 @@ class MainActivity : ComponentActivity() {
     internal val folderPicker = treePicker(
         android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
     ) { app, uri ->
-        app.projectsState.importFolder(contentResolver, uri) { id -> openProject(app, id) }
+        app.projectsState.importFolder(contentResolver, uri) { id -> afterImport(app, id) }
     }
 
     private val exportPicker = treePicker(
@@ -149,9 +149,7 @@ class MainActivity : ComponentActivity() {
     ) { uri ->
         val app = application as BeancountApplication
         uri?.let {
-            app.projectsState.importArchive(contentResolver, it, cacheDir) { id ->
-                openProject(app, id)
-            }
+            app.projectsState.importArchive(contentResolver, it, cacheDir) { id -> afterImport(app, id) }
         }
     }
 

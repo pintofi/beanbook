@@ -160,7 +160,8 @@ private fun WelcomePage(resumable: Boolean, onContinue: () -> Unit, modifier: Mo
                 .padding(horizontal = 24.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            WelcomeHeader()
+            WelcomeHeader(mark = { ArrivingMark() })
+            WelcomeExample()
             WhatThisIs()
             Text(
                 "Nothing leaves this phone unless you set up a copy yourself.",

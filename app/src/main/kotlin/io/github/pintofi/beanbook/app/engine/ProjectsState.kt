@@ -157,6 +157,9 @@ class ProjectsState(
         cleanup: () -> Unit = {},
         open: () -> Pair<io.github.pintofi.beanbook.core.data.ImportSource, String>,
     ) {
+        // From the first-run screen (nothing open yet) the import is not opened for the caller: the
+        // setup's last page says what came in and asks what to do next.
+        val firstRun = activeId.value == null
         scope.launch {
             _message.value = "Reading…"
             val outcome = withContext(Dispatchers.IO) {
@@ -176,7 +179,7 @@ class ProjectsState(
                     when (result) {
                         is ImportResult.Imported -> {
                             refresh()
-                            open(id)
+                            if (!firstRun) open(id)
                             onOpened(id)
                             "Imported ${result.fileCount} file(s)."
                         }

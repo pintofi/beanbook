@@ -370,7 +370,7 @@ internal fun FinishPage(
                 Text("Your ledger is ready", style = MaterialTheme.typography.headlineSmall)
                 Text(creation.summary, style = MaterialTheme.typography.bodyMedium)
                 Button(onClick = { onFinish(creation.projectId, true) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Add your first entry")
+                    Text(if (creation.imported) "Add an entry" else "Add your first entry")
                 }
                 OutlinedButton(onClick = { onFinish(creation.projectId, false) }, modifier = Modifier.fillMaxWidth()) {
                     Text("Go to Home")
