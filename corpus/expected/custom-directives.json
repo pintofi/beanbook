@@ -20,6 +20,29 @@
           "number": "1000.00"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "1000.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "1000.00"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "1000.00"
+            }
+          ]
+        }
+      ],
       "name": "Assets:Bank:Checking",
       "positions": [
         {
@@ -45,6 +68,29 @@
         {
           "currency": "USD",
           "number": "-1020.50"
+        }
+      ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "-1020.50"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "-1020.50"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "-1020.50"
+            }
+          ]
         }
       ],
       "name": "Equity:Opening-Balances",
@@ -74,6 +120,29 @@
           "number": "12.50"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "12.50"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "12.50"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "12.50"
+            }
+          ]
+        }
+      ],
       "name": "Expenses:Food:Restaurant",
       "positions": [
         {
@@ -99,6 +168,29 @@
         {
           "currency": "USD",
           "number": "8.00"
+        }
+      ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "8.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "8.00"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "8.00"
+            }
+          ]
         }
       ],
       "name": "Expenses:Misc",

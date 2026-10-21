@@ -20,6 +20,29 @@
           "number": "476.55"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "476.55"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "476.55"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "476.55"
+            }
+          ]
+        }
+      ],
       "name": "Assets:Bank:Checking",
       "positions": [
         {
@@ -47,6 +70,29 @@
           "number": "-500.00"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "-500.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "-500.00"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "-500.00"
+            }
+          ]
+        }
+      ],
       "name": "Equity:Opening-Balances",
       "positions": [
         {
@@ -72,6 +118,29 @@
         {
           "currency": "USD",
           "number": "23.45"
+        }
+      ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "23.45"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "23.45"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "23.45"
+            }
+          ]
         }
       ],
       "name": "Expenses:Food:Groceries",
