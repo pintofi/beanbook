@@ -45,6 +45,10 @@ internal fun MainActivity.setupActions(app: BeancountApplication): SetupActions 
         onPickMirrorFolder = { mirrorFolderPicker.launch(null) },
         onAskNotifications = { askForNotifications(force = true) },
         onThemeChoice = { app.themeSettings.setChoice(it) },
+        onRemoteConnect = { address, user, secret ->
+            app.remoteState.connect(address, user, secret)
+            secret?.fill(' ')
+        },
         onFinish = { id, addEntry ->
             setup.reset()
             openProject(app, id)
@@ -68,4 +72,15 @@ internal fun MainActivity.afterImport(app: BeancountApplication, id: String) {
     setup.go(SetupStep.FINISH)
     val summary = "Imported $title. Your files were copied as they are; nothing in them was changed."
     setup.finished(id, summary, imported = true)
+}
+
+/** What the server card says: connected, or the last thing the connection reported. */
+internal fun remoteNote(
+    app: BeancountApplication,
+    status: io.github.pintofi.beanbook.core.engine.EngineStatus,
+    message: String?,
+): String? = if (status is io.github.pintofi.beanbook.core.engine.EngineStatus.Serving) {
+    "Connected to ${app.remoteState.savedAddress}."
+} else {
+    message
 }

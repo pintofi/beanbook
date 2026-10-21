@@ -56,6 +56,8 @@ class SetupActions(
     val onThemeChoice: (ThemeChoice) -> Unit,
     /** Leaves the setup for the new ledger; true opens the entry form straight away. */
     val onFinish: (projectId: String, addEntry: Boolean) -> Unit,
+    /** Saves a Fava server's address and credentials and connects to it. */
+    val onRemoteConnect: (String, String?, CharArray?) -> Unit = { _, _, _ -> },
 )
 
 /**
@@ -71,6 +73,8 @@ fun OnboardingFlow(
     modifier: Modifier = Modifier,
     busyMessage: String? = null,
     trash: ProjectTrash = ProjectTrash(),
+    /** What the server connection is doing, in words; null before anything was tried. */
+    remoteNote: String? = null,
 ) {
     val draft by setup.draft.collectAsState()
     val creation by setup.creation.collectAsState()
@@ -90,6 +94,7 @@ fun OnboardingFlow(
             modifier = modifier,
             busyMessage = busyMessage,
             trash = trash,
+            remoteNote = remoteNote,
         )
         SetupStep.BASICS -> SetupPage(
             step = 1, title = "The basics",
@@ -183,6 +188,7 @@ private fun WaysInPage(
     modifier: Modifier = Modifier,
     busyMessage: String? = null,
     trash: ProjectTrash = ProjectTrash(),
+    remoteNote: String? = null,
 ) {
     BackHandler(onBack = onBack)
     Column(modifier = modifier.fillMaxSize()) {
@@ -227,7 +233,7 @@ private fun WaysInPage(
                 enabled = draft.name.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Create with defaults") }
-            Hint("Defaults: your device's currency, a short list of everyday accounts, no extra checks.")
+            Hint("Defaults: your device's currency, a short list of everyday accounts, and the usual checks.")
 
             Text("Open an existing ledger", style = MaterialTheme.typography.titleMedium)
             Hint("Import a folder or a .zip you already keep, on this device or in cloud storage.")
@@ -239,6 +245,8 @@ private fun WaysInPage(
                 OutlinedButton(onClick = actions.onOpenArchive) { Text("Choose .zip") }
             }
             busyMessage?.let { StatusLine(it) }
+
+            RemoteCard(onConnect = actions.onRemoteConnect, note = remoteNote)
             TrashSection(trash)
         }
     }

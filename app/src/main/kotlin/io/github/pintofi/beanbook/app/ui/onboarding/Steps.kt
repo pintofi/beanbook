@@ -181,7 +181,8 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
     }
     Hint(
         "Each one is a Beancount plugin that refuses a kind of mistake. " +
-            "All are off by default, so nothing stops you at first.",
+            "\"Every account must be used\" starts off: until your accounts are in use, " +
+            "Beancount would report each of them as an error.",
     )
 }
 

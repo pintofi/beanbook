@@ -536,6 +536,7 @@ class MainActivity : ComponentActivity() {
                             themeChoice = themeChoice,
                             actions = setupActions(app),
                             busyMessage = projectMessage,
+                            remoteNote = remoteNote(app, remoteStatus, remoteMessage),
                             trash = app.projectsState.trashUi(trashedProjects) { openProject(app, it) },
                         )
                         return@Surface

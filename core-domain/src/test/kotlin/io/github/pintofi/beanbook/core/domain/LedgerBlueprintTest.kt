@@ -60,11 +60,33 @@ class LedgerBlueprintTest {
         assertTrue(main.contains("plugin \"fava.plugins.link_documents\"\n"))
         assertTrue(main.contains("\"default-page\" \"balance_sheet/\""))
         assertTrue(main.contains("option \"display_precision\" \"EUR:0.01\"\n"))
-        assertTrue(main.contains("option \"inferred_tolerance_default\" \"EUR:0.005\"\n"))
+        assertTrue(main.contains("option \"inferred_tolerance_default\" \"*:0.005\"\n"))
     }
 
-    @Test fun `checks are off as commented lines until chosen`() {
-        val off = household.render().getValue("main.beancount")
+    @Test fun `every currency has the default tolerance and only a currency the person set has its own`() {
+        val plain = household.render().getValue("main.beancount")
+        assertEquals(1, Regex("inferred_tolerance_default").findAll(plain).count(), plain)
+
+        val own = household.copy(decimals = mapOf("EUR" to 2, "JPY" to 0), explicitDecimals = setOf("JPY"))
+            .render().getValue("main.beancount")
+        assertTrue(own.contains("option \"inferred_tolerance_default\" \"*:0.005\"\n"))
+        assertTrue(own.contains("option \"inferred_tolerance_default\" \"JPY:0.5\"\n"))
+        assertFalse(own.contains("\"EUR:0.005\""))
+    }
+
+    @Test fun `a new ledger has every check on except the one that flags accounts not yet used`() {
+        assertEquals(
+            LedgerBlueprint.Check.entries.toSet() - LedgerBlueprint.Check.NOUNUSED,
+            LedgerBlueprint.DEFAULT_CHECKS,
+        )
+        val main = LedgerBlueprint.defaults("D", "EUR", java.time.LocalDate.of(2026, 10, 21))
+            .render().getValue("main.beancount")
+        assertTrue(main.contains("\nplugin \"beancount.plugins.leafonly\"\n"))
+        assertTrue(main.contains("\n; plugin \"beancount.plugins.nounused\"\n"))
+    }
+
+    @Test fun `a check that is not chosen is a commented line`() {
+        val off = household.copy(checks = emptySet()).render().getValue("main.beancount")
         assertTrue(off.contains("\n; plugin \"beancount.plugins.leafonly\"\n"))
         val on = household.copy(checks = setOf(LedgerBlueprint.Check.LEAFONLY)).render().getValue("main.beancount")
         assertTrue(on.contains("\nplugin \"beancount.plugins.leafonly\"\n"))

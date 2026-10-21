@@ -166,15 +166,16 @@ your device, nothing is uploaded or tracked, files stay plain text and exportabl
 A setup left half done offers to pick up where it was.
 
 **Ways in.** Name the ledger and either **Set it up** (the three steps) or **Create with
-defaults** (the device's currency, a short list of everyday accounts, no extra checks).
+defaults** (the device's currency, a short list of everyday accounts, the usual checks).
 **Choose folder** and **Choose .zip** import a ledger that already exists. The Trash is listed
 here when there are no projects, so deleting the only project is never a one-way door.
 
 **Step 1, basics.** Name, main currency (suggested from the device's region), other currencies,
 the day the books begin (the first of the month by default). *Fine-tune* holds decimal places per
 currency, the booking method, the financial year end, the page Reports open on, which other
-currencies reports also total in, and five optional checks, all off. Each check is a Beancount
-plugin; each switch has its explanation under it, in the same style as every other field.
+currencies reports also total in, and five optional checks. Each check is a Beancount
+plugin; each switch has its explanation under it, in the same style as every other field. All are on
+except "every account must be used", which would report every account not yet used as an error.
 
 **Step 2, accounts.** A checklist of common accounts. One switch makes every account use the main
 currency (so Beancount refuses a stray currency); with it off, each account takes its own list.
@@ -194,7 +195,10 @@ The answers are saved to a small file in app storage after every change, so rota
 process lose nothing. The file is deleted when the ledger exists, since it can hold opening
 balances.
 
-Connecting to a Fava server you host yourself is under More, Remote, not part of first run.
+**Connect to my Fava server** is a card on the ways-in page, with the address, user name and password.
+Remote mode works beside a local ledger (documents, backups and the mirror stay on the phone), so
+connecting there saves the server and the person then sets up or imports a ledger. It can also be
+done later under More, Remote.
 
 ### Accounts
 

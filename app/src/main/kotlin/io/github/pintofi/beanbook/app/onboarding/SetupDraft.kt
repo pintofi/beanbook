@@ -49,7 +49,7 @@ data class SetupDraft(
     val fiscalYearEnd: String? = null,
     /** Fava page the reports open on, or null for its own default. */
     val reportsOpenOn: String? = null,
-    val checks: Set<LedgerBlueprint.Check> = emptySet(),
+    val checks: Set<LedgerBlueprint.Check> = LedgerBlueprint.DEFAULT_CHECKS,
     val everyAccountUsesMain: Boolean = true,
     val accounts: List<AccountChoice> = starterChoices(),
     /** What each chosen account held on the first day, as typed. A liability is typed as what is owed. */
@@ -106,6 +106,7 @@ data class SetupDraft(
             fiscalYearEnd = fiscalYearEnd?.let { runCatching { MonthDay.parse("--$it") }.getOrNull() },
             defaultPage = reportsOpenOn,
             checks = checks,
+            explicitDecimals = places.keys,
             accounts = plans,
             openingBalances = balances,
             commodityNames = names,
