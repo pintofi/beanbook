@@ -302,7 +302,9 @@ fun AmountField(
         trailingIcon = {
             IconButton(
                 onClick = { onValueChange(withSignToggled(value)) },
-                modifier = Modifier.semantics { contentDescription = "Switch the $label between positive and negative" },
+                modifier = Modifier.semantics {
+                    contentDescription = "Switch the $label between positive and negative"
+                },
             ) { Text("\u00B1", style = MaterialTheme.typography.titleMedium) }
         },
         modifier = modifier,

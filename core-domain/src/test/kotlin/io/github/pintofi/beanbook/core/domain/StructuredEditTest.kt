@@ -180,7 +180,7 @@ class StructuredEditTest {
         assertEquals(" the good shop", editable.draft.headerComment)
         assertEquals("coffee", editable.draft.postings.first().comment)
         assertTrue(editable.draft.render().contains("; coffee"))
-        assertTrue(editable.draft.render().contains(";  the good shop") || editable.draft.render().contains("; the good shop"))
+        assertTrue(editable.draft.render().contains("; the good shop"))
     }
 
     @Test fun `comments before the first posting and after the last are kept in place`() {

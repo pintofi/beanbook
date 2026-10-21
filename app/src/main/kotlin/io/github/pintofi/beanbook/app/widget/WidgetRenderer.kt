@@ -45,7 +45,7 @@ object WidgetRenderer {
         // figure with a label. One account keeps the original single-figure shape,
         // which reads better at the size most people place a balance widget at.
         if (metric == WidgetMetric.BALANCE && chosenAccounts.size > 1) {
-            return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs, widgetId, option)
+            return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs, widgetId)
         }
         val chosenAccount = chosenAccounts.firstOrNull()
         val views = RemoteViews(context.packageName, R.layout.widget_metric)
@@ -126,7 +126,6 @@ object WidgetRenderer {
         redacted: Boolean,
         nowEpochMs: Long,
         widgetId: Int,
-        option: WidgetOption,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_balances)
         views.paint(WidgetPalette.of(context))
@@ -332,7 +331,9 @@ internal fun figureFor(snapshot: WidgetSnapshot, account: String, option: Widget
     val chosen = option.commodities[account].orEmpty()
     if (holdings.isEmpty() || (option.basis == null && chosen.isEmpty())) return snapshot.balances[account]
     val basis = option.basis
-        ?: snapshot.valuation?.let { runCatching { io.github.pintofi.beanbook.core.domain.Valuation.valueOf(it) }.getOrNull() }
+        ?: snapshot.valuation?.let {
+            runCatching { io.github.pintofi.beanbook.core.domain.Valuation.valueOf(it) }.getOrNull()
+        }
         ?: io.github.pintofi.beanbook.core.domain.Valuation.VALUE
     val picked = if (chosen.isEmpty()) holdings else holdings.filter { it.commodity in chosen }
     if (picked.isEmpty()) return null

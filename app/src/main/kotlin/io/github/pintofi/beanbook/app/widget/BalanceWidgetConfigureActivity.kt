@@ -241,7 +241,11 @@ internal fun ChooseAccounts(
                                         val next = if (nowOn) chosen + commodity else chosen - commodity
                                         // At least one stays: none would be a widget with nothing in it.
                                         if (next.isNotEmpty()) {
-                                            if (next.size == held.size) subsets.remove(account) else subsets[account] = next
+                                            if (next.size == held.size) {
+                                                subsets.remove(account)
+                                            } else {
+                                                subsets[account] = next
+                                            }
                                         }
                                     },
                                 )
