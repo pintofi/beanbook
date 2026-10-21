@@ -45,7 +45,8 @@ class AccountNameTest {
     }
 
     @Test fun `commodity names follow Beancount's rule`() {
-        listOf("EUR", "PKR", "AIRSF-E", "VTI", "A", "BTC.X", "ABC'D").forEach { assertTrue(CommodityName.isValid(it), it) }
+        listOf("EUR", "PKR", "AIRSF-E", "VTI", "A", "BTC.X", "ABC'D")
+            .forEach { assertTrue(CommodityName.isValid(it), it) }
         listOf("eur", "E-", "1ABC", "", "A".repeat(25), "EU R").forEach { assertTrue(!CommodityName.isValid(it), it) }
     }
 

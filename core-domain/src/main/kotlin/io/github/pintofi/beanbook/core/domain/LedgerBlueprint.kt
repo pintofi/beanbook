@@ -169,7 +169,8 @@ data class LedgerBlueprint(
         appendLine("; The day your financial year ends, as month-day. 12-31 when left out.")
         val year = fiscalYearEnd
         if (year != null) {
-            appendLine("$openingDay custom \"fava-option\" \"fiscal-year-end\" \"%02d-%02d\"".format(year.monthValue, year.dayOfMonth))
+            val day = "%02d-%02d".format(year.monthValue, year.dayOfMonth)
+            appendLine("$openingDay custom \"fava-option\" \"fiscal-year-end\" \"$day\"")
         } else {
             appendLine("; $openingDay custom \"fava-option\" \"fiscal-year-end\" \"06-30\"")
         }

@@ -67,8 +67,13 @@ class SetupDraftTest {
     @Test fun `an opening balance is written for a chosen account, and a liability is typed as owed`() {
         val draft = SetupDraft(
             mainCurrency = "EUR",
-            accounts = SetupDraft.starterChoices().map { if (it.name == "Liabilities:CreditCard") it.copy(on = true) else it },
-            opening = mapOf("Assets:Bank:Checking" to "1,250.00", "Liabilities:CreditCard" to "310.40", "Assets:Cash" to " "),
+            accounts = SetupDraft.starterChoices()
+                .map { if (it.name == "Liabilities:CreditCard") it.copy(on = true) else it },
+            opening = mapOf(
+                "Assets:Bank:Checking" to "1,250.00",
+                "Liabilities:CreditCard" to "310.40",
+                "Assets:Cash" to " ",
+            ),
         )
         val balances = draft.toBlueprint(today, emptyMap()).openingBalances
         assertEquals(BigDecimal("1250.00"), balances.getValue("Assets:Bank:Checking").number)
@@ -101,7 +106,8 @@ class SetupDraftTest {
             start = "2026-09-01", places = mapOf("PKR" to 0), booking = "FIFO", reportIn = setOf("SAR"),
             fiscalYearEnd = "06-30", reportsOpenOn = "balance_sheet/",
             checks = setOf(LedgerBlueprint.Check.LEAFONLY), everyAccountUsesMain = false,
-            accounts = SetupDraft.starterChoices() + AccountChoice("Expenses:Coffee", on = true, currencies = "PKR", user = true),
+            accounts = SetupDraft.starterChoices() +
+                AccountChoice("Expenses:Coffee", on = true, currencies = "PKR", user = true),
             opening = mapOf("Assets:Cash" to "5000"),
         )
         val back = SetupDraft.fromJson(Json.parse(draft.toJson().write()))

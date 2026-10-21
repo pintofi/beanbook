@@ -133,14 +133,7 @@ class ProjectWorkspace(private val root: File) {
             }
             SCAFFOLD.forEach { Durable.syncDirectory(staging.resolve(it)) }
             Durable.syncDirectory(staging)
-            val outcome = validate?.invoke(staging.resolve(MAIN_FILE))
-            val errors = outcome?.getOrNull().orEmpty()
-            if (errors.isNotEmpty()) throw BlueprintRejected(errors)
-            // A failure that is not "the engine is unavailable" means Beancount could not read the
-            // ledger at all, which is as much a rejection as errors in it.
-            outcome?.exceptionOrNull()?.takeIf { it !is LedgerUnavailable }?.let {
-                throw BlueprintRejected(listOf(it.message ?: "the ledger could not be read"))
-            }
+            validate?.invoke(staging.resolve(MAIN_FILE))?.let(::rejection)?.let { throw it }
             check(staging.renameTo(dir)) { "could not put the new project in place: $id" }
             Durable.syncDirectory(projectsDir)
         } catch (failure: Throwable) {
@@ -148,6 +141,17 @@ class ProjectWorkspace(private val root: File) {
             throw failure
         }
         return mainFile(id)
+    }
+
+    /**
+     * What a validation outcome means for a new ledger: errors in it, or a failure that is not "the
+     * engine is unavailable" (Beancount could not read it at all), are a rejection; anything else is not.
+     */
+    private fun rejection(outcome: Result<List<String>>): BlueprintRejected? {
+        val errors = outcome.getOrNull().orEmpty()
+        if (errors.isNotEmpty()) return BlueprintRejected(errors)
+        return outcome.exceptionOrNull()?.takeIf { it !is LedgerUnavailable }
+            ?.let { BlueprintRejected(listOf(it.message ?: "the ledger could not be read")) }
     }
 
     /** Deletes staging folders a crash left behind, once they are old enough not to be in use. */
