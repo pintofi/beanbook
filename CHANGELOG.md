@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Amount fields have a plus/minus button, because the number keyboard has no minus sign. ([#138], fixes [#117])
+- One search and tag filter is shared by Home, Journal and Balances, shown as chips that can be cleared. ([#138], fixes [#119])
+- Each widget has its own basis (units, at cost or market value), and a widget can show one commodity of an account. ([#138], fixes [#120])
+
+### Changed
+- Edit opens entries that have comments, metadata on a posting or several currencies in the entry form instead of the text editor. ([#138], fixes [#124])
+- Editing and deleting read an entry's text from the file instead of loading the ledger again. ([#138], fixes [#125])
+- Every field explanation sits under its field, in one style. ([#138], fixes [#126])
+- The Documents Add page resets after filing and keeps one status line, and the Home card for an unlinked document opens Organize. ([#138], fixes [#121], [#122])
+- The entry preview keeps long lines whole and scrolls sideways. ([#138], fixes [#123])
+
+### Fixed
+- Remove buttons on form rows line up with their field. ([#138], fixes [#116])
+- A suggestion that matches the typed text exactly stays in the list. ([#138], fixes [#118])
+
 ## [1.0.1] - 2026-10-18
 
 ### Added
@@ -104,3 +120,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#101]: https://github.com/pintofi/beanbook/issues/101
 [#102]: https://github.com/pintofi/beanbook/issues/102
 [#103]: https://github.com/pintofi/beanbook/issues/103
+[#116]: https://github.com/pintofi/beanbook/issues/116
+[#117]: https://github.com/pintofi/beanbook/issues/117
+[#118]: https://github.com/pintofi/beanbook/issues/118
+[#119]: https://github.com/pintofi/beanbook/issues/119
+[#120]: https://github.com/pintofi/beanbook/issues/120
+[#121]: https://github.com/pintofi/beanbook/issues/121
+[#122]: https://github.com/pintofi/beanbook/issues/122
+[#123]: https://github.com/pintofi/beanbook/issues/123
+[#124]: https://github.com/pintofi/beanbook/issues/124
+[#125]: https://github.com/pintofi/beanbook/issues/125
+[#126]: https://github.com/pintofi/beanbook/issues/126
+[#138]: https://github.com/pintofi/beanbook/issues/138
