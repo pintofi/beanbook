@@ -232,7 +232,6 @@ internal fun ChooseAccounts(
                         val on = commodity in chosen
                         ListItem(
                             headlineContent = { Text(commodity) },
-                            supportingContent = { Text("of ${account.substringAfterLast(':')}") },
                             trailingContent = { Checkbox(checked = on, onCheckedChange = null) },
                             modifier = Modifier
                                 .padding(start = 24.dp)
