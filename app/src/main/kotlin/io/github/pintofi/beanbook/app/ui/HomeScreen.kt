@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Tune
@@ -156,6 +158,39 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(Measure.section),
         ) {
             header()
+            // The same search as the Journal and Balances. Home shows what that search matches
+            // too, so a figure here is never from a different slice of the books than the one
+            // the other two screens are looking at.
+            val sharedFilter = LocalLedgerFilter.current
+            androidx.compose.material3.OutlinedTextField(
+                value = sharedFilter.filter.query,
+                onValueChange = sharedFilter::setQuery,
+                label = { androidx.compose.material3.Text("Search entries") },
+                singleLine = true,
+                leadingIcon = {
+                    androidx.compose.material3.Icon(
+                        androidx.compose.material.icons.Icons.Filled.Search,
+                        contentDescription = null,
+                    )
+                },
+                trailingIcon = {
+                    if (sharedFilter.filter.query.isNotEmpty()) {
+                        androidx.compose.material3.IconButton(
+                            onClick = { sharedFilter.setQuery("") },
+                            modifier = Modifier.semantics { contentDescription = "Clear the search" },
+                        ) {
+                            androidx.compose.material3.Icon(
+                                androidx.compose.material.icons.Icons.Filled.Close,
+                                contentDescription = null,
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Search entries by date, payee, description or account" },
+            )
+            LedgerFilterBar(modifier = Modifier.padding(horizontal = 0.dp))
             if (ledger == null) {
                 EmptyState(
                     title = "No ledger open",
