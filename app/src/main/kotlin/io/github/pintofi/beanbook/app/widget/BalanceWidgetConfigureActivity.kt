@@ -81,15 +81,23 @@ class BalanceWidgetConfigureActivity : ComponentActivity() {
             return
         }
 
-        val accounts = WidgetCache(filesDir.resolve("state")).read()
-            ?.balances?.keys?.sorted()
-            .orEmpty()
+        val snapshot = WidgetCache(filesDir.resolve("state")).read()
+        val accounts = snapshot?.balances?.keys?.sorted().orEmpty()
+        // The commodities each account holds, so one holding two can be shown as either.
+        val commodities = snapshot?.holdings.orEmpty()
+            .mapValues { (_, list) -> list.map { it.commodity } }
+            .filterValues { it.size > 1 }
+        val currentAccounts = WidgetAccounts(this).accountsFor(widgetId)
+        val currentOption = WidgetOptions(this).optionFor(widgetId)
 
         setContent {
             BeancountTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ChooseAccounts(
                         accounts = accounts,
+                        commodities = commodities,
+                        initialAccounts = currentAccounts,
+                        initialOption = currentOption,
                         onChoose = ::choose,
                         modifier = Modifier.safeDrawingPadding(),
                     )
@@ -98,8 +106,9 @@ class BalanceWidgetConfigureActivity : ComponentActivity() {
         }
     }
 
-    private fun choose(chosen: List<String>) {
+    private fun choose(chosen: List<String>, option: WidgetOption) {
         WidgetAccounts(this).setAccountsFor(widgetId, chosen)
+        WidgetOptions(this).setOptionFor(widgetId, option)
         // Drawn before returning, so the widget shows the chosen account immediately rather
         // than an em dash until something else happens to refresh it.
         WidgetRefresh.refreshAll(this)
@@ -111,13 +120,31 @@ class BalanceWidgetConfigureActivity : ComponentActivity() {
     }
 }
 
+/** The three ways to read a balance, and "whatever the app is set to" for a widget that never chose. */
+private val BASES: List<Pair<io.github.pintofi.beanbook.core.domain.Valuation?, String>> = listOf(
+    null to "Same as the app",
+    io.github.pintofi.beanbook.core.domain.Valuation.UNITS to "Units",
+    io.github.pintofi.beanbook.core.domain.Valuation.COST to "At cost",
+    io.github.pintofi.beanbook.core.domain.Valuation.VALUE to "Market value",
+)
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun ChooseAccounts(
     accounts: List<String>,
-    onChoose: (List<String>) -> Unit,
+    onChoose: (List<String>, WidgetOption) -> Unit,
     modifier: Modifier = Modifier,
+    /** Accounts that hold more than one commodity, with those commodities. */
+    commodities: Map<String, List<String>> = emptyMap(),
+    initialAccounts: List<String> = emptyList(),
+    initialOption: WidgetOption = WidgetOption(),
 ) {
-    val picked = remember { mutableStateListOf<String>() }
+    val picked = remember { mutableStateListOf<String>().apply { addAll(initialAccounts) } }
+    // Per account: the commodities to show. Missing or empty means all of them.
+    val subsets = remember {
+        androidx.compose.runtime.mutableStateMapOf<String, Set<String>>().apply { putAll(initialOption.commodities) }
+    }
+    var basis by remember { mutableStateOf(initialOption.basis) }
     var filter by remember { mutableStateOf("") }
 
     Column(modifier = modifier) {
@@ -138,10 +165,25 @@ internal fun ChooseAccounts(
             return@Column
         }
         Text(
-            "Pick one account, or several. The widget shows a row for each.",
+            "Pick one account, or several. The widget shows a row for each. An account that holds " +
+                "more than one commodity lets you choose which to show.",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
         )
+        // How the figures are read: a widget used to follow the app's setting and nothing else.
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
+        ) {
+            BASES.forEach { (value, label) ->
+                androidx.compose.material3.FilterChip(
+                    selected = basis == value,
+                    onClick = { basis = value },
+                    label = { Text(label) },
+                    modifier = Modifier.semantics { contentDescription = "Show figures: $label" },
+                )
+            }
+        }
         // Every account in the ledger reaches this list now, which is long enough to need
         // finding rather than scrolling.
         OutlinedTextField(
@@ -174,16 +216,50 @@ internal fun ChooseAccounts(
                         .toggleable(
                             value = isPicked,
                             onValueChange = { on ->
-                                if (on) picked.add(account) else picked.remove(account)
+                                if (on) picked.add(account) else {
+                                    picked.remove(account)
+                                    subsets.remove(account)
+                                }
                             },
                         )
                         .semantics { contentDescription = "Show the balance of $account" },
                 )
+                // One row a commodity, selectable like the accounts, once the account is chosen.
+                val held = commodities[account].orEmpty()
+                if (isPicked && held.size > 1) {
+                    val chosen = subsets[account].orEmpty().ifEmpty { held.toSet() }
+                    held.forEach { commodity ->
+                        val on = commodity in chosen
+                        ListItem(
+                            headlineContent = { Text(commodity) },
+                            supportingContent = { Text("of ${account.substringAfterLast(':')}") },
+                            trailingContent = { Checkbox(checked = on, onCheckedChange = null) },
+                            modifier = Modifier
+                                .padding(start = 24.dp)
+                                .toggleable(
+                                    value = on,
+                                    onValueChange = { nowOn ->
+                                        val next = if (nowOn) chosen + commodity else chosen - commodity
+                                        // At least one stays: none would be a widget with nothing in it.
+                                        if (next.isNotEmpty()) {
+                                            if (next.size == held.size) subsets.remove(account) else subsets[account] = next
+                                        }
+                                    },
+                                )
+                                .semantics { contentDescription = "Show only $commodity for $account" },
+                        )
+                    }
+                }
                 HorizontalDivider()
             }
         }
         Button(
-            onClick = { onChoose(picked.toList()) },
+            onClick = {
+                onChoose(
+                    picked.toList(),
+                    WidgetOption(basis, subsets.filterKeys { it in picked }.filterValues { it.isNotEmpty() }),
+                )
+            },
             // Nothing picked is not a widget: it would be placed showing the default account
             // rather than what the person came here to choose.
             enabled = picked.isNotEmpty(),
@@ -192,7 +268,8 @@ internal fun ChooseAccounts(
                 .padding(16.dp),
         ) {
             Text(
-                if (picked.size <= 1) "Add this widget"
+                if (initialAccounts.isNotEmpty()) "Save"
+                else if (picked.size <= 1) "Add this widget"
                 else "Add this widget with ${picked.size} balances",
             )
         }

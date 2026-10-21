@@ -28,7 +28,7 @@ class WidgetConfigureScreenTest {
 
     @Test fun everyAccountIsOfferedAndTheChoiceIsReported() {
         var chosen: List<String>? = null
-        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { chosen = it }) }
+        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { list, _ -> chosen = list }) }
 
         accounts.forEach { compose.onNodeWithText(it).assertIsDisplayed() }
 
@@ -45,7 +45,7 @@ class WidgetConfigureScreenTest {
     /** Several balances on one widget is the point of the screen being a list. */
     @Test fun severalAccountsCanBeChosenAtOnce() {
         var chosen: List<String>? = null
-        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { chosen = it }) }
+        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { list, _ -> chosen = list }) }
 
         compose.onNodeWithText("Assets:Bank:Current").performClick()
         compose.onNodeWithText("Liabilities:Card").performClick()
@@ -56,7 +56,7 @@ class WidgetConfigureScreenTest {
 
     /** A long chart of accounts is found rather than scrolled. */
     @Test fun theListCanBeFiltered() {
-        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = {}) }
+        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { _, _ -> }) }
 
         compose.onNodeWithContentDescription("Filter accounts by name").performTextInput("Card")
 
@@ -71,7 +71,7 @@ class WidgetConfigureScreenTest {
      * It says what to do instead.
      */
     @Test fun withNothingCachedItSaysWhatToDo() {
-        compose.setContent { ChooseAccounts(accounts = emptyList(), onChoose = {}) }
+        compose.setContent { ChooseAccounts(accounts = emptyList(), onChoose = { _, _ -> }) }
 
         compose.onNodeWithText("Open the app once", substring = true).assertIsDisplayed()
     }

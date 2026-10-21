@@ -78,6 +78,35 @@ class WidgetCacheTest {
     }
 
     @Test
+    fun `holdings, formatting and the basis survive a round trip through disk`() {
+        val snapshot = WidgetSnapshot(
+            projectId = "p", projectTitle = "T", generatedAtEpochMs = 5, balances = mapOf("Assets:Cash" to "1 PKR"),
+            netWorth = "2 PKR", periodIncome = null, periodExpense = null, clean = true,
+            holdings = mapOf(
+                "Assets:Cash" to listOf(
+                    WidgetHolding("PKR", listOf(amount("1.50", "PKR")), listOf(amount("1.50", "PKR")), listOf(amount("1.50", "PKR"))),
+                    WidgetHolding("SAR", listOf(amount("2", "SAR")), listOf(amount("2", "SAR")), listOf(amount("150.00", "PKR"))),
+                ),
+            ),
+            valuation = "COST",
+            netWorthBy = mapOf("UNITS" to "a", "COST" to "b", "VALUE" to "c"),
+            formatting = WidgetFormatting(groupThousands = true, groupSeparator = '.', decimalSeparator = ',', precision = mapOf("PKR" to 2)),
+        )
+        cache.write(snapshot)
+        assertEquals(snapshot, cache.read())
+    }
+
+    @Test
+    fun `a cache written before holdings were kept still reads`() {
+        val old = WidgetSnapshot("p", "T", 5, mapOf("Assets:Cash" to "1 PKR"), "2 PKR", null, null, true)
+        cache.write(old)
+        val read = cache.read()!!
+        assertTrue(read.holdings.isEmpty())
+        assertNull(read.valuation)
+        assertEquals("1 PKR", read.balances["Assets:Cash"])
+    }
+
+    @Test
     fun `income is shown the way a person reads it, not the way the ledger stores it`() {
         // Income is a credit balance, so it is negative in double-entry terms. A widget
         // headed "Income" showing "-3000.00" would be correct and useless.
