@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import io.github.pintofi.beanbook.core.domain.filteredBy
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -189,6 +190,17 @@ internal fun SurfaceContent(
     stamped: Boolean = false,
 ) {
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+    // The ledger as the shared filter sees it, for the three screens that obey it. The entry open on
+    // a detail page, deletes, edits and every other surface keep working on the whole ledger.
+    val filter = io.github.pintofi.beanbook.app.ui.LocalLedgerFilter.current.filter
+    val shown = remember(ledger, filter) { ledger?.filteredBy(filter) }
+    // The tags and links the ledger has, whatever is filtered, so the filter sheet can offer them.
+    val tagSuggestions = remember(ledger) {
+        ledger?.let { all ->
+            all.journal.flatMap { it.tags }.distinct().sorted().map { "#$it" } +
+                all.journal.flatMap { it.links }.distinct().sorted().map { "^$it" }
+        }.orEmpty()
+    }
     // The tab the Documents screen should open on, asked for by Home and used once.
     var documentsRequest by remember { mutableStateOf<io.github.pintofi.beanbook.app.ui.DocumentsMode?>(null) }
     run {
@@ -200,7 +212,7 @@ internal fun SurfaceContent(
                 HomeScreen(
                     header = { io.github.pintofi.beanbook.app.about.SupportNoticeHost() },
                     stamped = stamped,
-                    ledger = ledger,
+                    ledger = shown,
                     hideAmounts = hideWidgetAmounts,
                     // Counted here rather than in the composable: these come from the
                     // documents reconciliation and the mirror, and Home only reports them.
@@ -520,7 +532,7 @@ internal fun SurfaceContent(
                     if (entry == null) {
                         Refreshable(refreshing, onRefresh) {
                             JournalScreen(
-                                ledger,
+                                shown ?: ledger,
                                 Modifier.padding(padding),
                                 onOpenEntry = { openEntry = it },
                                 onDeleteEntries = onDeleteEntries,
@@ -548,8 +560,9 @@ internal fun SurfaceContent(
                 } else {
                     Refreshable(refreshing, onRefresh) {
                         BalancesScreen(
-                            ledger,
+                            shown ?: ledger,
                             Modifier.padding(padding),
+                            tagSuggestions = tagSuggestions,
                             dateFrom = dateFrom,
                             dateTo = dateTo,
                             onDateRange = onDateRange,

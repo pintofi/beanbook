@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,12 +61,17 @@ fun BalancesScreen(
     dateFrom: String = "",
     dateTo: String = "",
     onDateRange: (String, String) -> Unit = { _, _ -> },
+    /** Tags and links the ledger has, for the filter sheet; the snapshot's own when not given. */
+    tagSuggestions: List<String>? = null,
 ) {
     // What *this* ledger calls them. A file with `option "name_expenses" "Ausgaben"`
     // used to get five headings with nothing under any of them.
     val roots = snapshot.accountNames.roots
     var filter by rememberSaveable { mutableStateOf("") }
-    var tagFilter by rememberSaveable { mutableStateOf("") }
+    // The search and tags are the app's one shared filter, already applied to the snapshot this
+    // screen is given; they are shown and changed here, not computed here.
+    val shared = LocalLedgerFilter.current
+    val tagFilter = shared.filter.tags
     // Remembered across launches, not just recompositions. Somebody who keeps their
     // books at market value sets that once; asking again on every start is the app forgetting
     // something it was told.
@@ -75,7 +81,7 @@ fun BalancesScreen(
 
     // Tags and links, as Fava's filter bar takes them: `#trip`, `^invoice-4411`, or
     // both. The totals below then come from the matching transactions only.
-    val tagSuggestions = remember(snapshot.journal) {
+    val offeredTags = tagSuggestions ?: remember(snapshot.journal) {
         (snapshot.journal.flatMap { it.tags }.distinct().sorted().map { "#$it" } +
             snapshot.journal.flatMap { it.links }.distinct().sorted().map { "^$it" })
     }
@@ -86,7 +92,7 @@ fun BalancesScreen(
         // screen before any balance was visible (device audit 2026-10-10). The account filter
         // stays on the page -- it is the one typed while reading -- and the period and the tags
         // move behind one button that says how many are on.
-        val extra = listOf(dateFrom, dateTo, tagFilter).count { it.isNotBlank() }
+        val extra = listOf(dateFrom, dateTo, tagFilter, shared.filter.query).count { it.isNotBlank() }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -117,23 +123,21 @@ fun BalancesScreen(
         }
         // Said plainly, because a balance for part of a year looks exactly like a balance for
         // all of it and is a different number.
-        if (extra > 0) {
+        LedgerFilterBar()
+        if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(start = Measure.gutter, end = Measure.tight),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    filterSummary(dateFrom, dateTo, tagFilter),
+                    filterSummary(dateFrom, dateTo, ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(
-                    onClick = {
-                        onDateRange("", "")
-                        tagFilter = ""
-                    },
-                    modifier = Modifier.semantics { contentDescription = "Clear the period, tags and links" },
+                    onClick = { onDateRange("", "") },
+                    modifier = Modifier.semantics { contentDescription = "Clear the period" },
                 ) { Text("Clear") }
             }
         }
@@ -159,27 +163,19 @@ fun BalancesScreen(
                 dateTo = dateTo,
                 onDateRange = onDateRange,
                 tagFilter = tagFilter,
-                onTagFilter = { tagFilter = it },
-                tagSuggestions = tagSuggestions,
+                onTagFilter = shared::setTags,
+                query = shared.filter.query,
+                onQuery = shared::setQuery,
+                tagSuggestions = offeredTags,
                 onDismiss = { filtering = false },
             )
         }
 
 
         val needle = filter.trim()
-        val tagged = remember(tagFilter) {
-            io.github.pintofi.beanbook.core.domain.TagBalances.Filter.parse(tagFilter)
-        }
-        // The engine's balances, or the matching transactions' own totals when a tag or link
-        // is asked for. Computed here from the journal the snapshot already carries, so the
-        // filter answers as it is typed with no second parse.
-        val source = remember(snapshot.accounts, snapshot.journal, tagged) {
-            if (tagged.isEmpty) {
-                snapshot.accounts
-            } else {
-                io.github.pintofi.beanbook.core.domain.TagBalances.of(snapshot.journal, tagged)
-            }
-        }
+        // The engine's balances, or -- when the shared filter is on -- the matching entries' own
+        // totals, which the snapshot already carries (see `LedgerSnapshot.filteredBy`).
+        val source = snapshot.accounts
 
         // Which branches are open, by full account name. Saved, so rotating the phone or
         // coming back from another surface does not fold the tree the user just opened.
@@ -200,14 +196,14 @@ fun BalancesScreen(
             if (snapshot.hasErrors) {
                 item { ErrorBanner(snapshot.errors) }
             }
-            if (!tagged.isEmpty) {
+            if (shared.filter.isActive) {
                 item(key = "tagNotice") {
                     Text(
                         text = if (basis == Valuation.VALUE) {
-                            "Totals of the entries with these tags or links. Market value is " +
+                            "Totals of the matching entries. Market value is " +
                                 "shown at cost here, because prices are not part of a filtered set."
                         } else {
-                            "Totals of the entries with these tags or links."
+                            "Totals of the matching entries."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -224,7 +220,7 @@ fun BalancesScreen(
                 val tree = AccountTree.of(accounts, root)
                 // A filter is a search, and a search that hides its own results behind a
                 // fold has not answered anything: while one is typed every branch is open.
-                val open = needle.isNotEmpty() || !tagged.isEmpty
+                val open = needle.isNotEmpty() || shared.filter.isActive
                 val rows = mutableListOf<AccountNode>()
                 fun collect(nodes: List<AccountNode>) {
                     nodes.forEach { node ->
@@ -240,7 +236,7 @@ fun BalancesScreen(
                     // under it, which reads as an arithmetic error.
                     RootHeader(
                         root = root,
-                        totals = if (needle.isEmpty() && tagged.isEmpty) {
+                        totals = if (needle.isEmpty() && !shared.filter.isActive) {
                             snapshot.totalFor(root, basis::of)
                         } else {
                             LedgerSummary.sumByCurrency(accounts.flatMap { basis.of(it) })
@@ -567,6 +563,8 @@ private fun BalanceFiltersSheet(
     onDateRange: (String, String) -> Unit,
     tagFilter: String,
     onTagFilter: (String) -> Unit,
+    query: String,
+    onQuery: (String) -> Unit,
     tagSuggestions: List<String>,
     onDismiss: () -> Unit,
 ) {
@@ -615,6 +613,23 @@ private fun BalanceFiltersSheet(
                 }
             }
             FolioNote("A balance for part of a year is a different number from the balance for all of it.")
+            FolioHeading("Search")
+            FolioGroup {
+                item {
+                    FolioBody {
+                        OutlinedTextField(
+                            value = query,
+                            onValueChange = onQuery,
+                            label = { Text("Search entries") },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { contentDescription = "Search entries by date, payee, description or account" },
+                        )
+                    }
+                }
+            }
+            FolioNote("Home, Journal and Balances share this search and the tags below.")
             FolioHeading("Tags and links")
             FolioGroup {
                 item {

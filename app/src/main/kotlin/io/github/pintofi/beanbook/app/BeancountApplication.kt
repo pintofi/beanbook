@@ -89,6 +89,9 @@ class BeancountApplication : Application() {
         }
     }
 
+    /** The filter Home, Journal and Balances share, kept for as long as the app runs. */
+    val ledgerFilter = io.github.pintofi.beanbook.app.ui.LedgerFilterState()
+
     val ledgerState: LedgerState by lazy {
         LedgerState(LedgerReader(this, connection = engineConnection), appScope)
     }
