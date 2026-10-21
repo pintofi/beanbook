@@ -190,7 +190,7 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .semantics { contentDescription = "Search entries by date, payee, description or account" },
             )
-            LedgerFilterBar(modifier = Modifier.padding(horizontal = 0.dp))
+            LedgerFilterBar(inset = 0.dp)
             if (ledger == null) {
                 EmptyState(
                     title = "No ledger open",

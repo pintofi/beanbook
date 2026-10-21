@@ -470,8 +470,11 @@ fun QuickAddScreen(
         if (editing != null && keptComments > 0) {
             Notice(NoticeTone.QUIET, modifier = Modifier.padding(bottom = Measure.gap)) {
                 Text(
-                    "This entry has ${if (keptComments == 1) "a comment" else "$keptComments comments"}. " +
-                        "They are kept where they are when you save.",
+                    if (keptComments == 1) {
+                        "This entry has a comment. It is kept where it is when you save."
+                    } else {
+                        "This entry has $keptComments comments. They are kept where they are when you save."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -674,7 +677,7 @@ fun QuickAddScreen(
             }
             MetadataEditor(
                 rows = metaRows,
-                label = "Details about the whole transaction",
+                label = "These details are about the whole transaction.",
                 describe = { "transaction" },
             )
             if (capture != null && hasDocuments) {
@@ -925,6 +928,24 @@ private fun SmallAction(text: String, describe: String, onClick: () -> Unit) {
 }
 
 /**
+ * Explanation for a field or a group of fields, below it and inset to start where the text inside
+ * the field starts.
+ *
+ * One place and one look for every explanation in this form. It had two: Material's own
+ * supporting text under the commodity-details field, and a heading above the metadata rows,
+ * which sat at different distances from the edge and read as two different kinds of thing.
+ */
+@Composable
+private fun FieldCaption(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(start = 16.dp, top = 4.dp),
+    )
+}
+
+/**
  * Where a remove button sits beside a text field: the top of the row, pushed down so its centre
  * is the centre of the field's box.
  *
@@ -1015,32 +1036,34 @@ private fun PostingEditor(
             )
         }
         if (row.showDetails) {
-            Row(verticalAlignment = Alignment.Top) {
-                OutlinedTextField(
-                    value = row.details,
-                    onValueChange = { row.details = it },
-                    label = { Text("Commodity details") },
-                    placeholder = { Text("{400.00 PKR} @ 120.05 PKR") },
-                    supportingText = { Text("Written after the amount, as the file writes a lot or price") },
-                    singleLine = true,
-                    textStyle = LedgerType.source,
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics { contentDescription = "Commodity details for posting ${index + 1}" },
-                )
-                androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
-                RemoveButton(
-                    "Remove commodity details from posting ${index + 1}",
-                    Modifier.padding(top = RemoveButtonInset),
-                ) {
-                    row.details = ""
-                    row.showDetails = false
+            Column {
+                Row(verticalAlignment = Alignment.Top) {
+                    OutlinedTextField(
+                        value = row.details,
+                        onValueChange = { row.details = it },
+                        label = { Text("Commodity details") },
+                        placeholder = { Text("{400.00 PKR} @ 120.05 PKR") },
+                        singleLine = true,
+                        textStyle = LedgerType.source,
+                        modifier = Modifier
+                            .weight(1f)
+                            .semantics { contentDescription = "Commodity details for posting ${index + 1}" },
+                    )
+                    androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
+                    RemoveButton(
+                        "Remove commodity details from posting ${index + 1}",
+                        Modifier.padding(top = RemoveButtonInset),
+                    ) {
+                        row.details = ""
+                        row.showDetails = false
+                    }
                 }
+                FieldCaption("Written after the amount, as the file writes a lot or price.")
             }
         }
         MetadataEditor(
             rows = row.metadata,
-            label = "Details about this posting only",
+            label = "These details are about this posting only.",
             describe = { "posting ${index + 1}" },
             showAddButton = false,
         )
@@ -1286,7 +1309,6 @@ private fun MetadataEditor(
         return
     }
 
-    Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     rows.forEachIndexed { index, meta ->
         Row(
             horizontalArrangement = Arrangement.spacedBy(Measure.snug),
@@ -1316,6 +1338,7 @@ private fun MetadataEditor(
             ) { rows.removeAt(index) }
         }
     }
+    FieldCaption(label)
 }
 
 /**
