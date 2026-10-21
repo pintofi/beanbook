@@ -624,7 +624,9 @@ private fun BalanceFiltersSheet(
                             singleLine = true,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .semantics { contentDescription = "Search entries by date, payee, description or account" },
+                                .semantics {
+                                    contentDescription = "Search entries by date, payee, description or account"
+                                },
                         )
                     }
                 }

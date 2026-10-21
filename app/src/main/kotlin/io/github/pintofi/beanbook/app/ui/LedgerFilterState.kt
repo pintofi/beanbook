@@ -69,10 +69,12 @@ fun LedgerFilterBar(modifier: Modifier = Modifier, inset: androidx.compose.ui.un
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             if (filter.query.isNotBlank()) {
-                FilterChipWithCross("Search: ${filter.query.trim()}", "Remove the search ${filter.query.trim()}") { state.setQuery("") }
+                val words = filter.query.trim()
+                FilterChipWithCross("Search: $words", "Remove the search $words") { state.setQuery("") }
             }
             if (filter.tags.isNotBlank()) {
-                FilterChipWithCross("Tags: ${filter.tags.trim()}", "Remove the tags and links ${filter.tags.trim()}") { state.setTags("") }
+                val terms = filter.tags.trim()
+                FilterChipWithCross("Tags: $terms", "Remove the tags and links $terms") { state.setTags("") }
             }
             TextButton(
                 onClick = state::clear,

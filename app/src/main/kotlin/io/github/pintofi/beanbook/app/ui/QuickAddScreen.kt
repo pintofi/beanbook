@@ -112,7 +112,12 @@ private class PostingRow(
 }
 
 /** One editable metadata pair, on a transaction or on a posting. */
-private class MetadataRow(key: String = "", value: String = "", /** Written bare in the file (`trip-days: 5`). */ val bare: Boolean = false) {
+private class MetadataRow(
+    key: String = "",
+    value: String = "",
+    /** Written bare in the file (`trip-days: 5`). */
+    val bare: Boolean = false,
+) {
     var key by mutableStateOf(key)
     var value by mutableStateOf(value)
 }

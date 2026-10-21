@@ -84,13 +84,20 @@ class WidgetCacheTest {
             netWorth = "2 PKR", periodIncome = null, periodExpense = null, clean = true,
             holdings = mapOf(
                 "Assets:Cash" to listOf(
-                    WidgetHolding("PKR", listOf(amount("1.50", "PKR")), listOf(amount("1.50", "PKR")), listOf(amount("1.50", "PKR"))),
-                    WidgetHolding("SAR", listOf(amount("2", "SAR")), listOf(amount("2", "SAR")), listOf(amount("150.00", "PKR"))),
+                    WidgetHolding(
+                        "PKR",
+                        listOf(amount("1.50", "PKR")), listOf(amount("1.50", "PKR")), listOf(amount("1.50", "PKR")),
+                    ),
+                    WidgetHolding(
+                        "SAR", listOf(amount("2", "SAR")), listOf(amount("2", "SAR")), listOf(amount("150.00", "PKR")),
+                    ),
                 ),
             ),
             valuation = "COST",
             netWorthBy = mapOf("UNITS" to "a", "COST" to "b", "VALUE" to "c"),
-            formatting = WidgetFormatting(groupThousands = true, groupSeparator = '.', decimalSeparator = ',', precision = mapOf("PKR" to 2)),
+            formatting = WidgetFormatting(
+                groupThousands = true, groupSeparator = '.', decimalSeparator = ',', precision = mapOf("PKR" to 2),
+            ),
         )
         cache.write(snapshot)
         assertEquals(snapshot, cache.read())

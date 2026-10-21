@@ -56,7 +56,10 @@ class WidgetChoiceFigureTest {
             ),
         ),
         valuation = "UNITS",
-        formatting = io.github.pintofi.beanbook.core.data.WidgetFormatting(groupThousands = true, precision = mapOf("PKR" to 2, "SAR" to 2)),
+        formatting = io.github.pintofi.beanbook.core.data.WidgetFormatting(
+            groupThousands = true,
+            precision = mapOf("PKR" to 2, "SAR" to 2),
+        ),
     )
 
     private fun figure(option: WidgetOption) = figureFor(snapshot, "Assets:Cash", option)
@@ -73,7 +76,8 @@ class WidgetChoiceFigureTest {
     @Test fun `market value adds the chosen holdings in the currency they were valued in`() {
         val value = io.github.pintofi.beanbook.core.domain.Valuation.VALUE
         assertEquals("20,200.00 PKR", figure(WidgetOption(basis = value)))
-        assertEquals("15,000.00 PKR", figure(WidgetOption(basis = value, commodities = mapOf("Assets:Cash" to setOf("SAR")))))
+        val sar = WidgetOption(basis = value, commodities = mapOf("Assets:Cash" to setOf("SAR")))
+        assertEquals("15,000.00 PKR", figure(sar))
     }
 
     @Test fun `units keeps each commodity on its own line`() {
