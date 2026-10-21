@@ -795,6 +795,24 @@ class MainActivity : ComponentActivity() {
                                 target = directiveTarget(app, activeId!!, ledger, draft),
                             )
                         },
+                        // Not an entry commit: the form it was opened from must keep what was typed.
+                        onOpenAccount = if (remoteStatus is EngineStatus.Serving) null else { open ->
+                            saveText(
+                                app,
+                                activeId!!,
+                                open.render(),
+                                OPEN_ACCOUNT_OPERATION,
+                                target = directiveTarget(app, activeId!!, ledger, open),
+                                onResult = {
+                                    val closing = open is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Close
+                                    val account = (open as? io.github.pintofi.beanbook.core.domain.DirectiveDraft.Open)?.account
+                                        ?: (open as io.github.pintofi.beanbook.core.domain.DirectiveDraft.Close).account
+                                    saveMessage = if (it.startsWith("Saved")) {
+                                        (if (closing) "Closed " else "Opened ") + account + "."
+                                    } else it
+                                },
+                            )
+                        },
                         // In remote mode the outcome of a save comes from the server, so
                         // that is what the Add screen has to report — otherwise a remote
                         // save looks like nothing happened at all.

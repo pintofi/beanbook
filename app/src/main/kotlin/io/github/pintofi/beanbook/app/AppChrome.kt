@@ -22,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.BugReport
@@ -342,6 +343,7 @@ internal fun MoreMenu(
     val descriptions = mapOf(
         MoreSection.PROJECTS to "Open, create, import or delete a ledger",
         MoreSection.FILES to "Read and edit the ledger files themselves",
+        MoreSection.ACCOUNTS to "Open an account, close one you no longer use",
         MoreSection.DOCUMENTS to "Receipts and statements filed against entries",
         MoreSection.BACKUP to "Write a backup, restore one, or schedule them",
         MoreSection.MIRROR to "Keep a copy in a folder you choose, kept in step",
@@ -364,7 +366,7 @@ internal fun MoreMenu(
     // read as one block, and the row you wanted was found by reading every label. Each group is
     // a folio; each row a target with its icon on a badge, the anchor the eye finds first.
     val groups = listOf(
-        "Your ledger" to listOf(MoreSection.PROJECTS, MoreSection.FILES, MoreSection.DOCUMENTS),
+        "Your ledger" to listOf(MoreSection.PROJECTS, MoreSection.ACCOUNTS, MoreSection.FILES, MoreSection.DOCUMENTS),
         "Keep it safe" to listOf(MoreSection.BACKUP, MoreSection.MIRROR),
         "Reach it from elsewhere" to listOf(MoreSection.REMOTE, MoreSection.SHARING),
         "Add to it" to listOf(MoreSection.PLUGINS, MoreSection.SCRIPTS),
@@ -548,6 +550,7 @@ internal fun engineFailure(message: String): Pair<String, String> {
 private fun iconFor(section: MoreSection): ImageVector = when (section) {
     MoreSection.PROJECTS -> Icons.Filled.FolderOpen
     MoreSection.FILES -> Icons.Filled.Description
+    MoreSection.ACCOUNTS -> Icons.Filled.AccountBalance
     MoreSection.DOCUMENTS -> Icons.Filled.PhotoLibrary
     MoreSection.BACKUP -> Icons.Filled.Backup
     MoreSection.MIRROR -> Icons.Filled.Sync

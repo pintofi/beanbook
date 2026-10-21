@@ -37,6 +37,13 @@ internal fun directiveTarget(
     ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?,
     draft: io.github.pintofi.beanbook.core.domain.DirectiveDraft,
 ): java.io.File {
+    if (draft is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Open ||
+        draft is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Close
+    ) {
+        val accounts = app.workspace.projectDir(projectId).resolve("files/accounts.beancount")
+        val read = ledger?.includedFiles.orEmpty().map { java.io.File(it).canonicalPath }
+        if (accounts.canonicalPath in read) return accounts
+    }
     if (draft is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Commodity) {
         val commodities = app.workspace.projectDir(projectId).resolve("files/commodities.beancount")
         val read = ledger?.includedFiles.orEmpty().map { java.io.File(it).canonicalPath }
@@ -48,6 +55,9 @@ internal fun directiveTarget(
 /** The two writes the entry form makes, and the only ones that close it. */
 internal const val ENTRY_OPERATION = "quick-add"
 internal const val DIRECTIVE_OPERATION = "add-directive"
+
+/** Opening an account from inside the entry form: written, but not an entry, so the form stays as typed. */
+internal const val OPEN_ACCOUNT_OPERATION = "open-account"
 private val ENTRY_OPERATIONS = setOf(ENTRY_OPERATION, DIRECTIVE_OPERATION)
 
 internal fun MainActivity.saveText(

@@ -151,6 +151,7 @@ internal fun SurfaceContent(
     onSaveTemplate: (EntryTemplate) -> Unit,
     onDeleteTemplate: (String) -> Unit,
     onSaveDirective: (io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit,
+    onOpenAccount: ((io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit)? = null,
     saveState: String?,
     /** Entries committed from the form this session: what the save sweep marks. */
     entryCommits: Int = 0,
@@ -272,6 +273,7 @@ internal fun SurfaceContent(
                                 onDeleteTemplate = onDeleteTemplate,
                                 capture = documentCapture,
                                 editing = editSession.editing,
+                                onOpenAccount = onOpenAccount,
                             )
                         }
                     } else androidx.compose.foundation.layout.Column {
@@ -309,6 +311,7 @@ internal fun SurfaceContent(
                                 onSaveTemplate = onSaveTemplate,
                                 onDeleteTemplate = onDeleteTemplate,
                                 capture = documentCapture,
+                                onOpenAccount = onOpenAccount,
                             )
                         }
                     }
@@ -356,6 +359,14 @@ internal fun SurfaceContent(
                             onShare = diagnostics.onShare,
                             onClear = diagnostics.onClear,
                             message = diagnostics.message,
+                            modifier = Modifier.padding(padding),
+                        )
+
+                        MoreSection.ACCOUNTS -> io.github.pintofi.beanbook.app.ui.AccountsScreen(
+                            accounts = ledger?.accounts.orEmpty(),
+                            names = ledger?.accountNames ?: io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
+                            onSave = onOpenAccount,
+                            message = saveState,
                             modifier = Modifier.padding(padding),
                         )
 

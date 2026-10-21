@@ -441,12 +441,19 @@ def inspect(
         return rates
 
     accounts = sorted(getters.get_accounts(entries))
+    open_close = getters.get_account_open_close(entries)
     account_rows = []
     for account in accounts:
         inventory = balances.get(account)
+        opened, closed = open_close.get(account, (None, None))
         account_rows.append(
             {
                 "name": account,
+                # The day an Open directive opened it and a Close closed it, and the currencies
+                # the Open restricts it to. An account used with no Open (auto_accounts) has none.
+                "opened": str(opened.date) if opened else None,
+                "closed": str(closed.date) if closed else None,
+                "allowed": list(opened.currencies or []) if opened else [],
                 "positions": _amounts(inventory, convert.get_units),
                 "at_cost": _amounts(inventory, convert.get_cost),
                 # Market value. `at_operating` is the same figure, kept so a cached

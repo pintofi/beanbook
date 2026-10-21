@@ -382,7 +382,7 @@ data class LedgerVocabulary(
         fun from(snapshot: LedgerSnapshot): LedgerVocabulary = LedgerVocabulary(
             // `leafonly` makes a posting to an account that has sub-accounts an error, so the
             // form does not offer one. The same list is used for every directive.
-            accounts = snapshot.accounts.map { it.name }.distinct().sorted().let { names ->
+            accounts = snapshot.accounts.filterNot { it.isClosed }.map { it.name }.distinct().sorted().let { names ->
                 if (snapshot.hasPlugin("beancount.plugins.leafonly")) {
                     names.filterNot { name -> names.any { it.startsWith("$name:") } }
                 } else {
@@ -416,7 +416,8 @@ data class LedgerVocabulary(
             openAccounts = if (snapshot.hasPlugin("beancount.plugins.auto_accounts")) {
                 null
             } else {
-                snapshot.accounts.map { it.name }.toSet()
+                // A closed account takes no more postings, so it is not one to offer or accept.
+                snapshot.accounts.filterNot { it.isClosed }.map { it.name }.toSet()
             },
         )
     }

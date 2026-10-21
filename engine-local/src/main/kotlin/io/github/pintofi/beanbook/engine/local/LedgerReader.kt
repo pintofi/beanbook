@@ -240,6 +240,9 @@ class LedgerReader(
 
     private fun JSONObject.toAccountBalance(): AccountBalance = AccountBalance(
         name = getString("name"),
+        opened = optStringOrNull("opened"),
+        closed = optStringOrNull("closed"),
+        allowed = optJSONArray("allowed").toStringList(),
         positions = optJSONArray("positions").map { it.toAmount() }.filterNotNull(),
         atCost = optJSONArray("at_cost").map { it.toAmount() }.filterNotNull(),
         atValue = optJSONArray("at_value").map { it.toAmount() }.filterNotNull(),

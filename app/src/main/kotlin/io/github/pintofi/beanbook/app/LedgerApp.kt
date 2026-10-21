@@ -73,6 +73,7 @@ import androidx.compose.foundation.background
 internal enum class MoreSection(val label: String) {
     PROJECTS("Projects"),
     FILES("Files"),
+    ACCOUNTS("Accounts"),
     DOCUMENTS("Documents"),
     BACKUP("Backup"),
     MIRROR("Mirror"),
@@ -276,6 +277,7 @@ internal fun LedgerApp(
     onRemoteRetry: () -> Unit,
     onRemoteDiscard: () -> Unit,
     onSaveDirective: (io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit,
+    onOpenAccount: ((io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit)? = null,
     saveState: String?,
     /** Entries committed from the form this session; a change closes the form. */
     entryCommits: Int = 0,
@@ -729,6 +731,7 @@ internal fun LedgerApp(
                 onSaveTemplate = onSaveTemplate,
                 onDeleteTemplate = onDeleteTemplate,
                 onSaveDirective = onSaveDirective,
+                onOpenAccount = onOpenAccount,
                 saveState = formMessage,
                 entryCommits = entryCommits,
                 editSession = editSession,
