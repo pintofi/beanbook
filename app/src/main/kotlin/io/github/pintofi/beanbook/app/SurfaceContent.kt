@@ -189,6 +189,8 @@ internal fun SurfaceContent(
     stamped: Boolean = false,
 ) {
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+    // The tab the Documents screen should open on, asked for by Home and used once.
+    var documentsRequest by remember { mutableStateOf<io.github.pintofi.beanbook.app.ui.DocumentsMode?>(null) }
     run {
         // `null` is the add form, open over `selected`. Written this way so the form is one
         // branch beside the destinations rather than a second copy of this dispatch.
@@ -214,6 +216,9 @@ internal fun SurfaceContent(
                     onOpenBalances = { onSelectSurface(Surface.BALANCES) },
                     onOpenEntry = { onSelectSurface(Surface.JOURNAL) },
                     onOpenDocuments = {
+                        // Home only offers this for a document with a problem to fix (not
+                        // linked, or its file gone), and that is done in Organize.
+                        documentsRequest = io.github.pintofi.beanbook.app.ui.DocumentsMode.ORGANIZE
                         onSelectSurface(Surface.MORE)
                         onMoreSection(MoreSection.DOCUMENTS)
                     },
@@ -493,6 +498,8 @@ internal fun SurfaceContent(
                                 onShare = onShareDocument,
                                 fileForDocument = fileForDocument,
                                 message = documentMessage,
+                                requestedMode = documentsRequest,
+                                onRequestShown = { documentsRequest = null },
                             )
                         }
 
