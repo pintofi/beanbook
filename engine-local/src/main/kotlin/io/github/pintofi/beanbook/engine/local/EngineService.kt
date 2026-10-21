@@ -150,13 +150,6 @@ class EngineService : Service() {
             python().getModule("writer").callAttr("validate", mainFile).toString()
         }
 
-        override fun entrySlice(mainFile: String, targetFile: String, line: Int): String =
-            guarded {
-                python().getModule("writer")
-                    .callAttr("entry_slice", mainFile, targetFile, line)
-                    .toString()
-            }
-
         override fun transformToFile(
             op: String,
             filePath: String,

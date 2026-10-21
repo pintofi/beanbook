@@ -66,45 +66,6 @@ def validate(main_file: str) -> str:
     )
 
 
-def entry_slice(main_file: str, target_file: str, lineno: int) -> str:
-    """Return the source extent of the entry that starts at ``lineno``.
-
-    JSON: {"found": bool, "start_line": int, "end_line": int, "text": str,
-           "sha256": str, "file": str}
-
-    ``sha256`` is Fava's hash **of the slice**, which is what upstream's optimistic
-    concurrency uses; ProjectWriter additionally hashes the whole file, so a change
-    anywhere in the file is caught too.
-    """
-    from beancount import loader
-    from fava.core.file import get_entry_slice
-
-    entries, _errors, _options = loader.load_file(main_file)
-    target = str(Path(target_file).resolve())
-
-    for entry in entries:
-        meta = entry.meta or {}
-        if meta.get("lineno") != lineno:
-            continue
-        if str(Path(meta.get("filename", "")).resolve()) != target:
-            continue
-
-        source_slice, sha = get_entry_slice(entry)
-        line_count = len(split_lines(source_slice))
-        return json.dumps(
-            {
-                "found": True,
-                "start_line": lineno,
-                "end_line": lineno + line_count - 1,
-                "text": source_slice,
-                "sha256": sha,
-                "file": meta.get("filename"),
-            }
-        )
-
-    return json.dumps({"found": False})
-
-
 def replace_lines(file_path: str, start_line: int, end_line: int, new_text: str) -> str:
     """Compute — but do not write — the file content with a line range replaced.
 

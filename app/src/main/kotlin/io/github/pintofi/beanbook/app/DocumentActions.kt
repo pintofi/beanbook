@@ -510,10 +510,10 @@ internal fun MainActivity.deleteEntries(
 /**
  * Removes one transaction from the ledger.
  *
- * The extent comes from the engine's `entry_slice`, which is Beancount's own idea of where an
- * entry starts and stops — including its metadata and any blank line inside it. Deleting by
- * matching text would guess at that, and guess wrong on the first entry whose narration
- * happened to appear twice.
+ * The extent is read from the file by `EntrySlices`, by the rule Fava cuts an entry out with:
+ * from the line Beancount reported to the first blank line or line in column zero, comments and
+ * metadata included. Deleting by matching text would guess at that, and guess wrong on the first
+ * entry whose narration happened to appear twice.
  *
  * The write itself goes through `ProjectWriter`, so it is journalled, snapshotted, re-parsed
  * and undoable like any other edit — which is what makes the confirmation's promise true.
