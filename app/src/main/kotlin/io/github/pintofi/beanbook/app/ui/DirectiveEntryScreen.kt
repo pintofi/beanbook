@@ -183,12 +183,9 @@ fun DirectiveEntryScreen(
 
         if (kind in setOf(DirectiveKind.BALANCE, DirectiveKind.PRICE)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+                AmountField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("Amount") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(2f),
                 )
                 SuggestingField(
