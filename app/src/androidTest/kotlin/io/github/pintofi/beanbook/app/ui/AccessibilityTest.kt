@@ -302,9 +302,9 @@ class AccessibilityTest {
         }
         // The action that moves on sits in the scaffold's floating slot, outside the scroll,
         // so it is on screen whatever the content does.
-        compose.onNodeWithText("Get started").assertExists()
+        compose.onNodeWithContentDescription("Get started", substring = true).assertExists()
         assertAccessible()
-        compose.onNodeWithText("Get started").performClick()
+        compose.onNodeWithContentDescription("Get started", substring = true).performClick()
 
         compose.onNodeWithText("Choose folder").performScrollTo().assertExists()
         compose.onNodeWithText("Choose .zip").performScrollTo().assertExists()

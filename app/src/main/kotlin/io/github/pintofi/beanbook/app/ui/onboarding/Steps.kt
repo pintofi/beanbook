@@ -218,16 +218,21 @@ internal fun AccountsStep(draft: SetupDraft, update: Update) {
         if (rows.isEmpty()) return@forEach
         Text(root, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
         rows.forEach { choice ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    checked = choice.on || choice.locked,
+            // One toggle for the whole row, so a screen reader reads the account's name with its state.
+            Row(
+                modifier = Modifier.toggleable(
+                    value = choice.on || choice.locked,
                     enabled = !choice.locked,
-                    onCheckedChange = { on ->
+                    role = Role.Checkbox,
+                    onValueChange = { on ->
                         update { d ->
                             d.copy(accounts = d.accounts.map { if (it.name == choice.name) it.copy(on = on) else it })
                         }
                     },
-                )
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = choice.on || choice.locked, enabled = !choice.locked, onCheckedChange = null)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(choice.name)
                     if (choice.locked) Hint("Always kept: opening balances come from here.")

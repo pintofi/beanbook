@@ -141,6 +141,13 @@ private fun WelcomePage(resumable: Boolean, onContinue: () -> Unit, modifier: Mo
                 onClick = onContinue,
                 icon = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) },
                 text = { Text(if (resumable) "Pick up where I left off" else "Get started") },
+                modifier = Modifier.semantics {
+                    contentDescription = if (resumable) {
+                        "Pick up where I left off. Goes back to the setup you started."
+                    } else {
+                        "Get started. Opens the ways to add a ledger."
+                    }
+                },
             )
         },
     ) { padding ->
