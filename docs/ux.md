@@ -159,14 +159,53 @@ Behaviour rules:
 
 ## 9. Onboarding
 
-Three cards, no account required, no network:
+No account, no network. The first run is a welcome page, a page of ways in, and three steps.
 
-1. **Open an existing project** (free): SAF folder or archive.
-2. **Create a new project**: generates the starter layout.
-3. **Connect to my Fava server**: remote setup.
+**Welcome.** What the app is, in four plain facts and one line about privacy: everything runs on
+your device, nothing is uploaded or tracked, files stay plain text and exportable at any time.
+A setup left half done offers to pick up where it was.
 
-Followed by a one-screen honest explanation: everything runs on your device, no
-telemetry, files stay plain text and exportable at any time.
+**Ways in.** Name the ledger and either **Set it up** (the three steps) or **Create with
+defaults** (the device's currency, a short list of everyday accounts, no extra checks).
+**Choose folder** and **Choose .zip** import a ledger that already exists. The Trash is listed
+here when there are no projects, so deleting the only project is never a one-way door.
+
+**Step 1, basics.** Name, main currency (suggested from the device's region), other currencies,
+the day the books begin (the first of the month by default). *Fine-tune* holds decimal places per
+currency, the booking method, the financial year end, the page Reports open on, which other
+currencies reports also total in, and five optional checks, all off. Each check is a Beancount
+plugin; each switch has its explanation under it, in the same style as every other field.
+
+**Step 2, accounts.** A checklist of common accounts. One switch makes every account use the main
+currency (so Beancount refuses a stray currency); with it off, each account takes its own list.
+`Equity:Opening-Balances` is always kept. At least one Assets account is required. A custom
+account is typed under a root, tidied to a valid name as you type, and refused with the reason
+when it is not valid.
+
+**Step 3, get set.** Optional opening balances (written as a `pad` and a `balance` on the day
+before the books begin, so the figure is checked and can be corrected by editing one line),
+appearance, the notification permission, and a folder for a mirror copy.
+
+**Finish.** The ledger is written into a staging folder, read by Beancount, and only then put in
+place; a failure leaves nothing behind and offers to try again or create with defaults. Success
+offers *Add your first entry* or *Go to Home*.
+
+The answers are saved to a small file in app storage after every change, so rotation and a killed
+process lose nothing. The file is deleted when the ledger exists, since it can hold opening
+balances.
+
+Connecting to a Fava server you host yourself is under More, Remote, not part of first run.
+
+### Accounts
+
+More, then Accounts, lists open accounts by tree with their balance and any currency restriction,
+lists closed accounts under their own heading, and opens a new account. An empty account can be
+closed, after a confirmation. Both write one line to `files/accounts.beancount` (or the main
+file when the ledger does not read that one).
+
+In the entry form, an account the ledger has not opened shows an *Open <account>* button beside
+the problem; it opens the account on the entry's date without leaving the form or losing what was
+typed.
 
 ---
 

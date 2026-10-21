@@ -62,7 +62,12 @@ restore are all free. See [distribution.md](distribution.md) §4.4.
 └── documents/      receipts, invoices, statements
 ```
 
-New projects are generated in this shape. **Imported projects keep their own shape**;
+New projects are generated in this shape, from the answers the first-run setup collected: the
+main file holds the options and plugins and includes `files/commodities.beancount`,
+`files/accounts.beancount`, `files/transactions.beancount` and `prices/prices.beancount`. A new
+project is built in a `.creating-<id>` staging folder inside `projects/`, read by Beancount, and
+renamed into place, so a ledger the app generated that Beancount will not read is never kept. A
+staging folder left by a killed process is removed at the next start. **Imported projects keep their own shape**;
 these filenames are a convention for new users, never a requirement. The app discovers
 structure from the root file's `include` graph.
 

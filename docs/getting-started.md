@@ -8,11 +8,19 @@ describes how it behaves once you have a build.
 
 ## Your first project
 
-Open **Projects**. You can create a new ledger, import a folder, or import an archive.
+The first time you open the app, it asks three short things: the currency and the day your books
+begin, which accounts you want, and a few preferences (opening balances, appearance, a folder to
+keep a copy in). **Create with defaults** skips the questions. After the app writes the ledger it
+has Beancount read it, so what you start with is known to be valid.
 
-A new project starts from a small template: a main file, a place for accounts, and somewhere to
-put transactions. Nothing about that layout is required, and an imported project keeps whatever
-structure it already had.
+Later, open **Projects** to create another ledger, import a folder, or import an archive.
+
+A new project is a main file plus files for commodities, accounts, transactions and prices.
+Nothing about that layout is required, and an imported project keeps whatever structure it
+already had.
+
+**More, then Accounts** opens and closes accounts. In the entry form, an account the ledger has
+not opened has an *Open* button beside the message about it.
 
 ## Importing an existing ledger
 
