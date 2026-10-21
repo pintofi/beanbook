@@ -73,9 +73,10 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
         label = "Main currency",
         suggestions = currencyCodes,
     )
+    val locale = androidx.compose.ui.platform.LocalLocale.current.platformLocale
     val named = Currency.getAvailableCurrencies().firstOrNull { it.currencyCode == draft.mainCurrency }
     Hint(
-        if (named != null) "${named.getDisplayName(Locale.getDefault())}. Every account counts in this unless you say otherwise."
+        if (named != null) "${named.getDisplayName(locale)}. Every account counts in this unless you say otherwise."
         else "A currency code such as EUR, USD or JPY. Letters and digits, starting with a capital.",
     )
     var extra by rememberSaveable { mutableStateOf("") }
@@ -103,7 +104,9 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
             draft.otherCurrencies.forEach { code ->
                 InputChip(
                     selected = true,
-                    onClick = { update { it.copy(otherCurrencies = it.otherCurrencies - code, reportIn = it.reportIn - code) } },
+                    onClick = {
+                        update { it.copy(otherCurrencies = it.otherCurrencies - code, reportIn = it.reportIn - code) }
+                    },
                     label = { Text("$code  ✕") },
                 )
             }
@@ -124,7 +127,8 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
         OutlinedTextField(
             value = (draft.places[code] ?: SetupDraft.usualPlaces(code)).toString(),
             onValueChange = { v ->
-                v.toIntOrNull()?.takeIf { it in 0..8 }?.let { n -> update { it.copy(places = it.places + (code to n)) } }
+                v.toIntOrNull()?.takeIf { it in 0..8 }
+                    ?.let { n -> update { it.copy(places = it.places + (code to n)) } }
             },
             label = { Text("Decimal places for $code") },
             singleLine = true,
@@ -175,7 +179,10 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
             update { it.copy(checks = if (on) it.checks + check else it.checks - check) }
         }
     }
-    Hint("Each one is a Beancount plugin that refuses a kind of mistake. All are off by default, so nothing stops you at first.")
+    Hint(
+        "Each one is a Beancount plugin that refuses a kind of mistake. " +
+            "All are off by default, so nothing stops you at first.",
+    )
 }
 
 @Composable
@@ -216,7 +223,9 @@ internal fun AccountsStep(draft: SetupDraft, update: Update) {
                     checked = choice.on || choice.locked,
                     enabled = !choice.locked,
                     onCheckedChange = { on ->
-                        update { d -> d.copy(accounts = d.accounts.map { if (it.name == choice.name) it.copy(on = on) else it }) }
+                        update { d ->
+                            d.copy(accounts = d.accounts.map { if (it.name == choice.name) it.copy(on = on) else it })
+                        }
                     },
                 )
                 Column(modifier = Modifier.weight(1f)) {
@@ -228,7 +237,13 @@ internal fun AccountsStep(draft: SetupDraft, update: Update) {
                 OutlinedTextField(
                     value = choice.currencies,
                     onValueChange = { v ->
-                        update { d -> d.copy(accounts = d.accounts.map { if (it.name == choice.name) it.copy(currencies = v) else it }) }
+                        update { d ->
+                            d.copy(
+                                accounts = d.accounts.map {
+                                    if (it.name == choice.name) it.copy(currencies = v) else it
+                                },
+                            )
+                        }
                     },
                     label = { Text("Currencies for ${choice.name.substringAfterLast(':')}") },
                     singleLine = true,
@@ -286,7 +301,10 @@ internal fun GetSetStep(
         it.on && (it.name.startsWith("Assets:") || it.name.startsWith("Liabilities:"))
     }
     Text("What they hold on the first day", style = MaterialTheme.typography.titleMedium)
-    Hint("Optional. Type what each account held when the books begin; leave blank for none. A credit card is what you owe, typed as a positive number.")
+    Hint(
+        "Optional. Type what each account held when the books begin; leave blank for none. " +
+            "A credit card is what you owe, typed as a positive number.",
+    )
     balanceable.forEach { choice ->
         AmountField(
             value = draft.opening[choice.name].orEmpty(),
@@ -299,12 +317,19 @@ internal fun GetSetStep(
     Text("Appearance", style = MaterialTheme.typography.titleMedium)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ThemeChoice.entries.forEach {
-            FilterChip(selected = themeChoice == it, onClick = { actions.onThemeChoice(it) }, label = { Text(it.label) })
+            FilterChip(
+                selected = themeChoice == it,
+                onClick = { actions.onThemeChoice(it) },
+                label = { Text(it.label) },
+            )
         }
     }
     HorizontalDivider()
     Text("Reminders", style = MaterialTheme.typography.titleMedium)
-    Hint("Android needs your permission to show the notice that long jobs are running. Nothing else uses notifications.")
+    Hint(
+        "Android needs your permission to show the notice that long jobs are running. " +
+            "Nothing else uses notifications.",
+    )
     OutlinedButton(onClick = actions.onAskNotifications) { Text("Allow notifications") }
     HorizontalDivider()
     Text("A copy in a folder", style = MaterialTheme.typography.titleMedium)

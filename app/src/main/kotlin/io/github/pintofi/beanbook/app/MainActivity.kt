@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    private val folderPicker = treePicker(
+    internal val folderPicker = treePicker(
         android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
     ) { app, uri ->
         app.projectsState.importFolder(contentResolver, uri) { id -> openProject(app, id) }
@@ -144,7 +144,7 @@ class MainActivity : ComponentActivity() {
         app.projectsState.exportFolder(contentResolver, uri)
     }
 
-    private val archivePicker = registerForActivityResult(
+    internal val archivePicker = registerForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
         val app = application as BeancountApplication
@@ -230,7 +230,7 @@ class MainActivity : ComponentActivity() {
     private var mirrorEnabled: Boolean by mutableStateOf(false)
 
     /** The folder the project is mirrored into. Persisted so mirroring survives a restart. */
-    private val mirrorFolderPicker = registerForActivityResult(
+    internal val mirrorFolderPicker = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
     ) { uri ->
         val app = application as BeancountApplication
@@ -239,68 +239,16 @@ class MainActivity : ComponentActivity() {
                 it,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
+            // Before any ledger exists this is the setup choosing where the new ledger's copy goes.
+            if (app.projectsState.activeId.value == null) {
+                app.newLedgerSetup.update { d -> d.copy(mirrorFolder = it.toString()) }
+                return@registerForActivityResult
+            }
             app.mirror.setFolder(it.toString())
             mirrorFolder = it.toString()
         }
     }
 
-
-    /** The folder chosen for the new ledger's copy; applied once the ledger exists. */
-    private val setupMirrorPicker = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree(),
-    ) { uri ->
-        val app = application as BeancountApplication
-        uri?.let {
-            contentResolver.takePersistableUriPermission(
-                it,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            )
-            app.newLedgerSetup.update { d -> d.copy(mirrorFolder = it.toString()) }
-        }
-    }
-
-    private fun setupActions(app: BeancountApplication): SetupActions {
-        val setup = app.newLedgerSetup
-        fun create(draft: io.github.pintofi.beanbook.app.onboarding.SetupDraft) {
-            lifecycleScope.launch {
-                setup.creating(io.github.pintofi.beanbook.app.onboarding.Creation.Working("Writing the files and having Beancount read them"))
-                val blueprint = draft.toBlueprint(
-                    java.time.LocalDate.now(),
-                    io.github.pintofi.beanbook.app.onboarding.NewLedgerSetup.commodityNames(draft.currencies),
-                )
-                app.projectsState.createFromBlueprint(blueprint)
-                    .onSuccess { id ->
-                        draft.mirrorFolder?.let { folder ->
-                            app.mirror.useProject(id)
-                            app.mirror.setFolder(folder)
-                            app.mirror.setEnabled(true)
-                        }
-                        setup.finished(id, io.github.pintofi.beanbook.app.onboarding.NewLedgerSetup.summary(blueprint))
-                    }
-                    .onFailure {
-                        setup.creating(io.github.pintofi.beanbook.app.onboarding.Creation.Failed(it.message ?: "The ledger could not be created."))
-                    }
-            }
-        }
-        return SetupActions(
-            onCreate = { create(setup.draft.value) },
-            onCreateWithDefaults = {
-                val name = setup.draft.value.name
-                setup.update { io.github.pintofi.beanbook.app.onboarding.NewLedgerSetup.fresh().copy(name = name, step = io.github.pintofi.beanbook.app.onboarding.SetupStep.FINISH) }
-                create(setup.draft.value)
-            },
-            onOpenFolder = { folderPicker.launch(null) },
-            onOpenArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
-            onPickMirrorFolder = { setupMirrorPicker.launch(null) },
-            onAskNotifications = { askForNotifications(force = true) },
-            onThemeChoice = { app.themeSettings.setChoice(it) },
-            onFinish = { id, addEntry ->
-                setup.reset()
-                openProject(app, id)
-                if (addEntry) requestedSurface = "ADD"
-            },
-        )
-    }
 
     /** Opens a project: engine, ledger, and the active-project record all move together. */
     /** The name the picker shows, so an installed plugin is recognisable later. */
@@ -338,9 +286,9 @@ class MainActivity : ComponentActivity() {
      * by taking `.projectId`, so the add-entry widget -- which correctly sends `ADD` -- landed
      * on whatever the app opens by default.
      */
-    private var requestedSurface: String? by mutableStateOf(null)
+    internal var requestedSurface: String? by mutableStateOf(null)
 
-    private fun openProject(app: BeancountApplication, projectId: String) {
+    internal fun openProject(app: BeancountApplication, projectId: String) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
         app.projectsState.open(projectId)
         // Before anything can sync: the mirror answers for this project only.
@@ -420,7 +368,7 @@ class MainActivity : ComponentActivity() {
      * allows it, and the app never asked. Asked once: a refusal is respected, and the
      * work still runs -- only the "Beanbook keeps working" notice is not shown.
      */
-    private fun askForNotifications(force: Boolean = false) {
+    internal fun askForNotifications(force: Boolean = false) {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return
         val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -795,23 +743,8 @@ class MainActivity : ComponentActivity() {
                                 target = directiveTarget(app, activeId!!, ledger, draft),
                             )
                         },
-                        // Not an entry commit: the form it was opened from must keep what was typed.
-                        onOpenAccount = if (remoteStatus is EngineStatus.Serving) null else { open ->
-                            saveText(
-                                app,
-                                activeId!!,
-                                open.render(),
-                                OPEN_ACCOUNT_OPERATION,
-                                target = directiveTarget(app, activeId!!, ledger, open),
-                                onResult = {
-                                    val closing = open is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Close
-                                    val account = (open as? io.github.pintofi.beanbook.core.domain.DirectiveDraft.Open)?.account
-                                        ?: (open as io.github.pintofi.beanbook.core.domain.DirectiveDraft.Close).account
-                                    saveMessage = if (it.startsWith("Saved")) {
-                                        (if (closing) "Closed " else "Opened ") + account + "."
-                                    } else it
-                                },
-                            )
+                        onOpenAccount = if (remoteStatus is EngineStatus.Serving) null else { draft ->
+                            writeAccountDirective(app, activeId!!, ledger, draft)
                         },
                         // In remote mode the outcome of a save comes from the server, so
                         // that is what the Add screen has to report — otherwise a remote

@@ -204,7 +204,10 @@ private fun WaysInPage(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Hint("Three short steps: currency and dates, accounts, and a few preferences. You can change all of it later by editing the files.")
+            Hint(
+                "Three short steps: currency and dates, accounts, and a few preferences. " +
+                    "You can change all of it later by editing the files.",
+            )
             Button(
                 onClick = onSetUp,
                 enabled = draft.name.isNotBlank(),

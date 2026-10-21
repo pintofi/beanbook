@@ -2,6 +2,9 @@
   "account_count": 3,
   "accounts": [
     {
+      "allowed": [
+        "USD"
+      ],
       "at_cost": [
         {
           "currency": "USD",
@@ -20,6 +23,7 @@
           "number": "957.70"
         }
       ],
+      "closed": null,
       "holdings": [
         {
           "at_cost": [
@@ -44,6 +48,7 @@
         }
       ],
       "name": "Assets:Bank:Checking",
+      "opened": "2024-01-01",
       "positions": [
         {
           "currency": "USD",
@@ -52,6 +57,9 @@
       ]
     },
     {
+      "allowed": [
+        "USD"
+      ],
       "at_cost": [
         {
           "currency": "USD",
@@ -70,6 +78,7 @@
           "number": "-1000.00"
         }
       ],
+      "closed": null,
       "holdings": [
         {
           "at_cost": [
@@ -94,6 +103,7 @@
         }
       ],
       "name": "Equity:Opening-Balances",
+      "opened": "2024-01-01",
       "positions": [
         {
           "currency": "USD",
@@ -102,6 +112,9 @@
       ]
     },
     {
+      "allowed": [
+        "USD"
+      ],
       "at_cost": [
         {
           "currency": "USD",
@@ -120,6 +133,7 @@
           "number": "42.30"
         }
       ],
+      "closed": null,
       "holdings": [
         {
           "at_cost": [
@@ -144,6 +158,7 @@
         }
       ],
       "name": "Expenses:Food:Groceries",
+      "opened": "2024-01-01",
       "positions": [
         {
           "currency": "USD",

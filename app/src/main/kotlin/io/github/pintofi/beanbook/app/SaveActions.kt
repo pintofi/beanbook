@@ -124,3 +124,31 @@ private fun named(errors: List<String>): String {
     val more = if (errors.size > shown.size) " (and ${errors.size - shown.size} more)" else ""
     return ": " + shown.joinToString("; ") + more
 }
+
+/** What the form says after an account was opened or closed from it, or why that did not happen. */
+internal fun accountSaveMessage(draft: io.github.pintofi.beanbook.core.domain.DirectiveDraft, result: String): String {
+    if (!result.startsWith("Saved")) return result
+    return when (draft) {
+        is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Open -> "Opened ${draft.account}."
+        is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Close -> "Closed ${draft.account}."
+        else -> result
+    }
+}
+
+/**
+ * Writes an `open` or `close` line from the entry form or the Accounts screen. Not an entry commit
+ * ([OPEN_ACCOUNT_OPERATION]): the form it was started from keeps what was typed.
+ */
+internal fun MainActivity.writeAccountDirective(
+    app: BeancountApplication,
+    projectId: String,
+    ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?,
+    draft: io.github.pintofi.beanbook.core.domain.DirectiveDraft,
+) = saveText(
+    app,
+    projectId,
+    draft.render(),
+    OPEN_ACCOUNT_OPERATION,
+    target = directiveTarget(app, projectId, ledger, draft),
+    onResult = { saveMessage = accountSaveMessage(draft, it) },
+)

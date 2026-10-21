@@ -77,7 +77,11 @@ fun AccountsScreen(
         }
         if (onSave != null) OpenAccountForm(names, accounts.map { it.name }, today, onSave)
         if (closed.isNotEmpty()) {
-            Text("Closed accounts", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = Measure.gap))
+            Text(
+                "Closed accounts",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = Measure.gap),
+            )
             closed.forEach { account ->
                 Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     Text(account.name, color = MaterialTheme.colorScheme.onSurfaceVariant)
