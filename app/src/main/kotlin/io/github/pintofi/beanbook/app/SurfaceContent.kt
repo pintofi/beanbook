@@ -192,7 +192,7 @@ internal fun SurfaceContent(
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
     // The ledger as the shared filter sees it, for the three screens that obey it. The entry open on
     // a detail page, deletes, edits and every other surface keep working on the whole ledger.
-    val filter = io.github.pintofi.beanbook.app.ui.LocalLedgerFilter.current.filter
+    val filter = io.github.pintofi.beanbook.app.ui.ledgerFilter().filter
     val shown = remember(ledger, filter) { ledger?.filteredBy(filter) }
     // The tags and links the ledger has, whatever is filtered, so the filter sheet can offer them.
     val tagSuggestions = remember(ledger) {
@@ -202,7 +202,7 @@ internal fun SurfaceContent(
         }.orEmpty()
     }
     // The tab the Documents screen is on, held above this function so Home can send people to Organize.
-    val documentsTabState = io.github.pintofi.beanbook.app.ui.LocalDocumentsTab.current
+    val documentsTabState = io.github.pintofi.beanbook.app.ui.documentsTabState()
     run {
         // `null` is the add form, open over `selected`. Written this way so the form is one
         // branch beside the destinations rather than a second copy of this dispatch.

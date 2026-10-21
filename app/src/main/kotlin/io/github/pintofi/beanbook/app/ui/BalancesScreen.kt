@@ -70,7 +70,7 @@ fun BalancesScreen(
     var filter by rememberSaveable { mutableStateOf("") }
     // The search and tags are the app's one shared filter, already applied to the snapshot this
     // screen is given; they are shown and changed here, not computed here.
-    val shared = LocalLedgerFilter.current
+    val shared = ledgerFilter()
     val tagFilter = shared.filter.tags
     // Remembered across launches, not just recompositions. Somebody who keeps their
     // books at market value sets that once; asking again on every start is the app forgetting

@@ -16,4 +16,9 @@ class DocumentsTabState {
     var tab by mutableStateOf(DocumentsMode.ADD)
 }
 
-val LocalDocumentsTab = staticCompositionLocalOf { DocumentsTabState() }
+val LocalDocumentsTab = staticCompositionLocalOf<DocumentsTabState?> { null }
+
+/** The app's Documents tab, or a private one where nothing provides it. */
+@androidx.compose.runtime.Composable
+fun documentsTabState(): DocumentsTabState =
+    LocalDocumentsTab.current ?: androidx.compose.runtime.remember { DocumentsTabState() }

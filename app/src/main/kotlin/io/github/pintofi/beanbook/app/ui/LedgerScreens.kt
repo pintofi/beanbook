@@ -245,7 +245,7 @@ fun JournalScreen(
     // Kept while the ledger reloads, because a save or a pull-to-refresh should not throw
     // away what the reader was looking for.
     // Shared with Home and Balances, so what is searched for here is what they show too.
-    val sharedFilter = LocalLedgerFilter.current
+    val sharedFilter = ledgerFilter()
     val query = sharedFilter.filter.query
     // Which entries the ledger's errors are about. They stay in date order with every
     // other entry: pinning them to the top moved the journal's own ordering every time a

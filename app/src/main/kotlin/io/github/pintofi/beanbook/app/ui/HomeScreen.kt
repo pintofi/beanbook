@@ -161,7 +161,7 @@ fun HomeScreen(
             // The same search as the Journal and Balances. Home shows what that search matches
             // too, so a figure here is never from a different slice of the books than the one
             // the other two screens are looking at.
-            val sharedFilter = LocalLedgerFilter.current
+            val sharedFilter = ledgerFilter()
             androidx.compose.material3.OutlinedTextField(
                 value = sharedFilter.filter.query,
                 onValueChange = sharedFilter::setQuery,

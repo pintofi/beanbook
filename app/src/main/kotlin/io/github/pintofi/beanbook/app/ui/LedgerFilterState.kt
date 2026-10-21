@@ -47,7 +47,16 @@ class LedgerFilterState {
     }
 }
 
-val LocalLedgerFilter = staticCompositionLocalOf { LedgerFilterState() }
+/**
+ * The filter the app provides. Null where nothing provides one (a screen on its own, as in a UI
+ * test), and [ledgerFilter] then gives that screen a filter of its own. A default shared by
+ * everything that reads it would carry one screen's search into the next one's.
+ */
+val LocalLedgerFilter = staticCompositionLocalOf<LedgerFilterState?> { null }
+
+/** The app's shared filter, or a private one for a screen shown without it. */
+@Composable
+fun ledgerFilter(): LedgerFilterState = LocalLedgerFilter.current ?: androidx.compose.runtime.remember { LedgerFilterState() }
 
 /**
  * What the three screens are filtered by, one chip each with a cross, and a way to drop them all.
@@ -58,7 +67,7 @@ val LocalLedgerFilter = staticCompositionLocalOf { LedgerFilterState() }
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LedgerFilterBar(modifier: Modifier = Modifier, inset: androidx.compose.ui.unit.Dp = Measure.gutter) {
-    val state = LocalLedgerFilter.current
+    val state = ledgerFilter()
     val filter = state.filter
     if (!filter.isActive) return
     // One block, so a parent that spaces its children out does not pull the chips and the
