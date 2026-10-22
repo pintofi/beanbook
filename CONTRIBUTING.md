@@ -99,6 +99,14 @@ a pull request goes red:
 
 Every rule that is switched off is named in `config/detekt.yml` with a reason.
 
+The versions of Beancount, Fava, CPython and the rest that the README, the website and the docs
+state are checked against what the build pins. A dependency bump that leaves one of them behind
+fails CI; run the check yourself and fix what it names:
+
+```bash
+python3 tools/check-versions.py
+```
+
 The Play edition's policy boundaries, which is a build gate rather than a lint:
 
 ```bash
