@@ -22,7 +22,7 @@
 The real Beancount and Fava run on the device, so the figures you see are the ones<br>
 `bean-check` and Fava give you on a desktop. No account, no sign-in, no server run by this project.
 
-[**What it is**](#what-it-is) &nbsp;·&nbsp; [**See it**](#see-it) &nbsp;·&nbsp; [**What it does**](#what-it-does) &nbsp;·&nbsp; [**How a save works**](#how-a-save-is-written) &nbsp;·&nbsp; [**Editions**](#two-editions) &nbsp;·&nbsp; [**Privacy**](#privacy-and-network-use) &nbsp;·&nbsp; [**Build**](#build-and-test) &nbsp;·&nbsp; [**Docs**](#documentation)
+[**Website**](https://pintofi.github.io/beanbook/) &nbsp;·&nbsp; [**What it is**](#what-it-is) &nbsp;·&nbsp; [**See it**](#see-it) &nbsp;·&nbsp; [**What it does**](#what-it-does) &nbsp;·&nbsp; [**How a save works**](#how-a-save-is-written) &nbsp;·&nbsp; [**Editions**](#two-editions) &nbsp;·&nbsp; [**Privacy**](#privacy-and-network-use) &nbsp;·&nbsp; [**Build**](#build-and-test) &nbsp;·&nbsp; [**Docs**](#documentation)
 
 </div>
 
