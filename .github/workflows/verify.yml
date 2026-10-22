@@ -106,6 +106,14 @@ jobs:
           pip install --quiet pyyaml
           python3 tools/check-workflows.py
 
+      - name: The versions written in the README, site and docs are the ones the app uses
+        # Typed by hand, so they go stale when a dependency moves. See tools/check-versions.py.
+        # fontTools and brotli draw the README badges again to compare them (tools/badges.py); they
+        # are only used here, to read the website's Roboto files.
+        run: |
+          pip install --quiet "fonttools==4.67.0" "brotli==1.2.0"
+          python3 tools/check-versions.py --require-badges
+
       - name: Every CHANGELOG heading links somewhere
         # A heading like [1.0.1] is only a link if a definition at the bottom of the file says
         # where. This also runs on a release tag, so a release cannot go out with a heading that
