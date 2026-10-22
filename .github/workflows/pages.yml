@@ -14,6 +14,7 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      - "tools/site-seo.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -36,6 +37,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The sitemap's dates are the days each page last changed in git, which needs the history.
+          fetch-depth: 0
 
       # Guard against a dead payment link, not against the maintainer note beside it.
       #
@@ -51,6 +55,13 @@ jobs:
             echo "::error::site/ contains a placeholder link; give it a real URL or remove it."
             exit 1
           fi
+
+      # Written here, not kept in the repository, so a date in it is always one the page really changed.
+      # See tools/site-seo.py for why there is a sitemap but no robots.txt.
+      - name: Check the pages' search tags and write the sitemap
+        run: |
+          python3 tools/site-seo.py check
+          python3 tools/site-seo.py sitemap
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
