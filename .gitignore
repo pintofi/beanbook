@@ -59,3 +59,6 @@ engine-local/requirements-local.lock
 
 # Scratch directories written by local audit tooling; per-run output, not versioned.
 .scratch/
+
+# Written when the site is published (tools/site-seo.py sitemap), not kept
+site/sitemap.xml
