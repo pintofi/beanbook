@@ -100,11 +100,12 @@ a pull request goes red:
 Every rule that is switched off is named in `config/detekt.yml` with a reason.
 
 The versions of Beancount, Fava, CPython and the rest that the README, the website and the docs
-state are checked against what the build pins. A dependency bump that leaves one of them behind
-fails CI; run the check yourself and fix what it names:
+state are checked against what the build pins, including the version drawn inside each README
+badge. A dependency bump that leaves one of them behind fails CI. Run the check yourself and fix what
+it names; `python3 tools/badges.py` redraws the badges (both need `pip install fonttools brotli`):
 
 ```bash
-python3 tools/check-versions.py
+python3 tools/check-versions.py --require-badges
 ```
 
 The Play edition's policy boundaries, which is a build gate rather than a lint:

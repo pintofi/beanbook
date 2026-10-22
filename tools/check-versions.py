@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fails when a version written in the README, the website or the docs is not the one the app uses.
 
-    python3 tools/check-versions.py
+    python3 tools/check-versions.py [--require-badges]
 
 The versions people read (Beancount 3.2.3 on the home page, a Fava badge, the Android level in the
 README) are typed by hand, so they go stale the day a dependency is bumped. This reads what the
@@ -11,6 +11,7 @@ build actually pins and compares each claim to it:
   * Beancount and watchfiles (cross-built): engine-local/wheels.lock
   * Fava, beanquery, beangulp and the rest of the Python closure: engine-local/requirements.lock
   * Gradle: gradle/wrapper/gradle-wrapper.properties; the JDK: jvmToolchain(...) in the build files
+  (tools/appversions.py reads them; tools/badges.py draws the badges from the same values.)
 
 Where a claim is checked:
   site/index.html, site/download.html          the versions list, the Android level, the structured data
@@ -21,65 +22,25 @@ Where a claim is checked:
 
 If a sentence is reworded so a check can no longer find it, that is reported too, so a check cannot
 quietly stop checking. Packages the Expert edition downloads on demand (protobuf, numpy and the like)
-are not pinned in the app and are not compared. The text drawn inside a badge image is outlines, not text, and cannot be read
-here: only its title and label are compared. Historical records (compatibility runs, the changelog)
-state the versions they were made with and are left alone.
+are not pinned in the app, so no version is stated for them; the architecture page says "not pinned",
+and this fails if one of them is ever pinned without that row being updated.
+
+The version drawn inside a badge image is outlines of font glyphs, so it is checked by drawing the
+badge again (tools/badges.py) and comparing. That needs fontTools and brotli; without them the
+drawing is reported as not checked, and `--require-badges` (what CI passes) makes that a failure.
+Historical records (compatibility runs, the changelog) state the versions they were made with and
+are left alone.
 """
 import json
 import re
 import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
 errors: list[str] = []
 
 
-def read(path: str) -> str:
-    return (ROOT / path).read_text(encoding="utf-8")
-
-
-def norm(name: str) -> str:
-    return re.sub(r"[-_.]+", "-", name).lower()
-
-
-# --- what the app uses ---------------------------------------------------------------------------
-
-def toml(key: str) -> str:
-    match = re.search(rf'^{key}\s*=\s*"([^"]+)"', read("gradle/libs.versions.toml"), re.M)
-    if not match:
-        sys.exit(f"gradle/libs.versions.toml has no {key}")
-    return match.group(1)
-
-
-pins: dict[str, str] = {}
-for line in read("engine-local/requirements.lock").splitlines():
-    m = re.match(r"^([A-Za-z0-9_.-]+)==(\S+)", line)
-    if m:
-        pins[norm(m.group(1))] = m.group(2)
-for line in read("engine-local/wheels.lock").splitlines():
-    m = re.match(r"^([A-Za-z0-9_.-]+)\s+(\S+)\s+[0-9a-f]{64}\s*$", line)
-    if m:
-        pins[norm(m.group(1))] = m.group(2)
-
-python_minor = toml("python")
-chaquopy = toml("chaquopy")
-min_sdk = int(toml("minSdk"))
-compile_sdk = toml("compileSdk")
-gradle = re.search(r"gradle-([0-9.]+)-bin", read("gradle/wrapper/gradle-wrapper.properties")).group(1)
-jdks = set()
-for build in ROOT.glob("**/build.gradle.kts"):
-    if "/build/" in str(build):
-        continue
-    jdks.update(re.findall(r"jvmToolchain\((\d+)\)", build.read_text(encoding="utf-8")))
-if len(jdks) != 1:
-    sys.exit(f"the build files name more than one JDK toolchain: {sorted(jdks)}")
-jdk = jdks.pop()
-
-ANDROID = {29: "10", 30: "11", 31: "12", 32: "12", 33: "13", 34: "14", 35: "15", 36: "16", 37: "17"}
-if min_sdk not in ANDROID:
-    sys.exit(f"minSdk {min_sdk} has no Android release name in tools/check-versions.py; add it")
-android_release = ANDROID[min_sdk]
-
+from appversions import (  # noqa: E402  what the app uses, read from the build files
+    android_release, chaquopy, compile_sdk, gradle, jdk, min_sdk, norm, pin, pins, python_minor, read,
+)
 
 # --- the claims ----------------------------------------------------------------------------------
 
@@ -157,6 +118,20 @@ for component in licences["components"]:
             f"app/src/main/assets/licences.json: {component['name']} is {component.get('version')}, "
             f"the app uses {pins[name]}; regenerate with tools/licences.py"
         )
+
+expect(ARCH, r"^\|\s*protobuf\s*\|\s*(not pinned)", "not pinned", "protobuf in the pinned-versions table", "it is an on-demand package")
+if "protobuf" in pins:
+    errors.append("protobuf is now pinned in the lock files; state its version in docs/architecture.md instead of 'not pinned'")
+
+try:
+    import badges
+except SystemExit:
+    if "--require-badges" in sys.argv[1:]:
+        errors.append("the badge drawings were not checked: pip install fonttools brotli")
+    else:
+        print("versions: badge drawings not checked (pip install fonttools brotli to check them)")
+else:
+    errors.extend(f"{p}" for p in badges.check())
 
 if errors:
     print("\n".join(f"versions: {e}" for e in errors))

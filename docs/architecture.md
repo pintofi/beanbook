@@ -17,7 +17,7 @@ Verified against upstream on **2026-08-16**.
 | watchfiles | 1.2.0 | MIT | ❌ Rust/PyO3: **must cross-build** or shim |
 | cheroot | 11.1.2 | BSD | ✅ `any` wheel |
 | simplejson | 3.20.2 | MIT/AFL-2.1 | ✅ `any` wheel (pure fallback) |
-| protobuf | 7.35.1 | BSD-3 | ✅ `any` wheel |
+| protobuf | not pinned | BSD-3 | ✅ `any` wheel. Only the Expert edition fetches it from PyPI, on demand, for beangrow reports; it is not shipped |
 | numpy / pandas / scipy / matplotlib | Chaquopy repo | BSD-family | ✅ prebuilt Android wheels |
 | beangrow | — | GPL-2.0 | **Not shipped in either edition.** It needs `scipy`, and no scipy build exists for CPython 3.13 on Android (m14-part22.md) |
 
