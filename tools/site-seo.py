@@ -4,8 +4,9 @@
     python3 tools/site-seo.py check     exit 1 if a page breaks the rules below
     python3 tools/site-seo.py sitemap   write site/sitemap.xml
 
-Run both before committing a change to a page in site/, and commit the regenerated sitemap with it.
-The sitemap lists every indexable page with the day it last changed in git, so run `sitemap` after
+CI runs `check` on every pull request, which also fails when the sitemap lists a different set of
+pages than site/ has. Run both before committing a change to a page in site/, and commit the
+regenerated sitemap with it. The sitemap lists every indexable page with the day it last changed in git, so run `sitemap` after
 the page's change is committed, or the date will be the previous one.
 
 The site is a GitHub Pages *project* site, https://pintofi.github.io/beanbook/. Two things follow from
@@ -29,6 +30,7 @@ Pages that must not be indexed (404.html, and keys.html, which only redirects) a
 title, description and heading rules but must say noindex.
 """
 import json
+import re
 import subprocess
 import sys
 from html.parser import HTMLParser
@@ -128,6 +130,20 @@ def check():
                 json.loads(block)
             except ValueError as error:
                 problems.append(f"{name}: ld+json is not valid JSON ({error})")
+    problems += sitemap_problems()
+    return problems
+
+
+def sitemap_problems():
+    """The sitemap lists exactly the indexable pages: none missing, none gone, none that must not be indexed."""
+    path = SITE / "sitemap.xml"
+    if not path.exists():
+        return ["sitemap.xml: missing; run `python3 tools/site-seo.py sitemap`"]
+    listed = set(re.findall(r"<loc>([^<]+)</loc>", path.read_text(encoding="utf-8")))
+    wanted = {url_of(p) for p in pages() if p.name not in NOT_INDEXED}
+    problems = [f"sitemap.xml: lacks {u}; run `python3 tools/site-seo.py sitemap`" for u in sorted(wanted - listed)]
+    problems += [f"sitemap.xml: lists {u}, which is not an indexable page; run `python3 tools/site-seo.py sitemap`"
+                 for u in sorted(listed - wanted)]
     return problems
 
 

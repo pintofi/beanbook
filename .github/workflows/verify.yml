@@ -118,6 +118,10 @@ jobs:
         # Reads site/assets/screenshots/manifest.json. Only warns when the app's UI has changed since.
         run: python3 tools/check-site-screens.py
 
+      - name: Every site page has its own title, description and canonical link, and the sitemap lists them
+        # What search engines read about each page. See tools/site-seo.py for the rules.
+        run: python3 tools/site-seo.py check
+
       - name: Every CHANGELOG heading links somewhere
         # A heading like [1.0.1] is only a link if a definition at the bottom of the file says
         # where. This also runs on a release tag, so a release cannot go out with a heading that
