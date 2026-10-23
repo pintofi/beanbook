@@ -143,4 +143,69 @@ class ToleranceTest {
         ).validate(LedgerFormat.PLAIN)
         assertTrue(problems.any { it is DraftProblem.DoesNotBalance }, "$problems")
     }
+
+    // --- tolerance_multiplier and infer_tolerance_from_cost (#50) -----------------------------
+    // Beancount's answers again: each of these was run through `bean-check` 3.2.3 with and
+    // without the option.
+
+    private fun draft(vararg postings: PostingDraft) =
+        TransactionDraft(date = "2026-01-02", postings = postings.toList())
+
+    private fun balances(draft: TransactionDraft, format: LedgerFormat) =
+        draft.validate(format).none { it is DraftProblem.DoesNotBalance }
+
+    @Test
+    fun `tolerance_multiplier scales what the last decimal place allows`() {
+        val units = listOf(amount("10.00", "USD"), amount("-9.991", "USD"))
+        assertTolerance("0.005", Tolerances.infer(units).forCurrency("USD"))
+        assertTolerance("0.01", Tolerances.infer(units, multiplier = BigDecimal("1.0")).forCurrency("USD"))
+
+        val entry = draft(
+            PostingDraft("Assets:A", amount("10.00", "USD")),
+            PostingDraft("Assets:B", amount("-9.991", "USD")),
+        )
+        assertTrue(!balances(entry, LedgerFormat()), "a residual of 0.009 is past 0.005")
+        assertTrue(balances(entry, LedgerFormat(toleranceMultiplier = BigDecimal("1.0"))), "and within 0.01")
+    }
+
+    @Test
+    fun `a cost widens the tolerance of its currency only when the option is on`() {
+        // Beancount's own example: 2 x 18.572 VWELX {30.96 USD} against -1150.00 USD leaves 0.02176.
+        val lot = Cost(amount("30.96", "USD"))
+        val entry = draft(
+            PostingDraft("Assets:Inv", amount("18.572", "VWELX"), cost = lot),
+            PostingDraft("Assets:Inv", amount("18.572", "VWELX"), cost = lot),
+            PostingDraft("Assets:Cash", amount("-1150.00", "USD")),
+        )
+
+        assertTrue(!balances(entry, LedgerFormat()), "off: 0.02176 is past 0.005")
+        assertTrue(balances(entry, LedgerFormat(inferToleranceFromCost = true)), "on: it is within 0.03096")
+
+        val widened = Tolerances.infer(entry.postings, fromCost = true).forCurrency("USD")
+        assertTolerance("0.03096", widened)
+    }
+
+    @Test
+    fun `a price widens the tolerance of the currency it is in, per unit or in total`() {
+        val perUnit = draft(
+            PostingDraft("Assets:A", amount("1000.0", "EUR"), price = amount("1.2345", "USD")),
+            PostingDraft("Assets:B", amount("-1234.54", "USD")),
+        )
+        val total = draft(
+            PostingDraft("Assets:A", amount("1000.0", "EUR"), details = "@@ 1234.5 USD"),
+            PostingDraft("Assets:B", amount("-1234.54", "USD")),
+        )
+
+        for (entry in listOf(perUnit, total)) {
+            assertTrue(!balances(entry, LedgerFormat()), "off: 0.04 is past 0.005")
+            assertTrue(balances(entry, LedgerFormat(inferToleranceFromCost = true)), "on: it is within 0.0617")
+        }
+    }
+
+    @Test
+    fun `a cost does not widen the tolerance when the option is off, whatever else is set`() {
+        val lot = Cost(amount("30.96", "USD"))
+        val postings = listOf(PostingDraft("Assets:Inv", amount("18.572", "VWELX"), cost = lot))
+        assertTolerance("0.005", Tolerances.infer(postings, mapOf("USD" to BigDecimal("0.005"))).forCurrency("USD"))
+    }
 }

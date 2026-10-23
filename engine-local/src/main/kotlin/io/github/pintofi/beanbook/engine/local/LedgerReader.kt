@@ -12,6 +12,7 @@ import io.github.pintofi.beanbook.core.domain.JournalEntry
 import io.github.pintofi.beanbook.core.domain.JournalPosting
 import io.github.pintofi.beanbook.core.domain.LedgerError
 import io.github.pintofi.beanbook.core.domain.LedgerFormat
+import io.github.pintofi.beanbook.core.domain.Tolerances
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import java.io.File
 import java.math.BigDecimal
@@ -214,6 +215,11 @@ class LedgerReader(
             precision = precision?.keys()?.asSequence().orEmpty()
                 .mapNotNull { key -> precision?.optInt(key, -1)?.takeIf { it >= 0 }?.let { key to it } }
                 .toMap(),
+            toleranceMultiplier = optStringOrNull("tolerance_multiplier")
+                ?.let { runCatching { java.math.BigDecimal(it) }.getOrNull() }
+                ?.takeIf { it.signum() > 0 }
+                ?: Tolerances.DEFAULT_MULTIPLIER,
+            inferToleranceFromCost = optBoolean("infer_tolerance_from_cost", false),
             tolerances = tolerances?.keys()?.asSequence().orEmpty()
                 .mapNotNull { key ->
                     tolerances?.optString(key)?.takeIf { it.isNotBlank() }
