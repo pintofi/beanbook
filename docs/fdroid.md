@@ -13,11 +13,11 @@ ten-inch screenshots are optional and not present.
 
 ## Status
 
-The Expert edition's recipe is in a merge request against `fdroiddata`. Its pipeline passed on
-2026-10-15, including the build job, which cross-built the wheels, built the APK from source
-and checked it against the signed APK on the GitHub release
-([pipeline](https://gitlab.com/fdroid/fdroiddata/-/pipelines/2952392596)). Whether and when
-the listing appears is for F-Droid's maintainers to say.
+The Expert edition is listed on F-Droid at
+<https://f-droid.org/en/packages/io.github.pintofi.beanbook.expert/>: version 1.0.1 was added on
+2026-10-22. The recipe's pipeline passed on 2026-10-15, including the build job, which
+cross-built the wheels, built the APK from source and checked it against the signed APK on the
+GitHub release ([pipeline](https://gitlab.com/fdroid/fdroiddata/-/pipelines/2952392596)).
 
 What F-Droid sees:
 
