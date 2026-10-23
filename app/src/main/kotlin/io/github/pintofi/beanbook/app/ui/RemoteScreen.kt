@@ -148,7 +148,7 @@ fun RemoteScreen(
         if (pendingRetry) {
             Notice(NoticeTone.PROBLEM) {
                 run {
-                    Text("An entry did not get through", style = MaterialTheme.typography.titleSmall)
+                    Text("An entry may not have got through", style = MaterialTheme.typography.titleSmall)
                     Text(
                         "It is kept here. Retrying asks the server whether it arrived before " +
                             "sending anything, so trying again cannot enter it twice.",
