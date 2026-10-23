@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A PDF page with an absurd size no longer crashes the document viewer. The viewer draws a page at a size that fits in memory, and says so when a page is too large or oddly shaped to show. ([#158])
+
 ## [1.0.1] - 2026-10-18
 
 ### Added
@@ -104,3 +107,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#101]: https://github.com/pintofi/beanbook/issues/101
 [#102]: https://github.com/pintofi/beanbook/issues/102
 [#103]: https://github.com/pintofi/beanbook/issues/103
+[#158]: https://github.com/pintofi/beanbook/issues/158
