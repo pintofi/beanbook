@@ -79,4 +79,38 @@ class LedgerSummaryTest {
         assertNull(summary.income)
         assertNull(summary.expenses)
     }
+
+    // The engine used to round each account's value to two places and the totals added the
+    // rounded parts, so three accounts worth 1.005 each read 3.00 where Fava, which adds exact
+    // values and rounds the sum, reads 3.02 (#60). Accounts now arrive exact and the sum is
+    // rounded once, to the places the ledger shows the currency in.
+    @Test
+    fun `a total is the exact sum rounded once, not the sum of rounded parts`() {
+        val ledger = ledgerOf(
+            "Assets:A" to listOf(amount("1.005")),
+            "Assets:B" to listOf(amount("1.005")),
+            "Assets:C" to listOf(amount("1.005")),
+        ).copy(format = LedgerFormat(precision = mapOf("USD" to 2)))
+
+        assertEquals("3.02 USD", LedgerSummary.of(ledger).netWorth)
+    }
+
+    @Test
+    fun `income and expenses are rounded once too`() {
+        val ledger = ledgerOf(
+            "Income:A" to listOf(amount("-1.005")),
+            "Income:B" to listOf(amount("-1.005")),
+            "Income:C" to listOf(amount("-1.005")),
+            "Expenses:A" to listOf(amount("0.335")),
+            "Expenses:B" to listOf(amount("0.335")),
+            "Expenses:C" to listOf(amount("0.335")),
+        ).copy(format = LedgerFormat(precision = mapOf("USD" to 2)))
+
+        val summary = LedgerSummary.of(ledger)
+
+        assertEquals("3.02 USD", summary.income)
+        // 3 x 0.335 is exactly 1.005, which half to even reads as 1.00. Rounding the parts first
+        // (0.34 each) would have said 1.02.
+        assertEquals("1.00 USD", summary.expenses)
+    }
 }

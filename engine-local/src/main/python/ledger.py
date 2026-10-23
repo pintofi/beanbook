@@ -147,22 +147,6 @@ def _errors_with_plugin_failure(errors: Any, plugin_failure) -> list:
     return out
 
 
-def _display_round(value):
-    """Two decimal places, for a figure that exists only to be read.
-
-    Used for operating-currency conversions. An operating currency is a unit of account a
-    person keeps books in, so two places is what they expect to see; the unrounded value is
-    still what Beancount computed, and nothing here feeds a write.
-
-    Half to even, which is what Beancount and Fava round with (Python's default decimal
-    context), so 2.345 reads 2.34 here as it does in Fava. Half-up is the schoolbook rule and
-    put a figure one hundredth away from the one the same ledger shows in Fava.
-    """
-    from decimal import ROUND_HALF_EVEN, Decimal
-
-    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
-
-
 def _posting_dict(posting: Any) -> dict[str, Any]:
     """One posting, including what it was held or exchanged at.
 
@@ -395,20 +379,13 @@ def inspect(
             converted.add_amount(_market(pos))
         return [
             {
-                # Quantised for display. Multiplying a balance by a rate gives as many
-                # decimal places as the rate has -- 1850.00 EUR at 1.085 came out as
-                # "2007.250000 USD" on the home screen. This rounds the *presentation* of a
-                # converted figure and nothing else: no converted number is ever written to a
-                # ledger, and the units and cost figures beside it are untouched, so
-                # invariant 1 still holds where it is about the books.
-                #
-                # Only in the operating currency, where a conversion may have happened. A
-                # holding left in its own units (0.00012 BTC) keeps every place it has.
-                "number": _decimal_str(
-                    _display_round(pos.units.number)
-                    if pos.units.currency == operating
-                    else pos.units.number
-                ),
+                # Exact, not rounded. A converted balance has as many places as its rate --
+                # 1850.00 EUR at 1.085 is "2007.250000 USD" -- and the app rounds that for
+                # display, once, to the places the ledger writes the currency to (see
+                # `display` below). Rounding here, per account, and letting the app add the
+                # rounded parts up put a total one cent from Fava's, which adds exact values
+                # and rounds the sum (#60). No converted number is written to a ledger.
+                "number": _decimal_str(pos.units.number),
                 "currency": pos.units.currency,
             }
             for pos in converted
@@ -555,6 +532,12 @@ def inspect(
                     break
             if isinstance(fractional, int) and fractional >= 0:
                 display[currency] = fractional
+
+    # An operating currency is one a person keeps books in, so it is always shown to some number of
+    # places: its own where the ledger writes it, two where it appears only as the result of a
+    # conversion. The values above are exact, and the app rounds them with this.
+    for currency in options_map.get("operating_currency") or []:
+        display.setdefault(currency, 2)
 
     tolerances = {
         currency: _decimal_str(value)

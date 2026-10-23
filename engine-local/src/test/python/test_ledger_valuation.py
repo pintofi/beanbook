@@ -15,6 +15,7 @@ a current valuation would be wrong every day after the purchase.
 """
 
 import json
+from decimal import Decimal
 import sys
 import tempfile
 import unittest
@@ -156,9 +157,10 @@ class PostingRateTest(unittest.TestCase):
 
     def test_foreign_holding_is_converted_by_its_own_rate(self):
         foreign = next(a for a in self.payload["accounts"] if a["name"] == "Assets:Foreign")
+        # The exact value (2000 SAR at 75), not a rounded one: the app rounds a total once, for display.
         self.assertEqual(
-            [("150000.00", "PKR")],
-            [(p["number"], p["currency"]) for p in foreign["at_operating"]],
+            [(Decimal("150000"), "PKR")],
+            [(Decimal(p["number"]), p["currency"]) for p in foreign["at_operating"]],
         )
 
     def test_market_value_is_in_the_operating_currency_and_units_are_untouched(self):
