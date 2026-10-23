@@ -29,7 +29,8 @@ editor for, including directives from plugins it has never heard of, survives ed
 export and backup byte-for-byte, but is shown as raw text rather than a form.
 
 **No Git.** If your ledger is in a repository, the app edits the working tree and
-leaves version control to you.
+leaves version control to you. Git sync that never merges for you is proposed
+([#154](https://github.com/pintofi/beanbook/issues/154)).
 
 ---
 
