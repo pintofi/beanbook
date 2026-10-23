@@ -147,8 +147,15 @@ internal fun MainActivity.writeAccountDirective(
 ) = saveText(
     app,
     projectId,
-    draft.render(),
+    draft.render(currencyColumnOf(ledger)),
     OPEN_ACCOUNT_OPERATION,
     target = directiveTarget(app, projectId, ledger, draft),
     onResult = { saveMessage = accountSaveMessage(draft, it) },
 )
+
+/**
+ * Where this ledger keeps its figures: Fava's `currency-column`, so a directive is written in line
+ * with the transactions around it and not at a fixed 61.
+ */
+internal fun currencyColumnOf(ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?): Int =
+    (ledger?.format ?: io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN).currencyColumn

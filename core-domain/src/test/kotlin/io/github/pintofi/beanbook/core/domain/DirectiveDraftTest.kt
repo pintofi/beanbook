@@ -175,4 +175,46 @@ class DirectiveDraftTest {
             assertTrue(text.startsWith(date), "${draft.label} must start with its date")
         }
     }
+
+    // A ledger that keeps its figures at another column (Fava's `currency-column`) used to get
+    // balance and price lines at 61 beside transactions at its own (#49).
+    @Test
+    fun `balance and price follow the ledger's currency column, as transactions do`() {
+        val amount = Amount.parse("120.00", "USD")
+        val posting = TransactionDraft(
+            date = date,
+            postings = listOf(PostingDraft("Assets:Cash", amount), PostingDraft("Equity:Opening")),
+        ).render(currencyColumn = 80).lines().first { it.contains("Assets:Cash") }
+
+        val balance = DirectiveDraft.Balance(date, "Assets:Cash", amount).render(currencyColumn = 80).trimEnd()
+        val price = DirectiveDraft.Price(date, "ACME", amount).render(currencyColumn = 80).trimEnd()
+
+        assertEquals(80, balance.length)
+        assertEquals(80, price.length)
+        assertEquals(posting.length, balance.length, "the figure ends where a posting's does")
+    }
+
+    @Test
+    fun `without a column they stay where they were, at 61`() {
+        val amount = Amount.parse("120.00", "USD")
+
+        assertEquals(61, DirectiveDraft.Balance(date, "Assets:Cash", amount).render().trimEnd().length)
+        assertEquals(61, DirectiveDraft.Price(date, "ACME", amount).render().trimEnd().length)
+    }
+
+    @Test
+    fun `a column too narrow for the line still leaves one space`() {
+        val line = DirectiveDraft.Balance(date, "Assets:Cash", Amount.parse("120.00", "USD"))
+            .render(currencyColumn = 10).trimEnd()
+
+        assertTrue(line.contains("Assets:Cash 120.00 USD"), line)
+    }
+
+    @Test
+    fun `the directives that have no figure to align ignore the column`() {
+        assertEquals(
+            DirectiveDraft.Close(date, "Assets:Cash").render(),
+            DirectiveDraft.Close(date, "Assets:Cash").render(currencyColumn = 90),
+        )
+    }
 }

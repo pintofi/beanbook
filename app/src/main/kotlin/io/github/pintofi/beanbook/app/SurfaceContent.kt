@@ -295,6 +295,7 @@ internal fun SurfaceContent(
                                 saveState = saveState,
                                 committed = entryCommits,
                                 onDirtyChange = onAddDirtyChange,
+                                currencyColumn = ledger.format.currencyColumn,
                             )
                         } else {
                             QuickAddScreen(
