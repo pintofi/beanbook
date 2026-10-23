@@ -7,6 +7,7 @@ import org.opencv.core.MatOfPoint
 import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Point
 import org.opencv.core.Size
+import org.opencv.geometry.Geometry
 import org.opencv.imgproc.Imgproc
 
 
@@ -115,16 +116,16 @@ object PageDetector {
         val curve = MatOfPoint2f(*contour.toArray())
         val approximation = MatOfPoint2f()
         try {
-            val perimeter = Imgproc.arcLength(curve, true)
+            val perimeter = Geometry.arcLength(curve, true)
             // 2% of the perimeter: enough to fold a slightly wavy paper edge into one straight
             // line, not enough to turn a pentagon into a rectangle.
-            Imgproc.approxPolyDP(curve, approximation, 0.02 * perimeter, true)
+            Geometry.approxPolyDP(curve, approximation, 0.02 * perimeter, true)
 
             val corners = approximation.toArray()
             if (corners.size != 4) return null
             val outline = MatOfPoint(*corners)
             try {
-                if (!Imgproc.isContourConvex(outline)) return null
+                if (!Geometry.isContourConvex(outline)) return null
             } finally {
                 outline.release()
             }
@@ -138,7 +139,7 @@ object PageDetector {
     private fun areaOf(quad: CropQuad): Double {
         val outline = MatOfPoint(*quad.asPoints().toTypedArray())
         return try {
-            Imgproc.contourArea(outline)
+            Geometry.contourArea(outline)
         } finally {
             outline.release()
         }
