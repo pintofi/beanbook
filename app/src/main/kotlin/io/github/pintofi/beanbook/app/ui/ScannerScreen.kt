@@ -164,6 +164,9 @@ fun ScannerScreen(
     var zoom by remember { mutableStateOf(0f) }
     var autoCapture by rememberSaveable { mutableStateOf(true) }
     var aimed by remember { mutableStateOf(false) }
+    // When the shutter fires by itself, and how far through the hold the page is.
+    val shutter = remember { AutoShutter() }
+    var holdProgress by remember { mutableStateOf(0f) }
     // What the viewfinder draws into, handed over by CameraX each time it (re)binds.
     var surfaceRequest by remember { mutableStateOf<androidx.camera.core.SurfaceRequest?>(null) }
     // Where the last tap to focus landed, and a count so a second tap restarts the ring.
@@ -188,6 +191,10 @@ fun ScannerScreen(
         if (busy) return
         busy = true
         aimed = false
+        // Whoever pressed, the timer must not shoot this page again: it stays disarmed until the
+        // page in view changes.
+        shutter.shot(liveQuad)
+        holdProgress = 0f
         val target = captureFile()
         capture.takePicture(
             ImageCapture.OutputFileOptions.Builder(target).build(),
@@ -220,21 +227,14 @@ fun ScannerScreen(
     // preview view's own bitmap, which the Compose viewfinder does not have -- and the analysis
     // frame is the camera's picture rather than a screenshot of the view, so the outline no
     // longer depends on how the preview happens to be letterboxed.
-    var previousQuad by remember { mutableStateOf<CropQuad?>(null) }
-    var steady by remember { mutableIntStateOf(0) }
     fun onSample(quad: CropQuad?, frame: androidx.compose.ui.unit.IntSize) {
         if (busy) return
         liveQuad = quad
         liveFrame = frame
         aimed = quad != null
-        val still = quad != null && previousQuad?.let { quad.closeTo(it, frame) } == true
-        previousQuad = quad
-        steady = if (still) steady + 1 else 0
-        if (autoCapture && steady >= STEADY_SAMPLES) {
-            steady = 0
-            previousQuad = null
-            shoot()
-        }
+        val fire = shutter.sample(quad, kotlin.math.hypot(frame.width.toFloat(), frame.height.toFloat()))
+        holdProgress = if (autoCapture) shutter.progress else 0f
+        if (autoCapture && fire) shoot()
     }
 
     val analysisExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
@@ -427,6 +427,12 @@ fun ScannerScreen(
         // The page the detector sees now, on the preview. The analysis frame is upright
         // and the same 4:3 shape as the preview, which is fitted into this box, so a point maps
         // by one scale and the letterbox offset.
+        // Eased between samples, which arrive every 0.4 s, so the ring sweeps and does not jump.
+        val hold by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = holdProgress,
+            animationSpec = androidx.compose.animation.core.tween(AUTO_SAMPLE_MILLIS.toInt()),
+            label = "auto-capture hold",
+        )
         liveQuad?.let { quad ->
             androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
                 if (liveFrame.width == 0 || liveFrame.height == 0) return@Canvas
@@ -451,6 +457,26 @@ fun ScannerScreen(
                     arm = SCAN_BRACKET_ARM.dp.toPx(),
                     thickness = 4.dp.toPx(),
                 )
+                // The countdown: a ring filling on the page while it holds still, so a shot
+                // is never a surprise.
+                if (hold > 0.01f) {
+                    val centre = Offset(
+                        left + corners.map { it.x }.average().toFloat() * fit,
+                        top + corners.map { it.y }.average().toFloat() * fit,
+                    )
+                    val radius = 30.dp.toPx()
+                    drawCircle(Color.Black.copy(alpha = 0.35f), radius + 4.dp.toPx(), centre)
+                    drawCircle(Color.White.copy(alpha = 0.35f), radius, centre, style = Stroke(width = 5.dp.toPx()))
+                    drawArc(
+                        color = Color.White,
+                        startAngle = -90f,
+                        sweepAngle = 360f * hold.coerceIn(0f, 1f),
+                        useCenter = false,
+                        topLeft = Offset(centre.x - radius, centre.y - radius),
+                        size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
+                        style = Stroke(width = 5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round),
+                    )
+                }
             }
         }
         // No page found yet: four quiet brackets where one would sit, so the viewfinder says what
@@ -862,22 +888,8 @@ private const val ANALYSIS_HEIGHT = 720
 /** A few times a second: often enough to feel immediate, rare enough to cost nothing. */
 private const val AUTO_SAMPLE_MILLIS = 400L
 
-/** Consecutive samples with the page in the same place before the shutter fires. */
-private const val STEADY_SAMPLES = 2
-
-/** How far a corner may move between samples, as a fraction of the frame's diagonal. */
-private const val STILL_FRACTION = 0.025f
-
 /** What the photo picker offers at once; a batch larger than this is a second visit. */
 private const val MAX_IMPORT = 20
-
-/** Whether every corner of this outline is where [other] had it, within [STILL_FRACTION]. */
-private fun CropQuad.closeTo(other: CropQuad, frame: androidx.compose.ui.unit.IntSize): Boolean {
-    val limit = kotlin.math.hypot(frame.width.toFloat(), frame.height.toFloat()) * STILL_FRACTION
-    val mine = listOf(topLeft, topRight, bottomRight, bottomLeft)
-    val theirs = listOf(other.topLeft, other.topRight, other.bottomRight, other.bottomLeft)
-    return mine.zip(theirs).all { (a, b) -> kotlin.math.hypot(a.x - b.x, a.y - b.y) <= limit }
-}
 
 /**
  * The page in a photograph on disk, found on the upright image -- the one the crop editor and

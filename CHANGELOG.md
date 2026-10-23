@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The setup checklist has rounder checkboxes with room before each label, its currency field takes the whole line, and the notification button reads Granted once permission is given. ([#141], fixes [#135])
 
 ### Fixed
+- The scanner no longer shoots the same page again and again while it stays in view. Auto-capture waits for the page to hold still for about a second, shows a ring filling on the page while it does, and shoots again only once the page has been taken away or replaced. A shot taken with the shutter button counts too. ([#179])
 - Remove buttons on form rows line up with their field. ([#138], fixes [#116])
 - A suggestion that matches the typed text exactly stays in the list. ([#138], fixes [#118])
 - An entry sent to a remote Fava that may not have arrived is now kept on the phone until the server confirms it or you discard it, so closing or losing the app no longer loses it or its key. After a restart, Try again asks the server whether it arrived before sending anything. ([#65])
@@ -174,3 +175,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#157]: https://github.com/pintofi/beanbook/issues/157
 [#158]: https://github.com/pintofi/beanbook/issues/158
 [#176]: https://github.com/pintofi/beanbook/issues/176
+[#179]: https://github.com/pintofi/beanbook/issues/179
