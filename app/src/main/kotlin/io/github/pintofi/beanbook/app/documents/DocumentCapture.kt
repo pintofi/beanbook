@@ -80,6 +80,8 @@ class DocumentCapture(
     ) {
         val added = _pages.value.add(file.name, style)
         _pages.value = if (crop == null) added else added.crop(added.pages.lastIndex, crop)
+        // A new document is starting, so what was said about the last one has done its job.
+        _message.value = null
     }
 
     /** Renders one page differently. Nothing on disk changes; the PDF is what changes. */
@@ -137,7 +139,10 @@ class DocumentCapture(
             }
         }
         attached
-            .onSuccess { _files.value = _files.value + it }
+            .onSuccess {
+                _files.value = _files.value + it
+                _message.value = null
+            }
             .onFailure { error ->
                 Log.w(TAG, "could not attach a file", error)
                 _message.value = "Could not attach that file: ${error.message}"

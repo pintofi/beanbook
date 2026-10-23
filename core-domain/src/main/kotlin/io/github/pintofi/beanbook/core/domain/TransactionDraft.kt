@@ -44,6 +44,14 @@ data class PostingDraft(
      * arrive already knowing them, such as an entry being edited as fields.
      */
     val details: String? = null,
+    /**
+     * Full-line comments written above this posting, kept exactly as the file has them (what
+     * follows the `;`). An entry edited as fields must not lose a comment, and the form has no
+     * box for one, so it is carried here and written back where it was.
+     */
+    val notesBefore: List<String> = emptyList(),
+    /** Keys in [metadata] whose values the file writes bare (a number, a date), not as a string. */
+    val bareMetadata: Set<String> = emptySet(),
 ) {
     val isElided: Boolean get() = amount == null
 
@@ -80,6 +88,14 @@ data class TransactionDraft(
     val links: List<String> = emptyList(),
     val metadata: Map<String, String> = emptyMap(),
     val postings: List<PostingDraft> = emptyList(),
+    /** A comment at the end of the first line, after the `;`, as the file has it. */
+    val headerComment: String? = null,
+    /** Full-line comments between the first line and the first metadata or posting line. */
+    val notes: List<String> = emptyList(),
+    /** Full-line comments after the last posting. */
+    val trailingNotes: List<String> = emptyList(),
+    /** Keys in [metadata] whose values the file writes bare (a number, a date), not as a string. */
+    val bareMetadata: Set<String> = emptySet(),
 ) {
 
     /**
@@ -178,13 +194,18 @@ data class TransactionDraft(
         narration?.takeIf { it.isNotBlank() }?.let { builder.append(' ').append(quote(it)) }
         tags.forEach { builder.append(" #").append(it) }
         links.forEach { builder.append(" ^").append(it) }
+        headerComment?.let { builder.append("  ;").append(it) }
         builder.append('\n')
 
+        notes.forEach { builder.append(pad).append(';').append(it).append('\n') }
+
         metadata.forEach { (key, value) ->
-            builder.append(pad).append(key).append(": ").append(quote(value)).append('\n')
+            builder.append(pad).append(key).append(": ")
+                .append(BeancountText.metadataValue(value, key in bareMetadata)).append('\n')
         }
 
         postings.forEach { posting ->
+            posting.notesBefore.forEach { builder.append(pad).append(';').append(it).append('\n') }
             val left = pad + posting.account
             if (posting.amount == null) {
                 builder.append(left)
@@ -210,9 +231,11 @@ data class TransactionDraft(
             // transaction's, which is a different claim about the books.
             posting.metadata.forEach { (key, value) ->
                 builder.append(pad).append(pad).append(key).append(": ")
-                    .append(quote(value)).append('\n')
+                    .append(BeancountText.metadataValue(value, key in posting.bareMetadata)).append('\n')
             }
         }
+
+        trailingNotes.forEach { builder.append(pad).append(';').append(it).append('\n') }
 
         return builder.toString()
     }

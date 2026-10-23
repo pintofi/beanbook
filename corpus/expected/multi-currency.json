@@ -20,6 +20,29 @@
           "number": "2007.25"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "EUR",
+              "number": "1850.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "2007.25"
+            }
+          ],
+          "currency": "EUR",
+          "units": [
+            {
+              "currency": "EUR",
+              "number": "1850.00"
+            }
+          ]
+        }
+      ],
       "name": "Assets:Bank:EUR",
       "positions": [
         {
@@ -47,6 +70,29 @@
           "number": "4875.00"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "4875.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "4875.00"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "4875.00"
+            }
+          ]
+        }
+      ],
       "name": "Assets:Bank:USD",
       "positions": [
         {
@@ -72,6 +118,29 @@
         {
           "currency": "USD",
           "number": "137.50"
+        }
+      ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "125.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "137.50"
+            }
+          ],
+          "currency": "ACME",
+          "units": [
+            {
+              "currency": "ACME",
+              "number": "10"
+            }
+          ]
         }
       ],
       "name": "Assets:Invest:ACME",
@@ -105,6 +174,50 @@
           "number": "-7170.00"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "EUR",
+              "number": "-2000.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "-2170.00"
+            }
+          ],
+          "currency": "EUR",
+          "units": [
+            {
+              "currency": "EUR",
+              "number": "-2000.00"
+            }
+          ]
+        },
+        {
+          "at_cost": [
+            {
+              "currency": "USD",
+              "number": "-5000.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "-5000.00"
+            }
+          ],
+          "currency": "USD",
+          "units": [
+            {
+              "currency": "USD",
+              "number": "-5000.00"
+            }
+          ]
+        }
+      ],
       "name": "Equity:Opening-Balances",
       "positions": [
         {
@@ -136,6 +249,29 @@
           "number": "162.75"
         }
       ],
+      "holdings": [
+        {
+          "at_cost": [
+            {
+              "currency": "EUR",
+              "number": "150.00"
+            }
+          ],
+          "at_value": [
+            {
+              "currency": "USD",
+              "number": "162.75"
+            }
+          ],
+          "currency": "EUR",
+          "units": [
+            {
+              "currency": "EUR",
+              "number": "150.00"
+            }
+          ]
+        }
+      ],
       "name": "Expenses:Travel",
       "positions": [
         {
@@ -148,6 +284,7 @@
       "at_cost": [],
       "at_operating": [],
       "at_value": [],
+      "holdings": [],
       "name": "Income:Salary",
       "positions": []
     }

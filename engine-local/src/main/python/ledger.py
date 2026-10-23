@@ -414,6 +414,22 @@ def inspect(
             for pos in converted
         ]
 
+    def _holdings(inventory):
+        if inventory is None:
+            return []
+        by_currency = {}
+        for pos in inventory:
+            by_currency.setdefault(pos.units.currency, inventory_lib.Inventory()).add_position(pos)
+        return [
+            {
+                "currency": currency,
+                "units": _amounts(part, convert.get_units),
+                "at_cost": _amounts(part, convert.get_cost),
+                "at_value": _valued(part),
+            }
+            for currency, part in sorted(by_currency.items())
+        ]
+
     def _latest_rates():
         """Each priced pair at its latest price, so the app can convert a posting itself."""
         rates = []
@@ -437,6 +453,10 @@ def inspect(
                 # snapshot and an older reader keep working.
                 "at_value": _valued(inventory),
                 "at_operating": _valued(inventory),
+                # One entry for each commodity the account holds, with that holding's units and
+                # what it comes to at cost and at market value. A widget showing "the PKR in
+                # Cash" and not "the SAR in Cash" has to be able to value them apart.
+                "holdings": _holdings(inventory),
             }
         )
 

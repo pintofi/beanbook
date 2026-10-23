@@ -97,6 +97,14 @@ fun DocumentsScreen(
     /** What this ledger calls its five trees, for the account this screen pre-selects. */
     names: io.github.pintofi.beanbook.core.domain.AccountNames =
         io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
+    /**
+     * The tab, when the caller keeps it. Home's card for a document that is not linked sends
+     * people to Organize, where it is fixed, and a request that the screen consumes once is lost
+     * whenever the screen is composed more than once on the way in. Held by the caller, the tab is
+     * simply what it was set to. Null leaves the screen to remember it itself.
+     */
+    mode: DocumentsMode? = null,
+    onModeChange: (DocumentsMode) -> Unit = {},
 ) {
     var account by remember {
         mutableStateOf(
@@ -108,7 +116,12 @@ fun DocumentsScreen(
     var label by rememberSaveable { mutableStateOf("") }
     var granted by remember(hasCamera) { mutableStateOf(hasCamera) }
     var pendingRemoval by remember { mutableStateOf<Pair<DocumentRow, DocumentRemoval>?>(null) }
-    var mode by rememberSaveable { mutableStateOf(DocumentsMode.ADD) }
+    var ownMode by rememberSaveable { mutableStateOf(DocumentsMode.ADD) }
+    val shownMode = mode ?: ownMode
+    fun showMode(next: DocumentsMode) {
+        ownMode = next
+        onModeChange(next)
+    }
     var refiling by remember { mutableStateOf<DocumentRow?>(null) }
     var expanded by remember { mutableStateOf(emptySet<String>()) }
     var cropping by remember { mutableStateOf<Int?>(null) }
@@ -125,6 +138,14 @@ fun DocumentsScreen(
     }
     val attachedFiles by capture.attachedFiles.collectAsState()
     val hasDocuments = !capture.pages.isEmpty || attachedFiles.isNotEmpty()
+    // Back to how the page opened once what was being filed is gone -- filed, or discarded -- so
+    // the next document does not start with the last one's account and name already in the boxes.
+    androidx.compose.runtime.LaunchedEffect(hasDocuments) {
+        if (!hasDocuments) {
+            label = ""
+            account = vocabulary.accounts.firstOrNull { it.startsWith(names.expenses) }.orEmpty()
+        }
+    }
 
     Column(
         modifier = modifier
@@ -140,17 +161,17 @@ fun DocumentsScreen(
         // both, and the secondary one keeps the indicator these tabs already had. The
         // primary variant draws a wider, rounded indicator, which would be a visual
         // change smuggled in under a deprecation fix.
-        SecondaryTabRow(selectedTabIndex = mode.ordinal) {
+        SecondaryTabRow(selectedTabIndex = shownMode.ordinal) {
             DocumentsMode.entries.forEach { entry ->
                 Tab(
-                    selected = mode == entry,
-                    onClick = { mode = entry },
+                    selected = shownMode == entry,
+                    onClick = { showMode(entry) },
                     text = { Text(entry.label) },
                 )
             }
         }
 
-        if (mode == DocumentsMode.ADD) {
+        if (shownMode == DocumentsMode.ADD) {
         Text("Attach a document", style = MaterialTheme.typography.titleMedium)
 
         if (!granted) {
@@ -265,7 +286,7 @@ fun DocumentsScreen(
 
         message?.let { StatusLine(it) }
 
-        if (mode == DocumentsMode.ORGANIZE && documents.isEmpty()) {
+        if (shownMode == DocumentsMode.ORGANIZE && documents.isEmpty()) {
             EmptyState(
                 title = "No documents yet",
                 detail = "Scan a receipt or attach a file on the Add tab to file it under an account.",
@@ -273,7 +294,7 @@ fun DocumentsScreen(
             )
         }
 
-        if (mode == DocumentsMode.ORGANIZE && documents.isNotEmpty()) {
+        if (shownMode == DocumentsMode.ORGANIZE && documents.isNotEmpty()) {
             LedgerHeading("Documents in this project")
             documents.forEachIndexed { index, row ->
                 val path = row.path

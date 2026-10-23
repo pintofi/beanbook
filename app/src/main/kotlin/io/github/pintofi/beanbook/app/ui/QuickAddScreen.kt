@@ -102,10 +102,22 @@ private class PostingRow(
 
     /** Keys describing this leg only. Empty for almost every posting. */
     val metadata = mutableStateListOf<MetadataRow>()
+
+    /**
+     * What the file has on this posting that the form has no box for: a comment at the end of the
+     * line, and full-line comments above it. Carried through an edit so saving never drops them.
+     */
+    var comment: String? = null
+    var notesBefore: List<String> = emptyList()
 }
 
 /** One editable metadata pair, on a transaction or on a posting. */
-private class MetadataRow(key: String = "", value: String = "") {
+private class MetadataRow(
+    key: String = "",
+    value: String = "",
+    /** Written bare in the file (`trip-days: 5`). */
+    val bare: Boolean = false,
+) {
     var key by mutableStateOf(key)
     var value by mutableStateOf(value)
 }
@@ -192,6 +204,11 @@ fun QuickAddScreen(
     // Transaction-level metadata, as editable rows so a half-typed key cannot be committed
     // by accident.
     val metaRows = remember { mutableStateListOf<MetadataRow>() }
+    // Comments the entry being edited carries. No box for them: held, written back where they
+    // were, and said so on screen.
+    var headerComment by remember { mutableStateOf<String?>(null) }
+    var leadingNotes by remember { mutableStateOf<List<String>>(emptyList()) }
+    var trailingNotes by remember { mutableStateOf<List<String>>(emptyList()) }
     // Tags and links, one box each, shown only once one is asked for.
     val tagRows = remember { mutableStateListOf<WordRow>() }
     val linkRows = remember { mutableStateListOf<WordRow>() }
@@ -219,8 +236,15 @@ fun QuickAddScreen(
         metadata = metaRows
             .filter { it.key.isNotBlank() }
             .associate { it.key.trim() to it.value.trim() },
+        headerComment = headerComment,
+        notes = leadingNotes,
+        trailingNotes = trailingNotes,
+        bareMetadata = metaRows.filter { it.bare && it.key.isNotBlank() }.map { it.key.trim() }.toSet(),
         postings = rows.filter { it.account.isNotBlank() }.map { row ->
             PostingDraft(
+                comment = row.comment,
+                notesBefore = row.notesBefore,
+                bareMetadata = row.metadata.filter { it.bare && it.key.isNotBlank() }.map { it.key.trim() }.toSet(),
                 metadata = row.metadata
                     .filter { it.key.isNotBlank() }
                     .associate { it.key.trim() to it.value.trim() },
@@ -326,7 +350,10 @@ fun QuickAddScreen(
             // metadata by design; an entry being edited arrives with it, and a detail that
             // was not shown would be dropped by the save.
             metaRows.clear()
-            draft.metadata.forEach { (key, value) -> metaRows.add(MetadataRow(key, value)) }
+            draft.metadata.forEach { (key, value) -> metaRows.add(MetadataRow(key, value, key in draft.bareMetadata)) }
+            headerComment = draft.headerComment
+            leadingNotes = draft.notes
+            trailingNotes = draft.trailingNotes
             draft.postings.firstOrNull()?.amount?.currency?.let { commodity = it }
             rows.clear()
             draft.postings.forEach { posting ->
@@ -343,7 +370,11 @@ fun QuickAddScreen(
                         details = posting.details
                             ?: CommodityDetails.textOf(posting.cost, posting.price),
                     ).also { row ->
-                        posting.metadata.forEach { (key, value) -> row.metadata.add(MetadataRow(key, value)) }
+                        posting.metadata.forEach { (key, value) ->
+                            row.metadata.add(MetadataRow(key, value, key in posting.bareMetadata))
+                        }
+                        row.comment = posting.comment
+                        row.notesBefore = posting.notesBefore
                     },
                 )
             }
@@ -382,9 +413,15 @@ fun QuickAddScreen(
     // recomputed itself with no pages mid-save: the `document:` line left the preview and
     // "Save entry with 1 page" became a greyed "Save entry", as if the pages had been lost.
     var saving by remember { mutableStateOf<SavingForm?>(null) }
+    // The preview of the save that just succeeded, kept while the form still holds exactly what was
+    // saved. Once the pages are filed the capture is empty, so the live preview loses the
+    // `document:` lines they made -- for the moment before the form closes or clears, the entry
+    // that had just been written looked as if it had been written without its document.
+    var savedPreview by remember { mutableStateOf<String?>(null) }
     var retryable by remember { mutableStateOf(false) }
     LaunchedEffect(saveState) {
         if (saving != null && saveState != null && !saveState.startsWith("Saving")) {
+            savedPreview = if (saveState.startsWith("Saved")) saving?.preview else null
             saving = null
             // A save that did not happen can be tried again as it stands. The duplicate
             // guard below is for a save that *did* (invariant 6).
@@ -428,6 +465,21 @@ fun QuickAddScreen(
                 Text(
                     "This entry was written by hand. Saving it here keeps every word and " +
                         "figure, and lines it up the way the app writes entries.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+
+        val keptComments = (if (headerComment != null) 1 else 0) + leadingNotes.size + trailingNotes.size +
+            rows.sumOf { it.notesBefore.size + (if (it.comment != null) 1 else 0) }
+        if (editing != null && keptComments > 0) {
+            Notice(NoticeTone.QUIET, modifier = Modifier.padding(bottom = Measure.gap)) {
+                Text(
+                    if (keptComments == 1) {
+                        "This entry has a comment. It is kept where it is when you save."
+                    } else {
+                        "This entry has $keptComments comments. They are kept where they are when you save."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -630,7 +682,7 @@ fun QuickAddScreen(
             }
             MetadataEditor(
                 rows = metaRows,
-                label = "Details about the whole transaction",
+                label = "These details are about the whole transaction.",
                 describe = { "transaction" },
             )
             if (capture != null && hasDocuments) {
@@ -698,8 +750,14 @@ fun QuickAddScreen(
             Text(
                 // The entry, with the `document:` line its attachments will carry. No separate
                 // `document` directive: an attachment belongs to this entry.
-                text = saving?.preview ?: previewDraft.render(),
+                text = saving?.preview
+                    ?: savedPreview?.takeIf { draft == submitted }
+                    ?: previewDraft.render(),
                 style = LedgerType.source,
+                // One line per line of the entry, however long: a long account name wrapped
+                // under itself and made the preview look different from what is written. The box
+                // scrolls sideways instead.
+                softWrap = false,
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainerLow)
@@ -711,6 +769,7 @@ fun QuickAddScreen(
                         key = committed.takeIf { it > committedBefore },
                         colour = BeancountTheme.ledger.rule,
                     )
+                    .horizontalScroll(rememberScrollState())
                     .padding(Measure.indent)
                     .semantics { contentDescription = "Preview of the entry to be saved" },
             )
@@ -874,6 +933,35 @@ private fun SmallAction(text: String, describe: String, onClick: () -> Unit) {
 }
 
 /**
+ * Explanation for a field or a group of fields, below it and inset to start where the text inside
+ * the field starts.
+ *
+ * One place and one look for every explanation in this form. It had two: Material's own
+ * supporting text under the commodity-details field, and a heading above the metadata rows,
+ * which sat at different distances from the edge and read as two different kinds of thing.
+ */
+@Composable
+private fun FieldCaption(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(start = 16.dp, top = 4.dp),
+    )
+}
+
+/**
+ * Where a remove button sits beside a text field: the top of the row, pushed down so its centre
+ * is the centre of the field's box.
+ *
+ * A row centred its button on the whole field, and a field with a hint or an error under it is
+ * taller than its box, so the button slid down to the middle of box plus hint and no longer lined
+ * up with anything. An outlined field is 56dp tall with 8dp above it for the floating label; the
+ * button is 48dp, so (8 + 28) - 24 = 12dp puts the two centres together whatever sits below.
+ */
+private val RemoveButtonInset = 12.dp
+
+/**
  * A remove button that looks like one.
  *
  * It was a "×" typed into a text button: a character the size of the label text, the colour of
@@ -881,10 +969,10 @@ private fun SmallAction(text: String, describe: String, onClick: () -> Unit) {
  * the full 48dp target Material asks for, with an icon that reads as removal at a glance.
  */
 @Composable
-private fun RemoveButton(describe: String, onClick: () -> Unit) {
+private fun RemoveButton(describe: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     androidx.compose.material3.FilledTonalIconButton(
         onClick = onClick,
-        modifier = Modifier.semantics { contentDescription = describe },
+        modifier = modifier.semantics { contentDescription = describe },
     ) {
         Icon(
             androidx.compose.material.icons.Icons.Filled.Close,
@@ -912,7 +1000,7 @@ private fun PostingEditor(
     onRemove: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.Top) {
             SuggestingField(
                 value = row.account,
                 onValueChange = { row.account = it },
@@ -923,20 +1011,17 @@ private fun PostingEditor(
             )
             if (removable) {
                 androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
-                RemoveButton("Remove posting ${index + 1}", onRemove)
+                RemoveButton("Remove posting ${index + 1}", Modifier.padding(top = RemoveButtonInset), onRemove)
             }
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(Measure.snug),
             verticalAlignment = Alignment.Top,
         ) {
-            OutlinedTextField(
+            AmountField(
                 value = row.amount,
                 onValueChange = { row.amount = it },
-                label = { Text("Amount") },
-                placeholder = if (index == 0) null else { { Text("optional") } },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                placeholder = if (index == 0) null else "optional",
                 // Even halves: at 3:2 the commodity box was too narrow for "Commodity · PKR",
                 // and the default it falls back to was cut off its own label.
                 modifier = Modifier.weight(1f),
@@ -956,29 +1041,34 @@ private fun PostingEditor(
             )
         }
         if (row.showDetails) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = row.details,
-                    onValueChange = { row.details = it },
-                    label = { Text("Commodity details") },
-                    placeholder = { Text("{400.00 PKR} @ 120.05 PKR") },
-                    supportingText = { Text("Written after the amount, as the file writes a lot or price") },
-                    singleLine = true,
-                    textStyle = LedgerType.source,
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics { contentDescription = "Commodity details for posting ${index + 1}" },
-                )
-                androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
-                RemoveButton("Remove commodity details from posting ${index + 1}") {
-                    row.details = ""
-                    row.showDetails = false
+            Column {
+                Row(verticalAlignment = Alignment.Top) {
+                    OutlinedTextField(
+                        value = row.details,
+                        onValueChange = { row.details = it },
+                        label = { Text("Commodity details") },
+                        placeholder = { Text("{400.00 PKR} @ 120.05 PKR") },
+                        singleLine = true,
+                        textStyle = LedgerType.source,
+                        modifier = Modifier
+                            .weight(1f)
+                            .semantics { contentDescription = "Commodity details for posting ${index + 1}" },
+                    )
+                    androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
+                    RemoveButton(
+                        "Remove commodity details from posting ${index + 1}",
+                        Modifier.padding(top = RemoveButtonInset),
+                    ) {
+                        row.details = ""
+                        row.showDetails = false
+                    }
                 }
+                FieldCaption("Written after the amount, as the file writes a lot or price.")
             }
         }
         MetadataEditor(
             rows = row.metadata,
-            label = "Details about this posting only",
+            label = "These details are about this posting only.",
             describe = { "posting ${index + 1}" },
             showAddButton = false,
         )
@@ -1021,7 +1111,7 @@ private fun WordEditor(
     suggestions: List<String>,
 ) {
     rows.forEachIndexed { index, word ->
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.Top) {
             SuggestingField(
                 value = word.value,
                 onValueChange = { word.value = it },
@@ -1033,7 +1123,10 @@ private fun WordEditor(
                 modifier = Modifier.weight(1f),
             )
             androidx.compose.foundation.layout.Spacer(Modifier.width(Measure.tight))
-            RemoveButton("Remove ${kind.lowercase()} ${index + 1}") { rows.removeAt(index) }
+            RemoveButton(
+                "Remove ${kind.lowercase()} ${index + 1}",
+                Modifier.padding(top = RemoveButtonInset),
+            ) { rows.removeAt(index) }
         }
     }
 }
@@ -1221,11 +1314,10 @@ private fun MetadataEditor(
         return
     }
 
-    Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     rows.forEachIndexed { index, meta ->
         Row(
             horizontalArrangement = Arrangement.spacedBy(Measure.snug),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
             OutlinedTextField(
                 value = meta.key,
@@ -1245,9 +1337,13 @@ private fun MetadataEditor(
                     contentDescription = "Detail ${index + 1} value for ${describe()}"
                 },
             )
-            RemoveButton("Remove detail ${index + 1} from ${describe()}") { rows.removeAt(index) }
+            RemoveButton(
+                "Remove detail ${index + 1} from ${describe()}",
+                Modifier.padding(top = RemoveButtonInset),
+            ) { rows.removeAt(index) }
         }
     }
+    FieldCaption(label)
 }
 
 /**

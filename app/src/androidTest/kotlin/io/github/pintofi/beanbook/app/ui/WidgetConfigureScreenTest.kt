@@ -28,7 +28,7 @@ class WidgetConfigureScreenTest {
 
     @Test fun everyAccountIsOfferedAndTheChoiceIsReported() {
         var chosen: List<String>? = null
-        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { chosen = it }) }
+        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { list, _ -> chosen = list }) }
 
         accounts.forEach { compose.onNodeWithText(it).assertIsDisplayed() }
 
@@ -45,7 +45,7 @@ class WidgetConfigureScreenTest {
     /** Several balances on one widget is the point of the screen being a list. */
     @Test fun severalAccountsCanBeChosenAtOnce() {
         var chosen: List<String>? = null
-        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { chosen = it }) }
+        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { list, _ -> chosen = list }) }
 
         compose.onNodeWithText("Assets:Bank:Current").performClick()
         compose.onNodeWithText("Liabilities:Card").performClick()
@@ -56,7 +56,7 @@ class WidgetConfigureScreenTest {
 
     /** A long chart of accounts is found rather than scrolled. */
     @Test fun theListCanBeFiltered() {
-        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = {}) }
+        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { _, _ -> }) }
 
         compose.onNodeWithContentDescription("Filter accounts by name").performTextInput("Card")
 
@@ -71,8 +71,40 @@ class WidgetConfigureScreenTest {
      * It says what to do instead.
      */
     @Test fun withNothingCachedItSaysWhatToDo() {
-        compose.setContent { ChooseAccounts(accounts = emptyList(), onChoose = {}) }
+        compose.setContent { ChooseAccounts(accounts = emptyList(), onChoose = { _, _ -> }) }
 
         compose.onNodeWithText("Open the app once", substring = true).assertIsDisplayed()
+    }
+
+    /** An account holding two commodities lets either be chosen, like an account. */
+    @Test fun anAccountWithTwoCommoditiesLetsOneBePicked() {
+        var option: io.github.pintofi.beanbook.app.widget.WidgetOption? = null
+        var chosen: List<String>? = null
+        compose.setContent {
+            ChooseAccounts(
+                accounts = listOf("Assets:Cash", "Assets:Bank"),
+                commodities = mapOf("Assets:Cash" to listOf("PKR", "SAR")),
+                onChoose = { list, o -> chosen = list; option = o },
+            )
+        }
+        // Not offered until the account is chosen.
+        compose.onNodeWithContentDescription("Show only SAR for Assets:Cash").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Show the balance of Assets:Cash").performClick()
+        compose.onNodeWithContentDescription("Show only SAR for Assets:Cash").assertIsDisplayed()
+        // Untick PKR: only SAR is left.
+        compose.onNodeWithContentDescription("Show only PKR for Assets:Cash").performClick()
+        compose.onNodeWithText("Add this widget").performClick()
+
+        assertEquals(listOf("Assets:Cash"), chosen)
+        assertEquals(setOf("SAR"), option!!.commodities["Assets:Cash"])
+    }
+
+    @Test fun theBasisIsChosenOnTheSameScreen() {
+        var option: io.github.pintofi.beanbook.app.widget.WidgetOption? = null
+        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { _, o -> option = o }) }
+        compose.onNodeWithContentDescription("Show figures: At cost").performClick()
+        compose.onNodeWithText("Assets:Bank:Current").performClick()
+        compose.onNodeWithText("Add this widget").performClick()
+        assertEquals(io.github.pintofi.beanbook.core.domain.Valuation.COST, option!!.basis)
     }
 }

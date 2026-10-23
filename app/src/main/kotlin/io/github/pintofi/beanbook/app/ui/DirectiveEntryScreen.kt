@@ -183,12 +183,9 @@ fun DirectiveEntryScreen(
 
         if (kind in setOf(DirectiveKind.BALANCE, DirectiveKind.PRICE)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+                AmountField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("Amount") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(2f),
                 )
                 SuggestingField(
@@ -252,10 +249,12 @@ fun DirectiveEntryScreen(
             Text(
                 text = draft.render(),
                 style = LedgerType.source,
+                softWrap = false,
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainerLow)
                     .filedSweep(key = committed.takeIf { it > 0 }, colour = BeancountTheme.ledger.rule)
+                    .horizontalScroll(rememberScrollState())
                     .padding(Measure.indent)
                     .semantics { contentDescription = "Preview of the directive to be saved" },
             )

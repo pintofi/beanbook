@@ -57,16 +57,15 @@ internal fun MainActivity.attachDocument(
             }
             saveText(app, projectId, directives, operation = "attach-document", target = ledger) { outcome ->
                 if (outcome.startsWith("Saved")) {
-                    // A toast, and only what happened: the count of ledger errors that
-                    // "Saved, with 3 ledger error(s)" carried is about the ledger, not about
-                    // the document just filed, and it read as if filing had gone wrong.
+                    // Said on the Documents page, where the form has just cleared itself: the line
+                    // stays as the one sign of what happened, until the next document is started.
+                    // The count of ledger errors that "Saved, with 3 ledger error(s)" carried is
+                    // about the ledger, not about the document just filed, and it read as if
+                    // filing had gone wrong, so only what happened is said.
                     saveMessage = null
-                    app.documentCapture.clearMessage()
-                    android.widget.Toast.makeText(
-                        this@attachDocument,
-                        "Filed ${paths.joinToString { it.substringAfterLast('/') }} under $account.",
-                        android.widget.Toast.LENGTH_SHORT,
-                    ).show()
+                    app.documentCapture.report(
+                        "Saved ${paths.joinToString { it.substringAfterLast('/') }} and filed it under $account.",
+                    )
                 } else {
                     saveMessage = outcome
                     app.documentCapture.report(outcome)
@@ -148,6 +147,11 @@ internal suspend fun MainActivity.documentsLedger(
         // Said where the save was tapped as well, so a form waiting on this is not left
         // showing "Saving…" behind the dialog.
         saveMessage = "Not saved yet: $include needs to be included in ${main.name} first."
+        // The Documents page was left saying "Saved ….pdf" under a form that had not cleared, which
+        // read as a save that had not finished. The PDF is saved; the filing is what waits.
+        app.documentCapture.report(
+            "The PDF is saved. Filing it under an account needs one line added to ${main.name}: confirm it to finish.",
+        )
         pendingLedgerEdit = MainActivity.LedgerEdit(
             file = main.name,
             line = line,
@@ -506,10 +510,10 @@ internal fun MainActivity.deleteEntries(
 /**
  * Removes one transaction from the ledger.
  *
- * The extent comes from the engine's `entry_slice`, which is Beancount's own idea of where an
- * entry starts and stops — including its metadata and any blank line inside it. Deleting by
- * matching text would guess at that, and guess wrong on the first entry whose narration
- * happened to appear twice.
+ * The extent is read from the file by `EntrySlices`, by the rule Fava cuts an entry out with:
+ * from the line Beancount reported to the first blank line or line in column zero, comments and
+ * metadata included. Deleting by matching text would guess at that, and guess wrong on the first
+ * entry whose narration happened to appear twice.
  *
  * The write itself goes through `ProjectWriter`, so it is journalled, snapshotted, re-parsed
  * and undoable like any other edit — which is what makes the confirmation's promise true.

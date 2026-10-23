@@ -111,8 +111,55 @@ object StructuredEdit {
         candidates.firstOrNull { normalise(it.render()) == normalise(source) }
             ?.let { return Editable(it, reformats = false) }
         val wanted = content(source)
-        return candidates.firstOrNull { content(it.render()) == wanted }
-            ?.let { Editable(it, reformats = true) }
+        candidates.firstOrNull { content(it.render()) == wanted }
+            ?.let { return Editable(it, reformats = true) }
+        // What the parsed entry cannot say -- a comment, a posting's own metadata, a value
+        // written as a number rather than a string -- is in the entry's text. Read from there,
+        // and held to the same proof: it is offered only if it renders back to the same words.
+        val fromText = draftFromSource(source)?.takeIf { describes(entry, it) } ?: return null
+        if (normalise(fromText.render()) == normalise(source)) return Editable(fromText, reformats = false)
+        return fromText.takeIf { content(it.render()) == wanted }?.let { Editable(it, reformats = true) }
+    }
+
+    /**
+     * The draft an entry's own text describes, or null when the text has a shape the draft cannot
+     * hold. See [EntrySource]; the caller renders it back and compares it with the text.
+     */
+    fun draftFromSource(source: String): TransactionDraft? = EntrySource.parse(source)
+
+    /**
+     * Whether [draft], read from the entry's text, is the entry Beancount parsed: the same date,
+     * flag, strings, accounts and figures. A text that disagrees with the parsed entry is a file
+     * that changed under the list, or something read wrongly, and neither is edited as fields.
+     *
+     * Tags and links a plugin added are in the entry and not in the text, so the draft's own
+     * must be among the entry's rather than equal to them. One elided posting may stand for
+     * several booked ones, which is what Beancount does with a leg in two currencies.
+     */
+    private fun describes(entry: JournalEntry, draft: TransactionDraft): Boolean {
+        if (draft.date != entry.date || draft.flag != (entry.flag ?: "*")) return false
+        if (draft.payee != entry.payee?.takeIf { it.isNotBlank() }) return false
+        if (draft.narration != entry.narration?.takeIf { it.isNotBlank() }) return false
+        if (!entry.tags.containsAll(draft.tags) || !entry.links.containsAll(draft.links)) return false
+        // Beancount books a transaction's postings grouped by currency, so the parsed entry lists
+        // them in a different order from the text. Compared as a set: every posting with an amount
+        // finds its match, and what is left is what the one elided posting was booked into.
+        val pool = entry.postings.toMutableList()
+        for (posting in draft.postings) {
+            val amount = posting.amount ?: continue
+            val at = pool.indexOfFirst {
+                it.account == posting.account && it.amount?.currency == amount.currency &&
+                    it.amount.number.compareTo(amount.number) == 0
+            }
+            if (at < 0) return false
+            pool.removeAt(at)
+        }
+        val elided = draft.postings.filter { it.amount == null }
+        return when (elided.size) {
+            0 -> pool.isEmpty()
+            1 -> pool.isNotEmpty() && pool.all { it.account == elided.single().account }
+            else -> false
+        }
     }
 
     private fun writtenIn(header: String, sigil: String, word: String): Boolean =

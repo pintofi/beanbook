@@ -4,6 +4,7 @@
   refresh when the app writes the cache, which is the only moment the figures can change.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:minWidth="110dp"
     android:minHeight="40dp"
     android:updatePeriodMillis="0"
@@ -11,4 +12,7 @@
     android:previewLayout="@layout/widget_preview_networth"
     android:description="@string/widget_preview_networth_description"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen|keyguard" />
+    android:widgetCategory="home_screen|keyguard"
+    android:widgetFeatures="reconfigurable"
+    tools:targetApi="31"
+    android:configure="io.github.pintofi.beanbook.app.widget.NetWorthWidgetConfigureActivity" />

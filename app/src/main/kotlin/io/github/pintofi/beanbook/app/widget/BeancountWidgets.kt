@@ -31,6 +31,7 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
         val hideAmounts = WidgetPreferences(context).hideAmounts()
 
         val accounts = WidgetAccounts(context)
+        val options = WidgetOptions(context)
 
         widgetIds.forEach { id ->
             val snapshot = cache.read(prefer = accounts.accountsFor(id))
@@ -43,6 +44,7 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
                     redacted = WidgetRenderer.shouldRedact(context, id, hideAmounts),
                     chosenAccounts = accounts.accountsFor(id),
                     widgetId = id,
+                    option = options.optionFor(id),
                 ),
             )
         }
@@ -55,6 +57,7 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
     /** A removed widget's account choice goes with it -- ids are reused. */
     override fun onDeleted(context: Context, widgetIds: IntArray) {
         WidgetAccounts(context).forget(widgetIds)
+        WidgetOptions(context).forget(widgetIds)
     }
 
     /** A widget moved to or from the lock screen has to be redrawn, not just resized. */
@@ -169,6 +172,71 @@ class WidgetAccounts(private val context: Context) {
     fun forget(widgetIds: IntArray) {
         val remaining = all() - widgetIds.toSet()
         save(remaining)
+    }
+}
+
+/**
+ * How one widget is asked to show its figures, beside which accounts it shows.
+ *
+ * @property basis units, cost or market value for this widget alone; null follows whatever basis
+ *   the app is set to, which is what every widget did before there was a choice.
+ * @property commodities per account: which of its commodities to show. An account that is not
+ *   here, or has an empty set, shows all of them.
+ */
+data class WidgetOption(
+    val basis: io.github.pintofi.beanbook.core.domain.Valuation? = null,
+    val commodities: Map<String, Set<String>> = emptyMap(),
+)
+
+/**
+ * The per-widget choices of basis and commodities, keyed by app-widget id like [WidgetAccounts].
+ *
+ * One line a widget: `id|BASIS|Account=CUR+CUR;Account=CUR`. Account names and commodities have
+ * none of `|`, `=`, `;` or `+`, so the line needs no escaping. A widget with no line (every widget
+ * placed before this existed) gets the defaults, which are what it always showed.
+ */
+class WidgetOptions(private val context: Context) {
+
+    private val file get() = context.filesDir.resolve("state/widget-options")
+
+    private fun all(): Map<Int, WidgetOption> =
+        if (!file.isFile) emptyMap()
+        else file.readLines().mapNotNull { line ->
+            val parts = line.split('|')
+            val id = parts.getOrNull(0)?.toIntOrNull() ?: return@mapNotNull null
+            val basis = parts.getOrNull(1)?.takeIf { it.isNotBlank() }
+                ?.let { runCatching { io.github.pintofi.beanbook.core.domain.Valuation.valueOf(it) }.getOrNull() }
+            val commodities = parts.getOrNull(2).orEmpty().split(';').mapNotNull { pair ->
+                val at = pair.indexOf('=')
+                if (at <= 0) null
+                else pair.take(at) to pair.substring(at + 1).split('+').filter { it.isNotBlank() }.toSet()
+            }.toMap()
+            id to WidgetOption(basis, commodities)
+        }.toMap()
+
+    fun optionFor(widgetId: Int): WidgetOption = all()[widgetId] ?: WidgetOption()
+
+    fun setOptionFor(widgetId: Int, option: WidgetOption) {
+        val next = all() + (widgetId to option)
+        write(next)
+    }
+
+    fun forget(widgetIds: IntArray) = write(all() - widgetIds.toSet())
+
+    private fun write(entries: Map<Int, WidgetOption>) {
+        file.parentFile?.mkdirs()
+        val kept = entries.filterValues { it.basis != null || it.commodities.values.any { set -> set.isNotEmpty() } }
+        if (kept.isEmpty()) {
+            file.delete()
+        } else {
+            file.writeText(
+                kept.entries.joinToString("\n") { (id, option) ->
+                    "$id|${option.basis?.name.orEmpty()}|" +
+                        option.commodities.filterValues { it.isNotEmpty() }.entries
+                            .joinToString(";") { (account, set) -> "$account=${set.sorted().joinToString("+")}" }
+                },
+            )
+        }
     }
 }
 
