@@ -12,8 +12,14 @@ sealed interface DirectiveDraft {
 
     val date: String
 
-    /** The exact text that will be written. Shown to the user before it is. */
-    fun render(): String
+    /**
+     * The exact text that will be written. Shown to the user before it is.
+     *
+     * @param currencyColumn where a figure is aligned, which is the ledger's own `currency-column`
+     *   (Fava's option) and not a fixed 61: a file kept at column 80 gets its balance and price
+     *   lines at column 80 too, in line with the transactions around them (#49).
+     */
+    fun render(currencyColumn: Int = ALIGN_COLUMN): String
 
     fun validate(): List<DraftProblem>
 
@@ -36,7 +42,7 @@ sealed interface DirectiveDraft {
     ) : DirectiveDraft {
         override val label get() = "Open account"
 
-        override fun render(): String = buildString {
+        override fun render(currencyColumn: Int): String = buildString {
             append(date).append(" open ").append(account)
             if (currencies.isNotEmpty()) append(' ').append(currencies.joinToString(","))
             bookingMethod?.takeIf { it.isNotBlank() }
@@ -54,7 +60,7 @@ sealed interface DirectiveDraft {
     /** `2026-09-01 close Assets:Cash` */
     data class Close(override val date: String, val account: String) : DirectiveDraft {
         override val label get() = "Close account"
-        override fun render(): String = "$date close $account\n"
+        override fun render(currencyColumn: Int): String = "$date close $account\n"
         override fun validate(): List<DraftProblem> = commonChecks(date, account)
     }
 
@@ -73,10 +79,10 @@ sealed interface DirectiveDraft {
     ) : DirectiveDraft {
         override val label get() = "Balance assertion"
 
-        override fun render(): String {
+        override fun render(currencyColumn: Int): String {
             val left = "$date balance $account"
             val right = amount?.let { "${it.number.toPlainString()} ${it.currency}" } ?: ""
-            return BeancountText.alignRight(left, right, ALIGN_COLUMN) + "\n"
+            return BeancountText.alignRight(left, right, currencyColumn) + "\n"
         }
 
         override fun validate(): List<DraftProblem> = buildList {
@@ -97,7 +103,7 @@ sealed interface DirectiveDraft {
         val sourceAccount: String,
     ) : DirectiveDraft {
         override val label get() = "Pad"
-        override fun render(): String = "$date pad $account $sourceAccount\n"
+        override fun render(currencyColumn: Int): String = "$date pad $account $sourceAccount\n"
         override fun validate(): List<DraftProblem> = buildList {
             addAll(commonChecks(date, account))
             if (!BeancountText.ACCOUNT.matches(sourceAccount)) {
@@ -115,7 +121,7 @@ sealed interface DirectiveDraft {
         val text: String,
     ) : DirectiveDraft {
         override val label get() = "Note"
-        override fun render(): String = "$date note $account ${BeancountText.quote(text)}\n"
+        override fun render(currencyColumn: Int): String = "$date note $account ${BeancountText.quote(text)}\n"
         override fun validate(): List<DraftProblem> = buildList {
             addAll(commonChecks(date, account))
             if (text.isBlank()) add(DraftProblem.MissingText("note"))
@@ -130,10 +136,10 @@ sealed interface DirectiveDraft {
     ) : DirectiveDraft {
         override val label get() = "Price"
 
-        override fun render(): String {
+        override fun render(currencyColumn: Int): String {
             val left = "$date price $commodity"
             val right = amount?.let { "${it.number.toPlainString()} ${it.currency}" } ?: ""
-            return BeancountText.alignRight(left, right, ALIGN_COLUMN) + "\n"
+            return BeancountText.alignRight(left, right, currencyColumn) + "\n"
         }
 
         override fun validate(): List<DraftProblem> = buildList {
@@ -152,7 +158,7 @@ sealed interface DirectiveDraft {
         val path: String,
     ) : DirectiveDraft {
         override val label get() = "Document"
-        override fun render(): String =
+        override fun render(currencyColumn: Int): String =
             "$date document $account ${BeancountText.quote(path)}\n"
 
         override fun validate(): List<DraftProblem> = buildList {
@@ -173,7 +179,7 @@ sealed interface DirectiveDraft {
         val description: String,
     ) : DirectiveDraft {
         override val label get() = "Event"
-        override fun render(): String =
+        override fun render(currencyColumn: Int): String =
             "$date event ${BeancountText.quote(type)} ${BeancountText.quote(description)}\n"
 
         override fun validate(): List<DraftProblem> = buildList {
@@ -191,7 +197,7 @@ sealed interface DirectiveDraft {
         val metadata: Map<String, String> = emptyMap(),
     ) : DirectiveDraft {
         override val label get() = "Commodity"
-        override fun render(): String = buildString {
+        override fun render(currencyColumn: Int): String = buildString {
             append("$date commodity $currency\n")
             for ((key, value) in metadata) {
                 if (value.isBlank()) continue
@@ -224,7 +230,7 @@ sealed interface DirectiveDraft {
         val query: String,
     ) : DirectiveDraft {
         override val label get() = "Query"
-        override fun render(): String =
+        override fun render(currencyColumn: Int): String =
             "$date query ${BeancountText.quote(name)} ${BeancountText.quote(query)}\n"
 
         override fun validate(): List<DraftProblem> = buildList {
@@ -247,7 +253,7 @@ sealed interface DirectiveDraft {
     ) : DirectiveDraft {
         override val label get() = "Custom"
 
-        override fun render(): String = buildString {
+        override fun render(currencyColumn: Int): String = buildString {
             append(date).append(" custom ").append(BeancountText.quote(type))
             values.filter { it.isNotBlank() }.forEach { value ->
                 // Accounts, numbers, dates and currencies are bare; anything else is a

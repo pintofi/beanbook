@@ -737,7 +737,7 @@ class MainActivity : ComponentActivity() {
                             saveText(
                                 app,
                                 activeId!!,
-                                draft.render(),
+                                draft.render(currencyColumnOf(ledger)),
                                 DIRECTIVE_OPERATION,
                                 target = directiveTarget(app, activeId!!, ledger, draft),
                             )

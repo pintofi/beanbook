@@ -68,6 +68,8 @@ fun DirectiveEntryScreen(
     committed: Int = 0,
     /** Whether anything has been typed that leaving would lose. */
     onDirtyChange: (Boolean) -> Unit = {},
+    /** The ledger's own `currency-column`, so the preview is the text that will be written. */
+    currencyColumn: Int = DirectiveDraft.ALIGN_COLUMN,
 ) {
     var kind by remember { mutableStateOf(DirectiveKind.OPEN) }
     var date by remember { mutableStateOf(today.toString()) }
@@ -247,7 +249,7 @@ fun DirectiveEntryScreen(
         RuledColumn {
             LedgerHeading("Will be written as")
             Text(
-                text = draft.render(),
+                text = draft.render(currencyColumn),
                 style = LedgerType.source,
                 softWrap = false,
                 modifier = Modifier
