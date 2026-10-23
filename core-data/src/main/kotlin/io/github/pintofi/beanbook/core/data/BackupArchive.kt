@@ -165,8 +165,57 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         cost: KdfCost = KdfCost(),
         kdf: String = ArchiveEncryption.ARGON2ID,
     ): BackupManifest {
+        require(workspace.projectDir(projectId).isDirectory) { "no such project: $projectId" }
+
+        // The manifest lists every file's size and checksum and comes first in the archive, so
+        // it is worked out before the files are copied -- and a file saved in between would then
+        // make the archive disagree with its own manifest, which is the backup that cannot be
+        // restored. So the archive is built beside the destination, each file is checked against
+        // the manifest as it is copied, and a file that changed makes the whole backup start
+        // again. Only a finished, consistent archive reaches [out].
+        val scratch = workspace.cacheDir.apply { mkdirs() }
+        var lastChanged: String? = null
+        repeat(MAX_ATTEMPTS) {
+            val staged = File.createTempFile("backup", ".bcaz", scratch)
+            try {
+                val manifest = staged.outputStream().buffered().use { sink ->
+                    writeOnce(
+                        projectId, sink, appVersion, engineVersions, projectTitle, now,
+                        passphrase, derivation, cost, kdf,
+                    )
+                }
+                staged.inputStream().use { it.copyTo(out) }
+                return manifest
+            } catch (changed: FileChangedWhileCopying) {
+                lastChanged = changed.path
+            } finally {
+                staged.delete()
+            }
+        }
+        throw java.io.IOException(
+            "\"$lastChanged\" kept changing while the backup was being made, so no backup was written. " +
+                "Try again when nothing is saving.",
+        )
+    }
+
+    /** Set by tests, to change a file at the moment the manifest has been worked out and the copying has not begun. */
+    internal var betweenHashingAndCopying: (() -> Unit)? = null
+
+    private class FileChangedWhileCopying(val path: String) : java.io.IOException("$path changed during the backup")
+
+    private fun writeOnce(
+        projectId: String,
+        out: OutputStream,
+        appVersion: String,
+        engineVersions: Map<String, String>,
+        projectTitle: String,
+        now: Instant,
+        passphrase: CharArray?,
+        derivation: KeyDerivation?,
+        cost: KdfCost,
+        kdf: String,
+    ): BackupManifest {
         val root = workspace.projectDir(projectId)
-        require(root.isDirectory) { "no such project: $projectId" }
 
         val files = root.walkTopDown()
             .filter { it.isFile }
@@ -179,6 +228,9 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
             val file = File(root, path)
             BackupManifest.Entry(path, file.length(), sha256(file))
         }
+
+        betweenHashingAndCopying?.invoke()
+        val expected = entries.associateBy { it.path }
 
         fun manifestWith(encryption: ArchiveEncryption) = BackupManifest(
             schemaVersion = BackupManifest.SCHEMA_VERSION,
@@ -204,7 +256,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
 
                 files.forEach { path ->
                     zip.putNextEntry(ZipEntry(BackupManifest.PROJECT_PREFIX + path))
-                    File(root, path).inputStream().use { it.copyTo(zip) }
+                    copyChecked(File(root, path), expected.getValue(path), zip)
                     zip.closeEntry()
                 }
             }
@@ -220,7 +272,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         ZipOutputStream(payload).use { inner ->
             files.forEach { path ->
                 inner.putNextEntry(ZipEntry(path))
-                File(root, path).inputStream().use { it.copyTo(inner) }
+                copyChecked(File(root, path), expected.getValue(path), inner)
                 inner.closeEntry()
             }
         }
@@ -464,6 +516,25 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         }
     }
 
+    /** Copies [file] into [sink], and throws if what was read is not the size and checksum the manifest was given. */
+    private fun copyChecked(file: File, expected: BackupManifest.Entry, sink: OutputStream) {
+        val digest = MessageDigest.getInstance("SHA-256")
+        var size = 0L
+        file.inputStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+                sink.write(buffer, 0, read)
+                size += read
+            }
+        }
+        if (size != expected.size || digest.digest().toHex() != expected.sha256) {
+            throw FileChangedWhileCopying(expected.path)
+        }
+    }
+
     private fun checkEntryCount(zip: ZipFile) {
         if (zip.size() > MAX_ENTRIES) throw TooLargeException("list of files", MAX_ENTRIES.toLong())
     }
@@ -479,6 +550,9 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         const val MAX_PAYLOAD_BYTES = 256L * 1024 * 1024
 
         const val MAX_ENTRIES = 100_000
+
+        /** How many times a backup starts again because a file was saved while it was being made. */
+        private const val MAX_ATTEMPTS = 3
 
         /**
          * Runtime state that must never travel in a backup.
