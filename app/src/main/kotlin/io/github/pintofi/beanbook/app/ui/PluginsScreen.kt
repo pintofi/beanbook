@@ -240,7 +240,7 @@ private fun PluginCard(
                         onClick = { confirming = false; onRemove(plugin.id) },
                         modifier = Modifier.semantics { contentDescription = "Confirm removing ${plugin.name}" },
                     ) { Text("Remove") }
-                    SecondaryButton(onClick = { confirming = false }) { Text("Cancel") }
+                    OutlinedButton(onClick = { confirming = false }) { Text("Cancel") }
                 }
             } else {
                 OutlinedButton(
@@ -349,7 +349,7 @@ private fun PackagesSection(
                                         contentDescription = "Download these packages"
                                     },
                                 ) { Text("Download") }
-                                SecondaryButton(onClick = onCancel) { Text("Not now") }
+                                OutlinedButton(onClick = onCancel) { Text("Not now") }
                             }
                         }
                     }
@@ -516,14 +516,14 @@ internal fun CatalogueSection(
     }
     val hidden = shown.size - visible.size
     if (hidden > 0) {
-        SecondaryButton(
+        OutlinedButton(
             onClick = { expanded = true },
             modifier = Modifier.semantics {
                 contentDescription = "Show the other $hidden plugins"
             },
         ) { Text("Show more ($hidden)") }
     } else if (expanded && shown.size > CATALOGUE_PREVIEW) {
-        SecondaryButton(
+        OutlinedButton(
             onClick = { expanded = false },
             modifier = Modifier.semantics { contentDescription = "Show fewer plugins" },
         ) { Text("Show fewer") }

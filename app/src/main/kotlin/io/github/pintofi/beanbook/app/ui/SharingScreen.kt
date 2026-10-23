@@ -146,7 +146,7 @@ fun SharingScreen(modifier: Modifier = Modifier) {
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(if (saving) "Saving…" else "Save sign-in") }
                         if (savedName != null) {
-                            SecondaryButton(onClick = { editing = false; password = "" }) { Text("Cancel") }
+                            OutlinedButton(onClick = { editing = false; password = "" }) { Text("Cancel") }
                         }
                     }
                 } else {
@@ -155,7 +155,7 @@ fun SharingScreen(modifier: Modifier = Modifier) {
                         detail = "The password is kept on this phone only as a hash.",
                         icon = Icons.Outlined.Key,
                     ) {
-                        SecondaryButton(
+                        OutlinedButton(
                             onClick = {
                                 sharing.stop()
                                 editing = true

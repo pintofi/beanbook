@@ -98,7 +98,7 @@ fun AccountsScreen(
                     closing = null
                 }) { Text("Close it") }
             },
-            dismissButton = { SecondaryButton(onClick = { closing = null }) { Text("Keep it open") } },
+            dismissButton = { OutlinedButton(onClick = { closing = null }) { Text("Keep it open") } },
         )
     }
 }
@@ -113,7 +113,7 @@ private fun AccountRow(account: AccountBalance, canClose: Boolean, onClose: () -
     }
     FolioRow(title = account.name, detail = detail) {
         if (canClose && empty && account.opened != null) {
-            SecondaryButton(
+            OutlinedButton(
                 onClick = onClose,
                 modifier = Modifier.semantics { contentDescription = "Close the account ${account.name}" },
             ) { Text("Close") }

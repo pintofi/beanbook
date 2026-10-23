@@ -238,7 +238,7 @@ fun ProjectPickerScreen(
                 ) { Text("Move to trash") }
             },
             dismissButton = {
-                SecondaryButton(onClick = { pendingDelete = null }) { Text("Keep it") }
+                OutlinedButton(onClick = { pendingDelete = null }) { Text("Keep it") }
             },
         )
     }
@@ -423,7 +423,7 @@ internal fun TrashSection(trash: ProjectTrash) {
                     ),
                 ) { Text("Delete for good") }
             },
-            dismissButton = { SecondaryButton(onClick = { pendingForever = null }) { Text("Keep it") } },
+            dismissButton = { OutlinedButton(onClick = { pendingForever = null }) { Text("Keep it") } },
         )
     }
 
@@ -447,7 +447,7 @@ internal fun TrashSection(trash: ProjectTrash) {
                     ),
                 ) { Text("Empty the trash") }
             },
-            dismissButton = { SecondaryButton(onClick = { confirmEmpty = false }) { Text("Keep them") } },
+            dismissButton = { OutlinedButton(onClick = { confirmEmpty = false }) { Text("Keep them") } },
         )
     }
 }

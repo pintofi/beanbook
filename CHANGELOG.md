@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An Open button beside the message when an entry names an account the ledger has not opened. The entry you typed stays as it is. ([#140], fixes [#131])
 
 ### Changed
+- Every button is now either filled (a page's main action) or outlined (everything else), in Material's own size. The outlined ones are no longer taller and tighter than the filled ones beside them. ([#192])
 - The Accounts page uses the same cards as the other pages under More: a heading and a card for each type of account, the form to open an account in a card, and closed accounts in a card. ([#189])
 - The document scanner uses OpenCV 5.0.0.1 (was 4.12.0). Five geometry functions it calls moved to a new `Geometry` class; page detection and straightening are unchanged, and the scanner's tests pass on a device. The native library is larger, so each APK grows by about 4.5 MB. ([#176])
 - Edit opens entries that have comments, metadata on a posting or several currencies in the entry form instead of the text editor. ([#138], fixes [#124])
@@ -178,3 +179,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#176]: https://github.com/pintofi/beanbook/issues/176
 [#179]: https://github.com/pintofi/beanbook/issues/179
 [#189]: https://github.com/pintofi/beanbook/issues/189
+[#192]: https://github.com/pintofi/beanbook/issues/192

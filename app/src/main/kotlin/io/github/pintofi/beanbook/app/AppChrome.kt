@@ -1,6 +1,6 @@
 package io.github.pintofi.beanbook.app
 
-import io.github.pintofi.beanbook.app.ui.SecondaryButton
+import androidx.compose.material3.OutlinedButton
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -447,7 +447,7 @@ internal fun MoreMenu(
                 ) { Text("Restart") }
             },
             dismissButton = {
-                SecondaryButton(onClick = { confirmingRestart = false }) {
+                OutlinedButton(onClick = { confirmingRestart = false }) {
                     Text("Cancel")
                 }
             },
@@ -478,7 +478,7 @@ internal fun RecoveryBanner(message: String, onDismiss: () -> Unit) {
                 contentDescription = "$message"
             },
         )
-        SecondaryButton(
+        OutlinedButton(
             onClick = onDismiss,
             modifier = Modifier.semantics { contentDescription = "Dismiss this notice" },
         ) { Text("Dismiss") }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -161,7 +162,7 @@ fun RemoteScreen(
                                 contentDescription = "Retry the entry that did not get through"
                             },
                         ) { Text("Try again") }
-                        SecondaryButton(onClick = onDiscardPending) { Text("Discard it") }
+                        OutlinedButton(onClick = onDiscardPending) { Text("Discard it") }
                     }
                 }
             }

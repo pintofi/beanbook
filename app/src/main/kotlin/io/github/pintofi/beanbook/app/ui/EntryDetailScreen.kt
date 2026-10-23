@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.setValue
@@ -164,7 +165,7 @@ fun EntryDetailScreen(
                             modifier = Modifier.weight(1f),
                         )
                         if (fileForDocument != null) {
-                            SecondaryButton(
+                            OutlinedButton(
                                 onClick = { viewing = path },
                                 modifier = Modifier.semantics {
                                     contentDescription = "View ${path.substringAfterLast('/')}"
@@ -172,7 +173,7 @@ fun EntryDetailScreen(
                             ) { Text("View") }
                         }
                         if (onOpenDocument != null) {
-                            SecondaryButton(
+                            OutlinedButton(
                                 onClick = { onOpenDocument(path) },
                                 modifier = Modifier.semantics {
                                     contentDescription = "Share ${path.substringAfterLast('/')}"
@@ -210,7 +211,7 @@ fun EntryDetailScreen(
                 },
             ) { Text("Clone") }
             if (onEdit != null && !confirmingDelete) {
-                SecondaryButton(
+                OutlinedButton(
                     onClick = onEdit,
                     modifier = Modifier.semantics {
                         contentDescription = "Edit this transaction"
@@ -218,14 +219,14 @@ fun EntryDetailScreen(
                 ) { Text("Edit") }
             }
             if (onDelete != null && !confirmingDelete) {
-                SecondaryButton(
+                OutlinedButton(
                     onClick = { confirmingDelete = true },
                     modifier = Modifier.semantics {
                         contentDescription = "Delete this transaction"
                     },
                 ) { Text("Delete") }
             }
-            SecondaryButton(onClick = onClose) { Text("Close") }
+            OutlinedButton(onClick = onClose) { Text("Close") }
         }
 
         // Invariant 7: a destructive action names its scope and is confirmable. It says
@@ -256,7 +257,7 @@ fun EntryDetailScreen(
                             contentDescription = "Delete this transaction"
                         },
                     ) { Text("Delete it") }
-                    SecondaryButton(onClick = { confirmingDelete = false }) { Text("Keep it") }
+                    OutlinedButton(onClick = { confirmingDelete = false }) { Text("Keep it") }
                 }
             }
         }

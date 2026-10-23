@@ -1,6 +1,5 @@
 package io.github.pintofi.beanbook.app.ui.onboarding
 
-import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -89,7 +88,7 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
         suggestions = currencyCodes - draft.currencies.toSet(),
     )
     Hint("Only if you hold or spend in more than one currency. You can add more later.")
-    SecondaryButton(
+    OutlinedButton(
         onClick = {
             val code = extra.trim()
             if (CommodityName.isValid(code) && code !in draft.currencies) {
@@ -121,7 +120,7 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
     Hint("Entries before this date are not expected. Opening balances are dated the day before.")
 
     var fine by rememberSaveable { mutableStateOf(false) }
-    SecondaryButton(onClick = { fine = !fine }) { Text(if (fine) "Hide fine-tuning" else "Fine-tune") }
+    OutlinedButton(onClick = { fine = !fine }) { Text(if (fine) "Hide fine-tuning" else "Fine-tune") }
     if (!fine) return
     draft.currencies.forEach { code ->
         OutlinedTextField(
@@ -393,7 +392,7 @@ internal fun FinishPage(
                 OutlinedButton(onClick = onDefaults, modifier = Modifier.fillMaxWidth()) {
                     Text("Create with defaults instead")
                 }
-                SecondaryButton(onClick = onBack) { Text("Back to my answers") }
+                OutlinedButton(onClick = onBack) { Text("Back to my answers") }
             }
         }
     }

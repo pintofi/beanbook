@@ -798,7 +798,7 @@ fun QuickAddScreen(
             horizontalArrangement = Arrangement.spacedBy(Measure.tight),
             verticalArrangement = Arrangement.spacedBy(Measure.tight),
         ) {
-            SecondaryButton(
+            OutlinedButton(
                 onClick = { namingTemplate = true },
                 // Also where saved templates are deleted, so it opens whenever there are any --
                 // the form no longer arrives with accounts filled in, and gating it on one would
@@ -810,7 +810,7 @@ fun QuickAddScreen(
             // The text editor is still there for an entry being edited: for a layout of one's
             // own, or a change the fields cannot make.
             editing?.let { session ->
-                SecondaryButton(
+                OutlinedButton(
                     onClick = session.onEditAsText,
                     modifier = Modifier.semantics { contentDescription = "Edit this entry as text instead" },
                 ) { Text("Edit as text instead") }
@@ -954,7 +954,7 @@ private fun FormGap() {
  */
 @Composable
 private fun SmallAction(text: String, describe: String, onClick: () -> Unit) {
-    SecondaryButton(
+    OutlinedButton(
         onClick = onClick,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
         modifier = Modifier
@@ -1301,7 +1301,7 @@ private fun TemplateDialog(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(template.name, style = MaterialTheme.typography.bodyMedium)
-                            SecondaryButton(
+                            OutlinedButton(
                                 onClick = { onDelete(template.name) },
                                 modifier = Modifier.semantics {
                                     contentDescription = "Delete the template ${template.name}"
@@ -1318,7 +1318,7 @@ private fun TemplateDialog(
                 enabled = problems.isEmpty(),
             ) { Text("Save template") }
         },
-        dismissButton = { SecondaryButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
 

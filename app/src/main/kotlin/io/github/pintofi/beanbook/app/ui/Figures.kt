@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.modifiers.TextAutoSizeLayoutScope
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -159,14 +160,8 @@ fun HeadlineFigure(
         if (figures.more > 0) {
             val words = if (figures.more == 1) "1 more commodity" else "${figures.more} more commodities"
             if (onMore != null) {
-                // Flush with the figures above it: a text button's own inset set "+4 more" a
-                // step to the right of the column it belongs to. The target stays 48dp.
-                SecondaryButton(
+                OutlinedButton(
                     onClick = onMore,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        start = 0.dp,
-                        end = Measure.gap,
-                    ),
                     modifier = Modifier.semantics { contentDescription = "$words. Open Balances to see them all" },
                 ) { Text("+${figures.more} more", style = MaterialTheme.typography.labelLarge) }
             } else {
