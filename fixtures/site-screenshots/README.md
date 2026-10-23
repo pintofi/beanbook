@@ -6,27 +6,25 @@ The two PDFs under `household/documents/` are generated placeholders, not real r
 
 ## Recapturing
 
-The published set was captured on 2026-10-13 from the Expert debug build
-on the `s1_api36` emulator: 1080 x 1920, 420 dpi, font scale 1.0, en-US, portrait.
+`tools/capture-screens.py` does all of it on an emulator you have started (a Google APIs
+`userdebug` image, because it needs `adb root`): it fixes the clock to 2026-09-18, the screen to
+1080 x 1920 at 420 dpi, font scale 1.0 and the status bar to 09:41, clears the Expert debug
+build's data, loads `household/`, walks the screens in both themes and writes the WebP files.
 
-1. Install the Expert debug build and clear its data (`adb shell pm clear <package>`).
-2. Push `household/` and make it the open project:
-   ```bash
-   P=io.github.pintofi.beanbook.expert.debug
-   adb push fixtures/site-screenshots/household /data/local/tmp/
-   adb shell "run-as $P sh -c 'mkdir -p files/projects files/state && cp -r /data/local/tmp/household files/projects/ && printf household > files/state/active-project'"
-   ```
-3. Fix the status bar with System UI demo mode: clock 09:41, full battery, Wi-Fi, no
-   notifications.
-4. For each theme write `files/state/appearance` as `LIGHT\nfalse\n` or `DARK\nfalse\n` (the
-   app's own palette, dynamic colour off), start the app, and capture in this order:
-   - **home**: Home, at the top, after the figures settle.
-   - **journal**: Journal, at the top.
-   - **entry**: Journal, open "Corner grocer · Weekly shop" (2026-09-12), then Clone. The
-     date is the capture day; keep both themes on the same day.
-   - **reports**: Reports, after Fava has drawn (about 30 s).
-   - **documents**: More, Documents, Organize.
-5. Encode with `magick <png> -strip -quality 82 <name>-<theme>-1080.webp` and
-   `magick <png> -strip -resize 540x960 -quality 80 <name>-<theme>-540.webp`.
+```bash
+python3 tools/capture-screens.py --out /tmp/shots            # the screens in manifest.json
+python3 tools/capture-screens.py --out /tmp/shots --only home,entry
+python3 tools/capture-screens.py --dry-run
+```
+
+`site/assets/screenshots/manifest.json` holds each screen's alt text and, under `capture`, what
+the published set came from. A full run rewrites `capture`; `--only` leaves it alone. Besides the
+five screens on the home page the script can capture `preview`, `balances`, `more` and `plugins`.
+`tools/check-site-screens.py` (run in CI) checks the files exist at 1080 x 1920 and 540 x 960 and
+warns when the app's UI has changed since the recorded commit.
+
+The published set was captured by hand on 2026-10-13 with the same settings. The site's
+annotated notes (`site/assets/site.js`) depend on where things sit in those images, so check them
+before replacing any file.
 
 The raw PNGs are not kept in the repository; the WebP files are what the site serves.

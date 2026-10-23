@@ -1,0 +1,36 @@
+{
+  "screens": [
+    {
+      "id": "home",
+      "alt": "Beanbook's Home screen for the Household ledger: net worth, income and expenses, and this month's spending by category."
+    },
+    {
+      "id": "entry",
+      "alt": "The New entry form, copied from a grocery transaction: date, payee, description, and the first posting's account."
+    },
+    {
+      "id": "journal",
+      "alt": "The Journal: recent transactions with their accounts and amounts, one flagged as pending and one with a linked receipt."
+    },
+    {
+      "id": "reports",
+      "alt": "Fava's Income Statement inside the app: monthly income and expenses as stacked bars."
+    },
+    {
+      "id": "documents",
+      "alt": "The Documents screen's Organize tab: two receipts, each with the account it is filed under and actions to view, share, refile, unlink or delete."
+    }
+  ],
+  "capture": {
+    "on": "2026-10-13",
+    "app": "Expert debug build",
+    "commit": "a329f10",
+    "device": "s1_api36 emulator, 1080x1920, 420 dpi, font scale 1.0, en-US",
+    "fixture": "fixtures/site-screenshots/household",
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "note": "Provenance of the published images, captured by hand before tools/capture-screens.py existed."
+  }
+}

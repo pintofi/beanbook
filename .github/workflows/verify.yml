@@ -114,6 +114,10 @@ jobs:
           pip install --quiet "fonttools==4.67.0" "brotli==1.2.0"
           python3 tools/check-versions.py --require-badges
 
+      - name: The website's screenshots exist, have the right size and carry alt text
+        # Reads site/assets/screenshots/manifest.json. Only warns when the app's UI has changed since.
+        run: python3 tools/check-site-screens.py
+
       - name: Every CHANGELOG heading links somewhere
         # A heading like [1.0.1] is only a link if a definition at the bottom of the file says
         # where. This also runs on a release tag, so a release cannot go out with a heading that
