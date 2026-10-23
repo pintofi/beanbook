@@ -66,7 +66,11 @@ class IdempotencyTest {
                 }
 
                 exchange.requestURI.path.endsWith("/api/changed") ->
-                    respond(exchange, changedStatus, if (changedStatus == 200) """{"data":true}""" else """{"error":"no"}""")
+                    respond(
+                        exchange,
+                        changedStatus,
+                        if (changedStatus == 200) """{"data":true}""" else """{"error":"no"}""",
+                    )
 
                 exchange.requestURI.path == "/" ->
                     respond(exchange, 302, "", location = "/probe/income_statement/")
