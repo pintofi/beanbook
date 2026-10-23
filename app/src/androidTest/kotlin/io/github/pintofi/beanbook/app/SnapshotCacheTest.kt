@@ -183,4 +183,22 @@ class SnapshotCacheTest {
 
         assertEquals(listOf("the plugin changed"), second.errors.map { it.message })
     }
+
+    @Test fun aReceiptAddedToTheDocumentsFolderIsNotMissedByTheCache() {
+        // No ledger file changes: a dated file dropped into an account folder becomes a
+        // `document` directive on the next load, so the cached answer from before it is stale.
+        val docs = File(dir, "docs")
+        val main = ledger("option \"documents\" \"docs\"\n" + base + "\n")
+        val first = runBlocking { reader.read(main.absolutePath) }.getOrThrow()
+        assertEquals(0, first.documents.size)
+
+        File(docs, "Assets/Cash").apply { mkdirs() }.resolve("2024-01-02.receipt.pdf").writeText("a receipt")
+
+        val second = runBlocking { reader.read(main.absolutePath) }.getOrThrow()
+        assertEquals("a new receipt was served from the cache", 1, second.documents.size)
+
+        File(docs, "Assets/Cash/2024-01-02.receipt.pdf").delete()
+        val third = runBlocking { reader.read(main.absolutePath) }.getOrThrow()
+        assertEquals("a deleted receipt was served from the cache", 0, third.documents.size)
+    }
 }

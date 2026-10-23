@@ -32,7 +32,10 @@ import org.json.JSONObject
  * new `include` line is itself an edit to a file being hashed.
  *
  * Plugin directories, the bridge flag and the journal window are in the fingerprint too,
- * because each of them changes what a load produces. So is [FORMAT], so that a change to the
+ * because each of them changes what a load produces. So is a listing of the folders
+ * `option "documents"` names: Beancount turns a dated file in an account folder into a
+ * `document` directive, so adding, renaming or deleting a receipt there changes the answer
+ * while no ledger file changed. So is [FORMAT], so that a change to the
  * engine's output shape invalidates every entry rather than being misread.
  */
 internal class SnapshotCache(private val dir: File) {
@@ -58,7 +61,11 @@ internal class SnapshotCache(private val dir: File) {
             List(array.length()) { array.getString(it) }
         } ?: return null
 
-        val expected = fingerprint(files, inputs) ?: return null
+        val documentDirs = stored.optJSONArray("documentDirs")?.let { array ->
+            List(array.length()) { File(array.getString(it)) }
+        } ?: return null
+
+        val expected = fingerprint(files, inputs, documentDirs) ?: return null
         if (expected != stored.optString("fingerprint")) return null
         stored.optString("payload").takeIf { it.isNotEmpty() }
     }.getOrElse {
@@ -77,13 +84,15 @@ internal class SnapshotCache(private val dir: File) {
      */
     fun write(ledgerPath: String, files: List<String>, inputs: Inputs, payload: String) {
         runCatching {
-            val print = fingerprint(files, inputs) ?: return
+            val documentDirs = documentRoots(ledgerPath, payload)
+            val print = fingerprint(files, inputs, documentDirs) ?: return
             dir.mkdirs()
             val entry = entryFor(ledgerPath)
             val document = JSONObject()
                 .put("format", FORMAT)
                 .put("fingerprint", print)
                 .put("files", JSONArray(files))
+                .put("documentDirs", JSONArray(documentDirs.map { it.path }))
                 .put("payload", payload)
             // Written beside and renamed, so a kill mid-write cannot leave a truncated entry
             // that the next run reads as a whole one -- the same discipline the ledger write
@@ -118,7 +127,7 @@ internal class SnapshotCache(private val dir: File) {
      * different fingerprint, and the length is included so a digest collision would also
      * have to preserve size.
      */
-    private fun fingerprint(files: List<String>, inputs: Inputs): String? {
+    private fun fingerprint(files: List<String>, inputs: Inputs, documentDirs: List<File>): String? {
         val digest = MessageDigest.getInstance("SHA-256")
         digest.update(FORMAT.toByteArray())
         // The range is part of the key: a cached snapshot of one period must never be
@@ -131,6 +140,7 @@ internal class SnapshotCache(private val dir: File) {
         // code the load runs, so installing, editing or removing one changes what the same
         // ledger produces, and the ledger's own files have not changed.
         digest.update(pluginListing(inputs.pluginDirs).toByteArray())
+        digest.update(documentListing(documentDirs).toByteArray())
         // Sorted, so the order the engine happened to report includes in cannot change the
         // fingerprint on its own.
         files.sorted().forEach { path ->
@@ -161,6 +171,31 @@ internal class SnapshotCache(private val dir: File) {
             directory + children.joinToString("") { "|${it.name}:${it.length()}:${it.lastModified()}" }
         }
 
+    /**
+     * The folders the ledger keeps documents in, as the load that made [payload] reported them,
+     * made absolute against the ledger's own folder the way Beancount does.
+     */
+    private fun documentRoots(ledgerPath: String, payload: String): List<File> {
+        val base = File(ledgerPath).absoluteFile.parentFile
+        val names = JSONObject(payload).optJSONArray("document_dirs") ?: return emptyList()
+        return List(names.length()) { names.getString(it) }
+            .filter { it.isNotBlank() }
+            .map { File(it).let { path -> if (path.isAbsolute) path else File(base, it) } }
+    }
+
+    /**
+     * Every file under the document folders: relative name, size and modification time. Names
+     * and `stat` only, never contents -- a folder of receipts can be large, and this runs on
+     * every open. A receipt edited in place to the same size within the same clock tick is the
+     * one change this cannot see; a document's contents are not what the snapshot holds.
+     */
+    private fun documentListing(roots: List<File>): String =
+        roots.sortedBy { it.path }.joinToString("\n") { root ->
+            root.path + root.walkTopDown().filter { it.isFile }
+                .map { "|${it.relativeTo(root).path}:${it.length()}:${it.lastModified()}" }
+                .sorted().joinToString("")
+        }
+
     private fun digestOf(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
@@ -175,6 +210,6 @@ internal class SnapshotCache(private val dir: File) {
          * and silently missing it -- a screen quietly losing a column rather than a load
          * failing loudly.
          */
-        const val FORMAT = "6"
+        const val FORMAT = "7"
     }
 }
