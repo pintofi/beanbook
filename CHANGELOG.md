@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Checking or opening a backup no longer reads whatever size the file claims. A manifest over 8 MiB, an encrypted project over 256 MiB or more than 100,000 files is refused with a message before anything is read into memory, so a small crafted backup cannot use up the phone's memory. ([#157])
 - A PDF page with an absurd size no longer crashes the document viewer. The viewer draws a page at a size that fits in memory, and says so when a page is too large or oddly shaped to show. ([#158])
 
 ## [1.0.1] - 2026-10-18
@@ -107,4 +108,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#101]: https://github.com/pintofi/beanbook/issues/101
 [#102]: https://github.com/pintofi/beanbook/issues/102
 [#103]: https://github.com/pintofi/beanbook/issues/103
+[#157]: https://github.com/pintofi/beanbook/issues/157
 [#158]: https://github.com/pintofi/beanbook/issues/158

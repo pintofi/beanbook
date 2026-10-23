@@ -99,6 +99,9 @@ sealed interface ArchiveProblem {
     data object PassphraseNeeded : ArchiveProblem
     data object WrongPassphrase : ArchiveProblem
 
+    /** Something in the archive is bigger than this app reads into memory; see [BackupArchive.MAX_MANIFEST_BYTES]. */
+    data class TooLarge(val what: String, val limit: Long) : ArchiveProblem
+
     fun describe(): String = when (this) {
         NotAnArchive ->
             "That file is not a Beancount backup — it has no manifest."
@@ -123,6 +126,9 @@ sealed interface ArchiveProblem {
                 "including us, can open it without one."
         WrongPassphrase ->
             "That passphrase does not open this backup. Nothing has been restored."
+        is TooLarge ->
+            "The backup's $what is larger than the ${limit / (1024 * 1024)} MiB this app reads at once, " +
+                "so it was not opened. Nothing has been restored."
     }
 }
 
@@ -242,8 +248,9 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
     /** The manifest of [archive] without verifying its contents, for showing what it is. */
     fun peek(archive: File): BackupManifest? = runCatching {
         ZipFile(archive).use { zip ->
+            checkEntryCount(zip)
             val entry = zip.getEntry(BackupManifest.MANIFEST_NAME) ?: return null
-            BackupManifest.fromJson(Json.parse(zip.getInputStream(entry).readBytes().decodeToString()))
+            BackupManifest.fromJson(Json.parse(readEntry(zip, entry, MAX_MANIFEST_BYTES, "manifest").decodeToString()))
         }
     }.getOrNull()
 
@@ -347,10 +354,11 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         var decrypted: File? = null
         return runCatching {
             ZipFile(archive).use { zip ->
+                checkEntryCount(zip)
                 val manifestEntry = zip.getEntry(BackupManifest.MANIFEST_NAME)
                     ?: return listOf(ArchiveProblem.NotAnArchive)
                 val manifest = BackupManifest.fromJson(
-                    Json.parse(zip.getInputStream(manifestEntry).readBytes().decodeToString()),
+                    Json.parse(readEntry(zip, manifestEntry, MAX_MANIFEST_BYTES, "manifest").decodeToString()),
                 ) ?: return listOf(ArchiveProblem.NotAnArchive)
 
                 if (manifest.schemaVersion > BackupManifest.SCHEMA_VERSION) {
@@ -369,7 +377,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
 
                         val plaintext = try {
                             PayloadCipher.decrypt(
-                                ciphertext = zip.getInputStream(sealed).readBytes(),
+                                ciphertext = readEntry(zip, sealed, MAX_PAYLOAD_BYTES, "encrypted project"),
                                 passphrase = passphrase,
                                 derivation = derivation,
                                 encryption = encryption,
@@ -392,12 +400,19 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                         decrypted = temp
                         temp.writeBytes(plaintext)
 
-                        ZipFile(temp).use { inner -> block(manifest, innerPayload(inner)) }
+                        ZipFile(temp).use { inner ->
+                            checkEntryCount(inner)
+                            block(manifest, innerPayload(inner))
+                        }
                     }
                 }
             }
         }.getOrElse { failure ->
-            listOf(ArchiveProblem.Unreadable(failure.message ?: failure.javaClass.simpleName))
+            if (failure is TooLargeException) {
+                listOf(ArchiveProblem.TooLarge(failure.what, failure.limit))
+            } else {
+                listOf(ArchiveProblem.Unreadable(failure.message ?: failure.javaClass.simpleName))
+            }
         }.also {
             decrypted?.delete()
         }
@@ -425,7 +440,45 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
     }
 
 
+    private class TooLargeException(val what: String, val limit: Long) : java.io.IOException("$what is over $limit bytes")
+
+    /**
+     * Reads [entry] whole, but never more than [limit] bytes. The size the archive declares for an
+     * entry is only a hint (a crafted file can understate it), so the read itself is counted too.
+     */
+    private fun readEntry(zip: ZipFile, entry: java.util.zip.ZipEntry, limit: Long, what: String): ByteArray {
+        if (entry.size > limit) throw TooLargeException(what, limit)
+        zip.getInputStream(entry).use { input ->
+            val out = java.io.ByteArrayOutputStream(minOf(maxOf(entry.size, 0L), limit).toInt())
+            val buffer = ByteArray(64 * 1024)
+            var total = 0L
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                if (total > limit) throw TooLargeException(what, limit)
+                out.write(buffer, 0, read)
+            }
+            return out.toByteArray()
+        }
+    }
+
+    private fun checkEntryCount(zip: ZipFile) {
+        if (zip.size() > MAX_ENTRIES) throw TooLargeException("list of files", MAX_ENTRIES.toLong())
+    }
+
     companion object {
+        /** A manifest lists each file in about 150 bytes, so this is room for tens of thousands of files. */
+        const val MAX_MANIFEST_BYTES = 8L * 1024 * 1024
+
+        /**
+         * The encrypted project is held in memory, then decrypted into memory again (#54), so this
+         * is what a phone's heap can take, not what a disk can. A bigger backup is refused up front.
+         */
+        const val MAX_PAYLOAD_BYTES = 256L * 1024 * 1024
+
+        const val MAX_ENTRIES = 100_000
+
         /**
          * Runtime state that must never travel in a backup.
          *
