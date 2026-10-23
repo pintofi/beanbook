@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The setup checklist has rounder checkboxes with room before each label, its currency field takes the whole line, and the notification button reads Granted once permission is given. ([#141], fixes [#135])
 
 ### Fixed
+- Totals no longer differ from Fava by a cent. The engine used to round each account's value before the app added them up; it now reports exact values and the total is rounded once, to the places the ledger shows the currency in, as Beancount and Fava do. A currency the ledger never writes, used only as the operating currency, shows two places. ([#60])
 - The scanner no longer shoots the same page again and again while it stays in view. Auto-capture waits for the page to hold still for about a second, shows a ring filling on the page while it does, and shoots again only once the page has been taken away or replaced. A shot taken with the shutter button counts too. ([#179])
 - Remove buttons on form rows line up with their field. ([#138], fixes [#116])
 - A suggestion that matches the typed text exactly stays in the list. ([#138], fixes [#118])
@@ -129,6 +130,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#57]: https://github.com/pintofi/beanbook/issues/57
 [#58]: https://github.com/pintofi/beanbook/issues/58
 [#59]: https://github.com/pintofi/beanbook/issues/59
+[#60]: https://github.com/pintofi/beanbook/issues/60
 [#61]: https://github.com/pintofi/beanbook/issues/61
 [#62]: https://github.com/pintofi/beanbook/issues/62
 [#64]: https://github.com/pintofi/beanbook/issues/64
