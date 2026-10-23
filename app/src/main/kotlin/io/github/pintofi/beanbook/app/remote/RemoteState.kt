@@ -1,6 +1,8 @@
 package io.github.pintofi.beanbook.app.remote
 
 import android.util.Log
+import io.github.pintofi.beanbook.core.data.PendingSubmission
+import io.github.pintofi.beanbook.core.data.PendingSubmissionStore
 import io.github.pintofi.beanbook.core.domain.TransactionDraft
 import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.engine.remote.BasicCredentials
@@ -32,6 +34,7 @@ class RemoteState(
     private val addressFile = File(stateDir, "remote-address")
     private val usernameFile = File(stateDir, "remote-username")
     private val password = KeystoreSecret(File(stateDir, "remote-password"))
+    private val pendingStore = PendingSubmissionStore(File(stateDir, "remote-pending"))
 
     private val _status = MutableStateFlow<EngineStatus>(EngineStatus.Stopped)
     val status: StateFlow<EngineStatus> = _status.asStateFlow()
@@ -42,11 +45,13 @@ class RemoteState(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
-    /** The submission waiting to be retried, if one timed out. Kept so the key survives. */
-    private val _pendingRetry = MutableStateFlow<PendingSubmission?>(null)
+    /**
+     * The submission waiting to be retried: one that failed, or that was still being sent when the
+     * app was closed. It is kept on disk from before it is sent until the server confirms it or the
+     * person discards it, so the key survives the process.
+     */
+    private val _pendingRetry = MutableStateFlow(pendingStore.load())
     val pendingRetry: StateFlow<PendingSubmission?> = _pendingRetry.asStateFlow()
-
-    data class PendingSubmission(val draft: TransactionDraft, val key: String)
 
     @Volatile
     private var client: RemoteEngineClient? = null
@@ -134,6 +139,7 @@ class RemoteState(
             password.destroyKey()
             _status.value = EngineStatus.Stopped
             _capabilities.value = null
+            pendingStore.clear()
             _pendingRetry.value = null
             _message.value = "Server details removed from this device."
         }
@@ -169,7 +175,13 @@ class RemoteState(
             return
         }
         val key = FavaClient.newKey()
-        scope.launch { report(engine.submit(draft, key), draft, key) }
+        scope.launch {
+            // Before it is sent, not after it fails: if the app is killed while the request is
+            // in flight, the next start still has the key to ask the server about.
+            runCatching { pendingStore.save(PendingSubmission(draft, key)) }
+                .onFailure { Log.w(TAG, "the pending entry could not be saved", it) }
+            report(engine.submit(draft, key), draft, key)
+        }
     }
 
     /** Retries the pending submission — asking first whether it is already there. */
@@ -180,6 +192,7 @@ class RemoteState(
     }
 
     fun discardPending() {
+        pendingStore.clear()
         _pendingRetry.value = null
         _message.value = null
     }
@@ -187,12 +200,14 @@ class RemoteState(
     private fun report(result: SubmitResult, draft: TransactionDraft, key: String) {
         when (result) {
             is SubmitResult.Stored -> {
+                pendingStore.clear()
                 _pendingRetry.value = null
                 _message.value = "Saved on the server."
             }
 
             is SubmitResult.AlreadyPresent -> {
                 // The retry found it: the first attempt had arrived after all.
+                pendingStore.clear()
                 _pendingRetry.value = null
                 _message.value = "Already saved. The earlier attempt did reach the server."
             }
