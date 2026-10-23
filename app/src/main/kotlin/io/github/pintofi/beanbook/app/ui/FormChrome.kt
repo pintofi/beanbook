@@ -37,6 +37,8 @@ fun FormSaveBar(
     problems: List<String>,
     message: String?,
     modifier: Modifier = Modifier,
+    /** Buttons that answer the problems above, such as opening an account the entry names. */
+    problemActions: @Composable () -> Unit = {},
     button: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
@@ -83,6 +85,7 @@ fun FormSaveBar(
                         }
                     }
                 }
+                if (problems.isNotEmpty()) problemActions()
                 LedgerReveal(visible = message != null && problems.isEmpty(), label = "formMessage") {
                     val shown = remember(message) { message }.orEmpty()
                     val refused = !shown.startsWith("Saved") && !isWorking(shown)

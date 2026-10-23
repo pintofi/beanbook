@@ -192,6 +192,11 @@ fun QuickAddScreen(
      * every change to one of them. [prefill] carries the entry; this says what saving means.
      */
     editing: EntryEditing? = null,
+    /**
+     * Opens an account the entry names and the ledger has not opened, without leaving the form.
+     * Null where it cannot be done (a remote server), and the buttons are then not shown.
+     */
+    onOpenAccount: ((io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit)? = null,
 ) {
     // Today, and intentionally so: almost every entry is for the day it is typed, and the
     // calendar is one tap away for the rest.
@@ -821,6 +826,28 @@ fun QuickAddScreen(
         problems = if (dirty) unreadableAmounts + problems.map { it.describe() } else emptyList(),
         // What the write did, arriving beside the button that did it.
         message = saveState,
+        problemActions = {
+            val unopened = problems.filterIsInstance<DraftProblem.UnknownAccount>().map { it.account }.distinct()
+            if (onOpenAccount != null && dirty) {
+                unopened.forEach { account ->
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = {
+                            // Opened on the entry's own date, or today when that is later: an account
+                            // cannot be used before the day it opens.
+                            val day = draft.date.takeIf { DATE_SHAPE.matches(it) } ?: today.toString()
+                            onOpenAccount(
+                                io.github.pintofi.beanbook.core.domain.DirectiveDraft.Open(
+                                    date = minOf(day, today.toString()),
+                                    account = account,
+                                    currencies = emptyList(),
+                                ),
+                            )
+                        },
+                        modifier = Modifier.semantics { contentDescription = "Open the account $account" },
+                    ) { Text("Open $account") }
+                }
+            }
+        },
     ) {
         Button(
             onClick = {
@@ -1486,3 +1513,5 @@ private fun AttachDocumentSection(
 
 /** The preview and button label the form showed when Save was tapped. */
 private data class SavingForm(val preview: String, val label: String)
+
+private val DATE_SHAPE = Regex("""\d{4}-\d{2}-\d{2}""")

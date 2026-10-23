@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Amount fields have a plus/minus button, because the number keyboard has no minus sign. ([#138], fixes [#117])
 - One search and tag filter is shared by Home, Journal and Balances, shown as chips that can be cleared. ([#138], fixes [#119])
 - Each widget has its own basis (units, at cost or market value), and a widget can show one commodity of an account. ([#138], fixes [#120])
+- First run is a guided setup: the basics (currency, start date and fine-tuning), the accounts you want, and a few preferences, then a ledger that Beancount has already read. Create with defaults skips the questions. ([#140], [#139], fixes [#127], [#128])
+- The first-run page can connect to a Fava server you host, and an import from first run ends with a summary and the choice of adding an entry or going to Home. ([#140], fixes [#129])
+- More, then Accounts, opens an account and closes an empty one, and lists closed accounts apart. ([#140], fixes [#130])
+- An Open button beside the message when an entry names an account the ledger has not opened. The entry you typed stays as it is. ([#140], fixes [#131])
 
 ### Changed
 - Edit opens entries that have comments, metadata on a posting or several currencies in the entry form instead of the text editor. ([#138], fixes [#124])
@@ -18,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every field explanation sits under its field, in one style. ([#138], fixes [#126])
 - The Documents Add page resets after filing and keeps one status line, and the Home card for an unlinked document opens Organize. ([#138], fixes [#121], [#122])
 - The entry preview keeps long lines whole and scrolls sideways. ([#138], fixes [#123])
+- Balances hides a closed account that holds nothing, and the entry form no longer offers closed accounts. ([#140], fixes [#132])
 
 ### Fixed
 - Remove buttons on form rows line up with their field. ([#138], fixes [#116])
@@ -25,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Retrying an entry on a remote Fava no longer sends it again when Fava could not be asked to re-read its ledger first. The retry fails and tells you, instead of storing the entry twice. ([#156])
 - Checking or opening a backup no longer reads whatever size the file claims. A manifest over 8 MiB, an encrypted project over 256 MiB or more than 100,000 files is refused with a message before anything is read into memory, so a small crafted backup cannot use up the phone's memory. ([#157])
 - A PDF page with an absurd size no longer crashes the document viewer. The viewer draws a page at a size that fits in memory, and says so when a page is too large or oddly shaped to show. ([#158])
+- The app no longer stops at start when the file that remembers the open project is empty, and that choice is now written to disk safely. ([#140], fixes [#133])
 
 ## [1.0.1] - 2026-10-18
 
@@ -134,7 +140,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#124]: https://github.com/pintofi/beanbook/issues/124
 [#125]: https://github.com/pintofi/beanbook/issues/125
 [#126]: https://github.com/pintofi/beanbook/issues/126
+[#127]: https://github.com/pintofi/beanbook/issues/127
+[#128]: https://github.com/pintofi/beanbook/issues/128
+[#129]: https://github.com/pintofi/beanbook/issues/129
+[#130]: https://github.com/pintofi/beanbook/issues/130
+[#131]: https://github.com/pintofi/beanbook/issues/131
+[#132]: https://github.com/pintofi/beanbook/issues/132
+[#133]: https://github.com/pintofi/beanbook/issues/133
 [#138]: https://github.com/pintofi/beanbook/issues/138
+[#139]: https://github.com/pintofi/beanbook/issues/139
+[#140]: https://github.com/pintofi/beanbook/issues/140
 [#156]: https://github.com/pintofi/beanbook/issues/156
 [#157]: https://github.com/pintofi/beanbook/issues/157
 [#158]: https://github.com/pintofi/beanbook/issues/158

@@ -175,6 +175,6 @@ internal class SnapshotCache(private val dir: File) {
          * and silently missing it -- a screen quietly losing a column rather than a load
          * failing loudly.
          */
-        const val FORMAT = "5"
+        const val FORMAT = "6"
     }
 }

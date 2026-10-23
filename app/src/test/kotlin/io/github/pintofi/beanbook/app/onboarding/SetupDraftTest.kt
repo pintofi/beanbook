@@ -109,6 +109,7 @@ class SetupDraftTest {
             accounts = SetupDraft.starterChoices() +
                 AccountChoice("Expenses:Coffee", on = true, currencies = "PKR", user = true),
             opening = mapOf("Assets:Cash" to "5000"),
+            mirrorFolder = "content://tree/ledger",
         )
         val back = SetupDraft.fromJson(Json.parse(draft.toJson().write()))
         assertEquals(draft, back)

@@ -175,7 +175,9 @@ fun BalancesScreen(
         val needle = filter.trim()
         // The engine's balances, or -- when the shared filter is on -- the matching entries' own
         // totals, which the snapshot already carries (see `LedgerSnapshot.filteredBy`).
-        val source = snapshot.accounts
+        // A closed account with nothing in it is history, not a balance; one that still holds
+        // something stays, since that is a mistake worth seeing.
+        val source = snapshot.accounts.filterNot { it.isClosed && it.positions.all { p -> p.number.signum() == 0 } }
 
         // Which branches are open, by full account name. Saved, so rotating the phone or
         // coming back from another surface does not fold the tree the user just opened.

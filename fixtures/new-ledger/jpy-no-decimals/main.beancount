@@ -19,9 +19,10 @@ option "booking_method" "STRICT"
 
 ;; Precision
 ; How far apart the two sides of an entry may be and still balance, when the
-; amounts do not say (an amount written as 12, with no decimals).
+; amounts do not say (an amount written as 12, with no decimals). The star is
+; every currency; a currency named on its own line uses that figure instead.
 ; https://beancount.github.io/docs/precision_tolerances.html
-option "inferred_tolerance_default" "JPY:0.5"
+option "inferred_tolerance_default" "*:0.005"
 
 ; How many decimal places figures are shown with.
 option "display_precision" "JPY:1"
@@ -38,13 +39,13 @@ plugin "fava.plugins.link_documents"
 
 ; More checks. Remove the semicolon at the start of a line to turn one on.
 ; Every currency needs a commodity line in files/commodities.beancount:
-; plugin "beancount.plugins.check_commodity"
+plugin "beancount.plugins.check_commodity"
 ; Post only to the last level of an account, Expenses:Food:Groceries and not Expenses:Food:
-; plugin "beancount.plugins.leafonly"
+plugin "beancount.plugins.leafonly"
 ; Two different prices for one commodity on the same day are an error:
-; plugin "beancount.plugins.unique_prices"
+plugin "beancount.plugins.unique_prices"
 ; A sale at a price must post its gain or loss to an Income account:
-; plugin "beancount.plugins.sellgains"
+plugin "beancount.plugins.sellgains"
 ; Every opened account must be used. Turn on once your accounts are in use:
 ; plugin "beancount.plugins.nounused"
 

@@ -31,7 +31,8 @@ import io.github.pintofi.beanbook.app.engine.LedgerState
 import io.github.pintofi.beanbook.app.plugins.collectUi
 import io.github.pintofi.beanbook.app.engine.RecoveryOnStart
 import io.github.pintofi.beanbook.app.ui.trashUi
-import io.github.pintofi.beanbook.app.ui.OnboardingScreen
+import io.github.pintofi.beanbook.app.ui.onboarding.OnboardingFlow
+import io.github.pintofi.beanbook.app.ui.onboarding.SetupActions
 import io.github.pintofi.beanbook.app.backup.ScheduledBackupWorker
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import io.github.pintofi.beanbook.app.ui.DocumentCaptureHandle
@@ -131,10 +132,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    private val folderPicker = treePicker(
+    internal val folderPicker = treePicker(
         android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
     ) { app, uri ->
-        app.projectsState.importFolder(contentResolver, uri) { id -> openProject(app, id) }
+        app.projectsState.importFolder(contentResolver, uri) { id -> afterImport(app, id) }
     }
 
     private val exportPicker = treePicker(
@@ -143,14 +144,12 @@ class MainActivity : ComponentActivity() {
         app.projectsState.exportFolder(contentResolver, uri)
     }
 
-    private val archivePicker = registerForActivityResult(
+    internal val archivePicker = registerForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
         val app = application as BeancountApplication
         uri?.let {
-            app.projectsState.importArchive(contentResolver, it, cacheDir) { id ->
-                openProject(app, id)
-            }
+            app.projectsState.importArchive(contentResolver, it, cacheDir) { id -> afterImport(app, id) }
         }
     }
 
@@ -229,7 +228,7 @@ class MainActivity : ComponentActivity() {
     private var mirrorEnabled: Boolean by mutableStateOf(false)
 
     /** The folder the project is mirrored into. Persisted so mirroring survives a restart. */
-    private val mirrorFolderPicker = registerForActivityResult(
+    internal val mirrorFolderPicker = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
     ) { uri ->
         val app = application as BeancountApplication
@@ -238,10 +237,16 @@ class MainActivity : ComponentActivity() {
                 it,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
+            // Before any ledger exists this is the setup choosing where the new ledger's copy goes.
+            if (app.projectsState.activeId.value == null) {
+                app.newLedgerSetup.update { d -> d.copy(mirrorFolder = it.toString()) }
+                return@registerForActivityResult
+            }
             app.mirror.setFolder(it.toString())
             mirrorFolder = it.toString()
         }
     }
+
 
     /** Opens a project: engine, ledger, and the active-project record all move together. */
     /** The name the picker shows, so an installed plugin is recognisable later. */
@@ -279,14 +284,15 @@ class MainActivity : ComponentActivity() {
      * by taking `.projectId`, so the add-entry widget -- which correctly sends `ADD` -- landed
      * on whatever the app opens by default.
      */
-    private var requestedSurface: String? by mutableStateOf(null)
+    internal var requestedSurface: String? by mutableStateOf(null)
 
-    private fun openProject(app: BeancountApplication, projectId: String) {
+    internal fun openProject(app: BeancountApplication, projectId: String) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
         app.projectsState.open(projectId)
         // Before anything can sync: the mirror answers for this project only.
         app.mirror.useProject(projectId)
         app.undo.dismiss()
+        askForNotifications()   // once, and only when there is a ledger for it to be about
         mirrorFolder = app.mirror.folderUri
         mirrorEnabled = app.mirror.enabled
         app.templatesState.open(projectId)
@@ -360,12 +366,12 @@ class MainActivity : ComponentActivity() {
      * allows it, and the app never asked. Asked once: a refusal is respected, and the
      * work still runs -- only the "Beanbook keeps working" notice is not shown.
      */
-    private fun askForNotifications() {
+    internal fun askForNotifications(force: Boolean = false) {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return
         val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
         val prefs = getSharedPreferences("prompts", MODE_PRIVATE)
-        if (granted || prefs.getBoolean("asked_notifications", false)) return
+        if (granted || (!force && prefs.getBoolean("asked_notifications", false))) return
         prefs.edit().putBoolean("asked_notifications", true).apply()
         notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
     }
@@ -381,10 +387,10 @@ class MainActivity : ComponentActivity() {
         // safeDrawingPadding at the root, not from here.
         enableEdgeToEdge()
 
-        askForNotifications()
-
         val app = application as BeancountApplication
 
+        // A setup killed mid-creation leaves a staging folder; nothing else would ever remove it.
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { runCatching { app.workspace.sweepStaleStaging() } }
         app.projectsState.refresh()
         hideWidgetAmounts = io.github.pintofi.beanbook.app.widget.WidgetPreferences(this).hideAmounts()
         backupFolder = app.backupSettings.folderUri()
@@ -524,14 +530,13 @@ class MainActivity : ComponentActivity() {
                         // Outside the Scaffold, so it takes the insets itself. This is the
                         // first screen anybody sees and the one where the title once sat
                         // flush against the status bar.
-                        OnboardingScreen(
+                        OnboardingFlow(
+                            setup = app.newLedgerSetup,
                             modifier = Modifier.safeDrawingPadding(),
-                            onCreateNew = { title ->
-                                app.projectsState.createNew(title) { openProject(app, it) }
-                            },
-                            onOpenFolder = { folderPicker.launch(null) },
-                            onOpenArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
+                            themeChoice = themeChoice,
+                            actions = setupActions(app),
                             busyMessage = projectMessage,
+                            remoteNote = remoteNote(app, remoteStatus, remoteMessage),
                             trash = app.projectsState.trashUi(trashedProjects) { openProject(app, it) },
                         )
                         return@Surface
@@ -736,6 +741,9 @@ class MainActivity : ComponentActivity() {
                                 DIRECTIVE_OPERATION,
                                 target = directiveTarget(app, activeId!!, ledger, draft),
                             )
+                        },
+                        onOpenAccount = if (remoteStatus is EngineStatus.Serving) null else { draft ->
+                            writeAccountDirective(app, activeId!!, ledger, draft)
                         },
                         // In remote mode the outcome of a save comes from the server, so
                         // that is what the Add screen has to report — otherwise a remote

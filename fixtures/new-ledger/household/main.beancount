@@ -19,10 +19,10 @@ option "booking_method" "STRICT"
 
 ;; Precision
 ; How far apart the two sides of an entry may be and still balance, when the
-; amounts do not say (an amount written as 12, with no decimals).
+; amounts do not say (an amount written as 12, with no decimals). The star is
+; every currency; a currency named on its own line uses that figure instead.
 ; https://beancount.github.io/docs/precision_tolerances.html
-option "inferred_tolerance_default" "EUR:0.005"
-option "inferred_tolerance_default" "USD:0.005"
+option "inferred_tolerance_default" "*:0.005"
 
 ; How many decimal places figures are shown with.
 option "display_precision" "EUR:0.01"

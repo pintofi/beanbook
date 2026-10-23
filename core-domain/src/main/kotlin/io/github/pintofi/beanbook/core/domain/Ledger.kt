@@ -147,7 +147,15 @@ data class AccountBalance(
      * when it is not.
      */
     val holdings: List<Holding> = emptyList(),
+    /** The day an `open` directive opened the account; null for one used without any. */
+    val opened: String? = null,
+    /** The day a `close` directive closed it, or null while it is open. */
+    val closed: String? = null,
+    /** The currencies its `open` directive restricts it to; empty when any is accepted. */
+    val allowed: List<String> = emptyList(),
 ) {
+    val isClosed: Boolean get() = closed != null
+
     /** The last segment, for display in a tree: "Assets:Bank:Checking" -> "Checking". */
     val leaf: String get() = name.substringAfterLast(':')
 

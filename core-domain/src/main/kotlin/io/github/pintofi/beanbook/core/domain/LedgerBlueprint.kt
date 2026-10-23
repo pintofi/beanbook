@@ -28,7 +28,12 @@ data class LedgerBlueprint(
     val fiscalYearEnd: MonthDay? = null,
     /** The report Fava opens on (for example `balance_sheet/`), or null for Fava's own default. */
     val defaultPage: String? = null,
-    val checks: Set<Check> = emptySet(),
+    val checks: Set<Check> = DEFAULT_CHECKS,
+    /**
+     * Currencies whose decimal places the person chose themselves. Each gets a tolerance of its own;
+     * every other currency uses the ledger-wide 0.005.
+     */
+    val explicitDecimals: Set<String> = emptySet(),
     val accounts: List<AccountPlan> = STARTER_ACCOUNTS.filter { it.second }.map { it.first },
     /** Signed, in the account's currency: what each account held when the books begin. */
     val openingBalances: Map<String, Amount> = emptyMap(),
@@ -130,15 +135,17 @@ data class LedgerBlueprint(
         appendLine("; differ: put the method after its currency in its open line.")
         appendLine("option \"booking_method\" \"$booking\"")
         appendLine()
+        appendLine(";; Precision")
+        appendLine("; How far apart the two sides of an entry may be and still balance, when the")
+        appendLine("; amounts do not say (an amount written as 12, with no decimals). The star is")
+        appendLine("; every currency; a currency named on its own line uses that figure instead.")
+        appendLine("; https://beancount.github.io/docs/precision_tolerances.html")
+        appendLine("option \"inferred_tolerance_default\" \"*:$DEFAULT_TOLERANCE\"")
+        decimals.toSortedMap().filterKeys { it in explicitDecimals }.forEach { (code, places) ->
+            appendLine("option \"inferred_tolerance_default\" \"$code:${tolerance(places)}\"")
+        }
+        appendLine()
         if (decimals.isNotEmpty()) {
-            appendLine(";; Precision")
-            appendLine("; How far apart the two sides of an entry may be and still balance, when the")
-            appendLine("; amounts do not say (an amount written as 12, with no decimals).")
-            appendLine("; https://beancount.github.io/docs/precision_tolerances.html")
-            decimals.toSortedMap().forEach { (code, places) ->
-                appendLine("option \"inferred_tolerance_default\" \"$code:${tolerance(places)}\"")
-            }
-            appendLine()
             appendLine("; How many decimal places figures are shown with.")
             decimals.toSortedMap().forEach { (code, places) ->
                 appendLine("option \"display_precision\" \"$code:${step(places)}\"")
@@ -228,6 +235,15 @@ data class LedgerBlueprint(
 
     companion object {
         const val OPENING = "Equity:Opening-Balances"
+
+        /**
+         * The checks a new ledger starts with: all but [Check.NOUNUSED], which Beancount reports as an
+         * error for every account not yet used, so a ledger made with it would open full of errors.
+         */
+        val DEFAULT_CHECKS: Set<Check> = Check.entries.toSet() - Check.NOUNUSED
+
+        /** The tolerance of every currency not given one of its own. */
+        const val DEFAULT_TOLERANCE = "0.005"
         private const val MIN_NAME_WIDTH = 28
 
         private const val PRICES = "; Prices, one per line, for example:  2026-10-01 price USD  0.92 EUR\n" +

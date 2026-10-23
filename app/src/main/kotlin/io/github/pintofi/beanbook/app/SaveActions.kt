@@ -37,6 +37,13 @@ internal fun directiveTarget(
     ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?,
     draft: io.github.pintofi.beanbook.core.domain.DirectiveDraft,
 ): java.io.File {
+    if (draft is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Open ||
+        draft is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Close
+    ) {
+        val accounts = app.workspace.projectDir(projectId).resolve("files/accounts.beancount")
+        val read = ledger?.includedFiles.orEmpty().map { java.io.File(it).canonicalPath }
+        if (accounts.canonicalPath in read) return accounts
+    }
     if (draft is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Commodity) {
         val commodities = app.workspace.projectDir(projectId).resolve("files/commodities.beancount")
         val read = ledger?.includedFiles.orEmpty().map { java.io.File(it).canonicalPath }
@@ -48,6 +55,9 @@ internal fun directiveTarget(
 /** The two writes the entry form makes, and the only ones that close it. */
 internal const val ENTRY_OPERATION = "quick-add"
 internal const val DIRECTIVE_OPERATION = "add-directive"
+
+/** Opening an account from inside the entry form: written, but not an entry, so the form stays as typed. */
+internal const val OPEN_ACCOUNT_OPERATION = "open-account"
 private val ENTRY_OPERATIONS = setOf(ENTRY_OPERATION, DIRECTIVE_OPERATION)
 
 internal fun MainActivity.saveText(
@@ -114,3 +124,31 @@ private fun named(errors: List<String>): String {
     val more = if (errors.size > shown.size) " (and ${errors.size - shown.size} more)" else ""
     return ": " + shown.joinToString("; ") + more
 }
+
+/** What the form says after an account was opened or closed from it, or why that did not happen. */
+internal fun accountSaveMessage(draft: io.github.pintofi.beanbook.core.domain.DirectiveDraft, result: String): String {
+    if (!result.startsWith("Saved")) return result
+    return when (draft) {
+        is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Open -> "Opened ${draft.account}."
+        is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Close -> "Closed ${draft.account}."
+        else -> result
+    }
+}
+
+/**
+ * Writes an `open` or `close` line from the entry form or the Accounts screen. Not an entry commit
+ * ([OPEN_ACCOUNT_OPERATION]): the form it was started from keeps what was typed.
+ */
+internal fun MainActivity.writeAccountDirective(
+    app: BeancountApplication,
+    projectId: String,
+    ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?,
+    draft: io.github.pintofi.beanbook.core.domain.DirectiveDraft,
+) = saveText(
+    app,
+    projectId,
+    draft.render(),
+    OPEN_ACCOUNT_OPERATION,
+    target = directiveTarget(app, projectId, ledger, draft),
+    onResult = { saveMessage = accountSaveMessage(draft, it) },
+)

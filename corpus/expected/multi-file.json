@@ -2,6 +2,9 @@
   "account_count": 4,
   "accounts": [
     {
+      "allowed": [
+        "USD"
+      ],
       "at_cost": [
         {
           "currency": "USD",
@@ -20,6 +23,7 @@
           "number": "1744.80"
         }
       ],
+      "closed": null,
       "holdings": [
         {
           "at_cost": [
@@ -44,6 +48,7 @@
         }
       ],
       "name": "Assets:Bank:Checking",
+      "opened": "2024-01-01",
       "positions": [
         {
           "currency": "USD",
@@ -52,6 +57,9 @@
       ]
     },
     {
+      "allowed": [
+        "USD"
+      ],
       "at_cost": [
         {
           "currency": "USD",
@@ -70,6 +78,7 @@
           "number": "-3000.00"
         }
       ],
+      "closed": null,
       "holdings": [
         {
           "at_cost": [
@@ -94,6 +103,7 @@
         }
       ],
       "name": "Equity:Opening-Balances",
+      "opened": "2024-01-01",
       "positions": [
         {
           "currency": "USD",
@@ -102,6 +112,9 @@
       ]
     },
     {
+      "allowed": [
+        "USD"
+      ],
       "at_cost": [
         {
           "currency": "USD",
@@ -120,6 +133,7 @@
           "number": "55.20"
         }
       ],
+      "closed": null,
       "holdings": [
         {
           "at_cost": [
@@ -144,6 +158,7 @@
         }
       ],
       "name": "Expenses:Food:Groceries",
+      "opened": "2024-01-01",
       "positions": [
         {
           "currency": "USD",
@@ -152,6 +167,9 @@
       ]
     },
     {
+      "allowed": [
+        "USD"
+      ],
       "at_cost": [
         {
           "currency": "USD",
@@ -170,6 +188,7 @@
           "number": "1200.00"
         }
       ],
+      "closed": null,
       "holdings": [
         {
           "at_cost": [
@@ -194,6 +213,7 @@
         }
       ],
       "name": "Expenses:Home:Rent",
+      "opened": "2024-01-01",
       "positions": [
         {
           "currency": "USD",

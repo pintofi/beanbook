@@ -49,11 +49,13 @@ data class SetupDraft(
     val fiscalYearEnd: String? = null,
     /** Fava page the reports open on, or null for its own default. */
     val reportsOpenOn: String? = null,
-    val checks: Set<LedgerBlueprint.Check> = emptySet(),
+    val checks: Set<LedgerBlueprint.Check> = LedgerBlueprint.DEFAULT_CHECKS,
     val everyAccountUsesMain: Boolean = true,
     val accounts: List<AccountChoice> = starterChoices(),
     /** What each chosen account held on the first day, as typed. A liability is typed as what is owed. */
     val opening: Map<String, String> = emptyMap(),
+    /** A folder to keep a copy of the ledger in (a content URI), chosen on the last step. */
+    val mirrorFolder: String? = null,
 ) {
 
     /** The currencies the ledger names, main first. */
@@ -104,6 +106,7 @@ data class SetupDraft(
             fiscalYearEnd = fiscalYearEnd?.let { runCatching { MonthDay.parse("--$it") }.getOrNull() },
             defaultPage = reportsOpenOn,
             checks = checks,
+            explicitDecimals = places.keys,
             accounts = plans,
             openingBalances = balances,
             commodityNames = names,
@@ -134,6 +137,7 @@ data class SetupDraft(
             },
         ),
         "opening" to Json.Obj(opening.mapValues { Json.of(it.value) }),
+        "mirror" to (mirrorFolder?.let { Json.of(it) } ?: Json.Null),
     )
 
     companion object {
@@ -191,6 +195,7 @@ data class SetupDraft(
                 accounts = accounts,
                 opening = obj.obj("opening")?.fields.orEmpty()
                     .mapNotNull { (k, v) -> (v as? Json.Str)?.let { k to it.value } }.toMap(),
+                mirrorFolder = obj.string("mirror"),
             )
         }
     }
