@@ -152,8 +152,8 @@ document is neither -- and it is not a payment page, since both editions are fre
 
 ## 5. Channels not supported in v1
 
-**F-Droid**: the Expert edition has a recipe in a merge request against `fdroiddata`, and its
-pipeline passed; see [fdroid.md](fdroid.md). No billing library or proprietary component
+**F-Droid**: the Expert edition is listed, from a recipe in `fdroiddata` that builds it from
+source; see [fdroid.md](fdroid.md). No billing library or proprietary component
 remains in either edition.
 
 **Amazon Appstore** and others: deferred, no architectural blocker.

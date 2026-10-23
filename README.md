@@ -15,6 +15,8 @@
 <img src="docs/assets/badges/python.svg" height="28" alt="CPython 3.13">
 <a href="docs/privacy.md"><img src="docs/assets/badges/telemetry.svg" height="28" alt="Telemetry: none"></a>
 
+<a href="https://f-droid.org/en/packages/io.github.pintofi.beanbook.expert/"><img src="docs/assets/badges/get-it-on-fdroid.png" height="64" alt="Get it on F-Droid"></a>
+&nbsp;
 <a href="https://github.com/pintofi/beanbook/releases/latest"><img src="docs/assets/badges/get-it-on-github.png" height="64" alt="Download the APK from GitHub Releases"></a>
 
 <h3>Your ledger stays a folder of Beancount text files.<br>Beanbook lets you work on it from your phone.</h3>
@@ -522,3 +524,6 @@ no additional licence permission: Beanbook is GPL-2.0-only, with nothing added.
 
 Beancount and Fava are independent projects. This app is built on their work and is not
 affiliated with or endorsed by them.
+
+The "Get it on F-Droid" badge is by [F-Droid](https://f-droid.org/en/docs/Badges/), licensed
+[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Only its empty margin was trimmed.
