@@ -8,6 +8,7 @@ import java.util.zip.ZipOutputStream
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
@@ -213,5 +214,70 @@ class PluginStoreTest {
         override val allowsAndroidBridge = true
         override val allowsPackageDownload = true
         override val name = "expert"
+    }
+
+    // A damaged index used to read as "no plugins", and the next install wrote it back with one
+    // plugin in it: every other plugin's folder stayed on disk, unlisted, and their enabled
+    // choices were forgotten.
+    private fun twoInstalledThenDamaged(): File {
+        assertIs<InstallResult.Installed>(store.install(pyFile("a.py", plain), Expert, "a"))
+        val b = assertIs<InstallResult.Installed>(store.install(pyFile("b.py", plain), Expert, "b"))
+        store.setEnabled(b.plugin.id, true)
+        val index = File(project, "plugins/installed.json")
+        index.writeText("{ this is not json")
+        return index
+    }
+
+    @Test
+    fun `a damaged index is reported, not read as no plugins`() {
+        twoInstalledThenDamaged()
+
+        assertTrue(store.indexProblem().orEmpty().contains("damaged"))
+        assertEquals(emptyList(), store.list(), "the screen still opens")
+    }
+
+    @Test
+    fun `installing over a damaged index is refused and copies nothing`() {
+        val index = twoInstalledThenDamaged()
+
+        val result = assertIs<InstallResult.Failed>(store.install(pyFile("c.py", plain), Expert, "c"))
+
+        assertTrue(result.reason.contains("damaged"), result.reason)
+        assertEquals("{ this is not json", index.readText(), "the damaged file is left as it was")
+        val names = File(project, "plugins").list().orEmpty().toList()
+        assertFalse(names.any { it.startsWith("c") }, "no folder for the refused plugin: $names")
+        assertTrue(names.any { it.startsWith("installed.json.damaged-") }, "a copy is kept aside: $names")
+    }
+
+    @Test
+    fun `turning a plugin on or removing it over a damaged index is refused and removes nothing`() {
+        val index = twoInstalledThenDamaged()
+        val folders = File(project, "plugins").list().orEmpty().filter { File(project, "plugins/$it").isDirectory }
+
+        assertFailsWith<PluginIndexDamaged> { store.setEnabled(folders.first(), true) }
+        assertFailsWith<PluginIndexDamaged> { store.remove(folders.first()) }
+
+        assertEquals("{ this is not json", index.readText())
+        assertTrue(folders.all { File(project, "plugins/$it").isDirectory }, "no plugin folder was deleted")
+    }
+
+    @Test
+    fun `once the index is readable again changes work, and the copy kept aside is the damaged text`() {
+        val index = twoInstalledThenDamaged()
+        assertFailsWith<PluginIndexDamaged> { store.setEnabled("a.py", true) }
+        val copy = File(project, "plugins").listFiles().orEmpty()
+            .first { it.name.startsWith("installed.json.damaged-") }
+        assertEquals("{ this is not json", copy.readText())
+
+        index.writeText(Json.obj("schema" to Json.of(1), "plugins" to Json.arr(emptyList())).write())
+
+        assertEquals(null, store.indexProblem())
+        store.setEnabled("a.py", true)
+    }
+
+    @Test
+    fun `no index at all is no plugins and no problem`() {
+        assertEquals(null, store.indexProblem())
+        assertEquals(emptyList(), store.list())
     }
 }
