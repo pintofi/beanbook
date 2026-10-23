@@ -426,6 +426,8 @@ and the status of every item.
 - [x] **1.0.1**: one APK per processor type, Trash for deleted projects, and fixes from the repository review
 - [ ] **1.1 Trust and polish** (now)
   - [x] Review every file in the repository: 15 of 15 areas done ([#16](https://github.com/pintofi/beanbook/issues/16))
+  - [ ] A guided first run and an Accounts page ([#128](https://github.com/pintofi/beanbook/issues/128), [#130](https://github.com/pintofi/beanbook/issues/130))
+  - [ ] Fixes from daily use: filter, widgets, amounts, documents ([#138](https://github.com/pintofi/beanbook/pull/138))
   - [ ] Fava's own editor saves outside the app's write protocol ([#17](https://github.com/pintofi/beanbook/issues/17))
   - [ ] TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18))
   - [ ] Instrumentation tests in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19))

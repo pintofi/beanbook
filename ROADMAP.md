@@ -23,6 +23,8 @@ Make the app sturdier before it grows.
 | Item | Status | Why |
 |---|---|---|
 | A careful review of every file in the repository ([#16](https://github.com/pintofi/beanbook/issues/16)) | done: 15 of 15 areas (`core-domain`, `core-data`, `engine-local`, `clients`, `app-core`, `app-ui`, `resources`, `scanner`, `tests`, `tools`, `build-ci`, `data-sets`, `docs`, `site`, `repo-files`: [logs](review/)) | A known-good baseline to build on |
+| A guided first run and account management: setup steps, a ledger Beancount reads before it is kept, and an Accounts page ([#128](https://github.com/pintofi/beanbook/issues/128), [#130](https://github.com/pintofi/beanbook/issues/130)) | in progress: [#139](https://github.com/pintofi/beanbook/pull/139), [#140](https://github.com/pintofi/beanbook/pull/140) | A new ledger should start with the person's own currency and accounts, and an account should be something you can open in the app |
+| Fixes from daily use: one filter for Home, Journal and Balances, per-widget choices, signed amounts, document pages, editing entries that carry comments ([#138](https://github.com/pintofi/beanbook/pull/138)) | in progress | Found by using the app on a phone |
 | Fava's own editor saves outside the app's write protocol ([#17](https://github.com/pintofi/beanbook/issues/17)) | accepted | Every change should get a snapshot, a re-parse and Undo |
 | A TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18)) | accepted | Automated checks do not cover screen-reader order |
 | The instrumentation suite in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19)) | accepted | Regressions and flakes should be visible |
@@ -73,4 +75,4 @@ when a milestone takes it. A bug is not a roadmap item: use the
 [bug form](https://github.com/pintofi/beanbook/issues/new?template=bug_report.yml). Security
 problems go through [SECURITY.md](SECURITY.md).
 
-Last reviewed: 2026-10-18. The README carries a shorter checklist of the same plan; this page is the detail.
+Last reviewed: 2026-10-21. The README carries a shorter checklist of the same plan; this page is the detail.
