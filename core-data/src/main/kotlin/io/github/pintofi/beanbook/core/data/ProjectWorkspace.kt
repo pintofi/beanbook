@@ -1,6 +1,7 @@
 package io.github.pintofi.beanbook.core.data
 
 import io.github.pintofi.beanbook.core.domain.BeancountText
+import io.github.pintofi.beanbook.core.domain.LedgerBlueprint
 import java.io.File
 import java.time.LocalDate
 
@@ -99,6 +100,70 @@ class ProjectWorkspace(private val root: File) {
     }
 
     /**
+     * Creates a project from a [LedgerBlueprint], proves Beancount accepts it, and only then puts it in place.
+     *
+     * Everything is written into a staging folder beside the projects, each file flushed, and
+     * [validate] is asked to read the staged ledger. If Beancount reports any error, the staging
+     * folder is deleted and [BlueprintRejected] says what it found: a ledger the app generated
+     * that the app's own engine will not read is the app's mistake, and nothing is left behind. When
+     * the engine cannot be reached at all ([LedgerUnavailable]) the ledger is created anyway,
+     * since the generator is held to real Beancount by its tests and a normal load reports
+     * whatever is wrong in the usual place.
+     *
+     * @return the main ledger file.
+     */
+    suspend fun createFromBlueprint(
+        id: String,
+        blueprint: LedgerBlueprint,
+        validate: (suspend (File) -> Result<List<String>>)? = null,
+    ): File {
+        val dir = projectDir(id)
+        require(!dir.exists()) { "project already exists: $id" }
+        val problems = blueprint.problems()
+        require(problems.isEmpty()) { problems.joinToString(" ") }
+
+        val staging = projectsDir.resolve("$BUILDING_PREFIX$id")
+        staging.deleteRecursively()
+        try {
+            SCAFFOLD.forEach { staging.resolve(it).mkdirs() }
+            blueprint.render().forEach { (path, text) ->
+                val target = staging.resolve(path)
+                target.parentFile?.mkdirs()
+                Durable.writeText(target, text)
+            }
+            SCAFFOLD.forEach { Durable.syncDirectory(staging.resolve(it)) }
+            Durable.syncDirectory(staging)
+            validate?.invoke(staging.resolve(MAIN_FILE))?.let(::rejection)?.let { throw it }
+            check(staging.renameTo(dir)) { "could not put the new project in place: $id" }
+            Durable.syncDirectory(projectsDir)
+        } catch (failure: Throwable) {
+            staging.deleteRecursively()
+            throw failure
+        }
+        return mainFile(id)
+    }
+
+    /**
+     * What a validation outcome means for a new ledger: errors in it, or a failure that is not "the
+     * engine is unavailable" (Beancount could not read it at all), are a rejection; anything else is not.
+     */
+    private fun rejection(outcome: Result<List<String>>): BlueprintRejected? {
+        val errors = outcome.getOrNull().orEmpty()
+        if (errors.isNotEmpty()) return BlueprintRejected(errors)
+        return outcome.exceptionOrNull()?.takeIf { it !is LedgerUnavailable }
+            ?.let { BlueprintRejected(listOf(it.message ?: "the ledger could not be read")) }
+    }
+
+    /** Deletes staging folders a crash left behind, once they are old enough not to be in use. */
+    fun sweepStaleStaging(olderThanMillis: Long = STALE_STAGING_MILLIS) {
+        val cutoff = System.currentTimeMillis() - olderThanMillis
+        projectsDir.listFiles { f -> f.isDirectory && f.name.startsWith(BUILDING_PREFIX) }
+            .orEmpty()
+            .filter { it.lastModified() < cutoff }
+            .forEach { it.deleteRecursively() }
+    }
+
+    /**
      * Project ids become directory names, so they are validated rather than trusted:
      * no traversal, no separators, no hidden files, no reserved names.
      */
@@ -154,6 +219,8 @@ class ProjectWorkspace(private val root: File) {
         const val MAIN_FILE = "main.beancount"
         private const val MAX_ID_LENGTH = 64
         private const val BUILDING_PREFIX = ".creating-"
+        private const val STALE_STAGING_MILLIS = 60L * 60 * 1000
+        private val SCAFFOLD = listOf("files", "documents", "prices", "scripts", "plugins")
         private val RESERVED_IDS = setOf(".", "..")
 
         private val TRANSACTIONS_TEMPLATE = """
@@ -161,3 +228,7 @@ class ProjectWorkspace(private val root: File) {
         """.trimIndent() + "\n"
     }
 }
+
+/** The ledger a blueprint made was not accepted by Beancount; [errors] is what it said. */
+class BlueprintRejected(val errors: List<String>) :
+    IllegalStateException("Beancount did not accept the new ledger: ${errors.take(2).joinToString("; ")}")

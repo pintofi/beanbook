@@ -1,0 +1,7 @@
+; The currencies and other commodities this ledger uses, one commodity line each.
+; The name is what Fava shows beside the code.
+
+2026-09-30 commodity EUR
+  name: "Euro"
+2026-09-30 commodity USD
+  name: "US Dollar"

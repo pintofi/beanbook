@@ -1,0 +1,11 @@
+; The accounts in this ledger. An account has to be opened before an entry can
+; use it. The currency after a name is the only one that account accepts;
+; leave it off to accept any. Accounts you open in Beanbook are added at the end.
+
+2026-03-31 open Assets:Cash                 JPY
+2026-03-31 open Assets:Bank:Checking        JPY
+2026-03-31 open Income:Salary               JPY
+2026-03-31 open Expenses:Food:Groceries     JPY
+2026-03-31 open Expenses:Home:Rent          JPY
+2026-03-31 open Expenses:Transport          JPY
+2026-03-31 open Equity:Opening-Balances     JPY
