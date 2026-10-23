@@ -57,12 +57,13 @@ Get an entry into the ledger faster, from anywhere on the phone.
 | A send queue for a remote Fava ([#29](https://github.com/pintofi/beanbook/issues/29)) | proposed | Add entries when the server is not reachable |
 | Price updates on request, Expert edition ([#30](https://github.com/pintofi/beanbook/issues/30)) | proposed | Opt-in, never automatic |
 | Translations ([#31](https://github.com/pintofi/beanbook/issues/31)) | proposed | Beancount has a large non-English community |
+| Git sync for a project: pull and push, never an automatic merge ([#154](https://github.com/pintofi/beanbook/issues/154)) | proposed | A ledger kept in Git should not need another app. Opt-in, and a conflict stops and asks |
 
 ## Not planned
 
-Two-way sync and embedded Git (a sync engine under another name; Mirror plus Syncthing, MGit or
-Termux already cover it), cloud OCR or text AI (they send your data off the phone), accounts,
-analytics, ads, and another full redesign before the screenshot tests exist.
+A sync that merges conflicting edits for you (it can lose money without saying so; Git sync, if it
+comes, stops and shows both versions), cloud OCR or text AI (they send your data off the phone),
+accounts, analytics, ads, and another full redesign before the screenshot tests exist.
 
 ## How to propose something
 
