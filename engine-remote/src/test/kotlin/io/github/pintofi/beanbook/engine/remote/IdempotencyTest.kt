@@ -37,6 +37,9 @@ class IdempotencyTest {
     private var addEntriesStatus = 200
     private var queryStatus = 200
 
+    /** Not 200 means the re-read failed; the query then answers from a stale ledger that holds nothing. */
+    private var changedStatus = 200
+
     private fun start(): RemoteAddress {
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
 
@@ -57,10 +60,13 @@ class IdempotencyTest {
                     val query = exchange.requestURI.rawQuery.orEmpty()
                     val key = KEY_IN_QUERY.find(java.net.URLDecoder.decode(query, "UTF-8"))
                         ?.groupValues?.get(1)
-                    val found = key != null && stored.any { it.contains("\"$key\"") }
+                    val found = changedStatus == 200 && key != null && stored.any { it.contains("\"$key\"") }
                     val rows = if (found) """["match"]""" else ""
                     respond(exchange, 200, """{"data":{"rows":[$rows],"t":"table"}}""")
                 }
+
+                exchange.requestURI.path.endsWith("/api/changed") ->
+                    respond(exchange, changedStatus, if (changedStatus == 200) """{"data":true}""" else """{"error":"no"}""")
 
                 exchange.requestURI.path == "/" ->
                     respond(exchange, 302, "", location = "/probe/income_statement/")
@@ -217,6 +223,32 @@ class IdempotencyTest {
         // A query that fails is not evidence of absence. Sending anyway is a duplicate.
         assertIs<SubmitResult.Failed>(result)
         assertEquals(1, stored.size, "the entry was sent again on an unanswerable check: $stored")
+    }
+
+    @Test
+    fun `a retry sends nothing when the server could not re-read its file, even if the query answers`() {
+        // The query would be answered from a stale ledger that does not hold the entry yet,
+        // so "not there" means nothing. Sending anyway stored the entry twice.
+        val client = clientFor(start())
+        client.submit("probe", draft, key = "key-1")
+        changedStatus = 500
+        requests.clear()
+
+        val result = client.retry("probe", draft, "key-1")
+
+        assertIs<SubmitResult.Failed>(result)
+        assertEquals(1, stored.size, "the entry was sent again after a failed refresh: $stored")
+        assertTrue(requests.none { it.startsWith("PUT") || it.contains("add_entries") }, "$requests")
+    }
+
+    @Test
+    fun `a retry still sends the entry when the refresh worked and the key is really absent`() {
+        val client = clientFor(start())
+
+        val result = client.retry("probe", draft, "never-sent")
+
+        assertIs<SubmitResult.Stored>(result)
+        assertEquals(1, stored.size)
     }
 
     private companion object {

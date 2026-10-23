@@ -140,10 +140,13 @@ class FavaClient(
      * sent it again, and the ledger ended up with two.
      *
      * Second, [Presence.UNKNOWN]: a query that fails is not evidence of absence. Treating it
-     * as absence is the same duplicate by another route.
+     * as absence is the same duplicate by another route. The same goes for a refresh that
+     * fails: the query would then be answered from a ledger that may be stale, and a stale
+     * "not there" is exactly the wrong answer, so the answer is [Presence.UNKNOWN] and no
+     * query is made.
      */
     fun isPresent(slug: String, key: String): Presence {
-        refresh(slug)
+        if (!refresh(slug)) return Presence.UNKNOWN
         val query = "SELECT narration WHERE any_meta('$META_KEY') = '${escape(key)}'"
         val response = try {
             transport.request(
@@ -163,16 +166,15 @@ class FavaClient(
     }
 
     /**
-     * Makes the server re-read its ledger if the file changed underneath it.
-     *
-     * Best effort on purpose: if this fails the query below still runs, and a stale answer
-     * comes back as [Presence.ABSENT] rather than as a wrong [Presence.PRESENT] — the
-     * direction that costs a retry rather than a duplicate.
+     * Makes the server re-read its ledger if the file changed underneath it, and says whether
+     * it did. A stale answer from the query is [Presence.ABSENT], and that sends the entry
+     * again, so it is a duplicate and not a harmless retry: when this returns false the caller
+     * must not trust a query.
      */
-    private fun refresh(slug: String) {
-        runCatching {
-            transport.request(address.resolve("/$slug/api/changed"), credentials = credentials)
-        }
+    private fun refresh(slug: String): Boolean = try {
+        transport.request(address.resolve("/$slug/api/changed"), credentials = credentials).isSuccess
+    } catch (ignored: RemoteException) {
+        false
     }
 
     /** The JSON Fava expects, with the idempotency key carried as entry metadata. */
