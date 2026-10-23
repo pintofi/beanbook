@@ -97,12 +97,27 @@ sealed interface PluginIntegrity {
  * different decisions, and running user code is the one that deserves its own yes
  * (docs/threat-model.md §3.2).
  */
+/** The list of installed plugins exists but cannot be read; [message] says what to do, in words for the person. */
+class PluginIndexDamaged(message: String) : IllegalStateException(message)
+
 class PluginStore(private val projectRoot: File) {
 
     private val pluginsDir = File(projectRoot, "plugins")
     private val indexFile = File(pluginsDir, "installed.json")
 
-    fun list(): List<InstalledPlugin> {
+    /**
+     * The installed plugins. A missing index is no plugins; a damaged one also shows none here,
+     * so the screen still opens, but it is never treated as "none installed" by a change:
+     * [install], [setEnabled] and [remove] refuse to write over it, and [indexProblem] says why.
+     */
+    fun list(): List<InstalledPlugin> = readIndex() ?: emptyList()
+
+    /** Null when the index is absent or readable; otherwise what is wrong and what to do. */
+    fun indexProblem(): String? =
+        if (readIndex() == null) damagedMessage(keptAs = null) else null
+
+    /** The plugins in the index, empty when there is no index, null when there is one that cannot be read. */
+    private fun readIndex(): List<InstalledPlugin>? {
         if (!indexFile.isFile) return emptyList()
         // The index can go between the check and the read -- a project deleted while the
         // plugin list refreshes in the background. No index is no plugins, which is what the
@@ -114,10 +129,28 @@ class PluginStore(private val projectRoot: File) {
             if (indexFile.exists()) throw gone
             return emptyList()
         }
-        val root = Json.parse(text) as? Json.Obj ?: return emptyList()
-        return root.array("plugins").orEmpty()
-            .mapNotNull { InstalledPlugin.fromJson(it as? Json.Obj ?: return@mapNotNull null) }
+        val root = Json.parse(text) as? Json.Obj ?: return null
+        val entries = root.array("plugins") ?: return null
+        return entries.mapNotNull { InstalledPlugin.fromJson(it as? Json.Obj ?: return null) }
     }
+
+    /**
+     * The index to change. A damaged one is never read as "no plugins" and then written back
+     * with one more in it, which forgot every other plugin and which of them were enabled while
+     * their folders stayed on disk. It is copied aside, untouched, and the change is refused.
+     */
+    private fun indexForChange(): List<InstalledPlugin> {
+        readIndex()?.let { return it }
+        val kept = File(pluginsDir, "installed.json.damaged-" + BackupArchive.sha256(indexFile).take(8))
+        if (!kept.exists()) indexFile.copyTo(kept)
+        throw PluginIndexDamaged(damagedMessage(kept.name))
+    }
+
+    private fun damagedMessage(keptAs: String?) =
+        "The list of installed plugins (plugins/installed.json) is damaged. " +
+            (if (keptAs != null) "Nothing was changed, and a copy of it is kept as $keptAs. " else
+                "Installing, turning on and removing plugins are paused so no plugin is forgotten. ") +
+            "Fix or delete the file in Files, then try again."
 
     fun directoryFor(plugin: InstalledPlugin): File = File(pluginsDir, plugin.id)
 
@@ -133,6 +166,13 @@ class PluginStore(private val projectRoot: File) {
         now: Long = System.currentTimeMillis(),
     ): InstallResult {
         if (!candidate.exists()) return InstallResult.Failed("that file is no longer there")
+        // Before anything is copied: a plugin folder with no line in the index is a plugin
+        // nobody can see, turn off or remove.
+        val before = try {
+            indexForChange()
+        } catch (damaged: PluginIndexDamaged) {
+            return InstallResult.Failed(damaged.message.orEmpty())
+        }
 
         val scan = runCatching { PluginPreflight.scan(candidate) }
             .getOrElse { return InstallResult.Failed(it.message ?: "could not be read") }
@@ -185,17 +225,18 @@ class PluginStore(private val projectRoot: File) {
             enabled = false,
             modules = scan.pythonModules,
         )
-        write(list().filterNot { it.id == id } + plugin)
+        write(before.filterNot { it.id == id } + plugin)
         return InstallResult.Installed(plugin)
     }
 
     fun setEnabled(id: String, enabled: Boolean) {
-        write(list().map { if (it.id == id) it.copy(enabled = enabled) else it })
+        write(indexForChange().map { if (it.id == id) it.copy(enabled = enabled) else it })
     }
 
     fun remove(id: String) {
+        val remaining = indexForChange().filterNot { it.id == id }
         File(pluginsDir, id).deleteRecursively()
-        write(list().filterNot { it.id == id })
+        write(remaining)
     }
 
     /**

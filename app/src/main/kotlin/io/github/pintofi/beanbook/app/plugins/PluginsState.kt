@@ -7,6 +7,7 @@ import io.github.pintofi.beanbook.core.data.InstallResult
 import io.github.pintofi.beanbook.core.data.InstalledPlugin
 import io.github.pintofi.beanbook.core.data.PluginIntegrity
 import io.github.pintofi.beanbook.core.data.PluginSafeMode
+import io.github.pintofi.beanbook.core.data.PluginIndexDamaged
 import io.github.pintofi.beanbook.core.data.PluginStore
 import io.github.pintofi.beanbook.core.domain.PluginPolicy
 import io.github.pintofi.beanbook.core.domain.PluginVerdict
@@ -71,6 +72,8 @@ class PluginsState(
                 val store = store() ?: return@withContext
                 _safeMode.value = safe()?.isSafeMode == true
                 _rows.value = store.list().map { PluginRow(it, store.verify(it)) }
+                // A list that cannot be read looks like "no plugins", which it is not.
+                store.indexProblem()?.let { _message.value = it }
             }
         }
     }
@@ -142,19 +145,31 @@ class PluginsState(
 
     fun setEnabled(id: String, enabled: Boolean) {
         scope.launch {
-            withContext(Dispatchers.IO) { store()?.setEnabled(id, enabled) }
-            Diagnostics.i(TAG, "plugin $id enabled=$enabled")
-            onEngineStale()
+            val damaged = withContext(Dispatchers.IO) {
+                runCatching { store()?.setEnabled(id, enabled) }.exceptionOrNull() as? PluginIndexDamaged
+            }
+            if (damaged != null) {
+                _message.value = damaged.message
+            } else {
+                Diagnostics.i(TAG, "plugin $id enabled=$enabled")
+                onEngineStale()
+            }
             refresh()
         }
     }
 
     fun remove(id: String) {
         scope.launch {
-            withContext(Dispatchers.IO) { store()?.remove(id) }
-            _message.value = "Removed. Its files are gone from this project."
-            Diagnostics.i(TAG, "plugin $id removed")
-            onEngineStale()
+            val damaged = withContext(Dispatchers.IO) {
+                runCatching { store()?.remove(id) }.exceptionOrNull() as? PluginIndexDamaged
+            }
+            if (damaged != null) {
+                _message.value = damaged.message
+            } else {
+                _message.value = "Removed. Its files are gone from this project."
+                Diagnostics.i(TAG, "plugin $id removed")
+                onEngineStale()
+            }
             refresh()
         }
     }
