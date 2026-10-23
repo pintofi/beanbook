@@ -12,7 +12,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -162,7 +161,7 @@ fun RemoteScreen(
                                 contentDescription = "Retry the entry that did not get through"
                             },
                         ) { Text("Try again") }
-                        TextButton(onClick = onDiscardPending) { Text("Discard it") }
+                        SecondaryButton(onClick = onDiscardPending) { Text("Discard it") }
                     }
                 }
             }

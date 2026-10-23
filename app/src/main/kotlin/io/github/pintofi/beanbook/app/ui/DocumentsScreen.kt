@@ -23,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -210,7 +209,7 @@ fun DocumentsScreen(
                     overflow = androidx.compose.ui.text.style.TextOverflow.MiddleEllipsis,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(
+                SecondaryButton(
                     onClick = { capture.onRemoveFile(index) },
                     modifier = Modifier.semantics { contentDescription = "Remove the attached file $name" },
                 ) { Text("Remove") }
@@ -278,7 +277,7 @@ fun DocumentsScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(if (capture.pages.isEmpty) "File under this account" else "Save as PDF and file") }
 
-            TextButton(onClick = onDiscard) {
+            SecondaryButton(onClick = onDiscard) {
                 Text(if (attachedFiles.isEmpty()) "Discard these pages" else "Discard")
             }
         }
@@ -377,16 +376,19 @@ fun DocumentsScreen(
                                 }
                             }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        androidx.compose.foundation.layout.FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
                             if (fileForDocument != null && row.status != DocumentStatus.MISSING) {
-                                TextButton(
+                                SecondaryButton(
                                     onClick = { viewing = path },
                                     modifier = Modifier.semantics {
                                         contentDescription = "View $path"
                                     },
                                 ) { Text("View") }
                             }
-                            TextButton(
+                            SecondaryButton(
                                 onClick = { onShare(path) },
                                 modifier = Modifier.semantics {
                                     contentDescription = "Share $path"
@@ -397,7 +399,7 @@ fun DocumentsScreen(
                             // "File" and "Refile" are different acts: one gives a document
                             // its first directive, the other moves the one it has.
                             val unfiled = !row.linked
-                            TextButton(
+                            SecondaryButton(
                                 onClick = { refiling = row },
                                 modifier = Modifier.semantics {
                                     contentDescription = if (unfiled) {
@@ -416,7 +418,7 @@ fun DocumentsScreen(
                             // `document:` metadata is a link too, and hiding Unlink for those
                             // left a document listed as attached with no way to detach it.
                             if (row.linked) {
-                                TextButton(
+                                SecondaryButton(
                                     onClick = { pendingRemoval = row to DocumentRemoval.UNLINK },
                                     modifier = Modifier.semantics {
                                         contentDescription = "Unlink $path from its entry"
@@ -424,7 +426,7 @@ fun DocumentsScreen(
                                 ) { Text("Unlink") }
                             }
                             if (row.status != DocumentStatus.MISSING) {
-                                TextButton(
+                                SecondaryButton(
                                     onClick = { pendingRemoval = row to DocumentRemoval.DELETE_FILE },
                                     modifier = Modifier.semantics {
                                         contentDescription = "Delete the file $path"
@@ -523,7 +525,7 @@ fun DocumentsScreen(
                 }
             },
             confirmButton = {
-                TextButton(
+                androidx.compose.material3.Button(
                     onClick = {
                         // A directive Beancount made from the folder is not one that can be
                         // rewritten, so this writes the first one instead of moving it.
@@ -535,7 +537,7 @@ fun DocumentsScreen(
                     enabled = BeancountText.ACCOUNT.matches(target.trim()),
                 ) { Text(if (row.linked) "Refile" else "File") }
             },
-            dismissButton = { TextButton(onClick = { refiling = null }) { Text("Cancel") } },
+            dismissButton = { SecondaryButton(onClick = { refiling = null }) { Text("Cancel") } },
         )
     }
 
@@ -566,7 +568,7 @@ fun DocumentsScreen(
                 Text(removal.describe(path) + folderNote)
             },
             confirmButton = {
-                TextButton(
+                androidx.compose.material3.Button(
                     onClick = {
                         when (removal) {
                             DocumentRemoval.UNLINK -> onUnlink(path, row.account)
@@ -584,7 +586,7 @@ fun DocumentsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
+                SecondaryButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
             },
         )
     }

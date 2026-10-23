@@ -20,7 +20,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -241,7 +240,7 @@ private fun PluginCard(
                         onClick = { confirming = false; onRemove(plugin.id) },
                         modifier = Modifier.semantics { contentDescription = "Confirm removing ${plugin.name}" },
                     ) { Text("Remove") }
-                    TextButton(onClick = { confirming = false }) { Text("Cancel") }
+                    SecondaryButton(onClick = { confirming = false }) { Text("Cancel") }
                 }
             } else {
                 OutlinedButton(
@@ -350,7 +349,7 @@ private fun PackagesSection(
                                         contentDescription = "Download these packages"
                                     },
                                 ) { Text("Download") }
-                                TextButton(onClick = onCancel) { Text("Not now") }
+                                SecondaryButton(onClick = onCancel) { Text("Not now") }
                             }
                         }
                     }
@@ -517,14 +516,14 @@ internal fun CatalogueSection(
     }
     val hidden = shown.size - visible.size
     if (hidden > 0) {
-        TextButton(
+        SecondaryButton(
             onClick = { expanded = true },
             modifier = Modifier.semantics {
                 contentDescription = "Show the other $hidden plugins"
             },
         ) { Text("Show more ($hidden)") }
     } else if (expanded && shown.size > CATALOGUE_PREVIEW) {
-        TextButton(
+        SecondaryButton(
             onClick = { expanded = false },
             modifier = Modifier.semantics { contentDescription = "Show fewer plugins" },
         ) { Text("Show fewer") }

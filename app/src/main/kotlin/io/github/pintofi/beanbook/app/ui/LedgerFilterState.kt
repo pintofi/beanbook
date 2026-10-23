@@ -10,7 +10,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -86,7 +85,7 @@ fun LedgerFilterBar(modifier: Modifier = Modifier, inset: androidx.compose.ui.un
                 val terms = filter.tags.trim()
                 FilterChipWithCross("Tags: $terms", "Remove the tags and links $terms") { state.setTags("") }
             }
-            TextButton(
+            SecondaryButton(
                 onClick = state::clear,
                 modifier = Modifier.semantics { contentDescription = "Remove every filter" },
             ) { Text("Clear all") }

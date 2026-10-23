@@ -26,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -224,7 +223,7 @@ private fun Editor(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
-            TextButton(onClick = onDiscardDraft) { Text("Discard restored changes") }
+            SecondaryButton(onClick = onDiscardDraft) { Text("Discard restored changes") }
         }
 
         message?.let { StatusLine(it, Modifier.padding(horizontal = 12.dp)) }

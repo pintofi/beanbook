@@ -16,7 +16,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -96,12 +95,12 @@ fun AccountsScreen(
             title = { Text("Close $name?") },
             text = { Text("Beancount will refuse new entries to it from today. Its old entries stay.") },
             confirmButton = {
-                TextButton(onClick = {
+                androidx.compose.material3.Button(onClick = {
                     onSave?.invoke(DirectiveDraft.Close(today.toString(), name))
                     closing = null
                 }) { Text("Close it") }
             },
-            dismissButton = { TextButton(onClick = { closing = null }) { Text("Keep it open") } },
+            dismissButton = { SecondaryButton(onClick = { closing = null }) { Text("Keep it open") } },
         )
     }
 }
@@ -124,7 +123,7 @@ private fun AccountRow(account: AccountBalance, canClose: Boolean, onClose: () -
             )
         }
         if (canClose && empty && account.opened != null) {
-            TextButton(
+            SecondaryButton(
                 onClick = onClose,
                 modifier = Modifier.semantics { contentDescription = "Close the account ${account.name}" },
             ) { Text("Close") }

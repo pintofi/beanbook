@@ -1,15 +1,17 @@
 package io.github.pintofi.beanbook.app.ui.onboarding
 
+import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.InputChip
@@ -18,7 +20,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +35,7 @@ import io.github.pintofi.beanbook.app.onboarding.SetupDraft
 import io.github.pintofi.beanbook.app.ui.AmountField
 import io.github.pintofi.beanbook.app.ui.DateField
 import io.github.pintofi.beanbook.app.ui.StatusLine
+import io.github.pintofi.beanbook.app.ui.SquircleCheckbox
 import io.github.pintofi.beanbook.app.ui.SuggestingField
 import io.github.pintofi.beanbook.app.ui.theme.ThemeChoice
 import io.github.pintofi.beanbook.core.domain.AccountName
@@ -85,20 +87,18 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
         onValueChange = { extra = it.uppercase(Locale.ROOT) },
         label = "Other currencies",
         suggestions = currencyCodes - draft.currencies.toSet(),
-        trailingIcon = {
-            TextButton(
-                onClick = {
-                    val code = extra.trim()
-                    if (CommodityName.isValid(code) && code !in draft.currencies) {
-                        update { it.copy(otherCurrencies = it.otherCurrencies + code) }
-                    }
-                    extra = ""
-                },
-                enabled = CommodityName.isValid(extra.trim()),
-            ) { Text("Add") }
-        },
     )
     Hint("Only if you hold or spend in more than one currency. You can add more later.")
+    SecondaryButton(
+        onClick = {
+            val code = extra.trim()
+            if (CommodityName.isValid(code) && code !in draft.currencies) {
+                update { it.copy(otherCurrencies = it.otherCurrencies + code) }
+            }
+            extra = ""
+        },
+        enabled = CommodityName.isValid(extra.trim()),
+    ) { Text("Add currency") }
     if (draft.otherCurrencies.isNotEmpty()) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             draft.otherCurrencies.forEach { code ->
@@ -121,7 +121,7 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
     Hint("Entries before this date are not expected. Opening balances are dated the day before.")
 
     var fine by rememberSaveable { mutableStateOf(false) }
-    TextButton(onClick = { fine = !fine }) { Text(if (fine) "Hide fine-tuning" else "Fine-tune") }
+    SecondaryButton(onClick = { fine = !fine }) { Text(if (fine) "Hide fine-tuning" else "Fine-tune") }
     if (!fine) return
     draft.currencies.forEach { code ->
         OutlinedTextField(
@@ -221,24 +221,28 @@ internal fun AccountsStep(draft: SetupDraft, update: Update) {
         rows.forEach { choice ->
             // One toggle for the whole row, so a screen reader reads the account's name with its state.
             Row(
-                modifier = Modifier.toggleable(
-                    value = choice.on || choice.locked,
-                    enabled = !choice.locked,
-                    role = Role.Checkbox,
-                    onValueChange = { on ->
-                        update { d ->
-                            d.copy(accounts = d.accounts.map { if (it.name == choice.name) it.copy(on = on) else it })
-                        }
-                    },
-                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .toggleable(
+                        value = choice.on || choice.locked,
+                        enabled = !choice.locked,
+                        role = Role.Checkbox,
+                        onValueChange = { on ->
+                            update { d ->
+                                val flipped = d.accounts.map { if (it.name == choice.name) it.copy(on = on) else it }
+                                d.copy(accounts = flipped)
+                            }
+                        },
+                    ),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Checkbox(checked = choice.on || choice.locked, enabled = !choice.locked, onCheckedChange = null)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(choice.name)
-                    if (choice.locked) Hint("Always kept: opening balances come from here.")
-                }
+                SquircleCheckbox(checked = choice.on || choice.locked, onCheckedChange = null, enabled = !choice.locked)
+                // A step of air between the box and the name, so they do not touch.
+                Spacer(Modifier.width(6.dp))
+                Text(choice.name)
             }
+            // On its own line, so the name stays level with its box whatever is said about it.
+            if (choice.locked) Hint("Always kept: opening balances come from here.", Modifier.padding(start = 38.dp))
             if (!draft.everyAccountUsesMain && !choice.locked && choice.on) {
                 OutlinedTextField(
                     value = choice.currencies,
@@ -253,7 +257,7 @@ internal fun AccountsStep(draft: SetupDraft, update: Update) {
                     },
                     label = { Text("Currencies for ${choice.name.substringAfterLast(':')}") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(start = 48.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
@@ -302,6 +306,7 @@ internal fun GetSetStep(
     update: Update,
     themeChoice: ThemeChoice,
     actions: SetupActions,
+    notificationsGranted: Boolean,
 ) {
     val balanceable = draft.accounts.filter {
         it.on && (it.name.startsWith("Assets:") || it.name.startsWith("Liabilities:"))
@@ -336,7 +341,10 @@ internal fun GetSetStep(
         "Android needs your permission to show the notice that long jobs are running. " +
             "Nothing else uses notifications.",
     )
-    OutlinedButton(onClick = actions.onAskNotifications) { Text("Allow notifications") }
+    // Greyed and saying so once the permission is given, so there is nothing left to press.
+    OutlinedButton(onClick = actions.onAskNotifications, enabled = !notificationsGranted) {
+        Text(if (notificationsGranted) "Granted" else "Allow notifications")
+    }
     HorizontalDivider()
     Text("A copy in a folder", style = MaterialTheme.typography.titleMedium)
     Hint("Keep a plain copy of the files in a folder you choose, such as one a sync app watches. Optional.")
@@ -385,7 +393,7 @@ internal fun FinishPage(
                 OutlinedButton(onClick = onDefaults, modifier = Modifier.fillMaxWidth()) {
                     Text("Create with defaults instead")
                 }
-                TextButton(onClick = onBack) { Text("Back to my answers") }
+                SecondaryButton(onClick = onBack) { Text("Back to my answers") }
             }
         }
     }

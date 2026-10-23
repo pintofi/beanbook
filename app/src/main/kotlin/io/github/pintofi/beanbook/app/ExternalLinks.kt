@@ -1,10 +1,10 @@
 package io.github.pintofi.beanbook.app
 
+import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 
@@ -45,7 +45,7 @@ internal fun MainActivity.ExternalLinkDialog() {
         title = { Text("Open this link in your browser?") },
         text = { Text(link.toString(), style = LedgerType.source) },
         confirmButton = {
-            TextButton(
+            androidx.compose.material3.Button(
                 onClick = {
                     pendingExternalLink = null
                     runCatching { startActivity(Intent(Intent.ACTION_VIEW, link)) }
@@ -53,7 +53,7 @@ internal fun MainActivity.ExternalLinkDialog() {
             ) { Text("Open") }
         },
         dismissButton = {
-            TextButton(onClick = { pendingExternalLink = null }) { Text("Cancel") }
+            SecondaryButton(onClick = { pendingExternalLink = null }) { Text("Cancel") }
         },
     )
 }

@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.app
 
+import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import android.content.Intent
 import androidx.compose.ui.unit.dp
 import java.io.File
@@ -1068,7 +1069,7 @@ internal fun MainActivity.LedgerEditDialog() {
             }
         },
         confirmButton = {
-            androidx.compose.material3.TextButton(
+            androidx.compose.material3.Button(
                 onClick = {
                     val run = edit.apply
                     pendingLedgerEdit = null
@@ -1077,7 +1078,7 @@ internal fun MainActivity.LedgerEditDialog() {
             ) { androidx.compose.material3.Text("Add the line") }
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(
+            SecondaryButton(
                 onClick = { pendingLedgerEdit = null },
             ) { androidx.compose.material3.Text("Cancel") }
         },

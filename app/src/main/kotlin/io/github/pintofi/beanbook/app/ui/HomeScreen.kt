@@ -34,7 +34,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -504,7 +503,7 @@ private fun SpendingCard(
             )
         }
 
-        TextButton(
+        SecondaryButton(
             onClick = onOpenJournal,
             modifier = Modifier
                 .padding(top = Measure.tight)
@@ -782,7 +781,7 @@ private fun CustomiseHomeSheet(
                                 .padding(start = Measure.tight, end = Measure.tight),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Checkbox(
+                            SquircleCheckbox(
                                 checked = on,
                                 onCheckedChange = { checked ->
                                     cards = if (checked) cards + card else cards - card
@@ -889,7 +888,7 @@ private fun CustomiseHomeSheet(
                     .padding(top = Measure.gap),
                 horizontalArrangement = Arrangement.spacedBy(Measure.snug, Alignment.End),
             ) {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                SecondaryButton(onClick = onDismiss) { Text("Cancel") }
                 androidx.compose.material3.Button(
                     onClick = {
                         onApply(

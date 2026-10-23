@@ -8,7 +8,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,8 +66,8 @@ fun EntryEditDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(text) }, enabled = text.isNotBlank()) { Text("Save") }
+            androidx.compose.material3.Button(onClick = { onSave(text) }, enabled = text.isNotBlank()) { Text("Save") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { SecondaryButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

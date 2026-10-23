@@ -33,7 +33,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -628,6 +627,8 @@ fun QuickAddScreen(
             // where it is as fields open beneath it, so the next tap lands where the last did.
             androidx.compose.foundation.layout.FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(Measure.tight),
+                // A gap between lines as well, so a wrapped row does not sit against the one above.
+                verticalArrangement = Arrangement.spacedBy(Measure.tight),
             ) {
                 SmallAction(
                     text = if (tagRows.isEmpty()) "Tag" else "Another tag",
@@ -784,8 +785,9 @@ fun QuickAddScreen(
         androidx.compose.foundation.layout.FlowRow(
             modifier = Modifier.padding(top = Measure.snug),
             horizontalArrangement = Arrangement.spacedBy(Measure.tight),
+            verticalArrangement = Arrangement.spacedBy(Measure.tight),
         ) {
-            TextButton(
+            SecondaryButton(
                 onClick = { namingTemplate = true },
                 // Also where saved templates are deleted, so it opens whenever there are any --
                 // the form no longer arrives with accounts filled in, and gating it on one would
@@ -797,7 +799,7 @@ fun QuickAddScreen(
             // The text editor is still there for an entry being edited: for a layout of one's
             // own, or a change the fields cannot make.
             editing?.let { session ->
-                TextButton(
+                SecondaryButton(
                     onClick = session.onEditAsText,
                     modifier = Modifier.semantics { contentDescription = "Edit this entry as text instead" },
                 ) { Text("Edit as text instead") }
@@ -935,15 +937,13 @@ private fun FormGap() {
 }
 
 /**
- * A small action that adds something to the form.
- *
- * A text button with a plus rather than an outlined one: these are secondary, several of them
- * sit on one line, and an outlined pill for each read as five primary actions competing with
- * Save. The target is still 48dp tall, which is the part a finger cares about.
+ * A small action that adds something to the form: an outlined button with a plus, so it reads as
+ * something to press without competing with Save, which is filled. Several sit on one line, so the
+ * row that holds them spaces its lines as well as its items. The target is 48dp tall.
  */
 @Composable
 private fun SmallAction(text: String, describe: String, onClick: () -> Unit) {
-    TextButton(
+    SecondaryButton(
         onClick = onClick,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
         modifier = Modifier
@@ -1290,7 +1290,7 @@ private fun TemplateDialog(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(template.name, style = MaterialTheme.typography.bodyMedium)
-                            TextButton(
+                            SecondaryButton(
                                 onClick = { onDelete(template.name) },
                                 modifier = Modifier.semantics {
                                     contentDescription = "Delete the template ${template.name}"
@@ -1302,12 +1302,12 @@ private fun TemplateDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            androidx.compose.material3.Button(
                 onClick = { onSave(candidate) },
                 enabled = problems.isEmpty(),
             ) { Text("Save template") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { SecondaryButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
 

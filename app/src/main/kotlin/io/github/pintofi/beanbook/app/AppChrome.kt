@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.app
 
+import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.TextButton
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -438,7 +438,7 @@ internal fun MoreMenu(
                 )
             },
             confirmButton = {
-                androidx.compose.material3.TextButton(
+                androidx.compose.material3.Button(
                     onClick = {
                         confirmingRestart = false
                         onRestartApp()
@@ -447,7 +447,7 @@ internal fun MoreMenu(
                 ) { Text("Restart") }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { confirmingRestart = false }) {
+                SecondaryButton(onClick = { confirmingRestart = false }) {
                     Text("Cancel")
                 }
             },
@@ -478,7 +478,7 @@ internal fun RecoveryBanner(message: String, onDismiss: () -> Unit) {
                 contentDescription = "$message"
             },
         )
-        TextButton(
+        SecondaryButton(
             onClick = onDismiss,
             modifier = Modifier.semantics { contentDescription = "Dismiss this notice" },
         ) { Text("Dismiss") }

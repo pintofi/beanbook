@@ -12,7 +12,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -301,7 +300,7 @@ private fun RestorePreview(
                         contentDescription = "Restore this backup over the current project"
                     },
                 ) { Text("Restore") }
-                TextButton(onClick = onDiscard) { Text("Cancel") }
+                SecondaryButton(onClick = onDiscard) { Text("Cancel") }
             }
         }
     }

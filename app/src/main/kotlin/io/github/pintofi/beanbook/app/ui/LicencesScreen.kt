@@ -15,7 +15,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -201,7 +200,7 @@ private fun LicenceEntry.kind() = if (members.isEmpty()) "component" else "group
 @Composable
 private fun LicenceText(entry: LicenceEntry, onBack: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier = modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TextButton(
+        SecondaryButton(
             onClick = onBack,
             modifier = Modifier.semantics { contentDescription = "Back to the list of licences" },
         ) { Text("← All licences") }

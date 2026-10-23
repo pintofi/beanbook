@@ -359,7 +359,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val notificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { noteNotificationAnswer(it) }
 
     /**
      * Android 13+ shows no notification, not even a foreground service's, until the user
