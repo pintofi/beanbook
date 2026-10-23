@@ -162,17 +162,23 @@ private fun DocumentPages(file: File) {
 
 @Composable
 private fun PdfPage(source: PdfSource, index: Int) {
-    val bitmap by produceState<ImageBitmap?>(null, source, index) {
+    val rendered by produceState<PdfPageRender>(PdfPageRender.Pending, source, index) {
         value = source.render(index)
     }
-    val shown = bitmap
+    val shown = (rendered as? PdfPageRender.Ready)?.bitmap
     Box(
         modifier = Modifier
             .fillMaxSize()
             .semantics { contentDescription = "Page ${index + 1} of ${source.pageCount}" },
         contentAlignment = Alignment.Center,
     ) {
-        if (shown == null) {
+        if (rendered == PdfPageRender.Unshowable) {
+            Text(
+                "This page is too large or oddly shaped to show here. Share the file to open it in another app.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(24.dp),
+            )
+        } else if (shown == null) {
             Box(
                 Modifier
                     .padding(12.dp)
@@ -224,17 +230,24 @@ private class PdfSource(private val descriptor: ParcelFileDescriptor) {
 
     fun aspect(index: Int): Float = ratios[index].coerceIn(MIN_RATIO, MAX_RATIO)
 
-    suspend fun render(index: Int): ImageBitmap? = withContext(Dispatchers.IO) {
+    suspend fun render(index: Int): PdfPageRender = withContext(Dispatchers.IO) {
         lock.withLock {
-            if (closed) return@withLock null
+            if (closed) return@withLock PdfPageRender.Pending
             renderer.openPage(index).use { page ->
-                val height = (PAGE_WIDTH.toFloat() / page.width * page.height).toInt().coerceAtLeast(1)
-                val bitmap = Bitmap.createBitmap(PAGE_WIDTH, height, Bitmap.Config.ARGB_8888)
+                // Sized from the page before anything is allocated: a malformed media box
+                // would otherwise ask for a bitmap larger than the heap and end the process.
+                val size = pdfBitmapSize(page.width, page.height) ?: return@use PdfPageRender.Unshowable
+                val bitmap = try {
+                    Bitmap.createBitmap(size.width, size.height, Bitmap.Config.ARGB_8888)
+                } catch (error: OutOfMemoryError) {
+                    Log.w(TAG, "No room for a ${size.width} x ${size.height} page", error)
+                    return@use PdfPageRender.Unshowable
+                }
                 // White first: a PDF page is transparent where nothing is drawn, and black
                 // text on a transparent bitmap is black text on a dark theme.
                 bitmap.eraseColor(AndroidColor.WHITE)
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                bitmap.asImageBitmap()
+                PdfPageRender.Ready(bitmap.asImageBitmap())
             }
         }
     }
@@ -253,6 +266,35 @@ private class PdfSource(private val descriptor: ParcelFileDescriptor) {
             lock.unlock()
         }
     }
+}
+
+/** What drawing one page came to. */
+private sealed interface PdfPageRender {
+    /** Not drawn yet, or the viewer has closed. */
+    data object Pending : PdfPageRender
+    data class Ready(val bitmap: ImageBitmap) : PdfPageRender
+    /** The page's size is not one a bitmap can safely be made for. */
+    data object Unshowable : PdfPageRender
+}
+
+internal data class PdfBitmapSize(val width: Int, val height: Int)
+
+/**
+ * The bitmap size to draw a page of [pageWidth] x [pageHeight] points at, or null when the page
+ * is not one to draw: no area, or a shape outside [MIN_RATIO]..[MAX_RATIO], which is a malformed
+ * media box and not a long receipt. A page is [PAGE_WIDTH] wide, and is made narrower, keeping its
+ * shape, when that would pass [MAX_PAGE_PIXELS]; a long receipt is never cropped or stretched.
+ */
+internal fun pdfBitmapSize(pageWidth: Int, pageHeight: Int): PdfBitmapSize? {
+    if (pageWidth <= 0 || pageHeight <= 0) return null
+    val ratio = pageHeight.toDouble() / pageWidth
+    if (ratio < 1.0 / MAX_RATIO || ratio > MAX_RATIO) return null
+    var width = PAGE_WIDTH.toDouble()
+    val pixels = width * (width * ratio)
+    if (pixels > MAX_PAGE_PIXELS) width *= Math.sqrt(MAX_PAGE_PIXELS / pixels)
+    val w = width.toInt().coerceAtLeast(1)
+    val h = (width * ratio).toInt().coerceAtLeast(1)
+    return PdfBitmapSize(w, h)
 }
 
 private fun open(file: File): Opened {
@@ -294,6 +336,9 @@ private const val TAG = "DocumentViewer"
 
 /** Wide enough to read small print when zoomed, small enough to keep a few pages in memory. */
 private const val PAGE_WIDTH = 1440
+
+/** A page's bitmap is at most this many pixels: 16 million, 64 MB as ARGB_8888. */
+private const val MAX_PAGE_PIXELS = 16_000_000.0
 
 private const val MAX_ZOOM = 5f
 
