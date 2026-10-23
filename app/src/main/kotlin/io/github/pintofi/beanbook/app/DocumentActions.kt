@@ -403,7 +403,22 @@ internal fun sliceMatches(
     // Beancount strings escape a quote and a backslash; the entry carries them unescaped.
     val plain = sliceText.replace("\\\"", "\"").replace("\\\\", "\\")
     fun named(value: String?) = value.isNullOrBlank() || plain.contains(value)
-    return named(entry.payee) && named(entry.narration)
+    if (named(entry.payee) && named(entry.narration)) return true
+    // A plugin can rewrite a payee or a narration in memory, so the listed one is not what the
+    // file says. The entry's own text is read instead, and it is the same entry when its date
+    // and every posting it writes are among the listed entry's. Postings a plugin added are not
+    // in the file, so the listed entry may have more; one with a different account or amount is
+    // some other entry.
+    val own = io.github.pintofi.beanbook.core.domain.StructuredEdit.draftFromSource(sliceText) ?: return false
+    if (own.date != entry.date || own.postings.isEmpty()) return false
+    return own.postings.all { written ->
+        entry.postings.any { listed ->
+            listed.account == written.account &&
+                (written.amount == null ||
+                    (listed.amount?.currency == written.amount?.currency &&
+                        listed.amount?.number?.compareTo(written.amount!!.number) == 0))
+        }
+    }
 }
 
 /**
