@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove buttons on form rows line up with their field. ([#138], fixes [#116])
 - A suggestion that matches the typed text exactly stays in the list. ([#138], fixes [#118])
 - An entry sent to a remote Fava that may not have arrived is now kept on the phone until the server confirms it or you discard it, so closing or losing the app no longer loses it or its key. After a restart, Try again asks the server whether it arrived before sending anything. ([#65])
+- A saved entry template keeps each posting's own commodity, lot, price and details, so a currency exchange or a purchase at cost is applied as it was saved and no longer shows an imbalance you did not create. Templates saved before this still load. ([#47])
 - Retrying an entry on a remote Fava no longer sends it again when Fava could not be asked to re-read its ledger first. The retry fails and tells you, instead of storing the entry twice. ([#156])
 - Checking or opening a backup no longer reads whatever size the file claims. A manifest over 8 MiB, an encrypted project over 256 MiB or more than 100,000 files is refused with a message before anything is read into memory, so a small crafted backup cannot use up the phone's memory. ([#157])
 - A PDF page with an absurd size no longer crashes the document viewer. The viewer draws a page at a size that fits in memory, and says so when a page is too large or oddly shaped to show. ([#158])
@@ -112,6 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.1...HEAD
 [1.0.1]: https://github.com/pintofi/beanbook/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/pintofi/beanbook/releases/tag/v1.0.0
+[#47]: https://github.com/pintofi/beanbook/issues/47
 [#48]: https://github.com/pintofi/beanbook/issues/48
 [#52]: https://github.com/pintofi/beanbook/issues/52
 [#57]: https://github.com/pintofi/beanbook/issues/57

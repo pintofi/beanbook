@@ -1,5 +1,7 @@
 package io.github.pintofi.beanbook.core.data
 
+import io.github.pintofi.beanbook.core.domain.Amount
+import io.github.pintofi.beanbook.core.domain.Cost
 import io.github.pintofi.beanbook.core.domain.EntryTemplate
 import io.github.pintofi.beanbook.core.domain.TemplatePosting
 import java.io.File
@@ -13,14 +15,19 @@ import java.math.BigDecimal
  * file that cannot be understood can be reported rather than guessed at.
  *
  * ```
- * v1
+ * v2
  * template<TAB>Rent
  * meta<TAB>EUR<TAB>*<TAB>Landlord<TAB>Monthly rent
  * tags<TAB>home
  * links<TAB>lease-2026
- * posting<TAB>Expenses:Rent<TAB>750.00
- * posting<TAB>Assets:Bank:Giro<TAB>
+ * posting<TAB>Expenses:Rent<TAB>750.00<TAB><TAB><TAB><TAB><TAB><TAB><TAB><TAB>
+ * posting<TAB>Assets:Bank:Giro<TAB><TAB><TAB><TAB><TAB><TAB><TAB><TAB><TAB>
  * ```
+ *
+ * A posting is: account, amount, currency (empty when it is the template's), cost amount, cost
+ * currency, cost date, cost label, price, price currency, details, comment. A `pmeta<TAB>key<TAB>value`
+ * line after it adds metadata to that posting. Version 1, which had only account and amount, is still
+ * read, and is written again as version 2 the next time a template is saved.
  *
  * Amounts are stored as the text the user typed and read back with [BigDecimal], so a
  * template never launders a number through a binary float.
@@ -38,7 +45,7 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
         val file = fileFor(projectId)
         if (!file.isFile) return emptyList()
         val lines = file.readLines()
-        if (lines.firstOrNull() != VERSION) return emptyList()
+        if (lines.firstOrNull() !in READABLE) return emptyList()
 
         val templates = mutableListOf<EntryTemplate>()
         var current: Builder? = null
@@ -59,13 +66,11 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
                 }
                 "tags" -> current?.apply { tags = fields.drop(1).filter { it.isNotEmpty() } }
                 "links" -> current?.apply { links = fields.drop(1).filter { it.isNotEmpty() } }
-                "posting" -> current?.apply {
-                    postings += TemplatePosting(
-                        account = fields.getOrElse(1) { "" },
-                        amount = fields.getOrNull(2)
-                            ?.takeIf { it.isNotEmpty() }
-                            ?.let { runCatching { BigDecimal(it) }.getOrNull() },
-                    )
+                "posting" -> current?.apply { postings += readPosting(fields) }
+                "pmeta" -> current?.apply {
+                    val last = postings.lastOrNull() ?: return@apply
+                    postings[postings.lastIndex] =
+                        last.copy(metadata = last.metadata + (fields.getOrElse(1) { "" } to fields.getOrElse(2) { "" }))
                 }
                 // An unknown record from a future version: skipped, not fatal. The version
                 // line above is what decides whether the file is ours to read at all.
@@ -88,7 +93,7 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
 
     private fun write(projectId: String, templates: List<EntryTemplate>) {
         val file = fileFor(projectId)
-        check(file.isFile.not() || file.readLines().firstOrNull() == VERSION) {
+        check(file.isFile.not() || file.readLines().firstOrNull() in READABLE) {
             "refusing to overwrite a templates file this version cannot read: $file"
         }
         file.parentFile?.mkdirs()
@@ -100,8 +105,22 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
                 record("meta", template.currency, template.flag, template.payee.orEmpty(), template.narration.orEmpty())
                 if (template.tags.isNotEmpty()) record("tags", *template.tags.toTypedArray())
                 if (template.links.isNotEmpty()) record("links", *template.links.toTypedArray())
-                template.postings.forEach {
-                    record("posting", it.account, it.amount?.toPlainString().orEmpty())
+                template.postings.forEach { posting ->
+                    record(
+                        "posting",
+                        posting.account,
+                        posting.amount?.toPlainString().orEmpty(),
+                        posting.currency.orEmpty(),
+                        posting.cost?.amount?.number?.toPlainString().orEmpty(),
+                        posting.cost?.amount?.currency.orEmpty(),
+                        posting.cost?.date.orEmpty(),
+                        posting.cost?.label.orEmpty(),
+                        posting.price?.number?.toPlainString().orEmpty(),
+                        posting.price?.currency.orEmpty(),
+                        posting.details.orEmpty(),
+                        posting.comment.orEmpty(),
+                    )
+                    posting.metadata.forEach { (key, value) -> record("pmeta", key, value) }
                 }
             }
         }
@@ -114,6 +133,25 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
             tmp.copyTo(file, overwrite = true)
             tmp.delete()
         }
+    }
+
+    /** A posting record of version 1 (account, amount) or 2 (see the class comment). */
+    private fun readPosting(fields: List<String>): TemplatePosting {
+        fun field(index: Int) = fields.getOrNull(index)?.takeIf { it.isNotEmpty() }
+        fun number(index: Int) = field(index)?.let { runCatching { BigDecimal(it) }.getOrNull() }
+        fun amount(number: Int, currency: Int): Amount? {
+            val value = number(number) ?: return null
+            return runCatching { Amount(value, field(currency) ?: return null) }.getOrNull()
+        }
+        return TemplatePosting(
+            account = fields.getOrElse(1) { "" },
+            amount = number(2),
+            currency = field(3),
+            cost = amount(4, 5)?.let { Cost(it, field(6), field(7)) },
+            price = amount(8, 9),
+            details = field(10),
+            comment = field(11),
+        )
     }
 
     private fun StringBuilder.record(kind: String, vararg fields: String) {
@@ -147,7 +185,8 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
     }
 
     private companion object {
-        const val VERSION = "v1"
+        const val VERSION = "v2"
+        val READABLE = setOf("v1", VERSION)
         const val FIELD = "\t"
 
         // A payee may legitimately contain a tab, a newline or a backslash; the record

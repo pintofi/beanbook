@@ -133,4 +133,38 @@ class EntryTemplateTest {
 
         assertEquals(draft.render(), applied.render())
     }
+
+    @Test
+    fun `a template of an exchange is applied with each leg in its own currency`() {
+        val draft = TransactionDraft(
+            date = "2026-09-01",
+            postings = listOf(
+                PostingDraft("Assets:Usd", Amount(BigDecimal("100.00"), "USD")),
+                PostingDraft("Assets:Eur", Amount(BigDecimal("-90.00"), "EUR")),
+            ),
+        )
+
+        val applied = EntryTemplate.from("Exchange", draft, "EUR").apply(LocalDate.of(2026, 9, 2))
+
+        assertEquals(draft.postings.map { it.amount }, applied.postings.map { it.amount })
+    }
+
+    @Test
+    fun `a posting keeps its lot, price, details, comment and metadata`() {
+        val buy = PostingDraft(
+            account = "Assets:Broker",
+            amount = Amount(BigDecimal("10"), "VTI"),
+            cost = Cost(Amount(BigDecimal("212.50"), "USD"), "2026-09-01", "lot 1"),
+            price = Amount(BigDecimal("213"), "USD"),
+            comment = "bought",
+            metadata = mapOf("broker" to "x"),
+            details = "{212.50 USD}",
+        )
+        val draft = TransactionDraft(date = "2026-09-01", postings = listOf(buy, PostingDraft("Assets:Cash")))
+
+        val applied = EntryTemplate.from("Buy", draft, "USD").apply(LocalDate.of(2026, 9, 2))
+
+        assertEquals(buy, applied.postings.first())
+        assertTrue(applied.postings.last().isElided)
+    }
 }

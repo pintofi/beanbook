@@ -3,10 +3,23 @@ package io.github.pintofi.beanbook.core.domain
 import java.math.BigDecimal
 import java.time.LocalDate
 
-/** One posting of a template. A null [amount] stays elided when the template is applied. */
+/**
+ * One posting of a template. A null [amount] stays elided when the template is applied.
+ *
+ * [currency] is null when the amount is in the template's own currency, which is the common case
+ * and what every template saved before this field existed means. It is set when a posting is in a
+ * different one, as in `100.00 USD / -90.00 EUR`. [cost], [price], [details], [comment] and
+ * [metadata] carry what the posting had, so a purchase at cost still has its lot.
+ */
 data class TemplatePosting(
     val account: String,
     val amount: BigDecimal? = null,
+    val currency: String? = null,
+    val cost: Cost? = null,
+    val price: Amount? = null,
+    val details: String? = null,
+    val comment: String? = null,
+    val metadata: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -46,7 +59,12 @@ data class EntryTemplate(
         postings = postings.map { posting ->
             PostingDraft(
                 account = posting.account,
-                amount = posting.amount?.let { Amount(it, currency) },
+                amount = posting.amount?.let { Amount(it, posting.currency ?: currency) },
+                cost = posting.cost,
+                price = posting.price,
+                comment = posting.comment,
+                metadata = posting.metadata,
+                details = posting.details,
             )
         },
     )
@@ -76,20 +94,34 @@ data class EntryTemplate(
         private val REFERENCE_DATE: LocalDate = LocalDate.of(2000, 1, 1)
 
         /**
-         * Captures what is on screen as a template, keeping the currency of the first
-         * posting that has one so the amounts mean what they meant when it was saved.
+         * Captures what is on screen as a template. The template's currency is that of the first
+         * posting that has one; a posting in another currency keeps its own, and each posting
+         * keeps its cost, price, details, comment and metadata, so the amounts and lots mean what
+         * they meant when it was saved.
          */
-        fun from(name: String, draft: TransactionDraft, fallbackCurrency: String): EntryTemplate =
-            EntryTemplate(
+        fun from(name: String, draft: TransactionDraft, fallbackCurrency: String): EntryTemplate {
+            val currency = draft.postings.firstNotNullOfOrNull { it.amount?.currency } ?: fallbackCurrency
+            return EntryTemplate(
                 name = name.trim(),
-                currency = draft.postings.firstNotNullOfOrNull { it.amount?.currency }
-                    ?: fallbackCurrency,
-                postings = draft.postings.map { TemplatePosting(it.account, it.amount?.number) },
+                currency = currency,
+                postings = draft.postings.map {
+                    TemplatePosting(
+                        account = it.account,
+                        amount = it.amount?.number,
+                        currency = it.amount?.currency?.takeIf { own -> own != currency },
+                        cost = it.cost,
+                        price = it.price,
+                        details = it.details,
+                        comment = it.comment,
+                        metadata = it.metadata,
+                    )
+                },
                 payee = draft.payee,
                 narration = draft.narration,
                 flag = draft.flag,
                 tags = draft.tags,
                 links = draft.links,
             )
+        }
     }
 }
