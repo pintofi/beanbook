@@ -102,7 +102,11 @@ class Balance private constructor(private val byCurrency: Map<String, BigDecimal
  *    replacement for what the postings imply, and its `*` entry is what a currency gets when
  *    nothing else says anything about it.
  *
- * Not modelled: `infer_tolerance_from_cost`, which is off unless the file turns it on.
+ * `option "tolerance_multiplier"` replaces the 0.5. With `option "infer_tolerance_from_cost"` a
+ * posting held at cost or converted at a price also widens the tolerance of the *cost's* currency
+ * by the last decimal place of its units times the cost (or price) figure times the multiplier,
+ * summed over the postings, and the larger of that and the ordinary figure wins -- the rule in
+ * `infer_tolerances`, with each cost term capped at 0.5.
  * Authoritative checking stays Beancount's: the ledger is validated by Beancount itself before
  * any write is reported as successful (invariant 2). This only decides what the form shows and
  * refuses while a person is typing.
@@ -137,6 +141,60 @@ class Tolerances private constructor(
                 val inferred = BigDecimal.ONE.movePointLeft(scale).multiply(multiplier)
                 val known = byCurrency[amount.currency]
                 byCurrency[amount.currency] = if (known == null || inferred > known) inferred else known
+            }
+            return Tolerances(byCurrency, defaults["*"] ?: BigDecimal.ZERO)
+        }
+
+        /** No single cost or price term may widen a tolerance past this, as in Beancount. */
+        private val MAXIMUM_TERM: BigDecimal = BigDecimal("0.5")
+
+        /**
+         * The same rule over whole postings, so that [fromCost] (`infer_tolerance_from_cost`)
+         * can read the cost and price each one carries.
+         */
+        fun infer(
+            postings: List<PostingDraft>,
+            defaults: Map<String, BigDecimal> = emptyMap(),
+            multiplier: BigDecimal = DEFAULT_MULTIPLIER,
+            fromCost: Boolean = false,
+        ): Tolerances {
+            val byCurrency = HashMap<String, BigDecimal>()
+            defaults.forEach { (currency, tolerance) -> if (currency != "*") byCurrency[currency] = tolerance }
+            val terms = HashMap<String, BigDecimal>()
+            for (posting in postings) {
+                val units = posting.amount ?: continue
+                val scale = units.number.scale()
+                if (scale <= 0) continue
+                val tolerance = BigDecimal.ONE.movePointLeft(scale).multiply(multiplier)
+                val known = byCurrency[units.currency]
+                byCurrency[units.currency] = if (known == null || tolerance > known) tolerance else known
+                if (!fromCost) continue
+
+                val details = posting.readDetails as? CommodityDetails.Read
+                val costs = if (details != null) {
+                    listOfNotNull(details.totalCost, details.costPerUnit)
+                } else {
+                    listOfNotNull(posting.cost?.amount)
+                }
+                costs.firstOrNull()?.let { first ->
+                    // The smallest of the figures written (total and per unit), each capped.
+                    val term = costs.minOf { tolerance.multiply(it.number.abs()).min(MAXIMUM_TERM) }
+                    terms.merge(first.currency, term, BigDecimal::add)
+                }
+
+                // A total price is a per-unit price once divided by the units, which is what
+                // Beancount has by this point.
+                val price = details?.pricePerUnit ?: posting.price
+                    ?: details?.totalPrice?.let {
+                        Amount(it.number.abs().divide(units.number.abs(), java.math.MathContext.DECIMAL64), it.currency)
+                    }
+                price?.let {
+                    terms.merge(it.currency, tolerance.multiply(it.number.abs()).min(MAXIMUM_TERM), BigDecimal::add)
+                }
+            }
+            for ((currency, term) in terms) {
+                val known = byCurrency[currency]
+                byCurrency[currency] = if (known == null || term > known) term else known
             }
             return Tolerances(byCurrency, defaults["*"] ?: BigDecimal.ZERO)
         }

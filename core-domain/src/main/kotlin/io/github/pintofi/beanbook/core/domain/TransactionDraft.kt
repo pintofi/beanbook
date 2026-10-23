@@ -156,9 +156,10 @@ data class TransactionDraft(
             val weights = postings.mapNotNull { it.weight() }
             val residuals = Balance.of(weights).residuals()
             val tolerances = Tolerances.infer(
-                postings.mapNotNull { it.amount },
+                postings,
                 format.tolerances,
                 format.toleranceMultiplier,
+                format.inferToleranceFromCost,
             )
             if (residuals.any { it.number.abs() > tolerances.forCurrency(it.currency) }) {
                 problems += DraftProblem.DoesNotBalance(residuals)

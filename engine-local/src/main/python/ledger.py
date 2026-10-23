@@ -543,6 +543,11 @@ def inspect(
         currency: _decimal_str(value)
         for currency, value in (options_map.get("inferred_tolerance_default") or {}).items()
     }
+    # The two other options that change the balance rule the entry form checks with: how much of
+    # the last decimal place counts as close enough (default 0.5), and whether a cost or a price
+    # widens the tolerance of the currency it is in (default off).
+    tolerance_multiplier = _decimal_str(options_map.get("tolerance_multiplier"))
+    infer_tolerance_from_cost = bool(options_map.get("infer_tolerance_from_cost"))
 
     _health = _extension_health(all_entries)
     payload = {
@@ -563,6 +568,8 @@ def inspect(
         },
         "document_dirs": [str(d) for d in (options_map.get("documents") or [])],
         "display_precision": dict(sorted(display.items())),
+        "tolerance_multiplier": tolerance_multiplier,
+        "infer_tolerance_from_cost": infer_tolerance_from_cost,
         "tolerances": dict(sorted(tolerances.items())),
         "documents": documents,
         "commodity_attributes": _commodity_attributes(options_map),

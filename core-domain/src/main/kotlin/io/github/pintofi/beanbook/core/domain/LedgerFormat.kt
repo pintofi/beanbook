@@ -28,6 +28,8 @@ data class LedgerFormat(
     val tolerances: Map<String, BigDecimal> = emptyMap(),
     /** `option "tolerance_multiplier"`: how much of the last decimal place counts as close enough. */
     val toleranceMultiplier: BigDecimal = Tolerances.DEFAULT_MULTIPLIER,
+    /** `option "infer_tolerance_from_cost"`: a cost or a price widens the tolerance of its own currency. */
+    val inferToleranceFromCost: Boolean = false,
     /**
      * What separates thousands and what separates the decimal, as this ledger asks.
      *
