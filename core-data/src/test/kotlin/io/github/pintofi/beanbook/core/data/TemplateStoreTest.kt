@@ -1,5 +1,7 @@
 package io.github.pintofi.beanbook.core.data
 
+import io.github.pintofi.beanbook.core.domain.Amount
+import io.github.pintofi.beanbook.core.domain.Cost
 import io.github.pintofi.beanbook.core.domain.EntryTemplate
 import io.github.pintofi.beanbook.core.domain.TemplatePosting
 import java.io.File
@@ -111,7 +113,7 @@ class TemplateStoreTest {
     fun `a file from a future version yields nothing and is never overwritten`() {
         val file = root.resolve("templates/p.templates")
         file.parentFile.mkdirs()
-        val fromTheFuture = "v2\nsomething we do not understand\n"
+        val fromTheFuture = "v3\nsomething we do not understand\n"
         file.writeText(fromTheFuture)
 
         assertEquals(emptyList(), store.load("p"), "an unreadable file must not be guessed at")
@@ -127,5 +129,48 @@ class TemplateStoreTest {
         file.writeText(file.readText() + "future-field\tsomething\n")
 
         assertEquals(rent, store.load("p").single())
+    }
+
+    @Test
+    fun `a template of an exchange, a lot and a price survives a restart`() {
+        val exchange = EntryTemplate(
+            name = "Buy fund",
+            currency = "USD",
+            postings = listOf(
+                TemplatePosting(
+                    account = "Assets:Broker",
+                    amount = BigDecimal("10"),
+                    currency = "VTI",
+                    cost = Cost(Amount(BigDecimal("212.50"), "USD"), date = "2026-09-01", label = "lot 1"),
+                    price = Amount(BigDecimal("213"), "USD"),
+                    details = "{212.50 USD}",
+                    comment = "bought\tit",
+                    metadata = mapOf("broker" to "x y"),
+                ),
+                TemplatePosting("Assets:Cash", BigDecimal("-2125.00")),
+                TemplatePosting("Assets:Eur", BigDecimal("-90.00"), currency = "EUR"),
+            ),
+        )
+        store.save("p", exchange)
+
+        assertEquals(exchange, TemplateStore(workspace).load("p").single())
+    }
+
+    @Test
+    fun `a template saved before postings had their own currency still loads, and is upgraded when saved again`() {
+        val file = workspace.templatesDir.resolve("${workspace.projectDir("p").name}.templates")
+        file.parentFile.mkdirs()
+        file.writeText(
+            "v1\ntemplate\tRent\nmeta\tEUR\t*\tLandlord\tMonthly rent\n" +
+                "posting\tExpenses:Rent\t750.00\nposting\tAssets:Bank:Giro\t\n",
+        )
+
+        assertEquals(rent.copy(tags = emptyList(), links = emptyList()), store.load("p").single())
+
+        store.save("p", EntryTemplate("Other", "EUR", listOf(TemplatePosting("Expenses:A", BigDecimal("1")))))
+
+        assertEquals("v2", file.readLines().first())
+        assertEquals(listOf("Rent", "Other"), store.load("p").map { it.name })
+        assertEquals(rent.copy(tags = emptyList(), links = emptyList()), store.load("p").first())
     }
 }

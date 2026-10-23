@@ -334,7 +334,18 @@ fun QuickAddScreen(
         commodity = template.currency
         rows.clear()
         applied.postings.forEach { posting ->
-            rows.add(PostingRow(posting.account, posting.amount?.number?.toPlainString().orEmpty()))
+            // The same fields a clone fills: each leg's own commodity, and its lot or price,
+            // so an exchange or a purchase at cost is applied as it was saved.
+            rows.add(
+                PostingRow(
+                    account = posting.account,
+                    amount = posting.amount?.number?.toPlainString().orEmpty(),
+                    commodity = posting.amount?.currency.orEmpty(),
+                    details = posting.details ?: CommodityDetails.textOf(posting.cost, posting.price),
+                ).also { row ->
+                    posting.metadata.forEach { (key, value) -> row.metadata.add(MetadataRow(key, value)) }
+                },
+            )
         }
     }
 
