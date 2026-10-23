@@ -105,7 +105,18 @@ data class ImportPlan(
 }
 
 sealed interface ImportResult {
-    data class Imported(val projectId: String, val mainFile: File, val fileCount: Int) : ImportResult
+    /**
+     * @param rootName the file the archive's root ledger was called, when that was not
+     *   `main.beancount`: it is now `main.beancount` itself ([rootMoved]), or `main.beancount`
+     *   is a one-line file that includes it and it stays where it was.
+     */
+    data class Imported(
+        val projectId: String,
+        val mainFile: File,
+        val fileCount: Int,
+        val rootName: String? = null,
+        val rootMoved: Boolean = false,
+    ) : ImportResult
     data class Rejected(val problems: List<ImportProblem>) : ImportResult
     data class NoLedgerFound(val checked: Int) : ImportResult
 }
@@ -237,6 +248,8 @@ class ProjectImporter(
         }
 
         var extracted = 0L
+        var rootName: String? = null
+        var rootMoved = false
         try {
             plan.files.forEach { entry ->
                 val destination = File(staging, entry.path)
@@ -275,7 +288,21 @@ class ProjectImporter(
                         listOf(ImportProblem.MainFileTaken(ProjectWorkspace.MAIN_FILE)),
                     )
                 }
-                File(staging, main).copyTo(File(staging, ProjectWorkspace.MAIN_FILE))
+                // One file is the root, not two. The root is *renamed* to main.beancount when
+                // nothing else includes it and it sits at the top, where its own relative
+                // includes and document folders mean the same thing; a copy left the project
+                // holding the ledger twice, so edits to the original were never seen and an
+                // export wrote both. A root in a folder, or one another ledger includes, stays
+                // where it is and main.beancount includes it, which keeps what it resolves.
+                rootMoved = '/' !in main && !includedByAnother(staging, plan.ledgerCandidates, main)
+                if (rootMoved) {
+                    File(staging, main).renameTo(File(staging, ProjectWorkspace.MAIN_FILE)) ||
+                        error("could not rename $main to ${ProjectWorkspace.MAIN_FILE}")
+                } else {
+                    File(staging, ProjectWorkspace.MAIN_FILE)
+                        .writeText("include ${BeancountText.quote(main)}\n")
+                }
+                rootName = main
             }
 
             if (!staging.renameTo(target)) {
@@ -292,7 +319,9 @@ class ProjectImporter(
             throw error
         }
 
-        return ImportResult.Imported(projectId, workspace.mainFile(projectId), plan.files.size)
+        return ImportResult.Imported(
+            projectId, workspace.mainFile(projectId), plan.files.size, rootName, rootMoved,
+        )
     }
 
     /**
@@ -340,6 +369,16 @@ class ProjectImporter(
         }
         return candidates.firstOrNull { it !in included } ?: candidates.first()
     }
+
+    /** Whether any other ledger in the project has an `include` that resolves to [path]. */
+    private fun includedByAnother(staging: File, candidates: List<String>, path: String): Boolean =
+        candidates.any { candidate ->
+            if (candidate == path) return@any false
+            val text = runCatching { File(staging, candidate).readText() }.getOrNull() ?: return@any false
+            BeancountText.includedPaths(text).any {
+                BeancountText.resolveInclude(from = candidate, include = it) == path
+            }
+        }
 
     /** An entry delivered more bytes than the container said it would. */
     private class ArchiveOverrun(val path: String, val bytes: Long) : java.io.IOException(

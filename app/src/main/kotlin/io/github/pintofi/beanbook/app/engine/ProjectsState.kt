@@ -181,7 +181,14 @@ class ProjectsState(
                             refresh()
                             if (!firstRun) open(id)
                             onOpened(id)
-                            "Imported ${result.fileCount} file(s)."
+                            "Imported ${result.fileCount} file(s)." + when {
+                                result.rootName == null -> ""
+                                result.rootMoved ->
+                                    " Your main ledger, ${result.rootName}, is now called main.beancount."
+                                else ->
+                                    " main.beancount includes your main ledger, ${result.rootName}, " +
+                                        "which stays where it was."
+                            }
                         }
                         is ImportResult.Rejected ->
                             "Not imported. " + result.problems.take(3)

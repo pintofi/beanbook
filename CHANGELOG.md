@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A damaged plugin list (`plugins/installed.json`) is no longer read as "no plugins". Installing, turning on or removing a plugin is refused with a message instead of writing the list back with every other plugin forgotten, and a copy of the damaged file is kept beside it. ([#58])
 - A backup can no longer be written from files that changed while it was being made. Each file is checked against the backup's list as it is copied, and a backup that sees a file change starts again; if a file keeps changing it stops with a message and writes nothing, instead of leaving an archive that fails to restore. ([#53])
 - Adding, renaming or deleting a receipt in a ledger's documents folder is no longer hidden behind the saved answer from the last open. The saved answer is now checked against what is in the document folders as well as the ledger's files and plugins. ([#61])
+- Importing a project whose main ledger is not called `main.beancount` no longer leaves two copies of it. A main ledger at the top of the project is renamed to `main.beancount`; one inside a folder, or one another file includes, stays where it is and `main.beancount` includes it. The import message says which. ([#55])
 - Retrying an entry on a remote Fava no longer sends it again when Fava could not be asked to re-read its ledger first. The retry fails and tells you, instead of storing the entry twice. ([#156])
 - Checking or opening a backup no longer reads whatever size the file claims. A manifest over 8 MiB, an encrypted project over 256 MiB or more than 100,000 files is refused with a message before anything is read into memory, so a small crafted backup cannot use up the phone's memory. ([#157])
 - A PDF page with an absurd size no longer crashes the document viewer. The viewer draws a page at a size that fits in memory, and says so when a page is too large or oddly shaped to show. ([#158])
@@ -120,6 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#48]: https://github.com/pintofi/beanbook/issues/48
 [#52]: https://github.com/pintofi/beanbook/issues/52
 [#53]: https://github.com/pintofi/beanbook/issues/53
+[#55]: https://github.com/pintofi/beanbook/issues/55
 [#57]: https://github.com/pintofi/beanbook/issues/57
 [#58]: https://github.com/pintofi/beanbook/issues/58
 [#59]: https://github.com/pintofi/beanbook/issues/59

@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.core.data
 
+import io.github.pintofi.beanbook.core.domain.BeancountText
 import java.io.File
 import java.io.OutputStream
 import java.nio.file.Files
@@ -239,10 +240,55 @@ class ImportExportTest {
 
         val imported = assertIs<ImportResult.Imported>(result)
         assertTrue(imported.mainFile.isFile, "a main.beancount must exist for the engine")
-        assertTrue(
-            workspace.projectDir("odd").resolve("ledger.beancount").isFile,
-            "the user's own file must still be there under its own name",
+        assertEquals("option \"title\" \"Odd name\"\n", imported.mainFile.readText())
+        assertEquals("ledger.beancount", imported.rootName)
+        assertTrue(imported.rootMoved)
+    }
+
+    // The root used to be copied to main.beancount and left where it was, so the project held the
+    // same ledger twice: edits to the original were never seen, and an export wrote both.
+    @Test
+    fun `the root is one file, not a copy beside the original`() {
+        val archive = zipOf(
+            "household.beancount" to "option \"title\" \"H\"\ninclude \"files/accounts.beancount\"\n",
+            "files/accounts.beancount" to "2024-01-01 open Assets:Cash USD\n",
         )
+
+        assertIs<ImportResult.Imported>(importer.import(ZipImportSource(archive), "h"))
+
+        val ledgers = workspace.projectDir("h").walkTopDown().filter { it.name.endsWith(".beancount") }
+            .map { it.relativeTo(workspace.projectDir("h")).path }.sorted().toList()
+        assertEquals(listOf("files/accounts.beancount", "main.beancount"), ledgers)
+    }
+
+    @Test
+    fun `a root inside a folder stays there and main includes it, so its includes still resolve`() {
+        val archive = zipOf(
+            "books/ledger.beancount" to "include \"2026.beancount\"\n",
+            "books/2026.beancount" to "2026-01-01 open Assets:Bank\n",
+            "notes.txt" to "not under the folder\n",
+        )
+
+        val imported = assertIs<ImportResult.Imported>(importer.import(ZipImportSource(archive), "nested"))
+
+        assertEquals("include \"books/ledger.beancount\"\n", imported.mainFile.readText())
+        assertEquals("books/ledger.beancount", imported.rootName)
+        assertFalse(imported.rootMoved)
+        assertTrue(workspace.projectDir("nested").resolve("books/ledger.beancount").isFile)
+    }
+
+    @Test
+    fun `a root another ledger includes is not moved out from under that include`() {
+        val archive = zipOf(
+            "a.beancount" to "include \"b.beancount\"\n",
+            "b.beancount" to "include \"a.beancount\"\n",
+        )
+
+        val imported = assertIs<ImportResult.Imported>(importer.import(ZipImportSource(archive), "loop"))
+
+        assertFalse(imported.rootMoved)
+        assertTrue(workspace.projectDir("loop").resolve(imported.rootName!!).isFile)
+        assertEquals("include ${BeancountText.quote(imported.rootName!!)}\n", imported.mainFile.readText())
     }
 
     // --- invariant 5: includes and document links survive a round trip -----------------
