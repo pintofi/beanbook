@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An Open button beside the message when an entry names an account the ledger has not opened. The entry you typed stays as it is. ([#140], fixes [#131])
 
 ### Changed
+- The document scanner uses OpenCV 5.0.0.1 (was 4.12.0). Five geometry functions it calls moved to a new `Geometry` class; page detection and straightening are unchanged, and the scanner's tests pass on a device. The native library is larger, so each APK grows by about 4.5 MB. ([#176])
 - Edit opens entries that have comments, metadata on a posting or several currencies in the entry form instead of the text editor. ([#138], fixes [#124])
 - Editing and deleting read an entry's text from the file instead of loading the ledger again. ([#138], fixes [#125])
 - Every field explanation sits under its field, in one style. ([#138], fixes [#126])
@@ -172,3 +173,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#156]: https://github.com/pintofi/beanbook/issues/156
 [#157]: https://github.com/pintofi/beanbook/issues/157
 [#158]: https://github.com/pintofi/beanbook/issues/158
+[#176]: https://github.com/pintofi/beanbook/issues/176

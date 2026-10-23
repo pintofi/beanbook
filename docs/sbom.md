@@ -50,7 +50,7 @@ be decided against; it is not a claim that the position is settled.
 | `org.jetbrains.kotlinx:kotlinx-coroutines-android` | 1.11.0 | Apache-2.0 | Kotlin stdlib and compiler runtime |
 | `org.jetbrains.kotlinx:kotlinx-coroutines-core` | 1.11.0 | Apache-2.0 | Kotlin stdlib and compiler runtime |
 | `org.jetbrains.kotlinx:kotlinx-coroutines-test` | 1.11.0 | Apache-2.0 | Kotlin stdlib and compiler runtime |
-| `org.opencv:opencv` | 4.12.0 | Apache-2.0 | OpenCV is Apache-2.0 from 4.5.0; the document scanner's edge detection |
+| `org.opencv:opencv` | 5.0.0.1 | Apache-2.0 | OpenCV is Apache-2.0 from 4.5.0; the document scanner's edge detection |
 | `sh.calvin.reorderable:reorderable` | 3.1.0 | Apache-2.0 | Reorderable, drag to reorder in Compose lists; licence in its POM, checked 2026-09-14 |
 
 ## Python packages in the APK

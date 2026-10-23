@@ -7,6 +7,7 @@ import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Point
 import org.opencv.core.Size
+import org.opencv.geometry.Geometry
 import org.opencv.imgproc.Imgproc
 import kotlin.math.hypot
 import kotlin.math.max
@@ -64,7 +65,7 @@ object PageWarp {
             Point(0.0, height - 1),
         )
 
-        val transform = Imgproc.getPerspectiveTransform(from, to)
+        val transform = Geometry.getPerspectiveTransform(from, to)
         val straightened = Mat(height.toInt(), width.toInt(), source.type())
         try {
             Imgproc.warpPerspective(source, straightened, transform, Size(width, height))

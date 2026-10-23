@@ -10,7 +10,7 @@ plugins {
  * what depends on it, and `:verifyPlayFlavorBoundaries` can police that. Nothing else in the
  * app links it.
  *
- * **Licence.** OpenCV 4.12.0 is Apache-2.0, which is not GPL-2.0-compatible in general — but
+ * **Licence.** OpenCV 5.0.0.1 is Apache-2.0, which is not GPL-2.0-compatible in general — but
  * the resolution this project already uses covers it. GPL-2.0-only code (Beancount, Fava,
  * CPython) lives in the `:engine` process and nothing here touches it
  * (docs/architecture.md); the app process is where Apache-2.0 AndroidX and CameraX
