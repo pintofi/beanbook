@@ -429,6 +429,7 @@ and the status of every item.
   - [x] A guided first run and an Accounts page, merged for 1.1 ([#128](https://github.com/pintofi/beanbook/issues/128), [#130](https://github.com/pintofi/beanbook/issues/130))
   - [x] Fixes from daily use: filter, widgets, amounts, documents, buttons, merged for 1.1 ([#138](https://github.com/pintofi/beanbook/pull/138), [#141](https://github.com/pintofi/beanbook/pull/141))
   - [x] Safety fixes from a second look: remote retry, backups, PDF pages, plugin list, import, templates, merged for 1.1 ([#156](https://github.com/pintofi/beanbook/issues/156), [#157](https://github.com/pintofi/beanbook/issues/157), [#158](https://github.com/pintofi/beanbook/issues/158))
+  - [ ] The document scanner reworked: auto-capture, review screen, styles, crop, detection, page size ([#179](https://github.com/pintofi/beanbook/issues/179) to [#184](https://github.com/pintofi/beanbook/issues/184)); a smaller OpenCV build, measured first ([#185](https://github.com/pintofi/beanbook/issues/185))
   - [ ] The rest of the 1.1 bugs and tidy-ups, in the [milestone](https://github.com/pintofi/beanbook/milestone/1)
   - [ ] Fava's own editor saves outside the app's write protocol ([#17](https://github.com/pintofi/beanbook/issues/17))
   - [ ] TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18))
