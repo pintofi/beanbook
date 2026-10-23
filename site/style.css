@@ -1062,3 +1062,22 @@ tbody tr:last-child > * { border-bottom: 0; }
   body::before, .tape, .theme-toggle, .wordmark { display: none !important; }
   .site-header { position: static; }
 }
+
+/* GitHub and email links, in the header and the footer */
+.social-links { display: inline-flex; flex: 0 0 auto; gap: .35rem; }
+.social-links a {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  color: var(--ink);
+  transition: background-color .2s, transform .3s var(--ease-snap);
+}
+.social-links a:hover { background: var(--rule-soft); transform: translateY(-2px); }
+.social-links svg { width: 1.4rem; height: 1.4rem; }
+.social-links-footer { grid-column: 2; justify-self: end; margin-top: -.5rem; }
+@media (max-width: 48rem) { .social-links-footer { grid-column: 1; justify-self: start; margin-top: 0; } }
+.social-links-footer a { color: var(--slab-ink); }
+.social-links-footer a:hover { background: rgba(255, 255, 255, .12); }
+@media print { .social-links { display: none !important; } }
