@@ -38,7 +38,10 @@ class BackupLimitsTest {
 
     private fun sealed(): File = File(root, "sealed.bcaz").also { file ->
         file.outputStream().use {
-            archives.write("p", it, appVersion = "0.1.0", projectTitle = "Ledger", passphrase = passphrase, derivation = stubKdf)
+            archives.write(
+                "p", it, appVersion = "0.1.0", projectTitle = "Ledger",
+                passphrase = passphrase, derivation = stubKdf,
+            )
         }
     }
 

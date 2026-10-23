@@ -440,7 +440,8 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
     }
 
 
-    private class TooLargeException(val what: String, val limit: Long) : java.io.IOException("$what is over $limit bytes")
+    private class TooLargeException(val what: String, val limit: Long) :
+        java.io.IOException("$what is over $limit bytes")
 
     /**
      * Reads [entry] whole, but never more than [limit] bytes. The size the archive declares for an
