@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -94,7 +95,7 @@ fun DiagnosticsScreen(
                             contentDescription = "Copy the diagnostic report"
                         },
                     ) { Text("Copy") }
-                    SecondaryButton(
+                    OutlinedButton(
                         onClick = { confirmingClear = true },
                         modifier = Modifier.semantics { contentDescription = "Clear the recorded log" },
                     ) { Text("Clear") }
@@ -151,7 +152,7 @@ fun DiagnosticsScreen(
                 ) { Text("Clear it") }
             },
             dismissButton = {
-                SecondaryButton(onClick = { confirmingClear = false }) { Text("Keep it") }
+                OutlinedButton(onClick = { confirmingClear = false }) { Text("Keep it") }
             },
         )
     }

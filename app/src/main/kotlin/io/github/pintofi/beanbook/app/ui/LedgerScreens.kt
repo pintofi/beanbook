@@ -3,6 +3,7 @@ package io.github.pintofi.beanbook.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.material3.OutlinedTextField
@@ -311,7 +312,7 @@ fun JournalScreen(
                 modifier = Modifier.weight(1f)
                     .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
             )
-            SecondaryButton(
+            OutlinedButton(
                 onClick = { confirmingDelete = true },
                 modifier = Modifier.semantics { contentDescription = "Delete the selected entries" },
             ) { Text("Delete") }
@@ -392,7 +393,7 @@ fun JournalScreen(
                 ) { Text("Delete") }
             },
             dismissButton = {
-                SecondaryButton(onClick = { confirmingDelete = false }) { Text("Cancel") }
+                OutlinedButton(onClick = { confirmingDelete = false }) { Text("Cancel") }
             },
         )
     }

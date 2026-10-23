@@ -3,6 +3,7 @@ package io.github.pintofi.beanbook.app.ui
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 
@@ -34,6 +35,6 @@ internal fun ConfirmRemoval(
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
             ) { Text(action) }
         },
-        dismissButton = { SecondaryButton(onClick = onDismiss) { Text("Keep it") } },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Keep it") } },
     )
 }

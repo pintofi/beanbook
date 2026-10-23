@@ -1,6 +1,5 @@
 package io.github.pintofi.beanbook.app
 
-import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material.icons.Icons
@@ -825,7 +825,7 @@ internal fun LedgerApp(
                 ) { Text("Discard") }
             },
             dismissButton = {
-                SecondaryButton(onClick = { confirmingLeave = null }) { Text("Keep editing") }
+                OutlinedButton(onClick = { confirmingLeave = null }) { Text("Keep editing") }
             },
         )
     }

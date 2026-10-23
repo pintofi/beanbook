@@ -503,7 +503,7 @@ private fun SpendingCard(
             )
         }
 
-        SecondaryButton(
+        OutlinedButton(
             onClick = onOpenJournal,
             modifier = Modifier
                 .padding(top = Measure.tight)
@@ -888,7 +888,7 @@ private fun CustomiseHomeSheet(
                     .padding(top = Measure.gap),
                 horizontalArrangement = Arrangement.spacedBy(Measure.snug, Alignment.End),
             ) {
-                SecondaryButton(onClick = onDismiss) { Text("Cancel") }
+                OutlinedButton(onClick = onDismiss) { Text("Cancel") }
                 androidx.compose.material3.Button(
                     onClick = {
                         onApply(

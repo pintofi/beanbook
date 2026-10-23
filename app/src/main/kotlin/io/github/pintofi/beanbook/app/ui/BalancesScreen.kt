@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -134,7 +135,7 @@ fun BalancesScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
-                SecondaryButton(
+                OutlinedButton(
                     onClick = { onDateRange("", "") },
                     modifier = Modifier.semantics { contentDescription = "Clear the period" },
                 ) { Text("Clear") }
@@ -605,7 +606,7 @@ private fun BalanceFiltersSheet(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
-                            SecondaryButton(
+                            OutlinedButton(
                                 onClick = { onDateRange("", "") },
                                 modifier = Modifier.semantics { contentDescription = "Show every date again" },
                             ) { Text("Clear dates") }

@@ -9,6 +9,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
@@ -97,7 +98,7 @@ fun DateField(
                     },
                 ) { Text("Use this date") }
             },
-            dismissButton = { SecondaryButton(onClick = { picking = false }) { Text("Cancel") } },
+            dismissButton = { OutlinedButton(onClick = { picking = false }) { Text("Cancel") } },
         ) {
             DatePicker(state = state)
         }

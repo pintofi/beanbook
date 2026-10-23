@@ -179,14 +179,14 @@ private fun SavedScriptCard(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            androidx.compose.material3.FilledTonalButton(
+            Button(
                 onClick = { onRun(script.id) },
                 enabled = runnable,
                 modifier = Modifier.semantics {
                     contentDescription = "Run the saved script ${script.name}"
                 },
             ) { Text("Run") }
-            SecondaryButton(
+            OutlinedButton(
                 onClick = { confirming = true },
                 modifier = Modifier.semantics {
                     contentDescription = "Remove the saved script ${script.name}"

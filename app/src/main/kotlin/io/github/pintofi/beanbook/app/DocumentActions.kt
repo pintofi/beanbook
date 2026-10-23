@@ -1,7 +1,7 @@
 package io.github.pintofi.beanbook.app
 
-import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import android.content.Intent
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.unit.dp
 import java.io.File
 import android.net.Uri
@@ -1078,7 +1078,7 @@ internal fun MainActivity.LedgerEditDialog() {
             ) { androidx.compose.material3.Text("Add the line") }
         },
         dismissButton = {
-            SecondaryButton(
+            OutlinedButton(
                 onClick = { pendingLedgerEdit = null },
             ) { androidx.compose.material3.Text("Cancel") }
         },

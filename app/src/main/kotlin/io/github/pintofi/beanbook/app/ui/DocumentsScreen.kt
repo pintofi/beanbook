@@ -209,7 +209,7 @@ fun DocumentsScreen(
                     overflow = androidx.compose.ui.text.style.TextOverflow.MiddleEllipsis,
                     modifier = Modifier.weight(1f),
                 )
-                SecondaryButton(
+                OutlinedButton(
                     onClick = { capture.onRemoveFile(index) },
                     modifier = Modifier.semantics { contentDescription = "Remove the attached file $name" },
                 ) { Text("Remove") }
@@ -277,7 +277,7 @@ fun DocumentsScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(if (capture.pages.isEmpty) "File under this account" else "Save as PDF and file") }
 
-            SecondaryButton(onClick = onDiscard) {
+            OutlinedButton(onClick = onDiscard) {
                 Text(if (attachedFiles.isEmpty()) "Discard these pages" else "Discard")
             }
         }
@@ -381,14 +381,14 @@ fun DocumentsScreen(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             if (fileForDocument != null && row.status != DocumentStatus.MISSING) {
-                                SecondaryButton(
+                                OutlinedButton(
                                     onClick = { viewing = path },
                                     modifier = Modifier.semantics {
                                         contentDescription = "View $path"
                                     },
                                 ) { Text("View") }
                             }
-                            SecondaryButton(
+                            OutlinedButton(
                                 onClick = { onShare(path) },
                                 modifier = Modifier.semantics {
                                     contentDescription = "Share $path"
@@ -399,7 +399,7 @@ fun DocumentsScreen(
                             // "File" and "Refile" are different acts: one gives a document
                             // its first directive, the other moves the one it has.
                             val unfiled = !row.linked
-                            SecondaryButton(
+                            OutlinedButton(
                                 onClick = { refiling = row },
                                 modifier = Modifier.semantics {
                                     contentDescription = if (unfiled) {
@@ -418,7 +418,7 @@ fun DocumentsScreen(
                             // `document:` metadata is a link too, and hiding Unlink for those
                             // left a document listed as attached with no way to detach it.
                             if (row.linked) {
-                                SecondaryButton(
+                                OutlinedButton(
                                     onClick = { pendingRemoval = row to DocumentRemoval.UNLINK },
                                     modifier = Modifier.semantics {
                                         contentDescription = "Unlink $path from its entry"
@@ -426,7 +426,7 @@ fun DocumentsScreen(
                                 ) { Text("Unlink") }
                             }
                             if (row.status != DocumentStatus.MISSING) {
-                                SecondaryButton(
+                                OutlinedButton(
                                     onClick = { pendingRemoval = row to DocumentRemoval.DELETE_FILE },
                                     modifier = Modifier.semantics {
                                         contentDescription = "Delete the file $path"
@@ -537,7 +537,7 @@ fun DocumentsScreen(
                     enabled = BeancountText.ACCOUNT.matches(target.trim()),
                 ) { Text(if (row.linked) "Refile" else "File") }
             },
-            dismissButton = { SecondaryButton(onClick = { refiling = null }) { Text("Cancel") } },
+            dismissButton = { OutlinedButton(onClick = { refiling = null }) { Text("Cancel") } },
         )
     }
 
@@ -586,7 +586,7 @@ fun DocumentsScreen(
                 }
             },
             dismissButton = {
-                SecondaryButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
+                OutlinedButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
             },
         )
     }

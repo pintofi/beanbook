@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -156,7 +157,7 @@ fun CropPageScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.Start,
         ) {
-            SecondaryButton(
+            OutlinedButton(
                 onClick = { onCropped(null) },
                 modifier = Modifier.semantics { contentDescription = "Use the whole photo" },
                 colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color.White),

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.OffsetMapping
@@ -223,7 +224,7 @@ private fun Editor(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
-            SecondaryButton(onClick = onDiscardDraft) { Text("Discard restored changes") }
+            OutlinedButton(onClick = onDiscardDraft) { Text("Discard restored changes") }
         }
 
         message?.let { StatusLine(it, Modifier.padding(horizontal = 12.dp)) }

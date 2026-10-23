@@ -1,12 +1,12 @@
 package io.github.pintofi.beanbook.app.about
 
-import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,7 +43,7 @@ internal fun EditionNotice(
         edition.differences.forEach { difference ->
             Text("•  $difference", style = MaterialTheme.typography.bodyMedium)
         }
-        SecondaryButton(
+        OutlinedButton(
             onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(edition.url))) } },
             modifier = Modifier.semantics {
                 contentDescription = "Read how the ${edition.name} edition differs, opens in your browser"
@@ -76,7 +76,7 @@ internal fun SupportNotice(
             style = MaterialTheme.typography.bodyMedium,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(Measure.snug)) {
-            SecondaryButton(
+            OutlinedButton(
                 onClick = {
                     onAnswered()
                     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
@@ -85,7 +85,7 @@ internal fun SupportNotice(
                     contentDescription = "Support Beanbook on Ko-fi, opens in your browser"
                 },
             ) { Text("Support on Ko-fi") }
-            SecondaryButton(
+            OutlinedButton(
                 onClick = onAnswered,
                 modifier = Modifier.semantics { contentDescription = "Close this and do not show it again" },
             ) { Text("No thanks") }

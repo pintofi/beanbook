@@ -1,9 +1,9 @@
 package io.github.pintofi.beanbook.app
 
-import io.github.pintofi.beanbook.app.ui.SecondaryButton
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
@@ -53,7 +53,7 @@ internal fun MainActivity.ExternalLinkDialog() {
             ) { Text("Open") }
         },
         dismissButton = {
-            SecondaryButton(onClick = { pendingExternalLink = null }) { Text("Cancel") }
+            OutlinedButton(onClick = { pendingExternalLink = null }) { Text("Cancel") }
         },
     )
 }
