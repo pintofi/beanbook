@@ -28,6 +28,7 @@ import io.github.pintofi.beanbook.app.ui.EditableFile
 import io.github.pintofi.beanbook.app.ui.ProjectPickerScreen
 import io.github.pintofi.beanbook.app.ui.RawEditorScreen
 import io.github.pintofi.beanbook.app.ui.BackupScreen
+import io.github.pintofi.beanbook.app.ui.ScheduleEncryption
 import io.github.pintofi.beanbook.app.ui.MirrorScreen
 import io.github.pintofi.beanbook.app.ui.AppearanceScreen
 import io.github.pintofi.beanbook.app.ui.PluginsScreen
@@ -86,6 +87,7 @@ internal fun SurfaceContent(
     onDiscardRestore: () -> Unit,
     onChooseScheduleFolder: () -> Unit,
     onScheduleChanged: (Boolean) -> Unit,
+    scheduleEncryption: ScheduleEncryption,
     mirrorEnabled: Boolean,
     mirrorFolder: String?,
     mirrorConflicts: List<MirrorAction.Conflict>,
@@ -495,6 +497,7 @@ internal fun SurfaceContent(
                             onDiscardRestore = onDiscardRestore,
                             onChooseScheduleFolder = onChooseScheduleFolder,
                             onScheduleChanged = onScheduleChanged,
+                            scheduleEncryption = scheduleEncryption,
                             message = backupMessage,
                         )
 

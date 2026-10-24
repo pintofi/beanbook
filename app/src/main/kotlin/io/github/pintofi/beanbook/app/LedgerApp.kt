@@ -51,6 +51,7 @@ import io.github.pintofi.beanbook.app.ui.EditableFile
 import io.github.pintofi.beanbook.core.data.MirrorAction
 import io.github.pintofi.beanbook.app.ui.DocumentCaptureHandle
 import io.github.pintofi.beanbook.app.ui.ScannerScreen
+import io.github.pintofi.beanbook.app.ui.ScheduleEncryption
 import io.github.pintofi.beanbook.core.data.RestoreStaged
 import io.github.pintofi.beanbook.core.domain.CapturedPages
 import io.github.pintofi.beanbook.core.domain.DirectiveDraft
@@ -225,6 +226,7 @@ internal fun LedgerApp(
     onDiscardRestore: () -> Unit,
     onChooseScheduleFolder: () -> Unit,
     onScheduleChanged: (Boolean) -> Unit,
+    scheduleEncryption: ScheduleEncryption,
     mirrorEnabled: Boolean,
     mirrorFolder: String?,
     mirrorConflicts: List<MirrorAction.Conflict>,
@@ -671,6 +673,7 @@ internal fun LedgerApp(
                 onDiscardRestore = onDiscardRestore,
                 onChooseScheduleFolder = onChooseScheduleFolder,
                 onScheduleChanged = onScheduleChanged,
+                scheduleEncryption = scheduleEncryption,
                 mirrorEnabled = mirrorEnabled,
                 mirrorFolder = mirrorFolder,
                 mirrorConflicts = mirrorConflicts,
