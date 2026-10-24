@@ -3,8 +3,13 @@ package io.github.pintofi.beanbook.app.ui
 import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -98,5 +103,71 @@ class ScannerScreenTest {
     private companion object {
         const val LONG_PRESS_MILLIS = 800L
         const val DRAG_STEPS = 8
+    }
+
+    private class Session(initial: CapturedPages) {
+        var pages by androidx.compose.runtime.mutableStateOf(initial)
+        val actions = io.github.pintofi.beanbook.app.documents.PageReviewActions(
+            current = { pages },
+            replace = { expected, next -> if (pages == expected) { pages = next; true } else false },
+        )
+    }
+
+    private fun scanner(session: Session, onDone: () -> Unit = {}, onCancel: () -> Unit = {}) {
+        compose.setContent {
+            MaterialTheme {
+                ScannerScreen(
+                    pages = session.pages.pages,
+                    fileFor = { File(dir, it) },
+                    captureFile = { File(dir, "shot-${System.nanoTime()}.jpg") },
+                    onCaptured = { _, _, _ -> },
+                    onRemovePage = {},
+                    onDone = onDone,
+                    onCancel = onCancel,
+                    review = session.actions,
+                    batch = session.pages,
+                )
+            }
+        }
+    }
+
+    @Test fun theCheckOpensTheReviewAndBackReturnsToTheCamera() {
+        val session = Session(CapturedPages().add(page("a.jpg")).add(page("b.jpg")))
+        var left = false
+        scanner(session, onCancel = { left = true })
+
+        compose.onNodeWithContentDescription("Review the 2 pages").performClick()
+        compose.onNodeWithText("Page 2 of 2").assertIsDisplayed()
+        // Auto-capture is paused behind the review, and back is the camera, not the end of the scan.
+        compose.onNodeWithContentDescription("Back to the camera").performClick()
+        compose.onNodeWithContentDescription("Leave the scanner").assertIsDisplayed()
+        assertEquals(false, left)
+    }
+
+    @Test fun retakingAPageShowsItsNumberAndHidesTheBatch() {
+        val session = Session(CapturedPages().add(page("a.jpg")).add(page("b.jpg")))
+        scanner(session)
+
+        compose.onNodeWithContentDescription("Review the 2 pages").performClick()
+        compose.onNodeWithContentDescription("Retake page 2").performClick()
+        compose.onNodeWithText("Retake page 2").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("Review the 2 pages").assertCountEquals(0)
+        compose.onAllNodesWithContentDescription("Page 1. Tap to see it, or hold and drag to move it.")
+            .assertCountEquals(0)
+
+        // Leaving a retake returns to the page with nothing changed.
+        compose.onNodeWithContentDescription("Leave the scanner").performClick()
+        compose.onNodeWithText("Page 2 of 2").assertIsDisplayed()
+        assertEquals(listOf("a.jpg", "b.jpg"), session.pages.pages.map { it.source })
+    }
+
+    @Test fun addingAPageFromTheReviewReturnsToTheCameraWithTheBatchKept() {
+        val session = Session(CapturedPages().add(page("a.jpg")))
+        scanner(session)
+
+        compose.onNodeWithContentDescription("Review the 1 pages").performClick()
+        compose.onNodeWithText("Add page").performClick()
+        compose.onNodeWithContentDescription("Leave the scanner").assertIsDisplayed()
+        assertEquals(1, session.pages.size)
     }
 }

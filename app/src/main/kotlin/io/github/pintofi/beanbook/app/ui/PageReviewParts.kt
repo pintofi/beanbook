@@ -17,6 +17,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.RotateLeft
 import androidx.compose.material.icons.filled.RotateRight
@@ -157,6 +158,7 @@ internal fun PageTools(
     shown: Int,
     onTurn: (clockwise: Boolean) -> Unit,
     onCrop: () -> Unit,
+    onRetake: (() -> Unit)? = null,
 ) {
     Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
         HorizontalFloatingToolbar(expanded = true) {
@@ -172,6 +174,12 @@ internal fun PageTools(
                 onClick = onCrop,
                 modifier = Modifier.semantics { contentDescription = "Set the corners of page ${shown + 1}" },
             ) { Icon(Icons.Filled.Crop, contentDescription = null) }
+            onRetake?.let {
+                IconButton(
+                    onClick = it,
+                    modifier = Modifier.semantics { contentDescription = "Retake page ${shown + 1}" },
+                ) { Icon(Icons.Filled.CameraAlt, contentDescription = null) }
+            }
         }
     }
 }

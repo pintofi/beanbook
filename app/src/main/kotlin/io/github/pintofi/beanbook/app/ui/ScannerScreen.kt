@@ -73,6 +73,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.pintofi.beanbook.core.domain.CapturedPage
+import io.github.pintofi.beanbook.core.domain.PageEdit
+import io.github.pintofi.beanbook.core.domain.apply
 import io.github.pintofi.beanbook.core.domain.CropQuad
 import io.github.pintofi.beanbook.scanner.ScanStyle
 import io.github.pintofi.beanbook.scanner.Scanner
@@ -121,7 +123,21 @@ fun ScannerScreen(
     // Back leaves the scanner, not the app. The scanner is a mode drawn over
     // everything else, and without this the system's back gesture went to the activity --
     // which had nothing behind it, so a stray swipe closed Beanbook mid-batch.
-    androidx.activity.compose.BackHandler(enabled = true) { onCancel() }
+    // Back from a retake returns to the page being retaken, with nothing changed; from adding it leaves.
+    var chosenTarget by rememberSaveable(stateSaver = ScanTarget.Saver) {
+        mutableStateOf<ScanTarget>(ScanTarget.Append)
+    }
+    var previewing by remember { mutableStateOf<Int?>(null) }
+    val leaveOrReturn = {
+        val retaking = chosenTarget as? ScanTarget.Replace
+        if (retaking != null) {
+            chosenTarget = ScanTarget.Append
+            previewing = retaking.index
+        } else {
+            onCancel()
+        }
+    }
+    androidx.activity.compose.BackHandler(enabled = true) { leaveOrReturn() }
 
     // The form underneath stays composed while scanning, and a field in it may still
     // hold focus -- which would keep the keyboard up over the viewfinder.
@@ -149,7 +165,33 @@ fun ScannerScreen(
     }
 
     /** A page opened for a proper look, rather than removed by the tap that opened it. */
-    var previewing by remember { mutableStateOf<Int?>(null) }
+
+    // What the next photograph is for: another page, or a new photograph of one already taken. A
+    // retake whose page has moved or gone since it was chosen falls back to adding.
+    val latestPages by androidx.compose.runtime.rememberUpdatedState(pages)
+    val target = chosenTarget.checkedAgainst(pages)
+    var notice by remember { mutableStateOf<String?>(null) }
+
+    /** Hands a new photograph on: as a page, or in place of the one being retaken. */
+    fun deliver(file: File, quad: CropQuad?) {
+        // Read now, not captured: the auto-shutter's closure outlives the composition that made it.
+        val retaking = chosenTarget.checkedAgainst(latestPages) as? ScanTarget.Replace
+        if (retaking == null) {
+            onCaptured(file, quad, style)
+            return
+        }
+        var done = false
+        var tries = 0
+        while (!done && tries < 2) {
+            val before = review.current()
+            val after = before.apply(PageEdit.Retake(retaking.index, retaking.source, file.name, quad))
+            done = review.replace(before, after)
+            tries += 1
+        }
+        chosenTarget = ScanTarget.Append
+        notice = "Page ${retaking.index + 1} retaken."
+        previewing = retaking.index
+    }
 
     // The three controls a scanner needs that a viewfinder does not, taken from what
     // OSS-DocumentScanner does (MIT; read, not copied): a torch for a receipt on a
@@ -196,17 +238,17 @@ fun ScannerScreen(
         // page in view changes.
         shutter.shot(liveQuad)
         holdProgress = 0f
-        val target = captureFile()
+        val file = captureFile()
         capture.takePicture(
-            ImageCapture.OutputFileOptions.Builder(target).build(),
+            ImageCapture.OutputFileOptions.Builder(file).build(),
             ContextCompat.getMainExecutor(context),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(result: ImageCapture.OutputFileResults) {
                     // Detect here, once, and hand the crop up with the file. The overlay
                     // reads the same result, so a page is never analysed twice for one shot.
                     scope.launch {
-                        val quad = withContext(Dispatchers.Default) { detectPageIn(target) }
-                        onCaptured(target, quad, style)
+                        val quad = withContext(Dispatchers.Default) { detectPageIn(file) }
+                        deliver(file, quad)
                         busy = false
                     }
                 }
@@ -337,18 +379,18 @@ fun ScannerScreen(
         busy = true
         scope.launch {
             uris.forEach { uri ->
-                val target = captureFile()
+                val file = captureFile()
                 val copied = withContext(Dispatchers.IO) {
                     runCatching {
                         context.contentResolver.openInputStream(uri)?.use { input ->
-                            target.outputStream().use { input.copyTo(it) }
+                            file.outputStream().use { input.copyTo(it) }
                         } != null
                     }.onFailure { android.util.Log.w("Scanner", "could not import a picture", it) }
                         .getOrDefault(false)
                 }
-                if (copied && target.length() > 0) {
-                    val quad = withContext(Dispatchers.Default) { detectPageIn(target) }
-                    onCaptured(target, quad, style)
+                if (copied && file.length() > 0) {
+                    val quad = withContext(Dispatchers.Default) { detectPageIn(file) }
+                    deliver(file, quad)
                 }
             }
             busy = false
@@ -542,7 +584,7 @@ fun ScannerScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(
-                    onClick = onCancel,
+                    onClick = { leaveOrReturn() },
                     modifier = Modifier.semantics { contentDescription = "Leave the scanner" },
                 ) {
                     Icon(
@@ -551,7 +593,16 @@ fun ScannerScreen(
                         tint = Color.White,
                     )
                 }
-                Box(Modifier.weight(1f))
+                if (target is ScanTarget.Replace) {
+                    Text(
+                        "Retake page ${target.index + 1}",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                    )
+                } else {
+                    Box(Modifier.weight(1f))
+                }
             IconButton(
                 onClick = {
                     flash = when (flash) {
@@ -645,7 +696,7 @@ fun ScannerScreen(
                 )
             }
 
-            if (pages.isNotEmpty()) {
+            if (pages.isNotEmpty() && target is ScanTarget.Append) {
                 PageStrip(
                     pages = pages,
                     fileFor = fileFor,
@@ -665,7 +716,7 @@ fun ScannerScreen(
                 // which page it was or let the others be reached. The strip does both jobs,
                 // so the box is gone and its width stays, because it is what keeps the
                 // shutter in the middle of the screen rather than left of it.
-                IconButton(
+                if (target is ScanTarget.Append) IconButton(
                     onClick = {
                         importPictures.launch(
                             androidx.activity.result.PickVisualMediaRequest(
@@ -689,11 +740,11 @@ fun ScannerScreen(
                     onLongPress = { autoCapture = !autoCapture },
                 ) { shoot() }
 
-                IconButton(
-                    onClick = onDone,
+                if (target is ScanTarget.Append) IconButton(
+                    onClick = { previewing = pages.lastIndex },
                     enabled = pages.isNotEmpty(),
                     modifier = Modifier.size(56.dp).semantics {
-                        contentDescription = "Finish scanning with ${pages.size} pages"
+                        contentDescription = "Review the ${pages.size} pages"
                     },
                 ) {
                     Icon(
@@ -715,8 +766,15 @@ fun ScannerScreen(
             fileFor = fileFor,
             startAt = index,
             review = review,
-            onDone = { previewing = null },
+            onDone = onDone,
             backLabel = "Back to the camera",
+            onBack = { previewing = null; notice = null },
+            onRetake = { retaking ->
+                chosenTarget = ScanTarget.Replace(retaking, batch.pages[retaking].source)
+                previewing = null
+            },
+            onAddPage = { previewing = null },
+            notice = notice,
         )
     }
 }
