@@ -228,13 +228,24 @@ fun ScannerScreen(
     // frame is the camera's picture rather than a screenshot of the view, so the outline no
     // longer depends on how the preview happens to be letterboxed.
     fun onSample(quad: CropQuad?, frame: androidx.compose.ui.unit.IntSize) {
-        if (busy) return
+        // Not while a page is open for editing: the camera is still running behind the editor, and
+        // a shutter that fires there would add a page nobody asked for to the batch being reviewed.
+        if (busy || previewing != null) return
         liveQuad = quad
         liveFrame = frame
         aimed = quad != null
         val fire = shutter.sample(quad, kotlin.math.hypot(frame.width.toFloat(), frame.height.toFloat()))
         holdProgress = if (autoCapture) shutter.progress else 0f
         if (autoCapture && fire) shoot()
+    }
+
+    // Opening the editor forgets what the shutter was holding on, so coming back to the camera has to
+    // see the page settle again before it fires.
+    LaunchedEffect(previewing != null) {
+        if (previewing != null) {
+            shutter.shot(null)
+            holdProgress = 0f
+        }
     }
 
     val analysisExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
