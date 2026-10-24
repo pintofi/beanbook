@@ -99,13 +99,6 @@ class HomeInsightsTest {
         assertEquals(usd("60.00"), transport.change)
     }
 
-    @Test fun `the biggest mover is the largest change either way`() {
-        val report = HomeInsights.spending(month, SpendingPeriod.THIS_MONTH, today)
-
-        // Food moved +50, Transport +60.
-        assertEquals("Expenses:Transport", report.biggestMover?.account)
-    }
-
     @Test fun `a share is the category against the total`() {
         val report = HomeInsights.spending(month, SpendingPeriod.THIS_MONTH, today)
         val food = report.categories.first()

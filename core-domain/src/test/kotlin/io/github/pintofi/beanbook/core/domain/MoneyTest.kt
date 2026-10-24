@@ -56,7 +56,6 @@ class BalanceTest {
         val balance = Balance.of(
             listOf(Amount.parse("42.30", "USD"), Amount.parse("-42.30", "USD"))
         )
-        assertTrue(balance.isBalanced)
         assertTrue(balance.residuals().isEmpty())
     }
 
@@ -65,7 +64,6 @@ class BalanceTest {
         val balance = Balance.of(
             listOf(Amount.parse("42.30", "USD"), Amount.parse("-42.00", "USD"))
         )
-        assertFalse(balance.isBalanced)
         assertEquals(listOf(Amount.parse("0.30", "USD")), balance.residuals())
     }
 

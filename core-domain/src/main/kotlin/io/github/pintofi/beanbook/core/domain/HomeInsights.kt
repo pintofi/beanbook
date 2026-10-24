@@ -81,13 +81,6 @@ data class SpendingReport(
     val ignoredCurrencies: List<String>,
 ) {
     val isEmpty: Boolean get() = categories.isEmpty()
-
-    /** The category that moved most against last period, which is usually the story. */
-    val biggestMover: CategorySpend?
-        get() = categories
-            .filter { it.change != null }
-            .maxByOrNull { it.change!!.number.abs() }
-            ?.takeIf { it.change!!.number.signum() != 0 }
 }
 
 /**
