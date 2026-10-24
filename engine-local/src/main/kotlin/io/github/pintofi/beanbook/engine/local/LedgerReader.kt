@@ -249,6 +249,11 @@ class LedgerReader(
         opened = optStringOrNull("opened"),
         closed = optStringOrNull("closed"),
         allowed = optJSONArray("allowed").toStringList(),
+        openedFile = optStringOrNull("open_file"),
+        openedLine = if (has("open_line") && !isNull("open_line")) optInt("open_line") else null,
+        metadata = optJSONObject("metadata")?.let { meta ->
+            meta.keys().asSequence().associateWith { meta.optString(it) }
+        }.orEmpty(),
         positions = optJSONArray("positions").map { it.toAmount() }.filterNotNull(),
         atCost = optJSONArray("at_cost").map { it.toAmount() }.filterNotNull(),
         atValue = optJSONArray("at_value").map { it.toAmount() }.filterNotNull(),

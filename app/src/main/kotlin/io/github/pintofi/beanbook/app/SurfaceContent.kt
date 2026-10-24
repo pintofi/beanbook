@@ -28,6 +28,7 @@ import io.github.pintofi.beanbook.app.ui.EditableFile
 import io.github.pintofi.beanbook.app.ui.ProjectPickerScreen
 import io.github.pintofi.beanbook.app.ui.RawEditorScreen
 import io.github.pintofi.beanbook.app.ui.BackupScreen
+import io.github.pintofi.beanbook.app.ui.EditAccountDetails
 import io.github.pintofi.beanbook.app.ui.ScheduleEncryption
 import io.github.pintofi.beanbook.app.ui.MirrorScreen
 import io.github.pintofi.beanbook.app.ui.AppearanceScreen
@@ -154,6 +155,7 @@ internal fun SurfaceContent(
     onDeleteTemplate: (String) -> Unit,
     onSaveDirective: (io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit,
     onOpenAccount: ((io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit)? = null,
+    onEditAccountDetails: EditAccountDetails? = null,
     saveState: String?,
     /** Entries committed from the form this session: what the save sweep marks. */
     entryCommits: Int = 0,
@@ -369,6 +371,7 @@ internal fun SurfaceContent(
                             accounts = ledger?.accounts.orEmpty(),
                             names = ledger?.accountNames ?: io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
                             onSave = onOpenAccount,
+                            onEditDetails = onEditAccountDetails,
                             message = saveState,
                             modifier = Modifier.padding(padding),
                         )

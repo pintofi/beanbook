@@ -129,11 +129,6 @@ fun DirectiveEntryScreen(
         // Wrapped onto as many lines as they need rather than scrolled sideways (device audit
         // 2026-10-10): "Document" was cut in half at the edge and Commodity, Query and Custom
         // were off screen with nothing to say they were there. Every kind is in view.
-        Text(
-            "To open or close an account, use More, then Accounts.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         androidx.compose.foundation.layout.FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),

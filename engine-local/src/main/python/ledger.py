@@ -431,6 +431,17 @@ def inspect(
                 "opened": str(opened.date) if opened else None,
                 "closed": str(closed.date) if closed else None,
                 "allowed": list(opened.currencies or []) if opened else [],
+                # Where the Open directive is written and what metadata it carries, so the
+                # account's details can be shown and rewritten in place.
+                "open_file": opened.meta.get("filename") if opened else None,
+                "open_line": opened.meta.get("lineno") if opened else None,
+                "metadata": {
+                    key: _meta_str(value)
+                    for key, value in (opened.meta or {}).items()
+                    if key not in ("filename", "lineno")
+                }
+                if opened
+                else {},
                 "positions": _amounts(inventory, convert.get_units),
                 "at_cost": _amounts(inventory, convert.get_cost),
                 # Market value. `at_operating` is the same figure, kept so a cached

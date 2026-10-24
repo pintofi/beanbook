@@ -2,12 +2,16 @@ package io.github.pintofi.beanbook.app.ui
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.pintofi.beanbook.core.domain.AccountBalance
@@ -85,6 +89,54 @@ class AccountDetailsTest {
         compose.onNodeWithContentDescription("Detail name 1").assertDoesNotExist()
     }
 
+    @Test fun theDetailsOfAnOpenAccountCanBeChangedAddedAndRemoved() {
+        val saved = mutableListOf<Pair<String, Map<String, String>>>()
+        val account = AccountBalance(
+            name = "Assets:Bank:Checking",
+            positions = emptyList(),
+            opened = "2020-01-01",
+            openedFile = "/ledger/files/accounts.beancount",
+            openedLine = 4,
+            metadata = linkedMapOf("institution" to "Corner Bank", "rank" to "2"),
+        )
+        compose.setContent {
+            MaterialTheme {
+                AccountsScreen(
+                    listOf(account), AccountNames.DEFAULT, onSave = {}, message = null, today = today,
+                    onEditDetails = { changed, details -> saved += changed.name to details },
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Assets:Bank:Checking. Edit its details").performClick()
+        compose.onNodeWithText("Corner Bank").assertExists()
+
+        compose.onNodeWithContentDescription("Detail value 1").performTextClearance()
+        compose.onNodeWithContentDescription("Detail value 1").performTextInput("Harbour Bank")
+        compose.onNodeWithContentDescription("Remove detail 2").performClick()
+        compose.onNode(hasText("Add a detail") and hasAnyAncestor(isDialog())).performClick()
+        compose.onNodeWithContentDescription("Detail name 2").performTextInput("number")
+        compose.onNodeWithContentDescription("Detail value 2").performTextInput("0123")
+        compose.onNodeWithText("Save details").assertIsEnabled().performClick()
+
+        assertEquals(
+            listOf("Assets:Bank:Checking" to mapOf("institution" to "Harbour Bank", "number" to "0123")),
+            saved,
+        )
+    }
+
+    @Test fun anAccountWithNoRecordedPositionCannotBeEdited() {
+        val account = AccountBalance(name = "Assets:Auto", positions = emptyList(), opened = null)
+        compose.setContent {
+            MaterialTheme {
+                AccountsScreen(
+                    listOf(account), AccountNames.DEFAULT, onSave = {}, message = null, today = today,
+                    onEditDetails = { _, _ -> },
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Assets:Auto. Edit its details").assertDoesNotExist()
+    }
+
     @Test fun closingAnAccountAsksForADate() {
         val saved = mutableListOf<DirectiveDraft>()
         val empty = AccountBalance(
@@ -113,6 +165,6 @@ class AccountDetailsTest {
         compose.onNode(hasContentDescription("Open directive")).assertDoesNotExist()
         compose.onNode(hasContentDescription("Close directive")).assertDoesNotExist()
         compose.onNodeWithContentDescription("Balance directive").assertExists()
-        compose.onNodeWithText("To open or close an account, use More, then Accounts.").assertExists()
+        compose.onNodeWithContentDescription("Note directive").assertExists()
     }
 }

@@ -50,6 +50,7 @@ import io.github.pintofi.beanbook.core.domain.JournalEntry
 import io.github.pintofi.beanbook.app.ui.EditableFile
 import io.github.pintofi.beanbook.core.data.MirrorAction
 import io.github.pintofi.beanbook.app.ui.DocumentCaptureHandle
+import io.github.pintofi.beanbook.app.ui.EditAccountDetails
 import io.github.pintofi.beanbook.app.ui.ScannerScreen
 import io.github.pintofi.beanbook.app.ui.ScheduleEncryption
 import io.github.pintofi.beanbook.core.data.RestoreStaged
@@ -280,6 +281,7 @@ internal fun LedgerApp(
     onRemoteDiscard: () -> Unit,
     onSaveDirective: (io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit,
     onOpenAccount: ((io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit)? = null,
+    onEditAccountDetails: EditAccountDetails? = null,
     saveState: String?,
     /** Entries committed from the form this session; a change closes the form. */
     entryCommits: Int = 0,
@@ -735,6 +737,7 @@ internal fun LedgerApp(
                 onDeleteTemplate = onDeleteTemplate,
                 onSaveDirective = onSaveDirective,
                 onOpenAccount = onOpenAccount,
+                onEditAccountDetails = onEditAccountDetails,
                 saveState = formMessage,
                 entryCommits = entryCommits,
                 editSession = editSession,

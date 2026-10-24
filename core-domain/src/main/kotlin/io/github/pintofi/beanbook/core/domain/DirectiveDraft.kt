@@ -278,10 +278,15 @@ sealed interface DirectiveDraft {
         private fun renderMetadata(metadata: Map<String, String>): String = buildString {
             for ((key, value) in metadata) {
                 if (value.isBlank()) continue
-                val shown = if (NUMBER.matches(value.trim())) value.trim() else BeancountText.quote(value.trim())
-                append("  $key: $shown\n")
+                append("  $key: ${renderMetadataValue(value)}\n")
             }
         }
+
+        /** One metadata value: a number bare, anything else a quoted string. */
+        fun renderMetadataValue(value: String): String =
+            if (NUMBER.matches(value.trim())) value.trim() else BeancountText.quote(value.trim())
+
+        fun isMetadataKey(key: String): Boolean = KEY.matches(key)
 
         /** A key that is not a Beancount metadata key would write a line the parser rejects. */
         private fun metadataProblems(metadata: Map<String, String>): List<DraftProblem> =
