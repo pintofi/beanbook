@@ -32,4 +32,21 @@ class SharingPasswordTest {
         assertNotEquals(one, two)
         assertTrue(one.startsWith("pbkdf2_sha256$1000$"))
     }
+
+    @Test
+    fun `agrees with the platform's PBKDF2 for any password and count`() {
+        listOf("pw" to 1, "correct horse" to 1000, "pässwörd €" to 4096, "" to 2).forEach { (password, rounds) ->
+            val salt = ByteArray(16) { (it * 7).toByte() }
+            val reference = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+                .generateSecret(javax.crypto.spec.PBEKeySpec(password.toCharArray(), salt, rounds, 256)).encoded
+                .joinToString("") { "%02x".format(it) }
+            val stored = SharingPassword.hash(password.toCharArray(), salt, rounds)
+            assertEquals(reference, stored.substringAfterLast('$'), "'$password' at $rounds rounds")
+        }
+    }
+
+    @Test
+    fun `new passwords use the current OWASP count`() {
+        assertEquals(600_000, SharingPassword.ITERATIONS)
+    }
 }

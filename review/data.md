@@ -24,7 +24,7 @@ Area `data` of [#16](https://github.com/pintofi/beanbook/issues/16). Method and 
 | `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/ProjectWorkspace.kt` | 1 2 3 | D-1, D-13 | ProjectWorkspaceTest (ids; titles with quotes, backslashes and line breaks; a commodity that is not one; interrupted creation) |
 | `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/ProjectWriter.kt` | 1 2 3 | D-2, D-5, D-15 | ProjectWriterTest, ValidatorUnavailableTest, WriteProtocolHardeningTest (cancelled mid-check, recovery with the engine down). The new cancellation and recovery cases fail on the old code |
 | `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/RestorePlan.kt` | 1 2 | D-6, D-15 | RestorePlanTest (Undo after a restore is refused); BackupRetention keeps the newest regardless of age |
-| `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/SharingPassword.kt` | 1 3 | I-4 | SharingPasswordTest pins the format the engine checks; 150,000 iterations kept until measured |
+| `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/SharingPassword.kt` | 1 3 | I-4 | SharingPasswordTest pins the format the engine checks; 600,000 iterations (#56) |
 | `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/SupportPrompt.kt` | 2 5 | none | SupportPromptTest; used by the edition notice |
 | `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/TemplateStore.kt` | 1 2 5 | D-14 | TemplateStoreTest, ReviewHardeningTest; amounts are stored as the text typed and read as `BigDecimal`, never as a float |
 | `core-data/src/main/kotlin/io/github/pintofi/beanbook/core/data/WidgetCache.kt` | 1 2 5 | D-14 | WidgetCacheTest, MultiCurrencyWidgetTest, ReviewHardeningTest |

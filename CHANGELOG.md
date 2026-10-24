@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An Open button beside the message when an entry names an account the ledger has not opened. The entry you typed stays as it is. ([#140], fixes [#131])
 
 ### Changed
+- The sharing sign-in password is now stored with 600,000 rounds of PBKDF2 instead of 150,000, the figure OWASP recommends. Saving the password takes a few seconds on a phone and runs in the background; a password saved earlier keeps working. ([#56])
 - First-run setup uses the same cards as the rest of the app: Add a ledger, and each of the three setup steps, are a heading and a card for each group, with choices as rows and switches as switch rows. It works as before. ([#197])
 - Every button is now either filled (a page's main action) or outlined (everything else), in Material's own size. The outlined ones are no longer taller and tighter than the filled ones beside them. ([#192])
 - The Accounts page uses the same cards as the other pages under More: a heading and a card for each type of account, the form to open an account in a card, and closed accounts in a card. ([#189])
@@ -137,6 +138,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#53]: https://github.com/pintofi/beanbook/issues/53
 [#54]: https://github.com/pintofi/beanbook/issues/54
 [#55]: https://github.com/pintofi/beanbook/issues/55
+[#56]: https://github.com/pintofi/beanbook/issues/56
 [#57]: https://github.com/pintofi/beanbook/issues/57
 [#58]: https://github.com/pintofi/beanbook/issues/58
 [#59]: https://github.com/pintofi/beanbook/issues/59

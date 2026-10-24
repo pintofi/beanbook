@@ -90,9 +90,9 @@ one, which is unchanged.
 - Answers only clients on private, link-local or loopback addresses; anything else is `403`
   before the sign-in page.
 - `Host` must name the bound address (DNS rebinding).
-- A username and password the user sets. Only a salted PBKDF2-SHA256 hash (150,000
-  rounds) is stored, in the app's private state folder, excluded from Android backup, never
-  in a project, backup or mirror; the password never reaches the engine process.
+- A username and password the user sets. Only a salted PBKDF2-SHA256 hash (600,000
+  rounds; hashes made earlier with 150,000 still work) is stored, in the app's private state
+  folder, excluded from Android backup, never in a project, backup or mirror; the password never reaches the engine process.
 - A signed-in browser holds a random 256-bit session id in an `HttpOnly`,
   `SameSite=Strict` cookie; sessions expire after 12 idle hours, are capped at 32, and all
   end when sharing stops. `SameSite=Strict` is the CSRF defence.
