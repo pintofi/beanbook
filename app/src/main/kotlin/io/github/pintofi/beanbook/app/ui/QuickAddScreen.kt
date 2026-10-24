@@ -1192,15 +1192,11 @@ private fun PageEditorOverlay(
         ),
     ) {
         androidx.compose.material3.Surface(modifier = Modifier.fillMaxSize()) {
-            PageEditorScreen(
+            PageReviewScreen(
                 pages = capture.pages,
                 fileFor = capture.fileFor,
                 startAt = startAt,
-                onRotate = capture.onRotateBy,
-                onCrop = capture.onCrop,
-                onRestyle = capture.onRestyle,
-                onRemove = capture.onRemovePage,
-                onMove = capture.onMove,
+                review = capture.review,
                 onDone = onDone,
             )
         }

@@ -105,10 +105,11 @@ fun ScannerScreen(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
     /** Per-page editing, reached from the batch thumbnail. */
-    onRotatePage: (index: Int, clockwise: Boolean) -> Unit = { _, _ -> },
-    onCropPage: (index: Int, quad: CropQuad?) -> Unit = { _, _ -> },
-    onRestylePage: (index: Int, style: io.github.pintofi.beanbook.core.domain.PageStyle) -> Unit =
-        { _, _ -> },
+    review: io.github.pintofi.beanbook.app.documents.PageReviewActions =
+        io.github.pintofi.beanbook.app.documents.PageReviewActions.None,
+    /** The batch with its page size, for the review; the pages alone when the host does not say. */
+    batch: io.github.pintofi.beanbook.core.domain.CapturedPages =
+        io.github.pintofi.beanbook.core.domain.CapturedPages(pages),
     onMovePage: (from: Int, to: Int) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
@@ -709,16 +710,13 @@ fun ScannerScreen(
         // The editor, not a dialog: a page you are straightening wants the whole screen, and
         // the batch is a thing to swipe through rather than a list of thumbnails with four
         // text buttons under each.
-        PageEditorScreen(
-            pages = io.github.pintofi.beanbook.core.domain.CapturedPages(pages),
+        PageReviewScreen(
+            pages = batch,
             fileFor = fileFor,
             startAt = index,
-            onRotate = onRotatePage,
-            onCrop = onCropPage,
-            onRestyle = onRestylePage,
-            onRemove = onRemovePage,
-            onMove = onMovePage,
+            review = review,
             onDone = { previewing = null },
+            backLabel = "Back to the camera",
         )
     }
 }

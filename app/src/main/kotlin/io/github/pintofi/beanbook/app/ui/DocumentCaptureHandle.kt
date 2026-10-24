@@ -54,6 +54,9 @@ data class DocumentCaptureHandle(
     /** Renders one page in a different style. */
     val onRestyle: (index: Int, style: io.github.pintofi.beanbook.core.domain.PageStyle) -> Unit =
         { _, _ -> },
+    /** How the review screen reads and changes the pages, one edit at a time with Undo. */
+    val review: io.github.pintofi.beanbook.app.documents.PageReviewActions =
+        io.github.pintofi.beanbook.app.documents.PageReviewActions.None,
     /** Sets or clears one page's crop corners. */
     val onCrop: (index: Int, quad: io.github.pintofi.beanbook.core.domain.CropQuad?) -> Unit = { _, _ -> },
     /**

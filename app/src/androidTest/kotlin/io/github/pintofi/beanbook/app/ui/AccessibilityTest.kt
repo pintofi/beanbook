@@ -323,6 +323,33 @@ class AccessibilityTest {
         assertAccessible()
     }
 
+    /** The review screen with three pages at 320 dp and 200% text: no unlabelled control, nothing outside the window. */
+    @Test fun pageReviewIsUsableAtDoubleFontScale() {
+        val dir = java.io.File(
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.cacheDir,
+            "review-a11y-${System.nanoTime()}",
+        ).apply { mkdirs() }
+        val names = (1..3).map { n ->
+            val file = java.io.File(dir, "p$n.jpg")
+            val bitmap = android.graphics.Bitmap.createBitmap(80, 120, android.graphics.Bitmap.Config.ARGB_8888)
+            file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, it) }
+            file.name
+        }
+        val batch = names.fold(io.github.pintofi.beanbook.core.domain.CapturedPages()) { pages, name -> pages.add(name) }
+        render(widthDp = 320, fontScale = 2f) {
+            PageReviewScreen(
+                pages = batch,
+                fileFor = { java.io.File(dir, it) },
+                startAt = 1,
+                review = io.github.pintofi.beanbook.app.documents.PageReviewActions.None,
+                onDone = {},
+            )
+        }
+        compose.onNodeWithText("Page 2 of 3").assertExists()
+        assertAccessible()
+        dir.deleteRecursively()
+    }
+
     /** The same form in a tablet-width window, also at 200% font. */
     @Test fun directiveEntryIsUsableOnATabletAtDoubleFontScale() {
         render(widthDp = 800, fontScale = 2f) {

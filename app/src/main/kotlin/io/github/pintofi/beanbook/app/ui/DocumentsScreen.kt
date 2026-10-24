@@ -441,15 +441,11 @@ fun DocumentsScreen(
     }
 
     editingPages?.let { index ->
-        PageEditorScreen(
+        PageReviewScreen(
             pages = capture.pages,
             fileFor = capture.fileFor,
             startAt = index,
-            onRotate = capture.onRotateBy,
-            onCrop = capture.onCrop,
-            onRestyle = capture.onRestyle,
-            onRemove = capture.onRemovePage,
-            onMove = capture.onMove,
+            review = capture.review,
             onDone = { editingPages = null },
         )
     }
