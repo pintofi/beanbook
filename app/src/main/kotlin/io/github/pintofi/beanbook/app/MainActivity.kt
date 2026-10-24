@@ -746,6 +746,7 @@ class MainActivity : ComponentActivity() {
                         onOpenAccount = if (remoteStatus is EngineStatus.Serving) null else { draft ->
                             writeAccountDirective(app, activeId!!, ledger, draft)
                         },
+                        onEditAccountDetails = accountDetailsSaver(app, activeId, remoteStatus is EngineStatus.Serving),
                         // In remote mode the outcome of a save comes from the server, so
                         // that is what the Add screen has to report — otherwise a remote
                         // save looks like nothing happened at all.

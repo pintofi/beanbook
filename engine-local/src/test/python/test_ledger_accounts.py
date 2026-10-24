@@ -22,6 +22,8 @@ LEDGER = """
 option "operating_currency" "USD"
 
 2026-01-01 open Assets:Cash USD,EUR
+  institution: "Corner Bank"
+  rank: 2
 2026-01-01 open Assets:Old
 2026-01-01 open Equity:Opening
 2026-03-01 close Assets:Old
@@ -54,6 +56,16 @@ class AccountInfo(unittest.TestCase):
         self.assertEqual(old["opened"], "2026-01-01")
         self.assertEqual(old["closed"], "2026-03-01")
         self.assertEqual(old["allowed"], [])
+
+    def test_account_reports_where_it_is_opened_and_its_metadata(self):
+        cash = self.rows["Assets:Cash"]
+        self.assertTrue(cash["open_file"].endswith("main.beancount"))
+        self.assertEqual(cash["open_line"], 4)
+        # In the order the file has them, without Beancount's own filename and lineno.
+        self.assertEqual(list(cash["metadata"].items()), [("institution", "Corner Bank"), ("rank", "2")])
+
+    def test_account_without_details_has_an_empty_mapping(self):
+        self.assertEqual(self.rows["Assets:Old"]["metadata"], {})
 
 
 if __name__ == "__main__":

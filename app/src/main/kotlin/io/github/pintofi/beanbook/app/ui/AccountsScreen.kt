@@ -35,6 +35,9 @@ import io.github.pintofi.beanbook.core.domain.AccountNames
 import io.github.pintofi.beanbook.core.domain.DirectiveDraft
 import java.time.LocalDate
 
+/** Saves the details of an open account: the account and what its details should now be. */
+typealias EditAccountDetails = (AccountBalance, Map<String, String>) -> Unit
+
 /**
  * The ledger's accounts: the open ones by tree, a form to open one, and a way to close one that
  * is empty. Closed accounts stay listed under their own heading, since Beancount keeps them and
@@ -51,7 +54,15 @@ fun AccountsScreen(
     message: String?,
     modifier: Modifier = Modifier,
     today: LocalDate = LocalDate.now(),
+    /** Saves the details of an account that is already open; null where the ledger cannot be written. */
+    onEditDetails: EditAccountDetails? = null,
 ) {
+    var editing by rememberSaveable { mutableStateOf<String?>(null) }
+    var editDetails by rememberSaveable { mutableStateOf("") }
+    val startEditing = { account: AccountBalance ->
+        editDetails = DetailRows.encode(account.metadata.toList())
+        editing = account.name
+    }
     var closing by rememberSaveable { mutableStateOf<String?>(null) }
     var closeDate by rememberSaveable { mutableStateOf(today.toString()) }
     val (closed, open) = accounts.partition { it.isClosed }
@@ -74,6 +85,11 @@ fun AccountsScreen(
                                     closeDate = today.toString()
                                     closing = account.name
                                 },
+                                onEdit = if (onEditDetails != null && account.canEditDetails) {
+                                    { startEditing(account) }
+                                } else {
+                                    null
+                                },
                             )
                         }
                     }
@@ -91,11 +107,55 @@ fun AccountsScreen(
                 FolioHeading("Closed accounts")
                 FolioGroup {
                     closed.forEach { account ->
-                        item { FolioRow(title = account.name, detail = "Closed on ${account.closed}") }
+                        item {
+                            FolioRow(
+                                title = account.name,
+                                detail = "Closed on ${account.closed}" + detailsNote(account),
+                                onClick = if (onEditDetails != null && account.canEditDetails) {
+                                    { startEditing(account) }
+                                } else {
+                                    null
+                                },
+                                opens = onEditDetails != null && account.canEditDetails,
+                            )
+                        }
                     }
                 }
                 FolioNote("Beancount keeps a closed account, and old entries still point at it.")
             }
+        }
+    }
+    editing?.let { name ->
+        val account = accounts.firstOrNull { it.name == name }
+        if (account == null || onEditDetails == null) {
+            editing = null
+        } else {
+            val rows = DetailRows.parse(editDetails)
+            val edited = rows.filter { it.first.isNotBlank() }.associate { it.first.trim() to it.second }
+            val badKey = edited.filterValues { it.isNotBlank() }.keys.firstOrNull { !DirectiveDraft.isMetadataKey(it) }
+            AlertDialog(
+                onDismissRequest = { editing = null },
+                title = { Text("Details of ${account.name}") },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                    ) {
+                        DetailsFields(editDetails) { editDetails = it }
+                        badKey?.let { Hint("\"$it\" is not a valid name. Use lower-case letters, digits, - and _.") }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            onEditDetails(account, edited)
+                            editing = null
+                        },
+                        enabled = badKey == null,
+                    ) { Text("Save details") }
+                },
+                dismissButton = { OutlinedButton(onClick = { editing = null }) { Text("Cancel") } },
+            )
         }
     }
     closing?.let { name ->
@@ -131,14 +191,25 @@ fun AccountsScreen(
 }
 
 @Composable
-private fun AccountRow(account: AccountBalance, canClose: Boolean, onClose: () -> Unit) {
+private fun AccountRow(
+    account: AccountBalance,
+    canClose: Boolean,
+    onClose: () -> Unit,
+    onEdit: (() -> Unit)?,
+) {
     val empty = account.positions.all { it.number.signum() == 0 }
     val held = account.positions.filter { it.number.signum() != 0 }
     val detail = buildString {
         append(if (held.isEmpty()) "Empty" else held.joinToString(", ") { it.format() })
         if (account.allowed.isNotEmpty()) append(" · only ${account.allowed.joinToString(", ")}")
+        append(detailsNote(account))
     }
-    FolioRow(title = account.name, detail = detail) {
+    FolioRow(
+        title = account.name,
+        detail = detail,
+        onClick = onEdit,
+        describe = if (onEdit != null) "${account.name}. Edit its details" else null,
+    ) {
         if (canClose && empty && account.opened != null) {
             OutlinedButton(
                 onClick = onClose,
@@ -187,39 +258,7 @@ private fun OpenAccountForm(
     DateField(value = date, onValueChange = { date = it }, label = "Open from", modifier = Modifier.fillMaxWidth())
     Text("Details (optional)", style = MaterialTheme.typography.titleSmall)
     Hint("Anything you want to keep with the account, such as the bank or the last digits of its number.")
-    rows.forEachIndexed { index, (key, value) ->
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedTextField(
-                    value = key,
-                    onValueChange = { details = DetailRows.encode(rows.replaced(index, it to value)) },
-                    label = { Text("Name") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f).semantics { contentDescription = "Detail name ${index + 1}" },
-                )
-                OutlinedTextField(
-                    value = value,
-                    onValueChange = { details = DetailRows.encode(rows.replaced(index, key to it)) },
-                    label = { Text("Value") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f).semantics { contentDescription = "Detail value ${index + 1}" },
-                )
-            }
-            OutlinedButton(
-                onClick = { details = DetailRows.encode(rows.filterIndexed { i, _ -> i != index }) },
-                modifier = Modifier
-                    .align(Alignment.End)
-                    .semantics { contentDescription = "Remove detail ${index + 1}" },
-            ) { Text("Remove") }
-        }
-    }
-    OutlinedButton(onClick = { details = DetailRows.encode(rows + ("" to "")) }) { Text("Add a detail") }
-    val repeated = rows.map { it.first.trim() }.filter { it.isNotEmpty() }
-        .groupBy { it }.filterValues { it.size > 1 }.keys
-    if (repeated.isNotEmpty()) Hint("\"${repeated.first()}\" is used twice. Only the last value is kept.")
+    DetailsFields(details) { details = it }
     val codes = currencies.split(',', ' ', ';').map { it.trim().uppercase() }.filter { it.isNotEmpty() }
     val draft = DirectiveDraft.Open(
         date = date,
@@ -260,4 +299,51 @@ private object DetailRows {
         rows.joinToString(ROW.toString()) { (key, value) -> clean(key) + FIELD + clean(value) }
 
     private fun clean(text: String) = text.replace(ROW, ' ').replace(FIELD, ' ')
+}
+
+/** The name and value fields for an account's details, with a way to add and remove them. */
+@Composable
+private fun DetailsFields(details: String, onChange: (String) -> Unit) {
+    val rows = DetailRows.parse(details)
+    rows.forEachIndexed { index, (key, value) ->
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = key,
+                    onValueChange = { onChange(DetailRows.encode(rows.replaced(index, it to value))) },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f).semantics { contentDescription = "Detail name ${index + 1}" },
+                )
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { onChange(DetailRows.encode(rows.replaced(index, key to it))) },
+                    label = { Text("Value") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f).semantics { contentDescription = "Detail value ${index + 1}" },
+                )
+            }
+            OutlinedButton(
+                onClick = { onChange(DetailRows.encode(rows.filterIndexed { i, _ -> i != index })) },
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .semantics { contentDescription = "Remove detail ${index + 1}" },
+            ) { Text("Remove") }
+        }
+    }
+    OutlinedButton(onClick = { onChange(DetailRows.encode(rows + ("" to ""))) }) { Text("Add a detail") }
+    val repeated = rows.map { it.first.trim() }.filter { it.isNotEmpty() }
+        .groupBy { it }.filterValues { it.size > 1 }.keys
+    if (repeated.isNotEmpty()) Hint("\"${repeated.first()}\" is used twice. Only the last value is kept.")
+}
+
+private val AccountBalance.canEditDetails: Boolean get() = openedFile != null && openedLine != null
+
+private fun detailsNote(account: AccountBalance): String = when (account.metadata.size) {
+    0 -> ""
+    1 -> " · 1 detail"
+    else -> " · ${account.metadata.size} details"
 }

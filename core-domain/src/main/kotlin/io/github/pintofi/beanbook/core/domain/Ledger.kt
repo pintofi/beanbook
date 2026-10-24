@@ -153,6 +153,11 @@ data class AccountBalance(
     val closed: String? = null,
     /** The currencies its `open` directive restricts it to; empty when any is accepted. */
     val allowed: List<String> = emptyList(),
+    /** Where its `open` directive is written, so the directive can be found again to change it. */
+    val openedFile: String? = null,
+    val openedLine: Int? = null,
+    /** The metadata under its `open` directive, as text, in the order the file has it. */
+    val metadata: Map<String, String> = emptyMap(),
 ) {
     val isClosed: Boolean get() = closed != null
 

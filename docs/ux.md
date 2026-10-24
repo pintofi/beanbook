@@ -207,8 +207,10 @@ lists closed accounts under their own heading, and opens a new account. A new ac
 any number of details (name and value pairs, written as metadata under the `open` line; a value
 that starts with a zero stays text, so an account number is not changed). An empty account can be
 closed, on a date the person picks, after a confirmation. Both write to `files/accounts.beancount`
-(or the main file when the ledger does not read that one). The entry form's Directives tab does
-not open or close accounts, and says where to go.
+(or the main file when the ledger does not read that one). Tapping an account opens its details to
+change, add or remove; only the lines that changed are rewritten in the `open` directive, so its
+spacing and comments stay as written. The entry form's Directives tab does not open or close
+accounts.
 
 In the entry form, an account the ledger has not opened shows an *Open <account>* button beside
 the problem; it opens the account on the entry's date without leaving the form or losing what was
