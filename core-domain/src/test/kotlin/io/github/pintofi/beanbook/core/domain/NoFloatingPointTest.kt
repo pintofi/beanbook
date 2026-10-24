@@ -12,6 +12,7 @@ import kotlin.test.assertEquals
 class NoFloatingPointTest {
 
     private val allowed: Map<String, String> = mapOf(
+        "CropEditing.kt" to "pixel geometry of the crop editor, not money",
         "CropQuad.kt" to "pixel coordinates of a page crop, not money",
         "HomeInsights.kt" to "CategorySpend.shareOf: a bar's width on screen, from exact amounts",
     )
