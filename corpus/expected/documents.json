@@ -47,7 +47,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Assets:Bank:Checking",
+      "open_line": 5,
       "opened": "2024-01-01",
       "positions": [
         {
@@ -102,7 +104,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Equity:Opening-Balances",
+      "open_line": 7,
       "opened": "2024-01-01",
       "positions": [
         {
@@ -157,7 +161,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Expenses:Food:Groceries",
+      "open_line": 6,
       "opened": "2024-01-01",
       "positions": [
         {

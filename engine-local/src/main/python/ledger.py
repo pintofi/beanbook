@@ -627,7 +627,12 @@ def digest(ledger_path: str) -> str:
             "error_messages": [e["message"] for e in payload["errors"]],
             "error_lines": [e["line"] for e in payload["errors"]],
             "account_count": payload["account_count"],
-            "accounts": payload["accounts"],
+            # Without where each account's open directive is written: that is a path, which differs
+            # between desktop and device. Its line and its metadata are accounting facts and stay.
+            "accounts": [
+                {key: value for key, value in account.items() if key != "open_file"}
+                for account in payload["accounts"]
+            ],
             "commodities": payload["commodities"],
             # Names, not paths, for the same reason as the errors above: a document resolves
             # to a different absolute path on desktop and on device, but which account it is

@@ -14,13 +14,13 @@
       "at_operating": [
         {
           "currency": "USD",
-          "number": "2007.25"
+          "number": "2007.250000"
         }
       ],
       "at_value": [
         {
           "currency": "USD",
-          "number": "2007.25"
+          "number": "2007.250000"
         }
       ],
       "closed": null,
@@ -35,7 +35,7 @@
           "at_value": [
             {
               "currency": "USD",
-              "number": "2007.25"
+              "number": "2007.250000"
             }
           ],
           "currency": "EUR",
@@ -47,7 +47,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Assets:Bank:EUR",
+      "open_line": 9,
       "opened": "2024-01-01",
       "positions": [
         {
@@ -102,7 +104,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Assets:Bank:USD",
+      "open_line": 8,
       "opened": "2024-01-01",
       "positions": [
         {
@@ -157,7 +161,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Assets:Invest:ACME",
+      "open_line": 10,
       "opened": "2024-01-01",
       "positions": [
         {
@@ -181,13 +187,13 @@
       "at_operating": [
         {
           "currency": "USD",
-          "number": "-7170.00"
+          "number": "-7170.000000"
         }
       ],
       "at_value": [
         {
           "currency": "USD",
-          "number": "-7170.00"
+          "number": "-7170.000000"
         }
       ],
       "closed": null,
@@ -202,7 +208,7 @@
           "at_value": [
             {
               "currency": "USD",
-              "number": "-2170.00"
+              "number": "-2170.000000"
             }
           ],
           "currency": "EUR",
@@ -235,7 +241,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Equity:Opening-Balances",
+      "open_line": 13,
       "opened": "2024-01-01",
       "positions": [
         {
@@ -262,13 +270,13 @@
       "at_operating": [
         {
           "currency": "USD",
-          "number": "162.75"
+          "number": "162.750000"
         }
       ],
       "at_value": [
         {
           "currency": "USD",
-          "number": "162.75"
+          "number": "162.750000"
         }
       ],
       "closed": null,
@@ -283,7 +291,7 @@
           "at_value": [
             {
               "currency": "USD",
-              "number": "162.75"
+              "number": "162.750000"
             }
           ],
           "currency": "EUR",
@@ -295,7 +303,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Expenses:Travel",
+      "open_line": 11,
       "opened": "2024-01-01",
       "positions": [
         {
@@ -313,7 +323,9 @@
       "at_value": [],
       "closed": null,
       "holdings": [],
+      "metadata": {},
       "name": "Income:Salary",
+      "open_line": 12,
       "opened": "2024-01-01",
       "positions": []
     }

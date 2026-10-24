@@ -47,7 +47,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Assets:Bank:Checking",
+      "open_line": 4,
       "opened": "2024-01-01",
       "positions": [
         {
@@ -102,7 +104,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Expenses:Food:Groceries",
+      "open_line": 5,
       "opened": "2024-01-01",
       "positions": [
         {
@@ -155,7 +159,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Expenses:Unopened:Account",
+      "open_line": null,
       "opened": null,
       "positions": [
         {
