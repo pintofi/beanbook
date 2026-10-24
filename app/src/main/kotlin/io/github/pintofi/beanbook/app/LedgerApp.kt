@@ -788,9 +788,8 @@ internal fun LedgerApp(
             onRemovePage = documentCapture.onRemovePage,
             onDone = documentCapture.onStopScanning,
             onCancel = documentCapture.onStopScanning,
-            onRotatePage = documentCapture.onRotateBy,
-            onCropPage = documentCapture.onCrop,
-            onRestylePage = documentCapture.onRestyle,
+            review = documentCapture.review,
+            batch = documentCapture.pages,
             onMovePage = documentCapture.onMove,
             modifier = Modifier.fillMaxSize(),
         )

@@ -54,6 +54,19 @@ class DocumentCapture(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    /**
+     * Every capture added in this session, including pages since removed or retaken, so that
+     * [finish] can delete the photographs of receipts a delete or a retake left behind.
+     */
+    private val sessionSources: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+    /** Replaces the pages if they are still [expected]. False when something changed them meanwhile. */
+    fun replace(expected: CapturedPages, next: CapturedPages): Boolean {
+        val replaced = _pages.compareAndSet(expected, next)
+        if (replaced) next.pages.forEach { sessionSources += it.source }
+        return replaced
+    }
+
     /** A fresh file for the next capture. Names are sequential so page order starts sane. */
     fun nextCaptureFile(): File {
         captureDir.mkdirs()
@@ -78,6 +91,7 @@ class DocumentCapture(
             io.github.pintofi.beanbook.core.domain.PageStyle.COLOUR,
         crop: io.github.pintofi.beanbook.core.domain.CropQuad? = null,
     ) {
+        sessionSources += file.name
         val added = _pages.value.add(file.name, style)
         _pages.value = if (crop == null) added else added.crop(added.pages.lastIndex, crop)
         // A new document is starting, so what was said about the last one has done its job.
@@ -281,6 +295,7 @@ class DocumentCapture(
      * clearing it here wiped the only confirmation the user was going to see.
      */
     fun reset(discardCaptures: Boolean = false) {
+        sessionSources.clear()
         _pages.value = CapturedPages()
         _files.value = emptyList()
         if (discardCaptures) {
@@ -297,7 +312,7 @@ class DocumentCapture(
      * not the whole folder, so a new capture started straight away is left alone.
      */
     fun finish() {
-        val used = _pages.value.pages.map { it.source } + _files.value.map { it.source }
+        val used = (_pages.value.pages.map { it.source } + _files.value.map { it.source } + sessionSources).distinct()
         reset()
         scope.launch { withContext(Dispatchers.IO) { deleteCaptureFiles(captureDir, used) } }
     }

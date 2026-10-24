@@ -7,6 +7,7 @@ import java.io.File
 import android.net.Uri
 import io.github.pintofi.beanbook.core.domain.DirectiveDraft
 import java.time.LocalDate
+import io.github.pintofi.beanbook.app.documents.reviewActions
 import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
 
@@ -896,6 +897,7 @@ internal fun MainActivity.captureHandle(
             onMove = { from, to -> app.documentCapture.move(from, to) },
             onRemovePage = { app.documentCapture.remove(it) },
             onCrop = { index, quad -> app.documentCapture.crop(index, quad) },
+            review = app.documentCapture.reviewActions(),
             fileFor = { name -> app.documentCapture.fileFor(name) },
             plannedPaths = { account, label ->
                 app.documentCapture.plannedPaths(account, label, attached = true)
