@@ -47,7 +47,12 @@
           ]
         }
       ],
+      "metadata": {
+        "account-number": "0001",
+        "institution": "Example Bank"
+      },
       "name": "Assets:Bank:Checking",
+      "open_line": 13,
       "opened": "2024-01-01",
       "positions": [
         {
@@ -100,7 +105,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Equity:Opening-Balances",
+      "open_line": 1,
       "opened": "2024-01-07",
       "positions": [
         {
@@ -153,7 +160,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Expenses:Food:Restaurant",
+      "open_line": 2,
       "opened": "2024-01-02",
       "positions": [
         {
@@ -206,7 +215,9 @@
           ]
         }
       ],
+      "metadata": {},
       "name": "Expenses:Misc",
+      "open_line": 3,
       "opened": "2024-01-03",
       "positions": [
         {
