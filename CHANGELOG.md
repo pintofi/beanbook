@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The setup checklist has rounder checkboxes with room before each label, its currency field takes the whole line, and the notification button reads Granted once permission is given. ([#141], fixes [#135])
 
 ### Fixed
+- The scanner no longer takes a page by itself while a page is open for editing behind it. Sampling pauses while the editor is open, and the shutter has to see the page settle again once you are back at the camera. ([#180])
 - Coming back to the app no longer reads every file in the mirror folder again. A file is read only when its size or modified time changed since the last pass, so keeping documents in the mirror folder stays cheap. A provider that reports no time is still read each time. ([#66])
 - Encrypted backups no longer hold the whole project in memory, so a project with hundreds of megabytes of scanned receipts can be backed up with a passphrase instead of crashing the app. The backup is sealed in small chunks as it is written and opened the same way. Backups made earlier still open. A backup made by this version cannot be opened by an older version of the app. ([#54])
 - Delete file on the Documents screen can be undone. The file is moved aside for 30 days instead of removed, an Undo bar appears, and Undo puts it back where it was and relinks the entry. A deleted document is no longer part of the project, so it is not in a backup, a mirror or an export. ([#72])
@@ -201,6 +202,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#158]: https://github.com/pintofi/beanbook/issues/158
 [#176]: https://github.com/pintofi/beanbook/issues/176
 [#179]: https://github.com/pintofi/beanbook/issues/179
+[#180]: https://github.com/pintofi/beanbook/issues/180
 [#189]: https://github.com/pintofi/beanbook/issues/189
 [#192]: https://github.com/pintofi/beanbook/issues/192
 [#197]: https://github.com/pintofi/beanbook/issues/197
