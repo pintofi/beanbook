@@ -36,6 +36,13 @@ class ProjectWorkspace(private val root: File) {
     val templatesDir: File get() = root.resolve("templates")
     val cacheDir: File get() = root.resolve("cache")
 
+    /**
+     * Documents the person deleted, kept for a month so a delete can be taken back. Outside the
+     * project tree on purpose: a deleted document is no longer part of the ledger, so it is not
+     * in a backup, a mirror or an export, and nothing that reads the project sees it.
+     */
+    val documentTrashDir: File get() = root.resolve("document-trash")
+
     fun projectDir(id: String): File = projectsDir.resolve(requireValidId(id))
 
     /** The root ledger file Fava is pointed at. */

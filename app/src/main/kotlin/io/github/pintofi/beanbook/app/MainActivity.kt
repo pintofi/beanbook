@@ -606,11 +606,7 @@ class MainActivity : ComponentActivity() {
                             refileDocument(app, activeId!!, path, account, from)
                         },
                         onUnlinkDocument = { path, from -> unlinkDocument(app, activeId!!, path, from) },
-                        onDeleteDocumentFile = { path ->
-                            app.documentCapture.deleteFile(activeId!!, path) {
-                                refreshDocuments(app, activeId!!)
-                            }
-                        },
+                        onDeleteDocumentFile = { path -> deleteDocumentFile(app, activeId!!, path) },
                         onShareDocument = { path -> shareDocument(app, activeId!!, path) },
                         diagnostics = diagnosticsUi(),
                         fileForDocument = { path -> documentFile(app, activeId, path) },

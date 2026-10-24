@@ -47,13 +47,13 @@ class ReviewHardeningTest {
     }
 
     @Test
-    fun `deleting a document does not remove an empty folder outside documents`() {
+    fun `trashing a document does not remove an empty folder outside documents`() {
         workspace.createProject("p", title = "A")
         val store = DocumentStore(workspace)
         val receipts = workspace.projectDir("p").resolve("receipts/2026").apply { mkdirs() }
         receipts.resolve("a.pdf").writeText("x")
 
-        assertTrue(store.delete("p", "receipts/2026/a.pdf"))
+        assertNotNull(store.trash("p", "receipts/2026/a.pdf"))
 
         assertTrue(workspace.projectDir("p").resolve("receipts").isDirectory, "the person's own folder was removed")
     }

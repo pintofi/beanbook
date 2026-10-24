@@ -9,7 +9,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /** One write that can still be taken back, and the words for it. */
-data class UndoOffer(val projectId: String, val txnId: String, val what: String)
+data class UndoOffer(
+    val projectId: String,
+    val txnId: String,
+    val what: String,
+    /**
+     * Set for something that is not a ledger write, a deleted document file say: how to put it back.
+     * Null for a write, which [ProjectWriter.undoIfLatest] takes back from its snapshot.
+     */
+    val restore: (suspend () -> Boolean)? = null,
+)
 
 /**
  * Offers to take back the last write the person made.
@@ -36,6 +45,11 @@ class UndoController(
             ?.let { UndoOffer(projectId, it.txnId, what) }
     }
 
+    /** Offers to take back something that is not a ledger write, by running [restore]. */
+    fun offerRestore(projectId: String, what: String, restore: suspend () -> Boolean) {
+        _offer.value = UndoOffer(projectId, "", what, restore)
+    }
+
     fun dismiss() {
         _offer.value = null
     }
@@ -57,6 +71,18 @@ class UndoController(
     fun undo(afterwards: () -> Unit) {
         val current = _offer.value ?: return
         _offer.value = null
+        val restore = current.restore
+        if (restore != null) {
+            scope.launch {
+                _message.value = if (restore()) {
+                    "Undone: ${current.what}."
+                } else {
+                    "Not undone: it could not be put back, or something is there now."
+                }
+                afterwards()
+            }
+            return
+        }
         scope.launch {
             _message.value = when (val result = writer.undoIfLatest(current.projectId, current.txnId)) {
                 is WriteResult.Committed -> "Undone: ${current.what}."

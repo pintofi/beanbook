@@ -153,7 +153,8 @@ enum class DocumentRemoval {
             "Remove the link between this document and its entry or account. The file stays " +
                 "in the project at $path and can be linked again."
         DELETE_FILE ->
-            "Delete $path from this device. This cannot be undone. Anything in the ledger " +
-                "that links to it will show it as missing until you unlink it."
+            "Delete $path from this project. You can undo it right afterwards, and it is kept for " +
+                "30 days, but anything in the ledger that links to it will show it as missing until " +
+                "you unlink it."
     }
 }
