@@ -67,8 +67,6 @@ data class Amount(val number: BigDecimal, val currency: String) {
  */
 class Balance private constructor(private val byCurrency: Map<String, BigDecimal>) {
 
-    val isBalanced: Boolean get() = byCurrency.values.all { it.signum() == 0 }
-
     fun residuals(): List<Amount> =
         byCurrency
             .filterValues { it.signum() != 0 }

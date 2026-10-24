@@ -29,13 +29,6 @@ data class CropQuad(
     val bottomLeft: CropPoint,
 ) {
 
-    /** True when the corners already form an upright rectangle, so cropping is a plain cut. */
-    val isRectangular: Boolean
-        get() = topLeft.y == topRight.y &&
-            bottomLeft.y == bottomRight.y &&
-            topLeft.x == bottomLeft.x &&
-            topRight.x == bottomRight.x
-
     /**
      * The size to flatten onto, taking the longer of each opposing pair.
      *

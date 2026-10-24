@@ -172,8 +172,6 @@ data class TransactionDraft(
         return problems
     }
 
-    val isValid: Boolean get() = validate().isEmpty()
-
     /** The residual the user is shown while typing; empty when it balances. */
     fun residuals(): List<Amount> =
         Balance.of(postings.mapNotNull { it.weight() }).residuals()
@@ -348,21 +346,6 @@ data class LedgerVocabulary(
     /** Accounts the ledger has opened; null where any name is acceptable. */
     val openAccounts: Set<String>? = null,
 ) {
-    fun accountsMatching(prefix: String): List<String> = match(accounts, prefix)
-    fun payeesMatching(prefix: String): List<String> = match(payees, prefix)
-    fun currenciesMatching(prefix: String): List<String> = match(currencies, prefix)
-
-    private fun match(source: List<String>, prefix: String): List<String> {
-        if (prefix.isBlank()) return source.take(SUGGESTION_LIMIT)
-        val lower = prefix.lowercase()
-        // Prefix matches first, then anything containing the text — how account names are
-        // actually recalled ("Groceries" before "Expenses:Food:Groceries").
-        val (starts, contains) = source
-            .filter { it.lowercase().contains(lower) }
-            .partition { it.lowercase().startsWith(lower) }
-        return (starts + contains).take(SUGGESTION_LIMIT)
-    }
-
     /**
      * The last transaction recorded for [payee], newest first.
      *

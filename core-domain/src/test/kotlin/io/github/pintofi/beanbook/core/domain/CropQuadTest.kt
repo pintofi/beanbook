@@ -26,14 +26,6 @@ class CropQuadTest {
         val whole = CropQuad.whole(width = 640f, height = 480f)
         assertEquals(CropPoint(0f, 0f), whole.topLeft)
         assertEquals(CropPoint(640f, 480f), whole.bottomRight)
-        assertTrue(whole.isRectangular)
-    }
-
-    @Test
-    fun `a square is rectangular and a tilted quad is not`() {
-        assertTrue(square.isRectangular)
-        val tilted = square.copy(topRight = CropPoint(100f, 20f))
-        assertTrue(!tilted.isRectangular)
     }
 
     @Test

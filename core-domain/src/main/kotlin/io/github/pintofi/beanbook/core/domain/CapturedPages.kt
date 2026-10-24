@@ -51,9 +51,6 @@ data class CapturedPage(
         require(rotation in ALLOWED_ROTATIONS) { "rotation must be a quarter turn, got $rotation" }
     }
 
-    /** True when this page has been cropped to something other than the whole image. */
-    val isCropped: Boolean get() = crop != null
-
     fun croppedTo(quad: CropQuad?): CapturedPage = copy(crop = quad)
 
     fun rotatedClockwise(): CapturedPage = copy(rotation = (rotation + 90) % 360)

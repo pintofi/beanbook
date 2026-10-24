@@ -129,7 +129,7 @@ class TransactionDraftTest {
     @Test
     fun `one elided posting is fine, two is not`() {
         assertTrue(
-            draft(PostingDraft(food, Amount.parse("42.30", "USD")), PostingDraft(cash)).isValid
+            draft(PostingDraft(food, Amount.parse("42.30", "USD")), PostingDraft(cash)).validate().isEmpty()
         )
         val two = draft(PostingDraft(food), PostingDraft(cash))
         assertTrue(two.validate().any { it is DraftProblem.TooManyElidedPostings })
@@ -160,7 +160,7 @@ class TransactionDraftTest {
             draft(
                 PostingDraft(food, Amount.parse("1.00", "USD")),
                 PostingDraft(cash, Amount.parse("-1.00", "USD")),
-            ).copy(flag = "!").isValid
+            ).copy(flag = "!").validate().isEmpty()
         )
     }
 
@@ -183,23 +183,6 @@ class LedgerVocabularyTest {
         currencies = listOf("USD"),
         tags = listOf("food"),
     )
-
-    @Test
-    fun `completion prefers prefix matches but still finds substrings`() {
-        val matches = vocabulary.accountsMatching("groc")
-        assertEquals(listOf("Expenses:Food:Groceries"), matches)
-    }
-
-    @Test
-    fun `prefix matches come before substring matches`() {
-        val matches = vocabulary.accountsMatching("assets")
-        assertEquals(listOf("Assets:Cash", "Assets:Bank:Checking"), matches)
-    }
-
-    @Test
-    fun `an empty prefix offers everything, capped`() {
-        assertEquals(3, vocabulary.accountsMatching("").size)
-    }
 
     @Test
     fun `vocabulary comes from the ledger itself`() {

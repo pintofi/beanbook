@@ -70,7 +70,7 @@ class PostingLotTest {
         // The weights add up to nothing: the sale at cost, the gain, and the new lot at cost.
         // Beancount loads this file without an error, and the app agreeing with it is the point.
         assertEquals(emptyList(), draft.validate().filterIsInstance<DraftProblem.DoesNotBalance>())
-        assertTrue(draft.isValid)
+        assertTrue(draft.validate().isEmpty())
     }
 
     @Test fun `an unbalanced conversion is still reported`() {

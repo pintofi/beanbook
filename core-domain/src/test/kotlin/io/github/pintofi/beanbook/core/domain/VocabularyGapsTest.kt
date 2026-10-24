@@ -67,25 +67,4 @@ class VocabularyGapsTest {
         assertTrue("BTC" in vocabulary.currencies, "declared commodities: ${vocabulary.currencies}")
         assertTrue("EUR" in vocabulary.currencies, "held currencies were lost")
     }
-
-    @Test
-    fun `currencies can be matched like any other suggestion`() {
-        val vocabulary = LedgerVocabulary.from(ledger(commodities = listOf("USD", "EUR", "PKR")))
-
-        assertEquals(listOf("USD"), vocabulary.currenciesMatching("us"))
-    }
-
-    // --- B7: matches are not silently truncated ----------------------------------------
-
-    @Test
-    fun `more than a dozen matching payees are offered`() {
-        val many = (1..40).map { "Shop %02d".format(it) }
-
-        val matches = LedgerVocabulary.from(ledger(payees = many)).payeesMatching("Shop")
-
-        assertTrue(
-            matches.size > 12,
-            "only ${matches.size} of ${many.size} matching payees were offered",
-        )
-    }
 }
