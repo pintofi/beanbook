@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.core.data
 
+import io.github.pintofi.beanbook.core.domain.PagePlacement
 import java.io.ByteArrayOutputStream
 
 /**
@@ -19,10 +20,23 @@ import java.io.ByteArrayOutputStream
  */
 object JpegPdf {
 
-    /** One page: a baseline JPEG and its size in pixels. */
-    class Page(val jpeg: ByteArray, val width: Int, val height: Int) {
+    /**
+     * One page: a baseline JPEG and its size in pixels. With a [placement] the page is a sheet of
+     * paper and the picture is laid on it; without one the page is the picture's own size.
+     */
+    class Page(
+        val jpeg: ByteArray,
+        val width: Int,
+        val height: Int,
+        val placement: PagePlacement? = null,
+    ) {
         init {
             require(width > 0 && height > 0) { "a page needs a size, got ${width}x$height" }
+            placement?.let {
+                require(it.pageWidth > 0 && it.pageHeight > 0 && it.width > 0 && it.height > 0) {
+                    "a placement needs sizes, got $it"
+                }
+            }
             require(jpeg.size > 3 && jpeg[0] == 0xFF.toByte() && jpeg[1] == 0xD8.toByte()) {
                 "page data is not a JPEG"
             }
@@ -63,9 +77,15 @@ object JpegPdf {
 
         pages.forEachIndexed { index, page ->
             val pageNumber = pageNumbers[index]
-            val width = points(page.width)
-            val height = points(page.height)
-            val content = "q $width 0 0 $height 0 0 cm /Im0 Do Q\n"
+            val placement = page.placement
+            val width = if (placement == null) points(page.width) else hundredths(placement.pageWidth)
+            val height = if (placement == null) points(page.height) else hundredths(placement.pageHeight)
+            val content = if (placement == null) {
+                "q $width 0 0 $height 0 0 cm /Im0 Do Q\n"
+            } else {
+                "q ${hundredths(placement.width)} 0 0 ${hundredths(placement.height)} " +
+                    "${hundredths(placement.x)} ${hundredths(placement.y)} cm /Im0 Do Q\n"
+            }
 
             beginObject()
             ascii(
@@ -95,6 +115,10 @@ object JpegPdf {
 
     private val BINARY_MARKER =
         byteArrayOf('%'.code.toByte(), 0xE2.toByte(), 0xE3.toByte(), 0xCF.toByte(), 0xD3.toByte(), '\n'.code.toByte())
+
+    /** A length in hundredths of a point, as PDF points to two places. */
+    private fun hundredths(value: Int): String =
+        String.format(java.util.Locale.ROOT, "%d.%02d", value / 100, value % 100)
 
     /** Pixels at [DOTS_PER_INCH] as PDF points, to two places. */
     private fun points(pixels: Int): String {
