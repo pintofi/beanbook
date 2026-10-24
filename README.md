@@ -450,7 +450,6 @@ useful to you, you can help it along:
 
 <p align="center">
   <a href="https://ko-fi.com/pintofi"><img src="https://storage.ko-fi.com/cdn/kofi3.png?v=3" height="64" alt="Support Beanbook on Ko-fi"></a>
-  &nbsp; <sub><i>Ko-fi is not working for now.</i></sub>
 </p>
 
 <picture>
