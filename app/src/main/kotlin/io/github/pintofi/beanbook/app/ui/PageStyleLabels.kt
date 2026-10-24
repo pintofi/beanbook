@@ -7,4 +7,5 @@ internal fun PageStyle.label(): String = when (this) {
     PageStyle.COLOUR -> "Colour"
     PageStyle.DOCUMENT -> "Document"
     PageStyle.GREYSCALE -> "Greyscale"
+    PageStyle.BLACK_AND_WHITE -> "Black and white"
 }

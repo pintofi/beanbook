@@ -17,6 +17,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -185,7 +186,7 @@ class PageReviewTest {
     @Test fun swipingTurnsPagesAndStopsAtTheEnds() {
         open(Session(two))
         fun swipe(towardsLater: Boolean) {
-            compose.onRoot().performTouchInput { if (towardsLater) swipeLeft() else swipeRight() }
+            compose.onNodeWithTag(PAGER_TAG).performTouchInput { if (towardsLater) swipeLeft() else swipeRight() }
             compose.waitForIdle()
         }
         compose.onAllNodesWithContentDescription("Next page").assertCountEquals(0)
@@ -237,5 +238,20 @@ class PageReviewTest {
         open(session)
         compose.onAllNodesWithContentDescription("Retake page 1").assertCountEquals(0)
         compose.onAllNodesWithText("Add page").assertCountEquals(0)
+    }
+
+    @Test fun everyStyleIsOfferedAndAnAutomaticChoiceSaysSo() {
+        val session = Session(CapturedPages().add(page("one.jpg"), PageStyle.GREYSCALE, automatic = true))
+        open(session)
+        PageStyle.entries.forEach { style ->
+            compose.onNodeWithContentDescription("Render page 1 in ${style.label()}").assertExists()
+        }
+        compose.onNodeWithText("Black and white").assertExists()
+        compose.onNodeWithText("Chosen automatically").assertIsDisplayed()
+
+        compose.onNodeWithContentDescription("Render page 1 in Black and white").performClick()
+        assertEquals(PageStyle.BLACK_AND_WHITE, session.pages.pages[0].style)
+        // A choice of your own is final, and the note goes.
+        compose.onAllNodesWithText("Chosen automatically").assertCountEquals(0)
     }
 }

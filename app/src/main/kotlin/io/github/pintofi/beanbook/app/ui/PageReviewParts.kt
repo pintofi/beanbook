@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -58,7 +59,11 @@ internal fun ReviewPager(
     fileFor: (String) -> File,
     modifier: Modifier = Modifier,
 ) {
-    HorizontalPager(state = state, modifier = modifier, key = { pages.pages.getOrNull(it)?.source ?: it }) { index ->
+    HorizontalPager(
+        state = state,
+        modifier = modifier.testTag(PAGER_TAG),
+        key = { pages.pages.getOrNull(it)?.source ?: it },
+    ) { index ->
         val page = pages.pages.getOrNull(index) ?: return@HorizontalPager
         val file = fileFor(page.source)
         // The page as it will be filed: straightened on its corners and rendered in its style.
@@ -142,6 +147,13 @@ internal fun StyleSection(
                 },
             )
         }
+    }
+    if (pages.pages[shown].automaticStyle) {
+        Text(
+            "Chosen automatically",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
     }
     val differs = pages.pages.any { it.style != style }
     OutlinedButton(
@@ -245,6 +257,9 @@ internal fun ReviewStrip(
         }
     }
 }
+
+/** What a test finds the pager by, to swipe it. */
+internal const val PAGER_TAG = "page-review-pager"
 
 private const val STRIP_HEIGHT = 80
 private const val THUMBNAIL = 64

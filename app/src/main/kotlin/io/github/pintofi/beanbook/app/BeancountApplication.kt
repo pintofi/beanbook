@@ -150,12 +150,17 @@ class BeancountApplication : Application() {
                                 io.github.pintofi.beanbook.scanner.ScanStyle.DOCUMENT
                             io.github.pintofi.beanbook.core.domain.PageStyle.GREYSCALE ->
                                 io.github.pintofi.beanbook.scanner.ScanStyle.GREYSCALE
+                            io.github.pintofi.beanbook.core.domain.PageStyle.BLACK_AND_WHITE ->
+                                io.github.pintofi.beanbook.scanner.ScanStyle.BLACK_AND_WHITE
                             io.github.pintofi.beanbook.core.domain.PageStyle.COLOUR ->
                                 io.github.pintofi.beanbook.scanner.ScanStyle.COLOUR
                         },
                     )
                 },
             ),
+            // Chosen again when a page whose style the scanner picked is cropped: the table is no
+            // longer in the count. Colour where OpenCV did not load.
+            chooseStyle = { file, quad -> io.github.pintofi.beanbook.app.ui.styleFor(file, quad) },
         )
     }
 

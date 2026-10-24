@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Scanned pages are flattened properly. The old Document style left a shadowed half of a page grey; the lighting is now estimated and divided out per colour, so the paper goes white and the ink dark in the shadow too, while a stamp or a highlighter keeps its colour. Greyscale is flattened and darkened for faded thermal print, and a new Black and white style gives black ink on white paper. The camera no longer asks for a style: each page is given a colour scan when it has real colour, and a grey one when it does not (a lamp's yellow is not colour), the review says "Chosen automatically", and cropping a page chooses again until you choose a style yourself. ([#181])
 - A page size for scanned documents. In the page review's menu, Page size lets you lay every page on A4 or Letter paper, fitted and centred with a 5 mm margin, instead of the shape it was photographed. The review then shows each page on its sheet, so you see the margins before filing. As scanned stays the default and makes the same files as before. ([#184])
 - Retake and Add page in the scanner's review. The camera's tick now opens the review of the batch instead of leaving the scanner; from there Retake takes a new photograph of the page you are looking at (it keeps the page's style and place, and Back returns to the page with nothing changed), and Add page goes back to the camera with the batch kept. Finish with the page count leaves the scanner as the tick used to. ([#180])
 - The page review is a new screen that follows the app's theme, in light and dark. It has a strip of thumbnails you can tap to jump or hold and drag to reorder, a style chip for every style with Use for all pages, and Finish with the page count. Removing a page, and Use for all pages, show an Undo bar. Removing the last page leaves the screen open with Undo instead of closing it, and the title moves under the bar at large text sizes instead of being cut off. ([#180])
@@ -208,6 +209,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#176]: https://github.com/pintofi/beanbook/issues/176
 [#179]: https://github.com/pintofi/beanbook/issues/179
 [#180]: https://github.com/pintofi/beanbook/issues/180
+[#181]: https://github.com/pintofi/beanbook/issues/181
 [#182]: https://github.com/pintofi/beanbook/issues/182
 [#183]: https://github.com/pintofi/beanbook/issues/183
 [#184]: https://github.com/pintofi/beanbook/issues/184

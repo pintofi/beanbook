@@ -852,6 +852,8 @@ internal fun pageStyleOf(
         io.github.pintofi.beanbook.core.domain.PageStyle.GREYSCALE
     io.github.pintofi.beanbook.scanner.ScanStyle.COLOUR ->
         io.github.pintofi.beanbook.core.domain.PageStyle.COLOUR
+    io.github.pintofi.beanbook.scanner.ScanStyle.BLACK_AND_WHITE ->
+        io.github.pintofi.beanbook.core.domain.PageStyle.BLACK_AND_WHITE
 }
 
 /**
@@ -884,7 +886,7 @@ internal fun MainActivity.captureHandle(
                 // a wrong detection is a drag away from being corrected
                 // rather than something that destroyed the original.
                 if (file.length() > 0) {
-                    app.documentCapture.add(file, pageStyleOf(style), crop = quad)
+                    app.documentCapture.add(file, pageStyleOf(style), crop = quad, automatic = true)
                 }
             },
             onRotate = { app.documentCapture.rotate(it) },
