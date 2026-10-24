@@ -36,10 +36,13 @@ import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 import androidx.compose.foundation.background
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 
-/** The directive types the app can compose, in the order people reach for them. */
+/**
+ * The directive types this form composes, in the order people reach for them.
+ *
+ * Opening and closing an account are not here: the Accounts page does both, with the account
+ * names checked against the ledger's own roots, and writes them to `accounts.beancount`.
+ */
 enum class DirectiveKind(val label: String) {
-    OPEN("Open"),
-    CLOSE("Close"),
     BALANCE("Balance"),
     PAD("Pad"),
     NOTE("Note"),
@@ -71,7 +74,7 @@ fun DirectiveEntryScreen(
     /** The ledger's own `currency-column`, so the preview is the text that will be written. */
     currencyColumn: Int = DirectiveDraft.ALIGN_COLUMN,
 ) {
-    var kind by remember { mutableStateOf(DirectiveKind.OPEN) }
+    var kind by remember { mutableStateOf(DirectiveKind.BALANCE) }
     var date by remember { mutableStateOf(today.toString()) }
     var account by remember { mutableStateOf("") }
     var second by remember { mutableStateOf("") }
@@ -96,11 +99,6 @@ fun DirectiveEntryScreen(
     }
 
     val draft: DirectiveDraft = when (kind) {
-        DirectiveKind.OPEN -> DirectiveDraft.Open(
-            date.trim(), account.trim(),
-            currency.trim().takeIf { it.isNotBlank() }?.let { listOf(it) }.orEmpty(),
-        )
-        DirectiveKind.CLOSE -> DirectiveDraft.Close(date.trim(), account.trim())
         DirectiveKind.BALANCE -> DirectiveDraft.Balance(date.trim(), account.trim(), parsedAmount)
         DirectiveKind.PAD -> DirectiveDraft.Pad(date.trim(), account.trim(), second.trim())
         DirectiveKind.NOTE -> DirectiveDraft.Note(date.trim(), account.trim(), text)
@@ -131,6 +129,11 @@ fun DirectiveEntryScreen(
         // Wrapped onto as many lines as they need rather than scrolled sideways (device audit
         // 2026-10-10): "Document" was cut in half at the edge and Commodity, Query and Custom
         // were off screen with nothing to say they were there. Every kind is in view.
+        Text(
+            "To open or close an account, use More, then Accounts.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         androidx.compose.foundation.layout.FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -217,16 +220,6 @@ fun DirectiveEntryScreen(
             }
         }
 
-        if (kind == DirectiveKind.OPEN) {
-            SuggestingField(
-                value = currency,
-                onValueChange = { currency = it.uppercase() },
-                label = "Commodity (optional)",
-                suggestions = vocabulary.currencies,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
         val textLabel = when (kind) {
             DirectiveKind.NOTE -> "Note"
             DirectiveKind.DOCUMENT -> "Path inside the project"
@@ -265,7 +258,7 @@ fun DirectiveEntryScreen(
     }
 
     // On the bar, beside Save, and only once something has been typed (device audit
-    // 2026-10-10): an untouched Open form greeted the person with a red `"" is not a valid
+    // 2026-10-10): an untouched form greeted the person with a red `"" is not a valid
     // account name`. The button stays disabled either way.
     FormSaveBar(
         problems = if (dirty) problems.map { it.describe() } else emptyList(),
