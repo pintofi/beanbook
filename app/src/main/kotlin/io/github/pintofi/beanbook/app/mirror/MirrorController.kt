@@ -215,9 +215,11 @@ class MirrorController(
             ?: error("that folder is no longer reachable")
         val projectDir = workspace.projectDir(projectId)
 
-        val local = hashLocal(projectDir)
+        val cache = hashCaches.getOrPut(projectId) { FileHashCache() }
+        val local = hashLocal(projectDir, cache)
         val externalFiles = enumerate(root)
-        val external = externalFiles.mapValues { (_, document) -> hash(document) }
+        val external = externalFiles.mapValues { (path, document) -> hash(path, document, cache) }
+        cache.retain(local.keys.map { "$LOCAL$it" }.toSet() + externalFiles.keys.map { "$EXTERNAL$it" })
         val plan = MirrorPlan.plan(local, external, state.read(projectId))
 
         val synced = state.read(projectId).toMutableMap()
@@ -390,7 +392,10 @@ class MirrorController(
         _message.value = null
     }
 
-    private fun hashLocal(projectDir: File): Map<String, String> =
+    /** A file's hash is read again only when its size or modified time changed (#66); one cache per project. */
+    private val hashCaches = HashMap<String, FileHashCache>()
+
+    private fun hashLocal(projectDir: File, cache: FileHashCache): Map<String, String> =
         if (!projectDir.isDirectory) {
             emptyMap()
         } else {
@@ -399,7 +404,10 @@ class MirrorController(
                 .map { it.relativeTo(projectDir).path.replace(File.separatorChar, '/') }
                 // Runtime state and the conflict copies themselves are ours, not the folder's.
                 .filterNot { BackupArchive.isExcluded(it) || it.contains(".conflict-") }
-                .associateWith { BackupArchive.sha256(File(projectDir, it)) }
+                .associateWith { path ->
+                    val file = File(projectDir, path)
+                    cache.hashOf("$LOCAL$path", file.length(), file.lastModified()) { BackupArchive.sha256(file) }
+                }
         }
 
     private fun enumerate(root: DocumentFile): Map<String, DocumentFile> {
@@ -425,6 +433,9 @@ class MirrorController(
     }
 
     /** Streamed, so a large PDF is hashed without being held in memory whole. */
+    private fun hash(path: String, document: DocumentFile, cache: FileHashCache): String =
+        cache.hashOf("$EXTERNAL$path", document.length(), document.lastModified()) { hash(document) }
+
     private fun hash(document: DocumentFile): String {
         val digest = java.security.MessageDigest.getInstance("SHA-256")
         context.contentResolver.openInputStream(document.uri)?.use { input ->
@@ -460,6 +471,8 @@ class MirrorController(
 
     private companion object {
         const val TAG = "MirrorController"
+        const val LOCAL = "local:"
+        const val EXTERNAL = "external:"
     }
 }
 
