@@ -72,14 +72,18 @@ data class CapturedPage(
  * a new list rather than mutating in place, so an undo is a matter of keeping the previous
  * value.
  */
-data class CapturedPages(val pages: List<CapturedPage> = emptyList()) {
+data class CapturedPages(
+    val pages: List<CapturedPage> = emptyList(),
+    /** The paper the document's pages are laid out on (#184). One choice for the whole document. */
+    val pageSize: PageSize = PageSize.AS_SCANNED,
+) {
 
     val size: Int get() = pages.size
 
     val isEmpty: Boolean get() = pages.isEmpty()
 
     fun add(source: String, style: PageStyle = PageStyle.COLOUR): CapturedPages =
-        CapturedPages(pages + CapturedPage(source, style = style))
+        copy(pages = pages + CapturedPage(source, style = style))
 
     fun rotate(index: Int, clockwise: Boolean = true): CapturedPages =
         replace(index) { if (clockwise) it.rotatedClockwise() else it.rotatedAnticlockwise() }
@@ -96,12 +100,12 @@ data class CapturedPages(val pages: List<CapturedPage> = emptyList()) {
         val remaining = pages.toMutableList()
         val moved = remaining.removeAt(from)
         remaining.add(target, moved)
-        return CapturedPages(remaining)
+        return copy(pages = remaining)
     }
 
     /** Removes one page from the document being assembled. */
     fun remove(index: Int): CapturedPages =
-        if (index in pages.indices) CapturedPages(pages.filterIndexed { i, _ -> i != index })
+        if (index in pages.indices) copy(pages = pages.filterIndexed { i, _ -> i != index })
         else this
 
     /** The pages with one page rendered differently. */
@@ -110,9 +114,31 @@ data class CapturedPages(val pages: List<CapturedPage> = emptyList()) {
     /** The pages with one page's crop set, or cleared when [quad] is null. */
     fun crop(index: Int, quad: CropQuad?): CapturedPages = replace(index) { it.croppedTo(quad) }
 
+    /** Every page rendered the same way: Apply to all. */
+    fun restyleAll(style: PageStyle): CapturedPages = copy(pages = pages.map { it.styledAs(style) })
+
+    /** The paper the pages are laid out on. */
+    fun resized(size: PageSize): CapturedPages = copy(pageSize = size)
+
+    /**
+     * A new photograph for the page at [index]: its source and crop are replaced, its rotation
+     * starts again from 0 (the new photo is upright as taken) and its style is kept.
+     *
+     * If the page there is no longer [expectedSource] -- it was moved or removed while the camera
+     * was open -- the photograph is added as a new page instead, so it is never lost.
+     */
+    fun retake(index: Int, expectedSource: String, source: String, crop: CropQuad?): CapturedPages {
+        val page = pages.getOrNull(index)
+        if (page == null || page.source != expectedSource) {
+            val added = add(source)
+            return added.crop(added.pages.lastIndex, crop)
+        }
+        return replace(index) { it.copy(source = source, rotation = 0, crop = crop) }
+    }
+
     private fun replace(index: Int, transform: (CapturedPage) -> CapturedPage): CapturedPages =
         if (index in pages.indices) {
-            CapturedPages(pages.mapIndexed { i, page -> if (i == index) transform(page) else page })
+            copy(pages = pages.mapIndexed { i, page -> if (i == index) transform(page) else page })
         } else {
             this
         }
