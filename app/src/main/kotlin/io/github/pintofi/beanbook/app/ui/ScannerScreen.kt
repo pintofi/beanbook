@@ -281,7 +281,7 @@ fun ScannerScreen(
                 val upright = io.github.pintofi.beanbook.app.documents.Photos
                     .upright(frame.toBitmap(), frame.imageInfo.rotationDegrees)
                 val small = upright.scale()
-                val quad = Scanner.detect(small)
+                val quad = Scanner.detect(small, thorough = false)
                 val size = androidx.compose.ui.unit.IntSize(small.width, small.height)
                 mainExecutor.execute { onSample(quad, size) }
             }

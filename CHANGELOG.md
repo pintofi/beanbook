@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - The page review is a new screen that follows the app's theme, in light and dark. It has a strip of thumbnails you can tap to jump or hold and drag to reorder, a style chip for every style with Use for all pages, and Finish with the page count. Removing a page, and Use for all pages, show an Undo bar. Removing the last page leaves the screen open with Undo instead of closing it, and the title moves under the bar at large text sizes instead of being cut off. ([#180])
+- The scanner finds more pages. A white receipt on a light table, or a white page on a beige table of the same brightness, used to leave the outline empty and the corners to be placed by hand. Detection now tries several ways of telling the page from the table, picks the outline they agree on, and still returns what the old single pass found when nothing else qualifies. On 60 drawn scenes the old pass found the page in 37 and the new one in all 60; on a real photo it is only as good as the photo, so tell us about pages it misses. ([#183])
 - The crop screen is easier to place by touch. A round magnifier shows the held handle larger above your finger, the middle of each long side has a handle that moves the whole side, handles take a 48 dp touch target, and a press that lands on no handle moves nothing. A corner stops where the page would fold, so a crop that cannot be straightened cannot be made. The screen can turn the picture, undo the last move, and find the page again. Each handle has actions for TalkBack and arrow keys for a keyboard. ([#182])
 - Scheduled backups can be encrypted. A switch on the Backup screen asks for a passphrase, which the phone keeps wrapped by its Keystore so backups can be made while it is locked. It protects the copies in the backup folder, not someone who can use your unlocked phone. If the passphrase can no longer be read, a scheduled run writes nothing and says so instead of writing a plain backup. ([#68])
 - An account can carry details. A new account takes an optional list of name and value pairs, such as the bank or the last digits of its number, written as metadata under its `open` line. Tapping an account on the Accounts page lets you change, add or remove them later; only the lines that changed are rewritten, and it can be undone. ([#208], [#210])
@@ -206,6 +207,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#179]: https://github.com/pintofi/beanbook/issues/179
 [#180]: https://github.com/pintofi/beanbook/issues/180
 [#182]: https://github.com/pintofi/beanbook/issues/182
+[#183]: https://github.com/pintofi/beanbook/issues/183
 [#189]: https://github.com/pintofi/beanbook/issues/189
 [#192]: https://github.com/pintofi/beanbook/issues/192
 [#197]: https://github.com/pintofi/beanbook/issues/197
