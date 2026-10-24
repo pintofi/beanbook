@@ -86,8 +86,10 @@ internal fun SetupPage(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
                 .readableMeasureCentred()
-                .padding(horizontal = Measure.gutter, vertical = Measure.gap),
-            verticalArrangement = Arrangement.spacedBy(Measure.gap),
+                // The folio page's own spacing, so the steps sit like every other page of cards.
+                .padding(horizontal = Measure.gutter)
+                .padding(top = Measure.snug, bottom = Measure.section),
+            verticalArrangement = Arrangement.spacedBy(Measure.snug),
             content = content,
         )
         Box(

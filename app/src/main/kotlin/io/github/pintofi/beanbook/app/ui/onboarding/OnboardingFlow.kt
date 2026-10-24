@@ -12,6 +12,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.outlined.DriveFolderUpload
+import androidx.compose.material.icons.outlined.FolderZip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -37,6 +39,12 @@ import io.github.pintofi.beanbook.app.onboarding.Creation
 import io.github.pintofi.beanbook.app.onboarding.NewLedgerSetup
 import io.github.pintofi.beanbook.app.onboarding.SetupDraft
 import io.github.pintofi.beanbook.app.onboarding.SetupStep
+import io.github.pintofi.beanbook.app.ui.FolioBody
+import io.github.pintofi.beanbook.app.ui.FolioGroup
+import io.github.pintofi.beanbook.app.ui.FolioHeading
+import io.github.pintofi.beanbook.app.ui.FolioNote
+import io.github.pintofi.beanbook.app.ui.FolioPage
+import io.github.pintofi.beanbook.app.ui.FolioRow
 import io.github.pintofi.beanbook.app.ui.ProjectTrash
 import io.github.pintofi.beanbook.app.ui.StatusLine
 import io.github.pintofi.beanbook.app.ui.TrashSection
@@ -210,48 +218,68 @@ private fun WaysInPage(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .readableMeasureCentred()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .readableMeasureCentred(),
         ) {
-            Text("Start a new ledger", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(
-                value = draft.name,
-                onValueChange = onName,
-                label = { Text("Name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Hint(
-                "Three short steps: currency and dates, accounts, and a few preferences. " +
-                    "You can change all of it later by editing the files.",
-            )
-            Button(
-                onClick = onSetUp,
-                enabled = draft.name.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Set it up") }
-            // Both start the same setup; the plain one skips the questions.
-            OutlinedButton(
-                onClick = actions.onCreateWithDefaults,
-                enabled = draft.name.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Create with defaults") }
-            Hint("Defaults: your device's currency, a short list of everyday accounts, and the usual checks.")
+            // The same folios as the project list, which has the same three jobs: start one,
+            // bring one in, and (here) connect a server.
+            FolioPage {
+                FolioHeading("Start a new ledger")
+                FolioGroup {
+                    item {
+                        FolioBody {
+                            OutlinedTextField(
+                                value = draft.name,
+                                onValueChange = onName,
+                                label = { Text("Name") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Hint(
+                                "Three short steps: currency and dates, accounts, and a few preferences. " +
+                                    "You can change all of it later by editing the files.",
+                            )
+                            Button(
+                                onClick = onSetUp,
+                                enabled = draft.name.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text("Set it up") }
+                            // Both start the same setup; the plain one skips the questions.
+                            OutlinedButton(
+                                onClick = actions.onCreateWithDefaults,
+                                enabled = draft.name.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text("Create with defaults") }
+                        }
+                    }
+                }
+                FolioNote("Defaults: your device's currency, a short list of everyday accounts, and the usual checks.")
 
-            Text("Open an existing ledger", style = MaterialTheme.typography.titleMedium)
-            Hint("Import a folder or a .zip you already keep, on this device or in cloud storage.")
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedButton(onClick = actions.onOpenFolder) { Text("Choose folder") }
-                OutlinedButton(onClick = actions.onOpenArchive) { Text("Choose .zip") }
+                FolioHeading("Open an existing ledger")
+                FolioGroup {
+                    item {
+                        FolioRow(
+                            title = "Choose folder",
+                            detail = "A folder of Beancount files, on this device or in cloud storage",
+                            icon = androidx.compose.material.icons.Icons.Outlined.DriveFolderUpload,
+                            onClick = actions.onOpenFolder,
+                            opens = true,
+                        )
+                    }
+                    item {
+                        FolioRow(
+                            title = "Choose .zip",
+                            detail = "A project exported from Beanbook, or any archive of a ledger",
+                            icon = androidx.compose.material.icons.Icons.Outlined.FolderZip,
+                            onClick = actions.onOpenArchive,
+                            opens = true,
+                        )
+                    }
+                }
+                busyMessage?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
+
+                RemoteCard(onConnect = actions.onRemoteConnect, note = remoteNote)
+                TrashSection(trash)
             }
-            busyMessage?.let { StatusLine(it) }
-
-            RemoteCard(onConnect = actions.onRemoteConnect, note = remoteNote)
-            TrashSection(trash)
         }
     }
 }
