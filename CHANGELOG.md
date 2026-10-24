@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The setup checklist has rounder checkboxes with room before each label, its currency field takes the whole line, and the notification button reads Granted once permission is given. ([#141], fixes [#135])
 
 ### Fixed
+- Encrypted backups no longer hold the whole project in memory, so a project with hundreds of megabytes of scanned receipts can be backed up with a passphrase instead of crashing the app. The backup is sealed in small chunks as it is written and opened the same way. Backups made earlier still open. A backup made by this version cannot be opened by an older version of the app. ([#54])
 - Delete file on the Documents screen can be undone. The file is moved aside for 30 days instead of removed, an Undo bar appears, and Undo puts it back where it was and relinks the entry. A deleted document is no longer part of the project, so it is not in a backup, a mirror or an export. ([#72])
 - Closing the document viewer while a large page is still drawing no longer freezes the screen until the page finishes. The viewer lets go of the file as soon as nothing is drawing. ([#73])
 - Totals no longer differ from Fava by a cent. The engine used to round each account's value before the app added them up; it now reports exact values and the total is rounded once, to the places the ledger shows the currency in, as Beancount and Fava do. A currency the ledger never writes, used only as the operating currency, shows two places. ([#60])
@@ -134,6 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#50]: https://github.com/pintofi/beanbook/issues/50
 [#52]: https://github.com/pintofi/beanbook/issues/52
 [#53]: https://github.com/pintofi/beanbook/issues/53
+[#54]: https://github.com/pintofi/beanbook/issues/54
 [#55]: https://github.com/pintofi/beanbook/issues/55
 [#57]: https://github.com/pintofi/beanbook/issues/57
 [#58]: https://github.com/pintofi/beanbook/issues/58

@@ -181,8 +181,13 @@ Excluded by default: caches, indexes, logs, runtime binaries, mirror state, cred
 
 **Encryption:** optional, off by default. Plain archives are interoperable and
 recoverable without this app, which is the right default for a plain-text-accounting product.
-When enabled: AES-256-GCM with a key derived by Argon2id from the user's passphrase;
-salt and parameters recorded in the manifest; the manifest itself stays readable so a
+When enabled: AES-256-GCM with a key derived by Argon2id from the user's passphrase. The
+inner zip is sealed in independent 64 KiB chunks (`AES-256-GCM-CHUNKED`), so a project of any
+size is written and checked with a small, fixed amount of memory. Each chunk's nonce is four
+random bytes plus the chunk number, and one byte of associated data marks the last chunk, so a
+payload that is cut, reordered or repeated fails its tag. Archives made before this, sealed in
+one piece (`AES-256-GCM`), still open, but only up to 256 MiB. Salt and parameters are
+recorded in the manifest; the manifest itself stays readable so a
 user can identify an archive without the passphrase. The UI warns unmistakably that a
 forgotten passphrase means permanently lost data; we cannot recover it.
 
