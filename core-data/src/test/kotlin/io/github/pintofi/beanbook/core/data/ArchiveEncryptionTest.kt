@@ -216,7 +216,7 @@ class ArchiveEncryptionTest {
         assertEquals(8 * 1024, encryption.memoryKib)
         assertEquals(1, encryption.parallelism)
         assertEquals("argon2id", encryption.kdf)
-        assertEquals("AES-256-GCM", encryption.cipher)
+        assertEquals("AES-256-GCM-CHUNKED", encryption.cipher)
     }
 
     @Test

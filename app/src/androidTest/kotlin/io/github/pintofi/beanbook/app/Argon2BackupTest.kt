@@ -103,7 +103,7 @@ class Argon2BackupTest {
         assertTrue(manifest.encryption is ArchiveEncryption.Encrypted)
         val encryption = manifest.encryption as ArchiveEncryption.Encrypted
         assertEquals("argon2id", encryption.kdf)
-        assertEquals("AES-256-GCM", encryption.cipher)
+        assertEquals("AES-256-GCM-CHUNKED", encryption.cipher)
         assertEquals(ArchiveEncryption.SALT_BYTES, encryption.salt.size)
         assertEquals(ArchiveEncryption.NONCE_BYTES, encryption.nonce.size)
     }

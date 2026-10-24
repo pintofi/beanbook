@@ -1,5 +1,8 @@
 package io.github.pintofi.beanbook.core.data
 
+import java.io.InputStream
+import java.io.OutputStream
+import java.security.GeneralSecurityException
 import java.security.SecureRandom
 import java.util.Base64
 import javax.crypto.Cipher
@@ -26,6 +29,8 @@ sealed interface ArchiveEncryption {
 
     /**
      * AES-256-GCM over the whole project payload, with the key derived from a passphrase.
+     * [cipher] says whether that is one operation ([CIPHER], older archives) or chunks
+     * ([CHUNKED_CIPHER], every archive written since #54).
      *
      * Every parameter needed to repeat the derivation is stored in the clear. That is not a
      * weakness — salt and cost parameters are not secrets, and an archive that cannot say
@@ -68,7 +73,17 @@ sealed interface ArchiveEncryption {
 
     companion object {
         const val NONE = "none"
+        /** One GCM operation over the whole payload. Still read, no longer written (#54). */
         const val CIPHER = "AES-256-GCM"
+
+        /**
+         * AES-256-GCM over the payload in independent chunks of [CHUNK_BYTES], so a backup of any
+         * size is sealed and opened with a few hundred KiB of memory (#54).
+         */
+        const val CHUNKED_CIPHER = "AES-256-GCM-CHUNKED"
+
+        /** Plaintext bytes per chunk; each sealed chunk is [TAG_BITS]/8 bytes longer. */
+        const val CHUNK_BYTES = 64 * 1024
         const val ARGON2ID = "argon2id"
 
         /** 128-bit tag: the GCM default, and what makes a wrong passphrase fail loudly. */
@@ -109,7 +124,7 @@ sealed interface ArchiveEncryption {
                 parallelism = value.long("parallelism")?.toInt() ?: return null,
                 cipher = value.string("cipher") ?: CIPHER,
             )
-            val acceptable = encrypted.cipher == CIPHER &&
+            val acceptable = (encrypted.cipher == CIPHER || encrypted.cipher == CHUNKED_CIPHER) &&
                 encrypted.kdf == ARGON2ID &&
                 encrypted.nonce.size == NONCE_BYTES &&
                 encrypted.salt.size in MIN_SALT_BYTES..MAX_SALT_BYTES &&
@@ -227,6 +242,176 @@ object PayloadCipher {
             // fail the tag, and neither yields anything usable.
             throw WrongPassphrase()
         } finally {
+            key.fill(0)
+        }
+    }
+
+    /**
+     * Seals a payload as it is written, in chunks (#54), so the project is never held in memory.
+     *
+     * Each chunk is its own GCM message. Its nonce is four random bytes followed by the chunk's
+     * number, so no two chunks of an archive share one, and the key is new for every archive
+     * because its salt is. One byte of associated data says whether the chunk is the last: a
+     * payload cut off at a chunk boundary then ends on a chunk that was not sealed as the last,
+     * fails the tag, and is refused like any other damage. Swapping or repeating chunks changes
+     * their numbers and fails the same way.
+     */
+    class Sealer internal constructor(
+        val encryption: ArchiveEncryption.Encrypted,
+        private val key: ByteArray,
+    ) {
+        /**
+         * An output stream that writes the sealed payload to [target]. Closing it writes the last
+         * chunk and wipes the key; it does not close [target], which the caller owns.
+         */
+        fun wrap(target: OutputStream): OutputStream = SealingStream(target, key, encryption.nonce)
+    }
+
+    fun begin(
+        passphrase: CharArray,
+        derivation: KeyDerivation,
+        kdf: String,
+        cost: KdfCost = KdfCost(),
+    ): Sealer {
+        val salt = ArchiveEncryption.randomBytes(ArchiveEncryption.SALT_BYTES)
+        val nonce = ArchiveEncryption.randomBytes(ArchiveEncryption.NONCE_BYTES)
+        val key = derivation.derive(passphrase, salt, cost)
+        require(key.size == ArchiveEncryption.KEY_BYTES) {
+            "a derived key must be ${ArchiveEncryption.KEY_BYTES} bytes"
+        }
+        return Sealer(
+            ArchiveEncryption.Encrypted(
+                kdf = kdf,
+                salt = salt,
+                nonce = nonce,
+                iterations = cost.iterations,
+                memoryKib = cost.memoryKib,
+                parallelism = cost.parallelism,
+                cipher = ArchiveEncryption.CHUNKED_CIPHER,
+            ),
+            key,
+        )
+    }
+
+    /**
+     * Opens a payload sealed by [Sealer], writing the plaintext to [plaintext] a chunk at a time.
+     *
+     * @throws WrongPassphrase when any chunk fails its tag: a wrong passphrase, a damaged payload
+     *   and a truncated one are not told apart, as with the one-shot cipher. Plaintext written
+     *   before the failure is only fit to be thrown away, so write it to a temporary file.
+     */
+    fun decryptTo(
+        ciphertext: InputStream,
+        plaintext: OutputStream,
+        passphrase: CharArray,
+        derivation: KeyDerivation,
+        encryption: ArchiveEncryption.Encrypted,
+    ) {
+        val key = derivation.derive(
+            passphrase,
+            encryption.salt,
+            KdfCost(encryption.iterations, encryption.memoryKib, encryption.parallelism),
+        )
+        try {
+            val spec = SecretKeySpec(key, "AES")
+            var current = ByteArray(SEALED_CHUNK_BYTES)
+            var following = ByteArray(SEALED_CHUNK_BYTES)
+            var length = fill(ciphertext, current)
+            var index = 0L
+            while (true) {
+                // A chunk is the last one when nothing follows it; reading ahead is how that is known.
+                val ahead = if (length == SEALED_CHUNK_BYTES) fill(ciphertext, following) else 0
+                val last = ahead == 0
+                try {
+                    plaintext.write(openChunk(spec, encryption.nonce, index, last, current, length))
+                } catch (ignored: GeneralSecurityException) {
+                    throw WrongPassphrase()
+                }
+                if (last) return
+                index++
+                current = following.also { following = current }
+                length = ahead
+            }
+        } finally {
+            key.fill(0)
+        }
+    }
+
+    private const val SEALED_CHUNK_BYTES = ArchiveEncryption.CHUNK_BYTES + ArchiveEncryption.TAG_BITS / 8
+
+    private fun chunkNonce(base: ByteArray, index: Long): ByteArray {
+        val nonce = ByteArray(ArchiveEncryption.NONCE_BYTES)
+        System.arraycopy(base, 0, nonce, 0, 4)
+        for (i in 0 until 8) nonce[4 + i] = (index ushr (56 - 8 * i)).toByte()
+        return nonce
+    }
+
+    private fun chunkCipher(mode: Int, key: SecretKeySpec, base: ByteArray, index: Long, last: Boolean): Cipher =
+        Cipher.getInstance("AES/GCM/NoPadding").apply {
+            init(mode, key, GCMParameterSpec(ArchiveEncryption.TAG_BITS, chunkNonce(base, index)))
+            updateAAD(byteArrayOf(if (last) 1 else 0))
+        }
+
+    private fun openChunk(
+        key: SecretKeySpec,
+        base: ByteArray,
+        index: Long,
+        last: Boolean,
+        chunk: ByteArray,
+        length: Int,
+    ): ByteArray = chunkCipher(Cipher.DECRYPT_MODE, key, base, index, last).doFinal(chunk, 0, length)
+
+    /** Reads until [buffer] is full or the stream ends; the count is below the size only at the end. */
+    private fun fill(input: InputStream, buffer: ByteArray): Int {
+        var filled = 0
+        while (filled < buffer.size) {
+            val n = input.read(buffer, filled, buffer.size - filled)
+            if (n < 0) break
+            filled += n
+        }
+        return filled
+    }
+
+    private class SealingStream(
+        private val target: OutputStream,
+        private val key: ByteArray,
+        private val base: ByteArray,
+    ) : OutputStream() {
+        private val spec = SecretKeySpec(key, "AES")
+        private val pending = ByteArray(ArchiveEncryption.CHUNK_BYTES)
+        private var filled = 0
+        private var index = 0L
+        private var closed = false
+
+        override fun write(b: Int) = write(byteArrayOf(b.toByte()), 0, 1)
+
+        override fun write(b: ByteArray, off: Int, len: Int) {
+            check(!closed) { "the sealed payload is already finished" }
+            var at = off
+            var left = len
+            while (left > 0) {
+                // A full chunk waits until more data arrives, so the last chunk is never empty
+                // unless the whole payload is, and is always the one sealed as last.
+                if (filled == pending.size) emit(last = false)
+                val n = minOf(left, pending.size - filled)
+                System.arraycopy(b, at, pending, filled, n)
+                filled += n
+                at += n
+                left -= n
+            }
+        }
+
+        private fun emit(last: Boolean) {
+            val cipher = chunkCipher(Cipher.ENCRYPT_MODE, spec, base, index, last)
+            target.write(cipher.doFinal(pending, 0, filled))
+            filled = 0
+            index++
+        }
+
+        override fun close() {
+            if (closed) return
+            closed = true
+            emit(last = true)
             key.fill(0)
         }
     }

@@ -1,11 +1,11 @@
 package io.github.pintofi.beanbook.core.data
 
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import java.security.MessageDigest
 import java.time.Instant
+import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
@@ -267,31 +267,25 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
 
         // The project is packed into an inner zip and that whole blob is sealed. One payload
         // rather than per-file encryption: file names, sizes and the shape of someone's
-        // accounts are as revealing as the amounts inside them.
-        val payload = ByteArrayOutputStream()
-        ZipOutputStream(payload).use { inner ->
-            files.forEach { path ->
-                inner.putNextEntry(ZipEntry(path))
-                copyChecked(File(root, path), expected.getValue(path), inner)
-                inner.closeEntry()
-            }
-        }
-
-        val (ciphertext, encryption) = PayloadCipher.encrypt(
-            plaintext = payload.toByteArray(),
-            passphrase = passphrase,
-            derivation = derivation,
-            kdf = kdf,
-            cost = cost,
-        )
-        val manifest = manifestWith(encryption)
+        // accounts are as revealing as the amounts inside them. The inner zip is sealed as it is
+        // written, in chunks, so the project is never held in memory (#54).
+        val sealer = PayloadCipher.begin(passphrase, derivation, kdf, cost)
+        val manifest = manifestWith(sealer.encryption)
 
         ZipOutputStream(out).use { zip ->
             zip.putNextEntry(ZipEntry(BackupManifest.MANIFEST_NAME))
             zip.write(manifest.toJson().write().toByteArray())
             zip.closeEntry()
+            // Sealed bytes do not compress, and trying costs time on a large project.
+            zip.setLevel(Deflater.NO_COMPRESSION)
             zip.putNextEntry(ZipEntry(BackupManifest.PAYLOAD_NAME))
-            zip.write(ciphertext)
+            ZipOutputStream(sealer.wrap(zip)).use { inner ->
+                files.forEach { path ->
+                    inner.putNextEntry(ZipEntry(path))
+                    copyChecked(File(root, path), expected.getValue(path), inner)
+                    inner.closeEntry()
+                }
+            }
             zip.closeEntry()
         }
         return manifest
@@ -427,30 +421,43 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                         val sealed = zip.getEntry(BackupManifest.PAYLOAD_NAME)
                             ?: return listOf(ArchiveProblem.NotAnArchive)
 
-                        val plaintext = try {
-                            PayloadCipher.decrypt(
-                                ciphertext = readEntry(zip, sealed, MAX_PAYLOAD_BYTES, "encrypted project"),
-                                passphrase = passphrase,
-                                derivation = derivation,
-                                encryption = encryption,
-                            )
-                        } catch (ignored: PayloadCipher.WrongPassphrase) {
-                            return listOf(ArchiveProblem.WrongPassphrase)
-                        }
-
                         // Staged in the app's own cache, never beside the archive. The
                         // archive can sit anywhere the user picked -- a Downloads folder, a
                         // synced folder, external storage -- and writing the whole decrypted
                         // project next to it put every account name and amount somewhere the
                         // user did not choose, for as long as the verify took.
                         //
-                        // The temporary file is about `ZipFile`, which needs random access;
-                        // the plaintext is already fully in memory above, so this is not the
-                        // memory saving an earlier comment here claimed.
+                        // The temporary file is for `ZipFile`, which needs random access.
                         val scratch = workspace.cacheDir.apply { mkdirs() }
                         val temp = File.createTempFile("payload", ".zip", scratch)
                         decrypted = temp
-                        temp.writeBytes(plaintext)
+
+                        try {
+                            if (encryption.cipher == ArchiveEncryption.CHUNKED_CIPHER) {
+                                // Streamed: the ciphertext is opened a chunk at a time and written
+                                // straight to the temporary file (#54).
+                                temp.outputStream().buffered().use { sink ->
+                                    zip.getInputStream(sealed).use { source ->
+                                        PayloadCipher.decryptTo(
+                                            LimitedInput(source, MAX_STREAMED_PAYLOAD_BYTES, "encrypted project"),
+                                            sink, passphrase, derivation, encryption,
+                                        )
+                                    }
+                                }
+                            } else {
+                                // Archives from before chunking: sealed in one piece, so read whole.
+                                temp.writeBytes(
+                                    PayloadCipher.decrypt(
+                                        ciphertext = readEntry(zip, sealed, MAX_PAYLOAD_BYTES, "encrypted project"),
+                                        passphrase = passphrase,
+                                        derivation = derivation,
+                                        encryption = encryption,
+                                    ),
+                                )
+                            }
+                        } catch (ignored: PayloadCipher.WrongPassphrase) {
+                            return listOf(ArchiveProblem.WrongPassphrase)
+                        }
 
                         ZipFile(temp).use { inner ->
                             checkEntryCount(inner)
@@ -494,6 +501,22 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
 
     private class TooLargeException(val what: String, val limit: Long) :
         java.io.IOException("$what is over $limit bytes")
+
+    /** Passes [source] through but fails with [TooLargeException] once more than [limit] bytes have been read. */
+    private class LimitedInput(source: InputStream, private val limit: Long, private val what: String) :
+        java.io.FilterInputStream(source) {
+        private var count = 0L
+
+        override fun read(): Int = super.read().also { if (it >= 0) add(1) }
+
+        override fun read(b: ByteArray, off: Int, len: Int): Int =
+            super.read(b, off, len).also { if (it > 0) add(it) }
+
+        private fun add(n: Int) {
+            count += n
+            if (count > limit) throw TooLargeException(what, limit)
+        }
+    }
 
     /**
      * Reads [entry] whole, but never more than [limit] bytes. The size the archive declares for an
@@ -544,10 +567,16 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         const val MAX_MANIFEST_BYTES = 8L * 1024 * 1024
 
         /**
-         * The encrypted project is held in memory, then decrypted into memory again (#54), so this
-         * is what a phone's heap can take, not what a disk can. A bigger backup is refused up front.
+         * Archives sealed in one piece (made before #54) are held in memory, then decrypted into
+         * memory again, so this is what a phone's heap can take. A bigger one is refused up front.
          */
         const val MAX_PAYLOAD_BYTES = 256L * 1024 * 1024
+
+        /**
+         * What a chunked encrypted project may take on disk (#54). It is streamed, so memory is not
+         * the limit; this only stops a crafted archive filling the cache.
+         */
+        const val MAX_STREAMED_PAYLOAD_BYTES = 8L * 1024 * 1024 * 1024
 
         const val MAX_ENTRIES = 100_000
 

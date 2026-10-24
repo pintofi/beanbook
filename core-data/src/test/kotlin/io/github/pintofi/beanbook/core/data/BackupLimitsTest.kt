@@ -45,6 +45,27 @@ class BackupLimitsTest {
         }
     }
 
+    /** [source] with its manifest saying the payload was sealed in one piece, as archives made before #54 are. */
+    private fun asLegacy(source: File): File {
+        val manifest = requireNotNull(archives.peek(source))
+        val encryption = (manifest.encryption as ArchiveEncryption.Encrypted).copy(cipher = ArchiveEncryption.CIPHER)
+        val out = File(root, "legacy.bcaz")
+        ZipFile(source).use { zip ->
+            ZipOutputStream(out.outputStream()).use { target ->
+                for (entry in zip.entries()) {
+                    target.putNextEntry(ZipEntry(entry.name))
+                    if (entry.name == BackupManifest.MANIFEST_NAME) {
+                        target.write(manifest.copy(encryption = encryption).toJson().write().toByteArray())
+                    } else {
+                        zip.getInputStream(entry).use { it.copyTo(target) }
+                    }
+                    target.closeEntry()
+                }
+            }
+        }
+        return out
+    }
+
     /** [source] with the entry called [name] replaced by [size] bytes of zeros, which deflate to almost nothing. */
     private fun withZeroEntry(source: File, name: String, size: Long): File {
         val out = File(root, "crafted.bcaz")
@@ -83,8 +104,9 @@ class BackupLimitsTest {
     }
 
     @Test
-    fun `an oversized encrypted payload is refused before it is read or decrypted`() {
-        val archive = withZeroEntry(sealed(), BackupManifest.PAYLOAD_NAME, BackupArchive.MAX_PAYLOAD_BYTES + 1)
+    fun `an oversized payload sealed in one piece is refused before it is read`() {
+        val legacy = asLegacy(sealed())
+        val archive = withZeroEntry(legacy, BackupManifest.PAYLOAD_NAME, BackupArchive.MAX_PAYLOAD_BYTES + 1)
         assertTrue(archive.length() < 2_000_000, "the crafted file is small: ${archive.length()}")
 
         assertEquals(
