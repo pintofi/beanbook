@@ -102,27 +102,74 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
             .sorted()
     }
 
+    /** A document put in the trash, which [restore] can bring back until it is purged. */
+    data class Trashed(val projectId: String, val relativePath: String, val stamp: String)
+
     /**
-     * Deletes the file itself. **Unlinking is not this** — removing the reference from an
-     * entry is an edit to the ledger and goes through `ProjectWriter` like any other; this
-     * is the separate, explicitly-confirmed act of throwing the document away
-     * (`DocumentRemoval`).
+     * Takes the document out of the project and keeps it, so the delete can be undone. Returns
+     * what [restore] needs, or null when there was no such file in this project.
+     *
+     * The same tidying as a delete: an account folder that empties is removed, and `documents/`
+     * itself and any folder the person made outside it are left alone.
      */
-    fun delete(projectId: String, relativePath: String): Boolean {
-        val file = resolve(projectId, relativePath) ?: return false
-        if (!file.isFile) return false
-        val deleted = file.delete()
+    fun trash(projectId: String, relativePath: String): Trashed? {
+        val file = resolve(projectId, relativePath) ?: return null
+        if (!file.isFile) return null
+        val projectRoot = workspace.projectDir(projectId).canonicalFile
+        // The path as the project has it, not as the link spelled it, so "a/../b" cannot name a
+        // place in the trash that the restore would not look in.
+        val relative = file.relativeTo(projectRoot).path
+        val stamp = "${System.currentTimeMillis()}-${System.nanoTime() % 100_000}"
+        val held = held(projectId, stamp, relative)
+        held.parentFile?.mkdirs()
+        if (!move(file, held)) return null
         // Tidy the account directory when it empties, so the tree does not fill with husks;
         // never touch documents/ itself, which is part of the project's shape, and never a
         // folder outside it: a document kept in another folder that `option "documents"` names
         // is in a folder the person made and named, and an empty one is theirs to remove.
-        val documentsRoot = File(workspace.projectDir(projectId), DocumentName.ROOT).canonicalFile
+        val documentsRoot = File(projectRoot, DocumentName.ROOT).canonicalFile
         var parent = file.parentFile
         while (parent != null && isEmptyFolderUnder(parent, documentsRoot)) {
             parent.delete()
             parent = parent.parentFile
         }
-        return deleted
+        purgeOldTrash()
+        return Trashed(projectId, relative, stamp)
+    }
+
+    /** Puts a trashed document back where it was. False when it is gone, or something is there now. */
+    fun restore(trashed: Trashed): Boolean {
+        val held = held(trashed.projectId, trashed.stamp, trashed.relativePath)
+        if (!held.isFile) return false
+        val target = resolve(trashed.projectId, trashed.relativePath) ?: return false
+        if (target.exists()) return false
+        target.parentFile?.mkdirs()
+        if (!move(held, target)) return false
+        File(workspace.documentTrashDir, "${trashed.projectId}/${trashed.stamp}").deleteRecursively()
+        return true
+    }
+
+    private fun held(projectId: String, stamp: String, relative: String): File =
+        File(workspace.documentTrashDir, "$projectId/$stamp/$relative")
+
+    private fun move(from: File, to: File): Boolean = try {
+        java.nio.file.Files.move(from.toPath(), to.toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+        true
+    } catch (ignored: java.io.IOException) {
+        // No atomic move across these folders: copy it, then remove the original.
+        runCatching { from.copyTo(to, overwrite = false); from.delete() }.getOrDefault(false)
+    }
+
+    /** Nothing is kept more than [TRASH_DAYS] days: older stamps, in every project, are deleted. */
+    private fun purgeOldTrash() {
+        val cutoff = System.currentTimeMillis() - TRASH_DAYS * 24L * 60 * 60 * 1000
+        workspace.documentTrashDir.listFiles().orEmpty().filter { it.isDirectory }.forEach { project ->
+            project.listFiles().orEmpty().forEach { stampDir ->
+                val made = stampDir.name.substringBefore('-').toLongOrNull()
+                if (made != null && made < cutoff) stampDir.deleteRecursively()
+            }
+            if (project.list().isNullOrEmpty()) project.delete()
+        }
     }
 
     /** An empty folder strictly inside [documentsRoot], which is the only kind a delete tidies. */
@@ -152,5 +199,9 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
         val path = file.canonicalFile.path
         val base = root.canonicalFile.path
         return path == base || path.startsWith(base + File.separator)
+    }
+
+    private companion object {
+        const val TRASH_DAYS = 30
     }
 }

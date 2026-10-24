@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The setup checklist has rounder checkboxes with room before each label, its currency field takes the whole line, and the notification button reads Granted once permission is given. ([#141], fixes [#135])
 
 ### Fixed
+- Delete file on the Documents screen can be undone. The file is moved aside for 30 days instead of removed, an Undo bar appears, and Undo puts it back where it was and relinks the entry. A deleted document is no longer part of the project, so it is not in a backup, a mirror or an export. ([#72])
 - Closing the document viewer while a large page is still drawing no longer freezes the screen until the page finishes. The viewer lets go of the file as soon as nothing is drawing. ([#73])
 - Totals no longer differ from Fava by a cent. The engine used to round each account's value before the app added them up; it now reports exact values and the total is rounded once, to the places the ledger shows the currency in, as Beancount and Fava do. A currency the ledger never writes, used only as the operating currency, shows two places. ([#60])
 - The entry form's balance check follows a ledger's `tolerance_multiplier` and `infer_tolerance_from_cost` options. A ledger that sets either no longer gets the default tolerance in the form, so an entry Beancount accepts is not refused, and one it refuses is not accepted. ([#50])
@@ -145,6 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#69]: https://github.com/pintofi/beanbook/issues/69
 [#70]: https://github.com/pintofi/beanbook/issues/70
 [#71]: https://github.com/pintofi/beanbook/issues/71
+[#72]: https://github.com/pintofi/beanbook/issues/72
 [#73]: https://github.com/pintofi/beanbook/issues/73
 [#74]: https://github.com/pintofi/beanbook/issues/74
 [#78]: https://github.com/pintofi/beanbook/issues/78

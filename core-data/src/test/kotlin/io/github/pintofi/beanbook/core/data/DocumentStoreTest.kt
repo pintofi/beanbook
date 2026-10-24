@@ -7,6 +7,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -87,10 +88,10 @@ class DocumentStoreTest {
     }
 
     @Test
-    fun `deleting removes the file and tidies the account directory`() {
+    fun `trashing removes the file and tidies the account directory`() {
         val stored = store.store("p", "Expenses:Food:Groceries", date, "receipt".toByteArray())
 
-        assertTrue(store.delete("p", stored.relativePath))
+        assertNotNull(store.trash("p", stored.relativePath))
 
         assertFalse(projectFile(stored.relativePath).exists())
         assertFalse(
@@ -104,18 +105,18 @@ class DocumentStoreTest {
     }
 
     @Test
-    fun `deleting one document leaves its neighbours alone`() {
+    fun `trashing one document leaves its neighbours alone`() {
         val kept = store.store("p", "Assets:Cash", date, "keep".toByteArray())
         val gone = store.store("p", "Assets:Cash", date, "drop".toByteArray())
 
-        store.delete("p", gone.relativePath)
+        store.trash("p", gone.relativePath)
 
         assertEquals(listOf(kept.relativePath), store.list("p"))
         assertEquals("keep", projectFile(kept.relativePath).readText())
     }
 
     @Test
-    fun `a link that points outside the project reads and deletes nothing`() {
+    fun `a link that points outside the project reads and trashes nothing`() {
         val outside = File(root, "outside.txt").apply { writeText("not yours") }
 
         val escapes = listOf(
@@ -125,7 +126,7 @@ class DocumentStoreTest {
         )
         escapes.forEach { path ->
             assertNull(store.read("p", path), "read escaped the project via \"$path\"")
-            assertFalse(store.delete("p", path), "delete escaped the project via \"$path\"")
+            assertNull(store.trash("p", path), "trash escaped the project via \"$path\"")
         }
         assertTrue(outside.isFile, "a file outside the project was touched")
     }
@@ -133,5 +134,78 @@ class DocumentStoreTest {
     @Test
     fun `listing a project with no documents is empty rather than an error`() {
         assertEquals(emptyList(), store.list("p"))
+    }
+
+    // A delete used to remove the file for good. It is now moved aside for a month, so the person
+    // can take it back (#72), and the project no longer has it.
+    @Test
+    fun `a trashed document can be restored to where it was`() {
+        val stored = store.store("p", "Expenses:Food:Groceries", date, "receipt".toByteArray())
+        val trashed = assertNotNull(store.trash("p", stored.relativePath))
+
+        assertFalse(projectFile(stored.relativePath).exists(), "still in the project")
+        assertEquals(emptyList(), store.list("p"))
+
+        assertTrue(store.restore(trashed))
+
+        assertEquals("receipt", projectFile(stored.relativePath).readText())
+        assertEquals(listOf(stored.relativePath), store.list("p"))
+        assertFalse(
+            File(workspace.documentTrashDir, "p/${trashed.stamp}").exists(),
+            "the trash still holds a copy after a restore",
+        )
+    }
+
+    @Test
+    fun `a trashed document is not in the project tree, so a backup or an export cannot carry it`() {
+        val stored = store.store("p", "Assets:Cash", date, "secret".toByteArray())
+
+        store.trash("p", stored.relativePath)
+
+        val inProject = workspace.projectDir("p").walkTopDown().filter { it.isFile }.map { it.readText() }.toList()
+        assertTrue("secret" !in inProject, "the trashed file is still under the project")
+    }
+
+    @Test
+    fun `a restore refuses to overwrite a file that is there now`() {
+        val stored = store.store("p", "Assets:Cash", date, "first".toByteArray())
+        val trashed = assertNotNull(store.trash("p", stored.relativePath))
+        projectFile(stored.relativePath).apply { parentFile.mkdirs() }.writeText("second")
+
+        assertFalse(store.restore(trashed))
+
+        assertEquals("second", projectFile(stored.relativePath).readText())
+    }
+
+    @Test
+    fun `restoring twice, or something that was never trashed, does nothing`() {
+        val stored = store.store("p", "Assets:Cash", date, "x".toByteArray())
+        val trashed = assertNotNull(store.trash("p", stored.relativePath))
+
+        assertTrue(store.restore(trashed))
+        assertFalse(store.restore(trashed))
+        assertFalse(store.restore(DocumentStore.Trashed("p", "documents/nothing.pdf", "0-0")))
+    }
+
+    @Test
+    fun `trashing something that is not a file in the project returns nothing`() {
+        assertNull(store.trash("p", "documents/not-there.pdf"))
+        assertNull(store.trash("p", "documents"))
+    }
+
+    @Test
+    fun `a month later the trash is emptied the next time anything is trashed`() {
+        val old = store.store("p", "Assets:Cash", date, "old".toByteArray())
+        val trashed = assertNotNull(store.trash("p", old.relativePath))
+        // Age it: the stamp starts with when it was trashed.
+        val aged = File(workspace.documentTrashDir, "p/${trashed.stamp}")
+        val longAgo = System.currentTimeMillis() - 31L * 24 * 60 * 60 * 1000
+        assertTrue(aged.renameTo(File(workspace.documentTrashDir, "p/$longAgo-1")))
+        val fresh = store.store("p", "Assets:Cash", date, "new".toByteArray())
+
+        store.trash("p", fresh.relativePath)
+
+        assertFalse(File(workspace.documentTrashDir, "p/$longAgo-1").exists(), "a 31-day-old item was kept")
+        assertTrue(File(workspace.documentTrashDir, "p").list().orEmpty().size == 1, "the new one was purged")
     }
 }

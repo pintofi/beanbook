@@ -1099,3 +1099,21 @@ internal fun MainActivity.LedgerEditDialog() {
         },
     )
 }
+
+/**
+ * Deletes a document file the person confirmed, and offers to undo it. The file is only moved
+ * aside, for a month, so the Undo bar can put it back where it was.
+ */
+internal fun MainActivity.deleteDocumentFile(app: BeancountApplication, projectId: String, path: String) {
+    app.documentCapture.deleteFile(projectId, path) { trashed ->
+        trashed?.let {
+            app.undo.offerRestore(projectId, "deleted ${path.substringAfterLast('/')}") {
+                // The list was read without it, so it is read again once it is back.
+                app.documentCapture.restoreFile(it).also { restored ->
+                    if (restored) refreshDocuments(app, projectId)
+                }
+            }
+        }
+        refreshDocuments(app, projectId)
+    }
+}

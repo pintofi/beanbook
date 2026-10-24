@@ -310,18 +310,26 @@ class DocumentCapture(
     suspend fun existing(projectId: String, extraRoots: List<String> = emptyList()): List<String> =
         withContext(Dispatchers.IO) { store.list(projectId, extraRoots) }
 
-    /** Deletes the document itself, after the caller has confirmed that is what was meant. */
-    fun deleteFile(projectId: String, relativePath: String, onDone: (Boolean) -> Unit) {
+    /**
+     * Takes the document out of the project, after the caller has confirmed that is what was
+     * meant. It is kept for a month, so [onDone] gets what [restoreFile] needs to take it back, or
+     * null when there was no such file.
+     */
+    fun deleteFile(projectId: String, relativePath: String, onDone: (DocumentStore.Trashed?) -> Unit) {
         scope.launch {
-            val deleted = withContext(Dispatchers.IO) { store.delete(projectId, relativePath) }
-            _message.value = if (deleted) {
+            val trashed = withContext(Dispatchers.IO) { store.trash(projectId, relativePath) }
+            _message.value = if (trashed != null) {
                 "Deleted $relativePath."
             } else {
                 "Could not delete $relativePath: it is not in this project."
             }
-            onDone(deleted)
+            onDone(trashed)
         }
     }
+
+    /** Puts a deleted document back. False when it is gone or something is there now. */
+    suspend fun restoreFile(trashed: DocumentStore.Trashed): Boolean =
+        withContext(Dispatchers.IO) { store.restore(trashed) }
 
     private companion object {
         const val TAG = "DocumentCapture"
