@@ -2,7 +2,9 @@ package io.github.pintofi.beanbook.app
 
 import io.github.pintofi.beanbook.app.packages.isPackageName
 import io.github.pintofi.beanbook.app.storage.safeDisplayName
+import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.JournalEntry
+import io.github.pintofi.beanbook.core.domain.JournalPosting
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -82,5 +84,50 @@ class ReviewFixesTest {
         val text = "2024-03-05 note Assets:Cash \"counted\"\n"
         assertTrue(sliceMatches(entry(payee = null, narration = null), text))
         assertFalse(sliceMatches(entry(date = "2024-03-04", payee = null, narration = null), text))
+    }
+
+    // A plugin that rewrites a narration in memory leaves the file saying something else, and the
+    // listed entry was then refused for delete and edit as if it had moved.
+    private fun listed(narration: String, vararg postings: Pair<String, String?>) =
+        entry(narration = narration).copy(
+            postings = postings.map { (account, amount) ->
+                JournalPosting(account, amount?.let { Amount(java.math.BigDecimal(it), "USD") })
+            },
+        )
+
+    private val lunch = "2024-03-05 * \"Cafe\" \"Lunch\"\n  Expenses:Food  4.50 USD\n  Assets:Cash\n"
+
+    @Test
+    fun `an entry whose narration a plugin rewrote is still the entry at that line`() {
+        val rewritten = listed("Lunch (checked)", "Expenses:Food" to "4.50", "Assets:Cash" to "-4.50")
+
+        assertTrue(sliceMatches(rewritten, lunch))
+    }
+
+    @Test
+    fun `postings a plugin added do not make the entry a different one`() {
+        val withExtra = listed(
+            "Lunch (tagged)",
+            "Expenses:Food" to "4.50", "Assets:Cash" to "-4.50", "Equity:Rounding" to "0.00",
+        )
+
+        assertTrue(sliceMatches(withExtra, lunch))
+    }
+
+    @Test
+    fun `a rewritten narration does not let a different entry through`() {
+        val otherAmount = listed("Lunch (checked)", "Expenses:Food" to "9.00", "Assets:Cash" to "-9.00")
+        val otherAccount = listed("Lunch (checked)", "Expenses:Dining" to "4.50", "Assets:Cash" to "-4.50")
+
+        assertFalse(sliceMatches(otherAmount, lunch))
+        assertFalse(sliceMatches(otherAccount, lunch))
+        val otherDay = lunch.replace("2024-03-05", "2024-03-06")
+        assertFalse(sliceMatches(listed("Lunch (checked)", "Expenses:Food" to "4.50"), otherDay))
+    }
+
+    @Test
+    fun `a slice that cannot be read and does not name the entry is refused`() {
+        val unreadable = "2024-03-05 * \"Cafe\" \"Lunch\" ???\n  not a posting\n"
+        assertFalse(sliceMatches(listed("Rewritten", "Expenses:Food" to "4.50"), unreadable))
     }
 }
