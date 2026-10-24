@@ -55,7 +55,16 @@ class PdfAssembler(
                 check(bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, jpeg)) {
                     "page ${index + 1} could not be encoded"
                 }
-                io.github.pintofi.beanbook.core.data.JpegPdf.Page(jpeg.toByteArray(), bitmap.width, bitmap.height)
+                // On paper when the document has a page size (#184): the orientation is decided on the
+                // page as it will be filed, after the crop and the turn. As scanned stays the page's own shape.
+                val placement = if (pages.pageSize == io.github.pintofi.beanbook.core.domain.PageSize.AS_SCANNED) {
+                    null
+                } else {
+                    io.github.pintofi.beanbook.core.domain.PageLayout.place(pages.pageSize, bitmap.width, bitmap.height)
+                }
+                io.github.pintofi.beanbook.core.data.JpegPdf.Page(
+                    jpeg.toByteArray(), bitmap.width, bitmap.height, placement,
+                )
             } finally {
                 bitmap.recycle()
             }

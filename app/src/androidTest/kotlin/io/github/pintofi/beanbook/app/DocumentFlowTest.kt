@@ -10,6 +10,7 @@ import io.github.pintofi.beanbook.app.documents.PdfAssembler
 import io.github.pintofi.beanbook.core.data.DocumentStore
 import io.github.pintofi.beanbook.core.data.ProjectWorkspace
 import io.github.pintofi.beanbook.core.domain.CapturedPages
+import io.github.pintofi.beanbook.core.domain.PageSize
 import java.io.File
 import java.time.LocalDate
 import org.junit.After
@@ -118,6 +119,31 @@ class DocumentFlowTest {
         assertEquals("a quarter turn should swap the page's sides", straight.first, turned.second)
         assertEquals(straight.second, turned.first)
         assertTrue(original.isFile)
+    }
+
+    @Test fun aPageSizeLaysEveryPageOnThatPaperAndAsScannedIsUntouched() {
+        val portrait = capture("page-1.jpg", Color.WHITE, width = 600, height = 900)
+        val landscape = capture("page-2.jpg", Color.LTGRAY, width = 900, height = 600)
+        val scanned = CapturedPages().add(portrait.name).add(landscape.name)
+
+        val onA4 = pageSizes(assembler.assemble(scanned.resized(PageSize.A4)) { File(root, it) })
+        assertEquals(2, onA4.size)
+        // A4 is 595 x 842 points; the landscape page goes on landscape paper.
+        fun near(size: Pair<Int, Int>, width: Int, height: Int) =
+            Math.abs(size.first - width) <= 1 && Math.abs(size.second - height) <= 1
+        assertTrue("expected A4 portrait, got ${onA4[0]}", near(onA4[0], 595, 842))
+        assertTrue("expected A4 landscape, got ${onA4[1]}", near(onA4[1], 842, 595))
+
+        val letter = pageSizes(assembler.assemble(scanned.resized(PageSize.LETTER)) { File(root, it) })
+        assertEquals(612, letter[0].first)
+        assertEquals(792, letter[0].second)
+
+        // As scanned is what it always was: each page its own shape, and the same bytes every time.
+        val one = assembler.assemble(scanned) { File(root, it) }
+        val two = assembler.assemble(scanned.resized(PageSize.AS_SCANNED)) { File(root, it) }
+        assertArrayEquals(one, two)
+        assertTrue(pageSizes(one)[0].second > pageSizes(one)[0].first)
+        assertTrue(pageSizes(one)[1].first > pageSizes(one)[1].second)
     }
 
     @Test fun savingTheSameDocumentTwiceLeavesOneFile() {
