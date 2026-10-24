@@ -204,7 +204,6 @@ class PageReviewTest {
         assertEquals(1, done)
     }
 
-<<<<<<< HEAD
     @Test fun thePageSizeIsChosenForTheWholeDocument() {
         val session = Session(two)
         open(session)
@@ -231,12 +230,12 @@ class PageReviewTest {
         compose.onNodeWithText("Cancel").performClick()
         compose.waitForIdle()
         assertEquals(PageSize.AS_SCANNED, session.pages.pageSize)
-=======
+    }
+
     @Test fun retakeAndAddPageAreOfferedOnlyWhereThereIsACameraToOpen() {
         val session = Session(two)
         open(session)
         compose.onAllNodesWithContentDescription("Retake page 1").assertCountEquals(0)
         compose.onAllNodesWithText("Add page").assertCountEquals(0)
->>>>>>> d2efac8 (Scanner: retake a page, add a page, and review before finishing)
     }
 }
