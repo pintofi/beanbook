@@ -447,6 +447,7 @@ fun DocumentsScreen(
             startAt = index,
             review = capture.review,
             onDone = { editingPages = null },
+            onAddPage = { editingPages = null; capture.onStartScanning() },
         )
     }
 

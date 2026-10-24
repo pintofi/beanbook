@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -203,6 +204,7 @@ class PageReviewTest {
         assertEquals(1, done)
     }
 
+<<<<<<< HEAD
     @Test fun thePageSizeIsChosenForTheWholeDocument() {
         val session = Session(two)
         open(session)
@@ -229,5 +231,12 @@ class PageReviewTest {
         compose.onNodeWithText("Cancel").performClick()
         compose.waitForIdle()
         assertEquals(PageSize.AS_SCANNED, session.pages.pageSize)
+=======
+    @Test fun retakeAndAddPageAreOfferedOnlyWhereThereIsACameraToOpen() {
+        val session = Session(two)
+        open(session)
+        compose.onAllNodesWithContentDescription("Retake page 1").assertCountEquals(0)
+        compose.onAllNodesWithText("Add page").assertCountEquals(0)
+>>>>>>> d2efac8 (Scanner: retake a page, add a page, and review before finishing)
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -79,6 +80,14 @@ fun PageReviewScreen(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
     backLabel: String = "Finish editing the pages",
+    /** Back, when it is not the same as finishing: in the scanner it returns to the camera. */
+    onBack: () -> Unit = onDone,
+    /** Takes a new photograph of the page at this index; null where there is no camera to open. */
+    onRetake: ((Int) -> Unit)? = null,
+    /** Goes back to the camera to add pages; null where there is no camera to open. */
+    onAddPage: (() -> Unit)? = null,
+    /** Said once when the screen opens, such as that a page was retaken. */
+    notice: String? = null,
 ) {
     val latest by rememberUpdatedState(pages)
     val pager = androidx.compose.foundation.pager.rememberPagerState(
@@ -158,7 +167,10 @@ fun PageReviewScreen(
         return
     }
 
-    androidx.activity.compose.BackHandler(enabled = true) { onDone() }
+    androidx.activity.compose.BackHandler(enabled = true) { onBack() }
+    androidx.compose.runtime.LaunchedEffect(notice) {
+        notice?.let { snackbar.showSnackbar(it, duration = SnackbarDuration.Long) }
+    }
 
     if (choosingSize) {
         PageSizeDialog(
@@ -181,7 +193,7 @@ fun PageReviewScreen(
                 title = { if (!titleUnderBar) ReviewTitle(title) },
                 navigationIcon = {
                     IconButton(
-                        onClick = onDone,
+                        onClick = onBack,
                         modifier = Modifier.semantics { contentDescription = backLabel },
                     ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
                 },
@@ -232,7 +244,7 @@ fun PageReviewScreen(
                 )
             }
             if (pages.isEmpty) {
-                EmptyReview(onDone)
+                EmptyReview(onDone, onAddPage)
             } else {
                 ReviewBody(
                     pages = pages,
@@ -246,6 +258,8 @@ fun PageReviewScreen(
                         cropping = shown
                     },
                     onDone = onDone,
+                    onRetake = onRetake?.let { retake -> { retake(shown) } },
+                    onAddPage = onAddPage,
                 )
             }
         }
@@ -258,7 +272,7 @@ private fun ReviewTitle(text: String) {
 }
 
 @Composable
-private fun EmptyReview(onDone: () -> Unit) {
+private fun EmptyReview(onDone: () -> Unit, onAddPage: (() -> Unit)?) {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center,
@@ -269,6 +283,9 @@ private fun EmptyReview(onDone: () -> Unit) {
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
+        onAddPage?.let {
+            OutlinedButton(onClick = it, modifier = Modifier.padding(top = 16.dp)) { Text("Add page") }
+        }
         Button(onClick = onDone, enabled = false, modifier = Modifier.padding(top = 16.dp)) {
             Text("Finish with 0 pages")
         }
@@ -286,6 +303,8 @@ private fun ReviewBody(
     onEdit: (PageEdit, String?) -> Unit,
     onCrop: () -> Unit,
     onDone: () -> Unit,
+    onRetake: (() -> Unit)?,
+    onAddPage: (() -> Unit)?,
 ) {
     val controls: @Composable () -> Unit = {
         StyleSection(
@@ -297,7 +316,12 @@ private fun ReviewBody(
                 onEdit(PageEdit.RestyleAll(style), "Every page is now ${style.label()}.")
             },
         )
-        PageTools(shown = shown, onTurn = { onEdit(PageEdit.Rotate(shown, it), null) }, onCrop = onCrop)
+        PageTools(
+            shown = shown,
+            onTurn = { onEdit(PageEdit.Rotate(shown, it), null) },
+            onCrop = onCrop,
+            onRetake = onRetake,
+        )
         ReviewStrip(
             pages = pages,
             fileFor = fileFor,
@@ -309,6 +333,7 @@ private fun ReviewBody(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
         ) {
+            onAddPage?.let { OutlinedButton(onClick = it) { Text("Add page") } }
             Button(onClick = onDone) {
                 Text(if (pages.size == 1) "Finish with 1 page" else "Finish with ${pages.size} pages")
             }

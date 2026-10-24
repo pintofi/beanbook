@@ -1198,6 +1198,7 @@ private fun PageEditorOverlay(
                 startAt = startAt,
                 review = capture.review,
                 onDone = onDone,
+                onAddPage = { onDone(); capture.onStartScanning() },
             )
         }
     }
