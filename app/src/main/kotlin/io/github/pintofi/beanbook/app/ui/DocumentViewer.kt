@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Share
@@ -26,17 +28,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.pager.VerticalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.ui.geometry.Size
-import me.saket.telephoto.zoomable.ZoomSpec
-import me.saket.telephoto.zoomable.ZoomableContentLocation
-import me.saket.telephoto.zoomable.rememberZoomableState
-import me.saket.telephoto.zoomable.zoomable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -47,10 +43,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import java.io.File
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import me.saket.telephoto.zoomable.ZoomSpec
+import me.saket.telephoto.zoomable.ZoomableContentLocation
+import me.saket.telephoto.zoomable.rememberZoomableState
+import me.saket.telephoto.zoomable.zoomable
 
 /**
  * A document, read inside the app, over the whole screen.
@@ -215,24 +214,27 @@ internal fun ZoomablePage(bitmap: ImageBitmap, description: String?, modifier: M
  * One open PDF, rendered a page at a time.
  *
  * `PdfRenderer` allows one open page at a time and is not thread-safe, so every use goes
- * through [lock]. It holds the file open while the viewer is on screen and is closed when the
+ * through [guard]. It holds the file open while the viewer is on screen and is closed when the
  * viewer leaves.
  */
 private class PdfSource(private val descriptor: ParcelFileDescriptor) {
     private val renderer = PdfRenderer(descriptor)
-    private val lock = Mutex()
+
+    // Closing never waits for a render: see IdleRelease.
+    private val guard = IdleRelease(CoroutineScope(Dispatchers.IO)) {
+        renderer.close()
+        descriptor.close()
+    }
     private val ratios = (0 until renderer.pageCount).map { index ->
         renderer.openPage(index).use { it.width.toFloat() / it.height.coerceAtLeast(1) }
     }
-    private var closed = false
 
     val pageCount: Int get() = ratios.size
 
     fun aspect(index: Int): Float = ratios[index].coerceIn(MIN_RATIO, MAX_RATIO)
 
     suspend fun render(index: Int): PdfPageRender = withContext(Dispatchers.IO) {
-        lock.withLock {
-            if (closed) return@withLock PdfPageRender.Pending
+        guard.use {
             renderer.openPage(index).use { page ->
                 // Sized from the page before anything is allocated: a malformed media box
                 // would otherwise ask for a bitmap larger than the heap and end the process.
@@ -249,23 +251,10 @@ private class PdfSource(private val descriptor: ParcelFileDescriptor) {
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                 PdfPageRender.Ready(bitmap.asImageBitmap())
             }
-        }
+        } ?: PdfPageRender.Pending
     }
 
-    fun close() {
-        // Taken without suspending: a render in progress finishes first, and the next one
-        // sees `closed` and draws nothing.
-        while (!lock.tryLock()) Thread.yield()
-        try {
-            if (!closed) {
-                closed = true
-                renderer.close()
-                descriptor.close()
-            }
-        } finally {
-            lock.unlock()
-        }
-    }
+    fun close() = guard.close()
 }
 
 /** What drawing one page came to. */
