@@ -80,4 +80,17 @@ class PageEditsTest {
         assertNull(offer.undo(after.add("d.jpg")))
         assertNull(offer.undo(after.apply(PageEdit.Rotate(0, true))))
     }
+
+    @Test fun `a style chosen by the scanner stays open until the person chooses`() {
+        val pages = CapturedPages().add("a.jpg", PageStyle.DOCUMENT, automatic = true)
+        assertTrue(pages.pages[0].automaticStyle)
+        // A crop does not touch it, and the scanner may choose again.
+        assertTrue(pages.crop(0, quad).pages[0].automaticStyle)
+        val again = pages.restyleAutomatically(0, PageStyle.GREYSCALE)
+        assertEquals(PageStyle.GREYSCALE, again.pages[0].style)
+        assertTrue(again.pages[0].automaticStyle)
+        // A manual choice is final.
+        assertFalse(pages.restyle(0, PageStyle.COLOUR).pages[0].automaticStyle)
+        assertFalse(pages.restyleAll(PageStyle.COLOUR).pages[0].automaticStyle)
+    }
 }

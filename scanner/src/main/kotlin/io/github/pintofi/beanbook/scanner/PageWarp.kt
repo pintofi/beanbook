@@ -2,7 +2,6 @@ package io.github.pintofi.beanbook.scanner
 
 import io.github.pintofi.beanbook.core.domain.CropPoint
 import io.github.pintofi.beanbook.core.domain.CropQuad
-import org.opencv.core.Core
 import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Point
@@ -22,6 +21,9 @@ enum class ScanStyle {
 
     /** Straightened and greyscale. Smaller than colour, kinder to faint pencil than DOCUMENT. */
     GREYSCALE,
+
+    /** Black on white, from the grey scan. Clean print only: faint or thin strokes can break up. */
+    BLACK_AND_WHITE,
 }
 
 /**
@@ -84,69 +86,7 @@ object PageWarp {
     }
 
     /** The style pass, applied after warping so the filter sees a flat page. */
-    fun applyStyle(page: Mat, style: ScanStyle): Mat = when (style) {
-        ScanStyle.COLOUR -> page
-        ScanStyle.GREYSCALE -> Mat().also { Imgproc.cvtColor(page, it, Imgproc.COLOR_RGBA2GRAY) }
-        ScanStyle.DOCUMENT -> documentise(page)
-    }
-
-    /**
-     * Paper white, ink dark, shadows gone -- and the edges of the letters kept.
-     *
-     * A photograph of a page is never evenly lit: one corner is in the phone's own shadow.
-     * This used to answer that with an adaptive *threshold*, which does remove the shadow but
-     * turns every pixel black or white: thin strokes broke up, small print filled in, a faint
-     * stamp vanished, and the edges of every letter came out jagged. What a scanner app means
-     * by "document" is flatter lighting, not fewer grey levels.
-     *
-     * So the lighting is estimated and divided out. Dilating the page with a kernel wider than
-     * a stroke erases the ink and leaves the paper; a median blur smooths that into the light
-     * falling on the sheet. The difference between the page and its own lighting is the ink,
-     * on white, whatever the lamp did -- and the anti-aliased edge of each letter survives. A
-     * final stretch pushes the paper to white and the ink to black.
-     *
-     * Kernel sizes follow the page's width so a receipt and a full sheet are treated alike.
-     */
-    private fun documentise(page: Mat): Mat {
-        val grey = Mat()
-        val background = Mat()
-        val ink = Mat()
-        try {
-            Imgproc.cvtColor(page, grey, Imgproc.COLOR_RGBA2GRAY)
-            val stroke = odd(maxOf(7, grey.cols() / 120))
-            val light = odd(maxOf(21, minOf(grey.cols() / 40, 101)))
-            val kernel = Imgproc.getStructuringElement(
-                Imgproc.MORPH_RECT,
-                Size(stroke.toDouble(), stroke.toDouble()),
-            )
-            try {
-                Imgproc.dilate(grey, background, kernel)
-            } finally {
-                kernel.release()
-            }
-            Imgproc.medianBlur(background, background, light)
-
-            Core.absdiff(grey, background, ink)
-        } catch (failure: Throwable) {
-            ink.release()
-            throw failure
-        } finally {
-            grey.release()
-            background.release()
-        }
-        Core.bitwise_not(ink, ink)
-        Core.normalize(ink, ink, 0.0, 255.0, Core.NORM_MINMAX)
-        // Paper is everything close to white; lifting it the rest of the way clears the grain
-        // and the last of the shadow without touching the ink.
-        Imgproc.threshold(ink, ink, PAPER_LEVEL, 255.0, Imgproc.THRESH_TRUNC)
-        Core.normalize(ink, ink, 0.0, 255.0, Core.NORM_MINMAX)
-        return ink
-    }
-
-    private fun odd(value: Int) = if (value % 2 == 0) value + 1 else value
-
-    /** Above this grey level a pixel is paper. */
-    private const val PAPER_LEVEL = 225.0
+    fun applyStyle(page: Mat, style: ScanStyle): Mat = PageStyles.apply(page, style)
 
     private fun CropPoint.asPoint() = Point(x.toDouble(), y.toDouble())
 

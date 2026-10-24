@@ -11,11 +11,17 @@ enum class PageStyle {
     /** The photograph as taken. */
     COLOUR,
 
-    /** Thresholded to near-black text on near-white paper, which is what a scan looks like. */
+    /**
+     * Flattened colour: the lighting is divided out, so the paper goes white and the ink dark while
+     * stamps and highlights keep their colour. What a scanner means by a scan.
+     */
     DOCUMENT,
 
-    /** Grey, for a page whose colour carries nothing but takes space. */
+    /** Flattened grey, for a page whose colour carries nothing (a thermal receipt), and faint print. */
     GREYSCALE,
+
+    /** Pure black on white, from the grey scan. For clean print; faint or thin print can break up. */
+    BLACK_AND_WHITE,
 }
 
 /**
@@ -46,6 +52,11 @@ data class CapturedPage(
      * photograph the camera produced.
      */
     val style: PageStyle = PageStyle.COLOUR,
+    /**
+     * Whether [style] was chosen by the scanner rather than by the person. A manual choice is final,
+     * so [styledAs] clears this; a crop re-runs the choice only while it is still set.
+     */
+    val automaticStyle: Boolean = false,
 ) {
     init {
         require(rotation in ALLOWED_ROTATIONS) { "rotation must be a quarter turn, got $rotation" }
@@ -57,7 +68,10 @@ data class CapturedPage(
 
     fun rotatedAnticlockwise(): CapturedPage = copy(rotation = (rotation + 270) % 360)
 
-    fun styledAs(style: PageStyle): CapturedPage = copy(style = style)
+    fun styledAs(style: PageStyle): CapturedPage = copy(style = style, automaticStyle = false)
+
+    /** The scanner's own choice of style, which a later crop may choose again. */
+    fun styledAutomatically(style: PageStyle): CapturedPage = copy(style = style, automaticStyle = true)
 
     private companion object {
         val ALLOWED_ROTATIONS = setOf(0, 90, 180, 270)
@@ -82,8 +96,8 @@ data class CapturedPages(
 
     val isEmpty: Boolean get() = pages.isEmpty()
 
-    fun add(source: String, style: PageStyle = PageStyle.COLOUR): CapturedPages =
-        copy(pages = pages + CapturedPage(source, style = style))
+    fun add(source: String, style: PageStyle = PageStyle.COLOUR, automatic: Boolean = false): CapturedPages =
+        copy(pages = pages + CapturedPage(source, style = style, automaticStyle = automatic))
 
     fun rotate(index: Int, clockwise: Boolean = true): CapturedPages =
         replace(index) { if (clockwise) it.rotatedClockwise() else it.rotatedAnticlockwise() }
@@ -107,6 +121,10 @@ data class CapturedPages(
     fun remove(index: Int): CapturedPages =
         if (index in pages.indices) copy(pages = pages.filterIndexed { i, _ -> i != index })
         else this
+
+    /** One page given the scanner's own choice of style, which stays open to being chosen again. */
+    fun restyleAutomatically(index: Int, style: PageStyle): CapturedPages =
+        replace(index) { it.styledAutomatically(style) }
 
     /** The pages with one page rendered differently. */
     fun restyle(index: Int, style: PageStyle): CapturedPages = replace(index) { it.styledAs(style) }
