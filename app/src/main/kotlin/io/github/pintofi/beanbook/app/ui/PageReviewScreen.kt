@@ -87,6 +87,7 @@ fun PageReviewScreen(
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var menu by remember { mutableStateOf(false) }
+    var choosingSize by rememberSaveable { mutableStateOf(false) }
     var undo by remember { mutableStateOf<UndoOffer?>(null) }
     var cropping by rememberSaveable { mutableStateOf<Int?>(null) }
     var croppingSource by rememberSaveable { mutableStateOf<String?>(null) }
@@ -159,6 +160,18 @@ fun PageReviewScreen(
 
     androidx.activity.compose.BackHandler(enabled = true) { onDone() }
 
+    if (choosingSize) {
+        PageSizeDialog(
+            current = pages.pageSize,
+            localPaper = remember { io.github.pintofi.beanbook.app.documents.localPaper() },
+            onUse = {
+                choosingSize = false
+                edit(PageEdit.Resize(it))
+            },
+            onDismiss = { choosingSize = false },
+        )
+    }
+
     val title = if (pages.isEmpty) "Review" else "Page ${shown + 1} of ${pages.size}"
     val titleUnderBar = LocalDensity.current.fontScale >= LARGE_FONT
     Scaffold(
@@ -183,8 +196,8 @@ fun PageReviewScreen(
                     androidx.compose.foundation.layout.Box {
                         IconButton(
                             onClick = { menu = true },
-                            enabled = pages.size > 1,
-                            modifier = Modifier.semantics { contentDescription = "Change the order of the pages" },
+                            enabled = !pages.isEmpty,
+                            modifier = Modifier.semantics { contentDescription = "More actions for these pages" },
                         ) { Icon(Icons.Filled.MoreVert, contentDescription = null) }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(
@@ -196,6 +209,10 @@ fun PageReviewScreen(
                                 text = { Text("Move page ${shown + 1} later") },
                                 enabled = shown < pages.size - 1,
                                 onClick = { menu = false; edit(PageEdit.Move(shown, shown + 1)) },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Page size: ${pages.pageSize.label()}") },
+                                onClick = { menu = false; choosingSize = true },
                             )
                         }
                     }

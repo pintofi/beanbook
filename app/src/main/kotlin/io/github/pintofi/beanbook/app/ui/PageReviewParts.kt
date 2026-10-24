@@ -42,6 +42,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.domain.CapturedPage
 import io.github.pintofi.beanbook.core.domain.CapturedPages
+import io.github.pintofi.beanbook.core.domain.PageLayout
+import io.github.pintofi.beanbook.core.domain.PageSize
 import io.github.pintofi.beanbook.core.domain.PageStyle
 import java.io.File
 import sh.calvin.reorderable.ReorderableItem
@@ -72,12 +74,48 @@ internal fun ReviewPager(
             } else {
                 // Pinch to check the small print before filing it. Telephoto hands a horizontal
                 // drag to the pager at the page's edge, so swiping is how you turn pages.
-                val image = androidx.compose.runtime.remember(bitmap) { bitmap.asImageBitmap() }
+                val image = androidx.compose.runtime.remember(bitmap, pages.pageSize) {
+                    (if (pages.pageSize == PageSize.AS_SCANNED) bitmap else onSheet(bitmap, pages.pageSize))
+                        .asImageBitmap()
+                }
                 ZoomablePage(bitmap = image, description = "Page ${index + 1}", modifier = Modifier.padding(8.dp))
             }
         }
     }
 }
+
+/**
+ * The page laid on a sheet of [size] paper exactly where the PDF will put it, so the margins and the
+ * fit are seen before filing. Drawn at a fixed width, whatever the paper.
+ */
+private fun onSheet(page: android.graphics.Bitmap, size: PageSize): android.graphics.Bitmap {
+    val placement = PageLayout.place(size, page.width, page.height)
+    val scale = SHEET_WIDTH.toFloat() / placement.pageWidth
+    val sheet = android.graphics.Bitmap.createBitmap(
+        SHEET_WIDTH, (placement.pageHeight * scale).toInt().coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888,
+    )
+    val canvas = android.graphics.Canvas(sheet)
+    canvas.drawColor(android.graphics.Color.WHITE)
+    val top = (placement.pageHeight - placement.y - placement.height) * scale
+    canvas.drawBitmap(
+        page,
+        null,
+        android.graphics.RectF(
+            placement.x * scale, top, (placement.x + placement.width) * scale, top + placement.height * scale,
+        ),
+        android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG),
+    )
+    val edge = android.graphics.Paint().apply {
+        color = SHEET_EDGE
+        style = android.graphics.Paint.Style.STROKE
+        strokeWidth = 2f
+    }
+    canvas.drawRect(1f, 1f, sheet.width - 1f, sheet.height - 1f, edge)
+    return sheet
+}
+
+private const val SHEET_WIDTH = 1200
+private const val SHEET_EDGE = 0xFFBDBDBD.toInt()
 
 /** How the shown page is rendered, one chip for every style, and a way to give every page the same. */
 @Composable
