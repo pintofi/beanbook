@@ -3,6 +3,8 @@ package io.github.pintofi.beanbook.app.backup
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.documentfile.provider.DocumentFile
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -37,6 +39,14 @@ class ScheduledBackupWorker(
         val settings = app.backupSettings
         val folderUri = settings.folderUri() ?: return Result.failure()
         val projectId = app.registry.activeProjectId() ?: return Result.success()
+        // Read before anything is created in the folder. If encryption is on and the passphrase
+        // cannot be read, nothing is written: a plain archive where an encrypted one was promised
+        // would put the ledger in the folder in the one form the user asked not to.
+        val passphrase = if (settings.encryptsScheduled()) settings.passphrase() else null
+        if (settings.encryptsScheduled() && passphrase == null) {
+            settings.recordRun(Instant.now(), success = false, detail = PASSPHRASE_LOST)
+            return Result.failure()
+        }
 
         // Set once the file exists, so a failure can take the unfinished one away: a truncated
         // `.bcaz` in the folder looks like a backup and is not one.
@@ -56,6 +66,8 @@ class ScheduledBackupWorker(
                     out = out,
                     appVersion = app.appVersion,
                     projectTitle = title,
+                    passphrase = passphrase,
+                    derivation = passphrase?.let { Argon2idKeyDerivation() },
                 )
             } ?: error("the provider refused to write $name")
 
@@ -76,13 +88,16 @@ class ScheduledBackupWorker(
             )
             // Retried with backoff: a missing folder may come back when the provider does.
             Result.retry()
-        }
+        }.also { passphrase?.fill('\u0000') }
     }
 
     companion object {
         private const val TAG = "ScheduledBackup"
         private const val MIME_TYPE = "application/octet-stream"
         const val WORK_NAME = "scheduled-backup"
+        const val PASSPHRASE_LOST =
+            "the passphrase for scheduled backups can no longer be read, so nothing was written. " +
+                "Set it again on the Backup screen."
 
         fun schedule(context: Context, every: Duration = Duration.ofDays(1)) {
             val request = PeriodicWorkRequestBuilder<ScheduledBackupWorker>(every)
@@ -120,6 +135,41 @@ class BackupSettings(private val stateDir: java.io.File) {
     private val folderFile get() = java.io.File(stateDir, "backup-folder")
     private val lastRunFile get() = java.io.File(stateDir, "backup-last-run")
     private val retentionFile get() = java.io.File(stateDir, "backup-retention")
+    private val encryptedFile get() = java.io.File(stateDir, "backup-encrypted")
+
+    /**
+     * The passphrase for scheduled backups, wrapped by an Android Keystore key like the remote
+     * password. It lets a backup made with the screen off be encrypted, and it protects the copy
+     * in the chosen folder, which may be synced elsewhere; it does not protect against someone
+     * who can use this unlocked phone.
+     */
+    private val secret get() = io.github.pintofi.beanbook.app.remote.KeystoreSecret(
+        java.io.File(stateDir, "backup-passphrase"),
+        alias = "io.github.pintofi.beanbook.backup.passphrase",
+    )
+
+    /** Observable, so the Backup screen follows a change made on it. */
+    private var encrypted by androidx.compose.runtime.mutableStateOf(encryptedFile.isFile)
+
+    fun encryptsScheduled(): Boolean = encrypted
+
+    /** The saved passphrase, or null when there is none or it can no longer be decrypted. */
+    fun passphrase(): CharArray? = secret.read()
+
+    /** Turns encryption of scheduled backups on, or off with null. [passphrase] is copied, not kept. */
+    fun setScheduledPassphrase(passphrase: CharArray?) {
+        stateDir.mkdirs()
+        if (passphrase == null) {
+            encryptedFile.delete()
+            secret.clear()
+            encrypted = false
+        } else {
+            // The secret first: a marker with nothing behind it would make every run refuse.
+            secret.store(passphrase)
+            encryptedFile.writeText("on")
+            encrypted = true
+        }
+    }
 
     fun folderUri(): String? = folderFile.takeIf { it.isFile }?.readText()?.trim()?.ifEmpty { null }
 

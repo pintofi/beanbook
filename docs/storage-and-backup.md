@@ -206,6 +206,13 @@ kept until the user prunes it.
 guaranteed by Android and the UI says so. Retention is configurable by count and age.
 Partial failures are reported per file, never summarised as success.
 
+Scheduled backups can be encrypted (off by default). The passphrase is kept in app-private
+state, wrapped by an Android Keystore key, because a backup made with the screen off cannot ask
+for it. That protects the archives in the chosen folder, which may be synced elsewhere; it does
+not protect against someone who can use the unlocked phone. If encryption is on and the
+passphrase can no longer be read (the Keystore key is lost), the run writes nothing and records
+why, rather than writing a plain archive.
+
 ---
 
 ## 8. Documents

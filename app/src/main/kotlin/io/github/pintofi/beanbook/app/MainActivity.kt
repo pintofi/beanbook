@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.pintofi.beanbook.app.engine.LedgerState
 import io.github.pintofi.beanbook.app.plugins.collectUi
 import io.github.pintofi.beanbook.app.engine.RecoveryOnStart
+import io.github.pintofi.beanbook.app.ui.ScheduleEncryption
 import io.github.pintofi.beanbook.app.ui.trashUi
 import io.github.pintofi.beanbook.app.ui.onboarding.OnboardingFlow
 import io.github.pintofi.beanbook.app.ui.onboarding.SetupActions
@@ -718,6 +719,10 @@ class MainActivity : ComponentActivity() {
                         onRemoteRetry = { app.remoteState.retryPending() },
                         onRemoteDiscard = { app.remoteState.discardPending() },
                         onChooseScheduleFolder = { backupFolderPicker.launch(null) },
+                        scheduleEncryption = ScheduleEncryption(
+                            app.backupSettings.encryptsScheduled(),
+                            app.backupSettings::setScheduledPassphrase,
+                        ),
                         onScheduleChanged = { enabled ->
                             scheduleEnabled = enabled
                             if (enabled) {

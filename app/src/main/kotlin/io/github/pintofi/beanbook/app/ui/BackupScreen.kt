@@ -37,6 +37,12 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SettingsBackupRestore
 
 /**
+ * Whether scheduled backups are encrypted, and how to change it: [onChange] gets the passphrase
+ * to turn encryption on, or null to turn it off.
+ */
+class ScheduleEncryption(val enabled: Boolean, val onChange: (CharArray?) -> Unit)
+
+/**
  * Back up, restore, and schedule (docs/storage-and-backup.md §7).
  *
  * The screen's job is to make one thing impossible: restoring without seeing what it would
@@ -59,9 +65,14 @@ fun BackupScreen(
     onDiscardRestore: () -> Unit,
     onChooseScheduleFolder: () -> Unit,
     onScheduleChanged: (Boolean) -> Unit,
+    scheduleEncryption: ScheduleEncryption,
     modifier: Modifier = Modifier,
     message: String? = null,
 ) {
+    var askingSchedulePassphrase by remember { mutableStateOf(false) }
+    var schedulePassphrase by remember { mutableStateOf("") }
+    var scheduleConfirmation by remember { mutableStateOf("") }
+    val schedulePassphrasesMatch = schedulePassphrase.isNotEmpty() && schedulePassphrase == scheduleConfirmation
     var encrypt by remember { mutableStateOf(false) }
     var passphrase by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
@@ -237,6 +248,84 @@ fun BackupScreen(
                     icon = Icons.Outlined.Schedule,
                     describe = "Back up automatically",
                 )
+            }
+            item {
+                FolioSwitchRow(
+                    title = "Encrypt scheduled backups",
+                    checked = scheduleEncryption.enabled || askingSchedulePassphrase,
+                    onCheckedChange = { on ->
+                        if (on) {
+                            askingSchedulePassphrase = true
+                        } else {
+                            askingSchedulePassphrase = false
+                            schedulePassphrase = ""
+                            scheduleConfirmation = ""
+                            scheduleEncryption.onChange(null)
+                        }
+                    },
+                    detail = if (askingSchedulePassphrase && !scheduleEncryption.enabled) {
+                        "Choose a passphrase below."
+                    } else if (scheduleEncryption.enabled) {
+                        "On. The passphrase is kept on this phone, so the backups can be made while it is locked."
+                    } else {
+                        "Off. Scheduled backups are ordinary zip files that anyone with the folder can open."
+                    },
+                    icon = Icons.Outlined.Lock,
+                    describe = "Encrypt scheduled backups",
+                )
+            }
+            if (askingSchedulePassphrase) {
+                item {
+                    FolioBody {
+                        Notice(NoticeTone.PROBLEM) {
+                            Text(
+                                "If you forget this passphrase, the backups cannot be opened. There is " +
+                                    "no reset and no recovery code. Write it down before you continue. " +
+                                    "A copy is kept on this phone, so this protects the backups in the " +
+                                    "folder, not someone who can use your unlocked phone.",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                        OutlinedTextField(
+                            value = schedulePassphrase,
+                            onValueChange = { schedulePassphrase = it },
+                            label = { Text("Passphrase for scheduled backups") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { contentDescription = "Passphrase for scheduled backups" },
+                        )
+                        OutlinedTextField(
+                            value = scheduleConfirmation,
+                            onValueChange = { scheduleConfirmation = it },
+                            label = { Text("Passphrase again") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            isError = scheduleConfirmation.isNotEmpty() && !schedulePassphrasesMatch,
+                            supportingText = if (scheduleConfirmation.isNotEmpty() && !schedulePassphrasesMatch) {
+                                { Text("The two passphrases are different.") }
+                            } else {
+                                null
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { contentDescription = "Scheduled backups passphrase again" },
+                        )
+                        Button(
+                            onClick = {
+                                val chars = schedulePassphrase.toCharArray()
+                                scheduleEncryption.onChange(chars)
+                                chars.fill('\u0000')
+                                schedulePassphrase = ""
+                                scheduleConfirmation = ""
+                                askingSchedulePassphrase = false
+                            },
+                            enabled = schedulePassphrasesMatch,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Encrypt scheduled backups") }
+                    }
+                }
             }
         }
         lastRun?.let { FolioNote(it) }

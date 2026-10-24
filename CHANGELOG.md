@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Scheduled backups can be encrypted. A switch on the Backup screen asks for a passphrase, which the phone keeps wrapped by its Keystore so backups can be made while it is locked. It protects the copies in the backup folder, not someone who can use your unlocked phone. If the passphrase can no longer be read, a scheduled run writes nothing and says so instead of writing a plain backup. ([#68])
 - Amount fields have a plus/minus button, because the number keyboard has no minus sign. ([#138], fixes [#117])
 - One search and tag filter is shared by Home, Journal and Balances, shown as chips that can be cleared. ([#138], fixes [#119])
 - Each widget has its own basis (units, at cost or market value), and a widget can show one commodity of an account. ([#138], fixes [#120])
@@ -145,6 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#62]: https://github.com/pintofi/beanbook/issues/62
 [#64]: https://github.com/pintofi/beanbook/issues/64
 [#65]: https://github.com/pintofi/beanbook/issues/65
+[#68]: https://github.com/pintofi/beanbook/issues/68
 [#69]: https://github.com/pintofi/beanbook/issues/69
 [#70]: https://github.com/pintofi/beanbook/issues/70
 [#71]: https://github.com/pintofi/beanbook/issues/71
