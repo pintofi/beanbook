@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Scheduled backups can be encrypted. A switch on the Backup screen asks for a passphrase, which the phone keeps wrapped by its Keystore so backups can be made while it is locked. It protects the copies in the backup folder, not someone who can use your unlocked phone. If the passphrase can no longer be read, a scheduled run writes nothing and says so instead of writing a plain backup. ([#68])
+- An account can be opened with details. The Accounts page has an optional list of name and value pairs, such as the bank or the last digits of its number, written as metadata under the `open` line. ([#208])
 - Amount fields have a plus/minus button, because the number keyboard has no minus sign. ([#138], fixes [#117])
 - One search and tag filter is shared by Home, Journal and Balances, shown as chips that can be cleared. ([#138], fixes [#119])
 - Each widget has its own basis (units, at cost or market value), and a widget can show one commodity of an account. ([#138], fixes [#120])
@@ -18,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An Open button beside the message when an entry names an account the ledger has not opened. The entry you typed stays as it is. ([#140], fixes [#131])
 
 ### Changed
+- Opening and closing an account is done on the Accounts page only. The Directives tab of the entry form no longer has Open and Close, and says where to go. Closing an account now asks for the date. ([#208])
 - The sharing sign-in password is now stored with 600,000 rounds of PBKDF2 instead of 150,000, the figure OWASP recommends. Saving the password takes a few seconds on a phone and runs in the background; a password saved earlier keeps working. ([#56])
 - First-run setup uses the same cards as the rest of the app: Add a ledger, and each of the three setup steps, are a heading and a card for each group, with choices as rows and switches as switch rows. It works as before. ([#197])
 - Every button is now either filled (a page's main action) or outlined (everything else), in Material's own size. The outlined ones are no longer taller and tighter than the filled ones beside them. ([#192])
@@ -200,3 +202,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#189]: https://github.com/pintofi/beanbook/issues/189
 [#192]: https://github.com/pintofi/beanbook/issues/192
 [#197]: https://github.com/pintofi/beanbook/issues/197
+[#208]: https://github.com/pintofi/beanbook/issues/208

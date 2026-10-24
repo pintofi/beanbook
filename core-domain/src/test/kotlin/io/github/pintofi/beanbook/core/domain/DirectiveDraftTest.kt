@@ -31,6 +31,39 @@ class DirectiveDraftTest {
     }
 
     @Test
+    fun `an account is opened with as many metadata keys as it is given`() {
+        val draft = DirectiveDraft.Open(
+            date, "Assets:Bank:Checking", listOf("EUR"),
+            metadata = linkedMapOf(
+                "institution" to "Corner Bank", "iban-last4" to "4321", "note" to "  ", "rank" to "2",
+            ),
+        )
+        assertEquals(
+            "2026-09-01 open Assets:Bank:Checking EUR\n" +
+                "  institution: \"Corner Bank\"\n" +
+                "  iban-last4: 4321\n" +
+                "  rank: 2\n",
+            draft.render(),
+        )
+        assertEquals(emptyList(), draft.validate())
+    }
+
+    @Test
+    fun `a value with a leading zero stays text so an account number is not changed`() {
+        val draft = DirectiveDraft.Open(date, "Assets:Cash", metadata = linkedMapOf("number" to "0123", "n" to "0.5"))
+        assertEquals("2026-09-01 open Assets:Cash\n  number: \"0123\"\n  n: 0.5\n", draft.render())
+    }
+
+    @Test
+    fun `an account metadata key that Beancount would reject is refused`() {
+        val bad = DirectiveDraft.Open(date, "Assets:Cash", metadata = mapOf("Bad Key" to "x", "ok" to "y"))
+        assertEquals(listOf<DraftProblem>(DraftProblem.MissingText("a valid name for \"Bad Key\"")), bad.validate())
+        // A key with no value is dropped, not written, so it is not a problem either.
+        val blank = DirectiveDraft.Open(date, "Assets:Cash", metadata = mapOf("Bad Key" to ""))
+        assertEquals(emptyList(), blank.validate())
+    }
+
+    @Test
     fun `close and commodity are one-liners`() {
         assertEquals("2026-09-01 close Assets:Cash\n", DirectiveDraft.Close(date, "Assets:Cash").render())
         assertEquals("2026-09-01 commodity ACME\n", DirectiveDraft.Commodity(date, "ACME").render())

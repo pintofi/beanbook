@@ -39,6 +39,8 @@ sealed interface DirectiveDraft {
         val account: String,
         val currencies: List<String> = emptyList(),
         val bookingMethod: String? = null,
+        /** Metadata under the directive, as many keys as the person gives: `institution: "Bank"`. */
+        val metadata: Map<String, String> = emptyMap(),
     ) : DirectiveDraft {
         override val label get() = "Open account"
 
@@ -48,12 +50,14 @@ sealed interface DirectiveDraft {
             bookingMethod?.takeIf { it.isNotBlank() }
                 ?.let { append(' ').append(BeancountText.quote(it)) }
             append('\n')
+            append(renderMetadata(metadata))
         }
 
         override fun validate(): List<DraftProblem> = buildList {
             addAll(commonChecks(date, account))
             currencies.filterNot { BeancountText.CURRENCY.matches(it) }
                 .forEach { add(DraftProblem.InvalidCurrency(it)) }
+            addAll(metadataProblems(metadata))
         }
     }
 
@@ -197,29 +201,15 @@ sealed interface DirectiveDraft {
         val metadata: Map<String, String> = emptyMap(),
     ) : DirectiveDraft {
         override val label get() = "Commodity"
-        override fun render(currencyColumn: Int): String = buildString {
-            append("$date commodity $currency\n")
-            for ((key, value) in metadata) {
-                if (value.isBlank()) continue
-                // Numbers stay numbers: `precision: 2` is read back as a number, not text.
-                val shown = if (NUMBER.matches(value.trim())) value.trim() else BeancountText.quote(value.trim())
-                append("  $key: $shown\n")
-            }
-        }
+        override fun render(currencyColumn: Int): String =
+            "$date commodity $currency\n" + renderMetadata(metadata)
+
         override fun validate(): List<DraftProblem> = buildList {
             if (!BeancountText.DATE.matches(date)) add(DraftProblem.InvalidDate(date))
             if (!BeancountText.CURRENCY.matches(currency)) {
                 add(DraftProblem.InvalidCurrency(currency))
             }
-            // A key that is not a Beancount metadata key would write a line the parser rejects.
-            metadata.filterValues { it.isNotBlank() }.keys
-                .filterNot { KEY.matches(it) }
-                .forEach { add(DraftProblem.MissingText("a valid name for \"$it\"")) }
-        }
-
-        private companion object {
-            val NUMBER = Regex("""-?\d+(\.\d+)?""")
-            val KEY = Regex("""[a-z][a-zA-Z0-9\-_]*""")
+            addAll(metadataProblems(metadata))
         }
     }
 
@@ -275,6 +265,29 @@ sealed interface DirectiveDraft {
 
     companion object {
         const val ALIGN_COLUMN = 61
+
+        // No leading zero: `0123` read back as a number is 123, and an account number must stay itself.
+        private val NUMBER = Regex("""-?(0|[1-9]\d*)(\.\d+)?""")
+        private val KEY = Regex("""[a-z][a-zA-Z0-9\-_]*""")
+
+        /**
+         * The metadata lines under a directive, one per key with a value, in the order given.
+         * Numbers stay numbers (`precision: 2` is read back as a number, not text); everything
+         * else is a quoted string.
+         */
+        private fun renderMetadata(metadata: Map<String, String>): String = buildString {
+            for ((key, value) in metadata) {
+                if (value.isBlank()) continue
+                val shown = if (NUMBER.matches(value.trim())) value.trim() else BeancountText.quote(value.trim())
+                append("  $key: $shown\n")
+            }
+        }
+
+        /** A key that is not a Beancount metadata key would write a line the parser rejects. */
+        private fun metadataProblems(metadata: Map<String, String>): List<DraftProblem> =
+            metadata.filterValues { it.isNotBlank() }.keys
+                .filterNot { KEY.matches(it) }
+                .map { DraftProblem.MissingText("a valid name for \"$it\"") }
 
         private fun commonChecks(date: String, account: String): List<DraftProblem> = buildList {
             if (!BeancountText.DATE.matches(date)) add(DraftProblem.InvalidDate(date))

@@ -71,9 +71,9 @@ account picker is one tap.
 links, flags. Postings show a running imbalance indicator; the app never silently
 balances a transaction; it shows the residual and offers to add a posting.
 
-**All directive types** have editors: `open`, `close`, `commodity`, `price`, `balance`,
-`pad`, `event`, `note`, `document`, `query`, `custom`. Unknown/custom directives are
-editable as raw text and are never rewritten.
+**All directive types** have editors: `open` and `close` on the Accounts page, and `commodity`,
+`price`, `balance`, `pad`, `event`, `note`, `document`, `query`, `custom` in the entry form's
+Directives tab. Unknown/custom directives are editable as raw text and are never rewritten.
 
 **Completion** is derived from the ledger itself (accounts, payees, narrations,
 commodities, tags, links), not from a parallel database that could drift.
@@ -203,9 +203,12 @@ done later under More, Remote.
 ### Accounts
 
 More, then Accounts, lists open accounts by tree with their balance and any currency restriction,
-lists closed accounts under their own heading, and opens a new account. An empty account can be
-closed, after a confirmation. Both write one line to `files/accounts.beancount` (or the main
-file when the ledger does not read that one).
+lists closed accounts under their own heading, and opens a new account. A new account can carry
+any number of details (name and value pairs, written as metadata under the `open` line; a value
+that starts with a zero stays text, so an account number is not changed). An empty account can be
+closed, on a date the person picks, after a confirmation. Both write to `files/accounts.beancount`
+(or the main file when the ledger does not read that one). The entry form's Directives tab does
+not open or close accounts, and says where to go.
 
 In the entry form, an account the ledger has not opened shows an *Open <account>* button beside
 the problem; it opens the account on the entry's date without leaving the form or losing what was
