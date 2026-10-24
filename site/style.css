@@ -1081,3 +1081,10 @@ tbody tr:last-child > * { border-bottom: 0; }
 .social-links-footer a { color: var(--slab-ink); }
 .social-links-footer a:hover { background: rgba(255, 255, 255, .12); }
 @media print { .social-links { display: none !important; } }
+
+/* Three icons and the theme toggle share the header's first row on a phone. */
+@media (max-width: 30rem) {
+  .social-links { gap: 0; }
+  .social-links a { width: 2.1rem; height: 2.1rem; }
+  .social-links svg { width: 1.25rem; height: 1.25rem; }
+}
