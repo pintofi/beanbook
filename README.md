@@ -41,6 +41,13 @@ ledgers. The app embeds CPython and runs the real Beancount and
 `bean-check` and Fava produce on a desktop. It can also act as a client for a Fava server you
 host yourself.
 
+> [!NOTE]
+> Beanbook is in early development and changes often. There may be bugs and inconsistencies,
+> and some screens or behaviours may change between releases. Your ledger stays plain Beancount
+> text files, so keep a backup of it. Bug reports and ideas are welcome in
+> [the issues](https://github.com/pintofi/beanbook/issues); see the [roadmap](ROADMAP.md) for
+> what is planned.
+
 Beanbook is an independent project. It is built on Beancount and Fava, and is not affiliated
 with or endorsed by them.
 

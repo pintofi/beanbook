@@ -1088,3 +1088,16 @@ tbody tr:last-child > * { border-bottom: 0; }
   .social-links a { width: 2.1rem; height: 2.1rem; }
   .social-links svg { width: 1.25rem; height: 1.25rem; }
 }
+
+/* Early-development note on the home page */
+.notice-wrap { padding-top: clamp(1rem, 2.5vw, 1.75rem); }
+.notice {
+  background: var(--sheet);
+  border: 1px solid var(--hair);
+  border-left: 4px solid var(--rule);
+  border-radius: 4px;
+  padding: .9rem 1.2rem 1rem;
+}
+.notice .folio { margin: 0 0 .35rem; }
+.notice p:last-child { margin: 0; max-width: 62rem; color: var(--ink-2); }
+.notice a { color: var(--rule); text-decoration: underline; text-underline-offset: 2px; }
