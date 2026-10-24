@@ -6,18 +6,20 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,9 +35,16 @@ import io.github.pintofi.beanbook.app.onboarding.Creation
 import io.github.pintofi.beanbook.app.onboarding.SetupDraft
 import io.github.pintofi.beanbook.app.ui.AmountField
 import io.github.pintofi.beanbook.app.ui.DateField
+import io.github.pintofi.beanbook.app.ui.FolioBody
+import io.github.pintofi.beanbook.app.ui.FolioGroup
+import io.github.pintofi.beanbook.app.ui.FolioHeading
+import io.github.pintofi.beanbook.app.ui.FolioNote
+import io.github.pintofi.beanbook.app.ui.FolioRow
+import io.github.pintofi.beanbook.app.ui.FolioSwitchRow
 import io.github.pintofi.beanbook.app.ui.StatusLine
 import io.github.pintofi.beanbook.app.ui.SquircleCheckbox
 import io.github.pintofi.beanbook.app.ui.SuggestingField
+import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.ThemeChoice
 import io.github.pintofi.beanbook.core.domain.AccountName
 import io.github.pintofi.beanbook.core.domain.CommodityName
@@ -61,124 +70,212 @@ private val PAGES = listOf(
 
 @Composable
 internal fun BasicsStep(draft: SetupDraft, update: Update) {
-    OutlinedTextField(
-        value = draft.name,
-        onValueChange = { v -> update { it.copy(name = v) } },
-        label = { Text("Ledger name") },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    SuggestingField(
-        value = draft.mainCurrency,
-        onValueChange = { v -> update { it.copy(mainCurrency = v.uppercase(Locale.ROOT)) } },
-        label = "Main currency",
-        suggestions = currencyCodes,
-    )
+    var extra by rememberSaveable { mutableStateOf("") }
+    var fine by rememberSaveable { mutableStateOf(false) }
     val locale = androidx.compose.ui.platform.LocalLocale.current.platformLocale
     val named = Currency.getAvailableCurrencies().firstOrNull { it.currencyCode == draft.mainCurrency }
-    Hint(
-        if (named != null) "${named.getDisplayName(locale)}. Every account counts in this unless you say otherwise."
-        else "A currency code such as EUR, USD or JPY. Letters and digits, starting with a capital.",
-    )
-    var extra by rememberSaveable { mutableStateOf("") }
-    SuggestingField(
-        value = extra,
-        onValueChange = { extra = it.uppercase(Locale.ROOT) },
-        label = "Other currencies",
-        suggestions = currencyCodes - draft.currencies.toSet(),
-    )
-    Hint("Only if you hold or spend in more than one currency. You can add more later.")
-    OutlinedButton(
-        onClick = {
-            val code = extra.trim()
-            if (CommodityName.isValid(code) && code !in draft.currencies) {
-                update { it.copy(otherCurrencies = it.otherCurrencies + code) }
-            }
-            extra = ""
-        },
-        enabled = CommodityName.isValid(extra.trim()),
-    ) { Text("Add currency") }
-    if (draft.otherCurrencies.isNotEmpty()) {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            draft.otherCurrencies.forEach { code ->
-                InputChip(
-                    selected = true,
-                    onClick = {
-                        update { it.copy(otherCurrencies = it.otherCurrencies - code, reportIn = it.reportIn - code) }
+
+    FolioHeading("Your ledger")
+    FolioGroup {
+        item {
+            FolioBody {
+                OutlinedTextField(
+                    value = draft.name,
+                    onValueChange = { v -> update { it.copy(name = v) } },
+                    label = { Text("Ledger name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SuggestingField(
+                    value = draft.mainCurrency,
+                    onValueChange = { v -> update { it.copy(mainCurrency = v.uppercase(Locale.ROOT)) } },
+                    label = "Main currency",
+                    suggestions = currencyCodes,
+                )
+                Hint(
+                    if (named != null) {
+                        "${named.getDisplayName(locale)}. Every account counts in this unless you say otherwise."
+                    } else {
+                        "A currency code such as EUR, USD or JPY. Letters and digits, starting with a capital."
                     },
-                    label = { Text("$code  ✕") },
+                )
+            }
+        }
+        item {
+            FolioBody {
+                SuggestingField(
+                    value = extra,
+                    onValueChange = { extra = it.uppercase(Locale.ROOT) },
+                    label = "Other currencies",
+                    suggestions = currencyCodes - draft.currencies.toSet(),
+                )
+                Hint("Only if you hold or spend in more than one currency. You can add more later.")
+                OutlinedButton(
+                    onClick = {
+                        val code = extra.trim()
+                        if (CommodityName.isValid(code) && code !in draft.currencies) {
+                            update { it.copy(otherCurrencies = it.otherCurrencies + code) }
+                        }
+                        extra = ""
+                    },
+                    enabled = CommodityName.isValid(extra.trim()),
+                ) { Text("Add currency") }
+                if (draft.otherCurrencies.isNotEmpty()) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        draft.otherCurrencies.forEach { code ->
+                            InputChip(
+                                selected = true,
+                                onClick = {
+                                    update {
+                                        it.copy(
+                                            otherCurrencies = it.otherCurrencies - code,
+                                            reportIn = it.reportIn - code,
+                                        )
+                                    }
+                                },
+                                label = { Text("$code  ✕") },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    FolioHeading("Dates")
+    FolioGroup {
+        item {
+            FolioBody {
+                DateField(
+                    value = draft.start,
+                    onValueChange = { v -> update { it.copy(start = v) } },
+                    label = "Books begin on",
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Hint("Entries before this date are not expected. Opening balances are dated the day before.")
+            }
+        }
+    }
+
+    FolioGroup {
+        item {
+            FolioRow(
+                title = if (fine) "Hide fine-tuning" else "Fine-tune",
+                detail = "Decimal places, booking method, reports and checks",
+                icon = androidx.compose.material.icons.Icons.Outlined.Tune,
+                onClick = { fine = !fine },
+            )
+        }
+    }
+    if (!fine) return
+
+    FolioHeading("Decimal places")
+    FolioGroup {
+        item {
+            FolioBody {
+                draft.currencies.forEach { code ->
+                    OutlinedTextField(
+                        value = (draft.places[code] ?: SetupDraft.usualPlaces(code)).toString(),
+                        onValueChange = { v ->
+                            v.toIntOrNull()?.takeIf { it in 0..8 }
+                                ?.let { n -> update { it.copy(places = it.places + (code to n)) } }
+                        },
+                        label = { Text("Decimal places for $code") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Hint("How many places amounts show. Japanese yen uses 0, most currencies use 2.")
+            }
+        }
+    }
+
+    FolioHeading("Booking method")
+    FolioGroup {
+        item {
+            FolioBody {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("STRICT", "FIFO", "LIFO", "HIFO", "STRICT_WITH_SIZE").forEach { method ->
+                        FilterChip(
+                            selected = draft.booking == method,
+                            onClick = { update { it.copy(booking = method) } },
+                            label = { Text(method) },
+                        )
+                    }
+                }
+                Hint(
+                    "Which lot a sale takes when you hold the same thing bought at different prices. " +
+                        "Strict asks you to say.",
                 )
             }
         }
     }
-    DateField(
-        value = draft.start,
-        onValueChange = { v -> update { it.copy(start = v) } },
-        label = "Books begin on",
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Hint("Entries before this date are not expected. Opening balances are dated the day before.")
 
-    var fine by rememberSaveable { mutableStateOf(false) }
-    OutlinedButton(onClick = { fine = !fine }) { Text(if (fine) "Hide fine-tuning" else "Fine-tune") }
-    if (!fine) return
-    draft.currencies.forEach { code ->
-        OutlinedTextField(
-            value = (draft.places[code] ?: SetupDraft.usualPlaces(code)).toString(),
-            onValueChange = { v ->
-                v.toIntOrNull()?.takeIf { it in 0..8 }
-                    ?.let { n -> update { it.copy(places = it.places + (code to n)) } }
-            },
-            label = { Text("Decimal places for $code") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-    Hint("How many places amounts show. Japanese yen uses 0, most currencies use 2.")
-    Text("Booking method", style = MaterialTheme.typography.titleSmall)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("STRICT", "FIFO", "LIFO", "HIFO", "STRICT_WITH_SIZE").forEach { method ->
-            FilterChip(
-                selected = draft.booking == method,
-                onClick = { update { it.copy(booking = method) } },
-                label = { Text(method) },
-            )
-        }
-    }
-    Hint("Which lot a sale takes when you hold the same thing bought at different prices. Strict asks you to say.")
-    OutlinedTextField(
-        value = draft.fiscalYearEnd.orEmpty(),
-        onValueChange = { v -> update { it.copy(fiscalYearEnd = v.trim().ifEmpty { null }) } },
-        label = { Text("Financial year ends (MM-DD)") },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Hint("Leave empty for 31 December.")
-    Text("Reports open on", style = MaterialTheme.typography.titleSmall)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        PAGES.forEach { (path, label) ->
-            FilterChip(
-                selected = draft.reportsOpenOn == path,
-                onClick = { update { it.copy(reportsOpenOn = path) } },
-                label = { Text(label) },
-            )
-        }
-    }
-    if (draft.otherCurrencies.isNotEmpty()) {
-        Text("Also total reports in", style = MaterialTheme.typography.titleSmall)
-        draft.otherCurrencies.forEach { code ->
-            SwitchRow(code, draft.reportIn.contains(code)) { on ->
-                update { it.copy(reportIn = if (on) it.reportIn + code else it.reportIn - code) }
+    FolioHeading("Financial year")
+    FolioGroup {
+        item {
+            FolioBody {
+                OutlinedTextField(
+                    value = draft.fiscalYearEnd.orEmpty(),
+                    onValueChange = { v -> update { it.copy(fiscalYearEnd = v.trim().ifEmpty { null }) } },
+                    label = { Text("Financial year ends (MM-DD)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Hint("Leave empty for 31 December.")
             }
         }
     }
-    Text("Checks", style = MaterialTheme.typography.titleSmall)
-    LedgerBlueprint.Check.entries.forEach { check ->
-        SwitchRow(check.label, check in draft.checks) { on ->
-            update { it.copy(checks = if (on) it.checks + check else it.checks - check) }
+
+    FolioHeading("Reports open on")
+    FolioGroup {
+        item {
+            FolioBody {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PAGES.forEach { (path, label) ->
+                        FilterChip(
+                            selected = draft.reportsOpenOn == path,
+                            onClick = { update { it.copy(reportsOpenOn = path) } },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+            }
         }
     }
-    Hint(
+
+    if (draft.otherCurrencies.isNotEmpty()) {
+        FolioHeading("Also total reports in")
+        FolioGroup {
+            draft.otherCurrencies.forEach { code ->
+                item {
+                    FolioSwitchRow(
+                        title = code,
+                        checked = draft.reportIn.contains(code),
+                        onCheckedChange = { on ->
+                            update { it.copy(reportIn = if (on) it.reportIn + code else it.reportIn - code) }
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    FolioHeading("Checks")
+    FolioGroup {
+        LedgerBlueprint.Check.entries.forEach { check ->
+            item {
+                FolioSwitchRow(
+                    title = check.label,
+                    checked = check in draft.checks,
+                    onCheckedChange = { on ->
+                        update { it.copy(checks = if (on) it.checks + check else it.checks - check) }
+                    },
+                )
+            }
+        }
+    }
+    FolioNote(
         "Each one is a Beancount plugin that refuses a kind of mistake. " +
             "\"Every account must be used\" starts off: until your accounts are in use, " +
             "Beancount would report each of them as an error.",
@@ -186,85 +283,95 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
 }
 
 @Composable
-private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(label, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = null)
-    }
-}
-
-@Composable
 internal fun AccountsStep(draft: SetupDraft, update: Update) {
-    Text(
-        "Pick the accounts you will use. You can add more at any time.",
-        style = MaterialTheme.typography.bodyMedium,
-    )
-    SwitchRow("Every account uses ${draft.mainCurrency}", draft.everyAccountUsesMain) { on ->
-        update { it.copy(everyAccountUsesMain = on) }
+    FolioNote("Pick the accounts you will use. You can add more at any time.")
+    FolioGroup {
+        item {
+            FolioSwitchRow(
+                title = "Every account uses ${draft.mainCurrency}",
+                checked = draft.everyAccountUsesMain,
+                onCheckedChange = { on -> update { it.copy(everyAccountUsesMain = on) } },
+                detail = if (draft.everyAccountUsesMain) {
+                    "Beancount will refuse any other currency in these accounts."
+                } else {
+                    "Type the currencies each account accepts. Leave empty to accept any."
+                },
+            )
+        }
     }
-    Hint(
-        if (draft.everyAccountUsesMain) "Beancount will refuse any other currency in these accounts."
-        else "Type the currencies each account accepts. Leave empty to accept any.",
-    )
     listOf("Assets", "Liabilities", "Income", "Expenses", "Equity").forEach { root ->
         val rows = draft.accounts.filter { it.name.substringBefore(':') == root }
         if (rows.isEmpty()) return@forEach
-        Text(root, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
-        rows.forEach { choice ->
-            // One toggle for the whole row, so a screen reader reads the account's name with its state.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .toggleable(
-                        value = choice.on || choice.locked,
-                        enabled = !choice.locked,
-                        role = Role.Checkbox,
-                        onValueChange = { on ->
-                            update { d ->
-                                val flipped = d.accounts.map { if (it.name == choice.name) it.copy(on = on) else it }
-                                d.copy(accounts = flipped)
-                            }
-                        },
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SquircleCheckbox(checked = choice.on || choice.locked, onCheckedChange = null, enabled = !choice.locked)
-                // A step of air between the box and the name, so they do not touch.
-                Spacer(Modifier.width(6.dp))
-                Text(choice.name)
-            }
-            // On its own line, so the name stays level with its box whatever is said about it.
-            if (choice.locked) Hint("Always kept: opening balances come from here.", Modifier.padding(start = 38.dp))
-            if (!draft.everyAccountUsesMain && !choice.locked && choice.on) {
-                OutlinedTextField(
-                    value = choice.currencies,
-                    onValueChange = { v ->
-                        update { d ->
-                            d.copy(
-                                accounts = d.accounts.map {
-                                    if (it.name == choice.name) it.copy(currencies = v) else it
-                                },
-                            )
-                        }
-                    },
-                    label = { Text("Currencies for ${choice.name.substringAfterLast(':')}") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+        FolioHeading(root)
+        FolioGroup {
+            rows.forEach { choice ->
+                item { AccountChoiceRow(choice, draft.everyAccountUsesMain, update) }
             }
         }
     }
-    HorizontalDivider()
-    AddAccount(draft, update)
+    FolioHeading("Add an account")
+    FolioGroup { item { FolioBody { AddAccount(draft, update) } } }
     if (!draft.accounts.any { it.on && it.name.startsWith("Assets:") }) {
-        Hint("Choose at least one Assets account, so there is somewhere for money to be.")
+        FolioNote("Choose at least one Assets account, so there is somewhere for money to be.")
+    }
+}
+
+/** One account of the setup as a row of a folio: a checkbox and its name, and its currencies when asked for. */
+@Composable
+private fun AccountChoiceRow(choice: AccountChoice, everyAccountUsesMain: Boolean, update: Update) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // One toggle for the whole row, so a screen reader reads the account's name with its state.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = choice.on || choice.locked,
+                    enabled = !choice.locked,
+                    role = Role.Checkbox,
+                    onValueChange = { on ->
+                        update { d ->
+                            val flipped = d.accounts.map { if (it.name == choice.name) it.copy(on = on) else it }
+                            d.copy(accounts = flipped)
+                        }
+                    },
+                )
+                .heightIn(min = Measure.rowMinHeight)
+                .padding(horizontal = Measure.indent, vertical = Measure.gap),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SquircleCheckbox(checked = choice.on || choice.locked, onCheckedChange = null, enabled = !choice.locked)
+            Spacer(Modifier.width(Measure.indent))
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(choice.name, style = MaterialTheme.typography.titleMedium)
+                if (choice.locked) {
+                    Text(
+                        "Always kept: opening balances come from here.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        if (!everyAccountUsesMain && !choice.locked && choice.on) {
+            OutlinedTextField(
+                value = choice.currencies,
+                onValueChange = { v ->
+                    update { d ->
+                        d.copy(
+                            accounts = d.accounts.map {
+                                if (it.name == choice.name) it.copy(currencies = v) else it
+                            },
+                        )
+                    }
+                },
+                label = { Text("Currencies for ${choice.name.substringAfterLast(':')}") },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Measure.indent)
+                    .padding(bottom = Measure.gap),
+            )
+        }
     }
 }
 
@@ -272,7 +379,6 @@ internal fun AccountsStep(draft: SetupDraft, update: Update) {
 private fun AddAccount(draft: SetupDraft, update: Update) {
     var root by rememberSaveable { mutableStateOf("Assets") }
     var typed by rememberSaveable { mutableStateOf("") }
-    Text("Add an account", style = MaterialTheme.typography.titleSmall)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("Assets", "Liabilities", "Income", "Expenses", "Equity").forEach {
             FilterChip(selected = root == it, onClick = { root = it }, label = { Text(it) })
@@ -310,47 +416,74 @@ internal fun GetSetStep(
     val balanceable = draft.accounts.filter {
         it.on && (it.name.startsWith("Assets:") || it.name.startsWith("Liabilities:"))
     }
-    Text("What they hold on the first day", style = MaterialTheme.typography.titleMedium)
-    Hint(
+    FolioHeading("What they hold on the first day")
+    FolioGroup {
+        item {
+            FolioBody {
+                balanceable.forEach { choice ->
+                    AmountField(
+                        value = draft.opening[choice.name].orEmpty(),
+                        onValueChange = { v -> update { it.copy(opening = it.opening + (choice.name to v)) } },
+                        label = choice.name,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+    }
+    FolioNote(
         "Optional. Type what each account held when the books begin; leave blank for none. " +
             "A credit card is what you owe, typed as a positive number.",
     )
-    balanceable.forEach { choice ->
-        AmountField(
-            value = draft.opening[choice.name].orEmpty(),
-            onValueChange = { v -> update { it.copy(opening = it.opening + (choice.name to v)) } },
-            label = choice.name,
-            modifier = Modifier.fillMaxWidth(),
-        )
+
+    FolioHeading("Appearance")
+    FolioGroup {
+        item {
+            FolioBody {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ThemeChoice.entries.forEach {
+                        FilterChip(
+                            selected = themeChoice == it,
+                            onClick = { actions.onThemeChoice(it) },
+                            label = { Text(it.label) },
+                        )
+                    }
+                }
+            }
+        }
     }
-    HorizontalDivider()
-    Text("Appearance", style = MaterialTheme.typography.titleMedium)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ThemeChoice.entries.forEach {
-            FilterChip(
-                selected = themeChoice == it,
-                onClick = { actions.onThemeChoice(it) },
-                label = { Text(it.label) },
+
+    FolioHeading("Reminders")
+    FolioGroup {
+        item {
+            // Greyed and saying so once the permission is given, so there is nothing left to press.
+            FolioRow(
+                title = if (notificationsGranted) "Granted" else "Allow notifications",
+                detail = "Android needs your permission to show the notice that long jobs are running. " +
+                    "Nothing else uses notifications.",
+                icon = androidx.compose.material.icons.Icons.Outlined.Notifications,
+                onClick = actions.onAskNotifications,
+                enabled = !notificationsGranted,
             )
         }
     }
-    HorizontalDivider()
-    Text("Reminders", style = MaterialTheme.typography.titleMedium)
-    Hint(
-        "Android needs your permission to show the notice that long jobs are running. " +
-            "Nothing else uses notifications.",
-    )
-    // Greyed and saying so once the permission is given, so there is nothing left to press.
-    OutlinedButton(onClick = actions.onAskNotifications, enabled = !notificationsGranted) {
-        Text(if (notificationsGranted) "Granted" else "Allow notifications")
+
+    FolioHeading("A copy in a folder")
+    FolioGroup {
+        item {
+            FolioRow(
+                title = if (draft.mirrorFolder == null) "Choose folder" else "Change folder",
+                detail = if (draft.mirrorFolder == null) {
+                    "Keep a plain copy of the files in a folder you choose, such as one a sync app watches. Optional."
+                } else {
+                    "Chosen. Copied after every save."
+                },
+                icon = androidx.compose.material.icons.Icons.Outlined.Folder,
+                onClick = actions.onPickMirrorFolder,
+                opens = true,
+            )
+        }
     }
-    HorizontalDivider()
-    Text("A copy in a folder", style = MaterialTheme.typography.titleMedium)
-    Hint("Keep a plain copy of the files in a folder you choose, such as one a sync app watches. Optional.")
-    OutlinedButton(onClick = actions.onPickMirrorFolder) {
-        Text(if (draft.mirrorFolder == null) "Choose folder" else "Change folder")
-    }
-    draft.mirrorFolder?.let { Hint("Chosen. Copied after every save.") }
 }
 
 @Composable
