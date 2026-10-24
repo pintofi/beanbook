@@ -30,11 +30,14 @@ object Scanner {
             .also { if (!it) Log.w(TAG, "OpenCV reported an unsuccessful load") }
     }
 
-    /** The page in [photo], or null when none is found or OpenCV is unavailable. */
-    fun detect(photo: Bitmap): CropQuad? {
+    /**
+     * The page in [photo], or null when none is found or OpenCV is unavailable. [thorough] false is
+     * for the live preview: a handful of passes instead of all of them, so it runs several times a second.
+     */
+    fun detect(photo: Bitmap, thorough: Boolean = true): CropQuad? {
         if (!available) return null
         val mat = photo.toMat()
-        return runCatching { PageDetector.detect(mat) }
+        return runCatching { PageDetector.detect(mat, thorough) }
             .onFailure { Log.w(TAG, "detection failed", it) }
             .getOrNull()
             .also { mat.release() }
