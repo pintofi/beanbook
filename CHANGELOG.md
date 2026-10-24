@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- The crop screen is easier to place by touch. A round magnifier shows the held handle larger above your finger, the middle of each long side has a handle that moves the whole side, handles take a 48 dp touch target, and a press that lands on no handle moves nothing. A corner stops where the page would fold, so a crop that cannot be straightened cannot be made. The screen can turn the picture, undo the last move, and find the page again. Each handle has actions for TalkBack and arrow keys for a keyboard. ([#182])
 - Scheduled backups can be encrypted. A switch on the Backup screen asks for a passphrase, which the phone keeps wrapped by its Keystore so backups can be made while it is locked. It protects the copies in the backup folder, not someone who can use your unlocked phone. If the passphrase can no longer be read, a scheduled run writes nothing and says so instead of writing a plain backup. ([#68])
 - An account can carry details. A new account takes an optional list of name and value pairs, such as the bank or the last digits of its number, written as metadata under its `open` line. Tapping an account on the Accounts page lets you change, add or remove them later; only the lines that changed are rewritten, and it can be undone. ([#208], [#210])
 - Amount fields have a plus/minus button, because the number keyboard has no minus sign. ([#138], fixes [#117])
@@ -203,6 +204,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#176]: https://github.com/pintofi/beanbook/issues/176
 [#179]: https://github.com/pintofi/beanbook/issues/179
 [#180]: https://github.com/pintofi/beanbook/issues/180
+[#182]: https://github.com/pintofi/beanbook/issues/182
 [#189]: https://github.com/pintofi/beanbook/issues/189
 [#192]: https://github.com/pintofi/beanbook/issues/192
 [#197]: https://github.com/pintofi/beanbook/issues/197
