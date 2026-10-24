@@ -28,13 +28,6 @@ The real Beancount and Fava run on the device, so the figures you see are the on
 
 </div>
 
-> [!NOTE]
-> Beanbook is in early development and changes often. There may be bugs and inconsistencies,
-> and some screens or behaviours may change between releases. Your ledger stays plain Beancount
-> text files, so keep a backup of it. Bug reports and ideas are welcome in
-> [the issues](https://github.com/pintofi/beanbook/issues); see the [roadmap](ROADMAP.md) for
-> what is planned.
-
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/rule-dark.svg">
   <img src="docs/assets/rule-light.svg" width="100%" alt="">
@@ -47,6 +40,13 @@ ledgers. The app embeds CPython and runs the real Beancount and
 [Fava](https://github.com/beancount/fava) on the device, so what you see on a phone is what
 `bean-check` and Fava produce on a desktop. It can also act as a client for a Fava server you
 host yourself.
+
+> [!NOTE]
+> Beanbook is in early development and changes often. There may be bugs and inconsistencies,
+> and some screens or behaviours may change between releases. Your ledger stays plain Beancount
+> text files, so keep a backup of it. Bug reports and ideas are welcome in
+> [the issues](https://github.com/pintofi/beanbook/issues); see the [roadmap](ROADMAP.md) for
+> what is planned.
 
 Beanbook is an independent project. It is built on Beancount and Fava, and is not affiliated
 with or endorsed by them.
