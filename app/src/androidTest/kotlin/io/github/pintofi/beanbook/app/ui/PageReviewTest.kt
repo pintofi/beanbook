@@ -26,6 +26,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.pintofi.beanbook.app.documents.PageReviewActions
 import io.github.pintofi.beanbook.core.domain.CapturedPages
+import io.github.pintofi.beanbook.core.domain.PageSize
 import io.github.pintofi.beanbook.core.domain.PageStyle
 import java.io.File
 import org.junit.After
@@ -160,7 +161,7 @@ class PageReviewTest {
     @Test fun aPageCanBeMovedEitherWayAndTheScreenFollowsIt() {
         val session = Session(two)
         open(session, startAt = 1)
-        compose.onNodeWithContentDescription("Change the order of the pages").performClick()
+        compose.onNodeWithContentDescription("More actions for these pages").performClick()
         compose.onNodeWithText("Move page 2 later").assertIsNotEnabled()
         compose.onNodeWithText("Move page 2 earlier").performClick()
         assertEquals(listOf("two.jpg", "one.jpg"), session.pages.pages.map { it.source })
@@ -200,5 +201,33 @@ class PageReviewTest {
         open(Session(three), onDone = { done++ })
         compose.onNodeWithText("Finish with 3 pages").performClick()
         assertEquals(1, done)
+    }
+
+    @Test fun thePageSizeIsChosenForTheWholeDocument() {
+        val session = Session(two)
+        open(session)
+        compose.onNodeWithContentDescription("More actions for these pages").performClick()
+        compose.onNodeWithText("Page size: As scanned").performClick()
+
+        compose.onNodeWithText("Each page keeps the shape it was photographed.").assertIsDisplayed()
+        compose.onNodeWithText("210 × 297 mm. Pages are fitted and centred.").assertIsDisplayed()
+        compose.onNodeWithText("8.5 × 11 in. Pages are fitted and centred.").assertIsDisplayed()
+        compose.onNodeWithText("A4").performClick()
+        compose.onNodeWithText("Use").performClick()
+        assertEquals(PageSize.A4, session.pages.pageSize)
+
+        compose.onNodeWithContentDescription("More actions for these pages").performClick()
+        compose.onNodeWithText("Page size: A4").assertIsDisplayed()
+    }
+
+    @Test fun cancellingThePageSizeDialogChangesNothing() {
+        val session = Session(two)
+        open(session)
+        compose.onNodeWithContentDescription("More actions for these pages").performClick()
+        compose.onNodeWithText("Page size: As scanned").performClick()
+        compose.onNodeWithText("Letter").performClick()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.waitForIdle()
+        assertEquals(PageSize.AS_SCANNED, session.pages.pageSize)
     }
 }
