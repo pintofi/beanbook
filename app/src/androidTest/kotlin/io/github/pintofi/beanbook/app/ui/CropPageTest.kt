@@ -51,7 +51,7 @@ class CropPageTest {
 
         compose.setContent {
             MaterialTheme {
-                CropPageScreen(file = file, initial = initial, onCropped = { cropped = it }, onDismiss = {})
+                CropPageScreen(file = file, initial = initial, onCropped = { quad, _ -> cropped = quad }, onDismiss = {})
             }
         }
         compose.waitUntil(10_000) {
@@ -69,39 +69,125 @@ class CropPageTest {
             assertEquals(expected.y, actual.y, 2f)
         }
     }
-    /** Moving a second corner keeps the first where it was put. */
-    @Test fun movingOneCornerThenAnotherKeepsBoth() {
+    private fun pageFile(): File {
         val file = File(dir, "page.jpg")
         val bitmap = Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888)
         bitmap.eraseColor(android.graphics.Color.WHITE)
         file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }
-        var cropped: CropQuad? = null
+        return file
+    }
 
+    private fun open(file: File, rotation: Int = 0, onCropped: (CropQuad?, Int) -> Unit) {
         compose.setContent {
             MaterialTheme {
-                CropPageScreen(file = file, initial = null, onCropped = { cropped = it }, onDismiss = {})
+                CropPageScreen(
+                    file = file, initial = null, onCropped = onCropped, onDismiss = {}, initialRotation = rotation,
+                )
             }
         }
         compose.waitUntil(10_000) {
             compose.onAllNodesWithContentDescription("Use this crop").fetchSemanticsNodes().isNotEmpty()
         }
-        val page = compose.onNodeWithContentDescription("The page, with a draggable handle at each of its four corners")
-        // Each drag starts just inside a corner and pulls it a fifth of the way in.
-        fun drag(fromX: Float, fromY: Float, byX: Float, byY: Float) = page.performTouchInput {
-            down(Offset(width * fromX, height * fromY))
-            repeat(STEPS) { moveBy(Offset(width * byX / STEPS, height * byY / STEPS)) }
+    }
+
+    /** Pulls a handle from where it is by [byX], [byY] screen pixels, as a finger would. */
+    private fun drag(handle: String, byX: Float, byY: Float) {
+        compose.onNodeWithContentDescription(handle).performTouchInput {
+            down(center)
+            repeat(STEPS) { moveBy(Offset(byX / STEPS, byY / STEPS)) }
             up()
         }
-        drag(0.02f, 0.02f, 0.2f, 0.2f)
         compose.waitForIdle()
-        drag(0.98f, 0.02f, -0.2f, 0.2f)
+    }
+
+    /** Moving a second corner keeps the first where it was put. */
+    @Test fun movingOneCornerThenAnotherKeepsBoth() {
+        var cropped: CropQuad? = null
+        open(pageFile()) { quad, _ -> cropped = quad }
+
+        drag("Top left corner", 80f, 60f)
+        drag("Top right corner", -80f, 60f)
+        compose.onNodeWithContentDescription("Use this crop").performClick()
+
+        val result: CropQuad = cropped ?: error("the crop was not reported")
+        assertTrue("the first corner went back: ${result.topLeft}", result.topLeft.x > 20f && result.topLeft.y > 20f)
+        assertTrue("the second corner did not move: ${result.topRight}", result.topRight.x < 780f && result.topRight.y > 20f)
+        assertEquals("an untouched corner moved", 800f, result.bottomRight.x, 1f)
+    }
+
+    /** A press that lands on no handle moves nothing, unlike the old nearest-corner-from-anywhere. */
+    @Test fun aPressInTheMiddleOfThePageMovesNothing() {
+        var cropped: CropQuad? = null
+        open(pageFile()) { quad, _ -> cropped = quad }
+
+        compose.onNodeWithContentDescription("The page. Drag a corner, or the middle of a side, to move it.")
+            .performTouchInput {
+                down(center)
+                repeat(STEPS) { moveBy(Offset(10f, 10f)) }
+                up()
+            }
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Use this crop").performClick()
 
         val result: CropQuad = cropped ?: error("the crop was not reported")
-        assertTrue("the first corner went back: ${result.topLeft}", result.topLeft.x > 100f && result.topLeft.y > 75f)
-        assertTrue("the second corner did not move: ${result.topRight}", result.topRight.x < 700f && result.topRight.y > 75f)
-        assertEquals("an untouched corner moved", 800f, result.bottomRight.x, 1f)
+        assertEquals(0f, result.topLeft.x, 1f)
+        assertEquals(800f, result.bottomRight.x, 1f)
+    }
+
+    /** A corner dragged across the page stops where the page would fold. */
+    @Test fun aCornerCannotBeDraggedIntoAShapeThatCannotBeStraightened() {
+        var cropped: CropQuad? = null
+        open(pageFile()) { quad, _ -> cropped = quad }
+
+        drag("Top left corner", 2000f, 2000f)
+        compose.onNodeWithContentDescription("Use this crop").performClick()
+
+        val result: CropQuad = cropped ?: error("the crop was not reported")
+        assertTrue(
+            "the corner went past the page: ${result.topLeft}",
+            result.topLeft.x < result.bottomRight.x - 50f && result.topLeft.y < result.bottomRight.y - 50f,
+        )
+    }
+
+    /** The middle of a side slides the whole side. */
+    @Test fun theMiddleOfASideMovesBothItsCorners() {
+        var cropped: CropQuad? = null
+        open(pageFile()) { quad, _ -> cropped = quad }
+
+        drag("Top side", 0f, 100f)
+        compose.onNodeWithContentDescription("Use this crop").performClick()
+
+        val result: CropQuad = cropped ?: error("the crop was not reported")
+        assertTrue("the top-left did not move down: ${result.topLeft}", result.topLeft.y > 20f)
+        assertEquals(result.topLeft.y, result.topRight.y, 1f)
+        assertEquals(0f, result.topLeft.x, 1f)
+    }
+
+    /** Turn changes the picture, not the crop, and the new turn is reported. */
+    @Test fun turningThePictureIsReportedWithTheCrop() {
+        var rotation = -1
+        open(pageFile(), rotation = 90) { _, turned -> rotation = turned }
+
+        compose.onNodeWithContentDescription("Turn the page clockwise").performClick()
+        compose.onNodeWithContentDescription("Use this crop").performClick()
+
+        assertEquals(180, rotation)
+    }
+
+    /** TalkBack and a keyboard have no drag: each handle has actions that move it a step. */
+    @Test fun aHandleCanBeMovedWithoutDragging() {
+        var cropped: CropQuad? = null
+        open(pageFile()) { quad, _ -> cropped = quad }
+
+        val moveRight = compose.onNodeWithContentDescription("Top left corner")
+            .fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.CustomActions]
+            .first { it.label == "Move right" }
+        compose.runOnUiThread { moveRight.action() }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Use this crop").performClick()
+
+        val result: CropQuad = cropped ?: error("the crop was not reported")
+        assertEquals("one step is 1% of the shorter side", 6f, result.topLeft.x, 1f)
     }
 
     private companion object {

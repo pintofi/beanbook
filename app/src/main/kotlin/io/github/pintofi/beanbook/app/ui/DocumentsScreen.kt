@@ -486,8 +486,10 @@ fun DocumentsScreen(
                     CropPageScreen(
                         file = capture.fileFor(page.source),
                         initial = page.crop,
-                        onCropped = { quad ->
+                        initialRotation = page.rotation,
+                        onCropped = { quad, rotation ->
                             capture.onCrop(index, quad)
+                            repeat(((rotation - page.rotation).mod(360)) / 90) { capture.onRotateBy(index, true) }
                             cropping = null
                         },
                         onDismiss = { cropping = null },

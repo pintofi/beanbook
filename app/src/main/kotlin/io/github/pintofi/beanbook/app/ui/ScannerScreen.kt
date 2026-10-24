@@ -204,7 +204,7 @@ fun ScannerScreen(
                     // Detect here, once, and hand the crop up with the file. The overlay
                     // reads the same result, so a page is never analysed twice for one shot.
                     scope.launch {
-                        val quad = withContext(Dispatchers.Default) { detectIn(target) }
+                        val quad = withContext(Dispatchers.Default) { detectPageIn(target) }
                         onCaptured(target, quad, style)
                         busy = false
                     }
@@ -346,7 +346,7 @@ fun ScannerScreen(
                         .getOrDefault(false)
                 }
                 if (copied && target.length() > 0) {
-                    val quad = withContext(Dispatchers.Default) { detectIn(target) }
+                    val quad = withContext(Dispatchers.Default) { detectPageIn(target) }
                     onCaptured(target, quad, style)
                 }
             }
@@ -901,30 +901,6 @@ private const val AUTO_SAMPLE_MILLIS = 400L
 
 /** What the photo picker offers at once; a batch larger than this is a second visit. */
 private const val MAX_IMPORT = 20
-
-/**
- * The page in a photograph on disk, found on the upright image -- the one the crop editor and
- * the assembler both place corners on.
- */
-private fun detectIn(file: File): CropQuad? =
-    io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file, maxEdge = DETECT_EDGE)
-        ?.let { sampled ->
-            val full = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                .also { BitmapFactory.decodeFile(file.path, it) }
-            val longest = maxOf(full.outWidth, full.outHeight).toFloat()
-            val factor = longest / maxOf(sampled.width, sampled.height)
-            Scanner.detect(sampled)?.let { quad ->
-                fun io.github.pintofi.beanbook.core.domain.CropPoint.up() =
-                    io.github.pintofi.beanbook.core.domain.CropPoint(x * factor, y * factor)
-                CropQuad(quad.topLeft.up(), quad.topRight.up(), quad.bottomRight.up(), quad.bottomLeft.up())
-            }.also { sampled.recycle() }
-        }
-
-/**
- * The size the detector reads a saved photograph at. It resizes to 500 px itself, so decoding
- * a 12 MP photograph at full size first -- which it used to -- was 48 MB spent on nothing.
- */
-private const val DETECT_EDGE = 1600
 
 /** The detector works on a small image; a preview frame at full size is wasted work. */
 private fun android.graphics.Bitmap.scale(): android.graphics.Bitmap {

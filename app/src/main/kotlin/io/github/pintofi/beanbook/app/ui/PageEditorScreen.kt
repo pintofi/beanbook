@@ -101,8 +101,11 @@ fun PageEditorScreen(
             CropPageScreen(
                 file = fileFor(page.source),
                 initial = page.crop,
-                onCropped = { quad ->
+                initialRotation = page.rotation,
+                onCropped = { quad, rotation ->
                     onCrop(croppingIndex, quad)
+                    // The crop screen can turn the picture; the page follows, a quarter at a time.
+                    repeat(((rotation - page.rotation).mod(360)) / 90) { onRotate(croppingIndex, true) }
                     cropping = null
                 },
                 onDismiss = { cropping = null },
