@@ -116,7 +116,6 @@ fun ScannerScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var style by remember { mutableStateOf(ScanStyle.DOCUMENT) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -173,7 +172,9 @@ fun ScannerScreen(
     var notice by remember { mutableStateOf<String?>(null) }
 
     /** Hands a new photograph on: as a page, or in place of the one being retaken. */
-    fun deliver(file: File, quad: CropQuad?) {
+    fun deliver(file: File, inspected: PageInspection) {
+        val quad = inspected.quad
+        val style = inspected.style
         // Read now, not captured: the auto-shutter's closure outlives the composition that made it.
         val retaking = chosenTarget.checkedAgainst(latestPages) as? ScanTarget.Replace
         if (retaking == null) {
@@ -247,8 +248,8 @@ fun ScannerScreen(
                     // Detect here, once, and hand the crop up with the file. The overlay
                     // reads the same result, so a page is never analysed twice for one shot.
                     scope.launch {
-                        val quad = withContext(Dispatchers.Default) { detectPageIn(file) }
-                        deliver(file, quad)
+                        val inspected = withContext(Dispatchers.Default) { inspectPage(file) }
+                        deliver(file, inspected)
                         busy = false
                     }
                 }
@@ -389,8 +390,8 @@ fun ScannerScreen(
                         .getOrDefault(false)
                 }
                 if (copied && file.length() > 0) {
-                    val quad = withContext(Dispatchers.Default) { detectPageIn(file) }
-                    deliver(file, quad)
+                    val inspected = withContext(Dispatchers.Default) { inspectPage(file) }
+                    deliver(file, inspected)
                 }
             }
             busy = false
@@ -664,21 +665,6 @@ fun ScannerScreen(
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                ScanStyle.entries.forEach { option ->
-                    FilterChip(
-                        selected = style == option,
-                        onClick = { style = option },
-                        label = { Text(option.label()) },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Capture pages in ${option.label()}"
-                        },
-                    )
-                }
-            }
         }
 
         Column(
@@ -777,12 +763,6 @@ fun ScannerScreen(
             notice = notice,
         )
     }
-}
-
-private fun ScanStyle.label(): String = when (this) {
-    ScanStyle.COLOUR -> "Colour"
-    ScanStyle.DOCUMENT -> "Document"
-    ScanStyle.GREYSCALE -> "Greyscale"
 }
 
 /** The batch so far, each page drawn as itself rather than named. */

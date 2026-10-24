@@ -33,6 +33,12 @@ class DocumentCapture(
     private val store: DocumentStore,
     private val scope: CoroutineScope,
     private val assembler: PdfAssembler = PdfAssembler(),
+    /**
+     * The style to give a page whose style the scanner chose, once it has been cropped. Injected, as
+     * the assembler's styler is, so this class stays free of OpenCV; null leaves the style alone.
+     */
+    private val chooseStyle: suspend (File, io.github.pintofi.beanbook.core.domain.CropQuad?) ->
+    io.github.pintofi.beanbook.core.domain.PageStyle? = { _, _ -> null },
 ) {
     private val captureDir = File(context.cacheDir, "captures")
 
@@ -90,9 +96,11 @@ class DocumentCapture(
         style: io.github.pintofi.beanbook.core.domain.PageStyle =
             io.github.pintofi.beanbook.core.domain.PageStyle.COLOUR,
         crop: io.github.pintofi.beanbook.core.domain.CropQuad? = null,
+        /** The style was chosen by the scanner, not the person, so a later crop may choose it again. */
+        automatic: Boolean = false,
     ) {
         sessionSources += file.name
-        val added = _pages.value.add(file.name, style)
+        val added = _pages.value.add(file.name, style, automatic)
         _pages.value = if (crop == null) added else added.crop(added.pages.lastIndex, crop)
         // A new document is starting, so what was said about the last one has done its job.
         _message.value = null
@@ -109,6 +117,28 @@ class DocumentCapture(
 
     fun crop(index: Int, quad: io.github.pintofi.beanbook.core.domain.CropQuad?) {
         _pages.value = _pages.value.crop(index, quad)
+        val page = _pages.value.pages.getOrNull(index)
+        if (page != null && page.automaticStyle) rechooseStyle(index, page)
+    }
+
+    /**
+     * The scanner's choice of style again for a page it chose one for, now that it is cropped. Applied
+     * only if the page is still the one it was asked about -- same photograph, same corners, still
+     * automatic -- so a result that arrives after the person has moved on is dropped.
+     */
+    private fun rechooseStyle(index: Int, page: io.github.pintofi.beanbook.core.domain.CapturedPage) {
+        scope.launch {
+            val style = withContext(Dispatchers.Default) {
+                runCatching { chooseStyle(fileFor(page.source), page.crop) }.getOrNull()
+            } ?: return@launch
+            while (true) {
+                val before = _pages.value
+                val now = before.pages.getOrNull(index)
+                val unchanged = now != null && now.source == page.source && now.crop == page.crop && now.automaticStyle
+                if (!unchanged || now?.style == style) return@launch
+                if (_pages.compareAndSet(before, before.restyleAutomatically(index, style))) return@launch
+            }
+        }
     }
 
     fun move(from: Int, to: Int) {

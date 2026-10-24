@@ -3,6 +3,7 @@ package io.github.pintofi.beanbook.scanner
 import android.graphics.Bitmap
 import android.util.Log
 import io.github.pintofi.beanbook.core.domain.CropQuad
+import io.github.pintofi.beanbook.core.domain.PageStyle
 import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
 import org.opencv.core.Mat
@@ -61,6 +62,28 @@ object Scanner {
                 if (out !== input) out.release()
             }
         }.onFailure { Log.w(TAG, "warp failed", it) }.getOrDefault(photo).also { input.release() }
+    }
+
+    /**
+     * The style to give a page nobody has chosen one for: a colour scan when the straightened page has
+     * real colour (a stamp, a highlighter), grey when it does not (a thermal receipt). The photograph
+     * is straightened on [quad] first, so the table around it does not count. Colour when OpenCV is
+     * unavailable, since the styler would return the photograph anyway.
+     */
+    fun chooseStyle(photo: Bitmap, quad: CropQuad?): ScanStyle {
+        if (!available) return ScanStyle.COLOUR
+        val input = photo.toMat()
+        var page: Mat? = null
+        return runCatching {
+            page = if (quad != null) PageWarp.straighten(input, quad, ScanStyle.COLOUR) else input
+            when (PageStyles.chooseFor(requireNotNull(page))) {
+                PageStyle.DOCUMENT -> ScanStyle.DOCUMENT
+                else -> ScanStyle.GREYSCALE
+            }
+        }.onFailure { Log.w(TAG, "style choice failed", it) }.getOrDefault(ScanStyle.COLOUR).also {
+            page?.takeIf { it !== input }?.release()
+            input.release()
+        }
     }
 
     /** [photo] re-rendered in [style] without changing its shape. */
