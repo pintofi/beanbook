@@ -230,11 +230,12 @@ A release is a tag, but the text is written before it. For version `x.y.z`:
    the link definitions at the bottom, so each `[x.y.z]`, `[Unreleased]` and `[#N]` is a link. CI runs
    the same script with `--check` and fails on a missing date, an unknown or empty section, an entry
    with no reference, or a stale link; it runs again on the tag.
-3. Nothing else to write for the release text: the release workflow builds it from the version's
-   section in `CHANGELOG.md` (its types as headings, `[#93]` turned into a link GitHub shows), then adds
-   the download table with each file's checksum, the certificate and a compare link. It stops if the
-   section is missing or empty. A minor or major release (x.y.0) may open with a short summary of what
-   is new: put it in `release-notes/x.y.0.md`. A patch release has none.
+3. Write the summary that opens the release in `release-notes/x.y.z.md`: a few plain sentences
+   on what the release is for, whatever its size. The rest of the release text is built by the
+   release workflow from the version's section in `CHANGELOG.md` (its types as headings, `[#93]`
+   turned into a link GitHub shows), followed by the same Download table with each file's checksum,
+   Verify section and compare link every release has. The workflow stops, before the build, if the
+   summary is missing, and stops if the changelog section is missing or empty.
 4. Update `ROADMAP.md` and the README checklist, and the builds in
    `fdroid/io.github.pintofi.beanbook.expert.yml`.
 5. Tag `vx.y.z`. The workflow builds and signs the APKs and drafts the release from
