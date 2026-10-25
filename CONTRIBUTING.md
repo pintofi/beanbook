@@ -120,7 +120,9 @@ Android lint, both flavors:
 ./gradlew :app:lintPlayDebug :app:lintExpertDebug
 ```
 
-Instrumentation tests need a device or emulator. Gradle refuses to run with several attached,
+Instrumentation tests need a device or emulator. They also run every Monday on API 29 and 36
+(`.github/workflows/weekly.yml`), outside the required checks; that run can be started by hand from
+the Actions tab. Gradle refuses to run with several attached,
 and Wi-Fi ADB changes port on reconnect, so pin the serial:
 
 ```bash

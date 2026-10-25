@@ -1,0 +1,169 @@
+name: weekly
+
+# Checks that need an emulator or a long build, so they run once a week and on request instead
+# of on every push. Nothing here is a required check: a failure is a flake or a regression to
+# look at, not a block on a change. Move a job into verify.yml once it has been stable for a while.
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wheels-twice:
+    name: Cross-built wheels are identical when built twice
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.13'
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+        with:
+          packages: ''
+      - run: rustup target add aarch64-linux-android x86_64-linux-android
+
+      - name: Build twice and compare
+        # F-Droid compares its own build of each wheel with ours, so a wheel that differs from
+        # one run to the next would fail its check. Each build has its own work folder, so the
+        # second does not reuse the first's files, and each wheel is compared entry by entry, so
+        # a failure names what differs.
+        run: |
+          set -eu
+          tools/build-wheels.sh --out "$RUNNER_TEMP/first" --work "$RUNNER_TEMP/work-first"
+          tools/build-wheels.sh --out "$RUNNER_TEMP/second" --work "$RUNNER_TEMP/work-second"
+          status=0
+          for wheel in "$RUNNER_TEMP"/first/*.whl; do
+            name="$(basename "$wheel")"
+            if [ ! -f "$RUNNER_TEMP/second/$name" ]; then
+              echo "::error::$name was built the first time and not the second"
+              status=1
+              continue
+            fi
+            python3 tools/check-reproducible.py "$wheel" "$RUNNER_TEMP/second/$name" || status=1
+          done
+          [ "$(ls "$RUNNER_TEMP"/first | wc -l)" = "$(ls "$RUNNER_TEMP"/second | wc -l)" ] || {
+            echo "::error::the two builds made different sets of wheels"
+            status=1
+          }
+          exit "$status"
+
+  wheels:
+    name: Cross-build the Android wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.13'
+      - name: Cache the built wheels
+        id: cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: wheels
+          key: android-wheels-${{ hashFiles('engine-local/wheels.lock', 'engine-local/build-backends.lock', 'tools/build-wheels.sh') }}
+      - name: Android SDK command-line tools
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+        with:
+          packages: ''
+      - name: Rust with the Android targets
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: rustup target add aarch64-linux-android x86_64-linux-android
+      - name: Build
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: tools/build-wheels.sh --out wheels
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-wheels
+          path: wheels/*.whl
+          retention-days: 7
+
+  instrumentation:
+    name: Instrumentation tests on API ${{ matrix.api }}
+    needs: wheels
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      # One API level failing says nothing about the other.
+      fail-fast: false
+      matrix:
+        api: [29, 36]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.13'
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: android-wheels
+          path: wheels
+
+      - name: Prepare
+        run: |
+          WHEELS="$GITHUB_WORKSPACE/wheels"
+          python3 tools/lock-python.py --refresh-local --wheel-dir "$WHEELS"
+          echo "BCA_WHEEL_DIR=$WHEELS" >> "$GITHUB_ENV"
+          echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
+      - name: Let the emulator use hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the instrumentation tests
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: ./gradlew :app:connectedExpertDebugAndroidTest -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
+
+      - name: Summary
+        # Read from the result files, so the numbers are what Gradle recorded. Runs even when
+        # the tests failed, which is when it is wanted.
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import glob, xml.etree.ElementTree as ET
+          total = failed = skipped = 0
+          bad = []
+          for path in glob.glob("app/build/outputs/androidTest-results/**/*.xml", recursive=True):
+              suite = ET.parse(path).getroot()
+              for case in suite.iter("testcase"):
+                  total += 1
+                  if case.find("skipped") is not None:
+                      skipped += 1
+                  elif case.find("failure") is not None or case.find("error") is not None:
+                      failed += 1
+                      bad.append(f"{case.get('classname')}.{case.get('name')}")
+          print(f"### Instrumentation tests, API ${{ matrix.api }}")
+          print(f"{total} run, {failed} failed, {skipped} skipped.")
+          for name in bad[:50]:
+              print(f"- `{name}`")
+          PY
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: instrumentation-api-${{ matrix.api }}
+          path: |
+            app/build/reports/androidTests
+            app/build/outputs/androidTest-results
+          retention-days: 14
