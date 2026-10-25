@@ -50,7 +50,14 @@ jobs:
               status=1
               continue
             fi
-            python3 tools/check-reproducible.py "$wheel" "$RUNNER_TEMP/b/out/$name" || status=1
+            if ! python3 tools/check-reproducible.py "$wheel" "$RUNNER_TEMP/b/out/$name"; then
+              status=1
+              # What changed inside the entries that differ, so the log says more than a name.
+              for entry in $(unzip -Z1 "$wheel" | grep -E 'RECORD$|sboms/'); do
+                echo "--- $name: $entry"
+                diff <(unzip -p "$wheel" "$entry") <(unzip -p "$RUNNER_TEMP/b/out/$name" "$entry") | head -20 | cut -c1-300 || true
+              done
+            fi
           done
           [ "$(ls "$RUNNER_TEMP"/a/out | wc -l)" = "$(ls "$RUNNER_TEMP"/b/out | wc -l)" ] || {
             echo "::error::the two builds made different sets of wheels"
