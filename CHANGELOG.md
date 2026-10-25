@@ -7,9 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- Opening a project folder no longer fails on Android 10 to 13. Reading the folder used a call that only newer Android versions have. ([#249])
-
 ## [1.0.2] - 2026-10-25
 
 ### Added
@@ -49,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The setup checklist has rounder checkboxes with room before each label, its currency field takes the whole line, and the notification button reads Granted once permission is given. ([#141], fixes [#135])
 
 ### Fixed
+- Opening a project folder no longer fails on Android 10 to 13. Reading the folder used a call that only newer Android versions have. ([#249])
 - Saving an entry with a scanned document no longer needs a second Save. The first time, the app asks to add one `include` line to your main file; pressing Add the line now carries on and saves the entry. ([#234])
 - Deleted documents can be found again. The Organize tab on Documents lists what was deleted in the last 30 days, with a button to put each one back or delete it for good, and Empty the trash. ([#235])
 - The date picker no longer stutters. Its pencil button, which switched to a second text box and resized the dialog each time, is gone; the date field it opens from is already a text box. ([#236])
