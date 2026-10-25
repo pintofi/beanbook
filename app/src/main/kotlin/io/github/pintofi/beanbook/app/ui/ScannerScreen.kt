@@ -8,7 +8,9 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import sh.calvin.reorderable.ReorderableItem
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -67,6 +69,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.unit.dp
@@ -101,7 +104,8 @@ fun ScannerScreen(
     pages: List<CapturedPage>,
     fileFor: (String) -> File,
     captureFile: () -> File,
-    onCaptured: (File, CropQuad?, ScanStyle) -> Unit,
+    /** A new page: the file, the page found in it, its style, and whether the scanner chose that style. */
+    onCaptured: (File, CropQuad?, ScanStyle, automatic: Boolean) -> Unit,
     onRemovePage: (Int) -> Unit,
     onDone: () -> Unit,
     onCancel: () -> Unit,
@@ -116,6 +120,9 @@ fun ScannerScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    // The style new pages are given: one of the four, or null for Automatic, which is the default. It is
+    // the name so that it survives the screen being recreated.
+    var chosenStyle by rememberSaveable { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -171,14 +178,19 @@ fun ScannerScreen(
     val target = chosenTarget.checkedAgainst(pages)
     var notice by remember { mutableStateOf<String?>(null) }
 
+    /** The page in a photograph, and its style unless the person has already chosen one. */
+    fun inspect(file: File): PageInspection = inspectPage(file, chooseStyle = chosenStyle == null)
+
     /** Hands a new photograph on: as a page, or in place of the one being retaken. */
     fun deliver(file: File, inspected: PageInspection) {
         val quad = inspected.quad
-        val style = inspected.style
+        // The person's own choice wins; otherwise the scanner's, from the page.
+        val manual = chosenStyle?.let { ScanStyle.valueOf(it) }
+        val style = manual ?: inspected.style
         // Read now, not captured: the auto-shutter's closure outlives the composition that made it.
         val retaking = chosenTarget.checkedAgainst(latestPages) as? ScanTarget.Replace
         if (retaking == null) {
-            onCaptured(file, quad, style)
+            onCaptured(file, quad, style, manual == null)
             return
         }
         var done = false
@@ -248,7 +260,7 @@ fun ScannerScreen(
                     // Detect here, once, and hand the crop up with the file. The overlay
                     // reads the same result, so a page is never analysed twice for one shot.
                     scope.launch {
-                        val inspected = withContext(Dispatchers.Default) { inspectPage(file) }
+                        val inspected = withContext(Dispatchers.Default) { inspect(file) }
                         deliver(file, inspected)
                         busy = false
                     }
@@ -390,7 +402,7 @@ fun ScannerScreen(
                         .getOrDefault(false)
                 }
                 if (copied && file.length() > 0) {
-                    val inspected = withContext(Dispatchers.Default) { inspectPage(file) }
+                    val inspected = withContext(Dispatchers.Default) { inspect(file) }
                     deliver(file, inspected)
                 }
             }
@@ -665,6 +677,35 @@ fun ScannerScreen(
                 }
             }
 
+            // What a new page is turned into: the scanner's own choice from the page (the default), or
+            // one of the four. Hidden while retaking, where the page keeps its style.
+            if (target is ScanTarget.Append) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(androidx.compose.foundation.rememberScrollState())
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                        .selectableGroup(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val options: List<ScanStyle?> = listOf(null) + ScanStyle.entries
+                    options.forEach { option ->
+                        FilterChip(
+                            selected = chosenStyle == option?.name,
+                            onClick = { chosenStyle = option?.name },
+                            label = { Text(option?.label() ?: "Automatic") },
+                            modifier = Modifier.semantics {
+                                contentDescription = if (option == null) {
+                                    "Capture pages in the style the scanner chooses"
+                                } else {
+                                    "Capture pages in ${option.label()}"
+                                }
+                                role = androidx.compose.ui.semantics.Role.RadioButton
+                            },
+                        )
+                    }
+                }
+            }
         }
 
         Column(
@@ -763,6 +804,13 @@ fun ScannerScreen(
             notice = notice,
         )
     }
+}
+
+private fun ScanStyle.label(): String = when (this) {
+    ScanStyle.COLOUR -> "Colour"
+    ScanStyle.DOCUMENT -> "Document"
+    ScanStyle.GREYSCALE -> "Greyscale"
+    ScanStyle.BLACK_AND_WHITE -> "Black and white"
 }
 
 /** The batch so far, each page drawn as itself rather than named. */

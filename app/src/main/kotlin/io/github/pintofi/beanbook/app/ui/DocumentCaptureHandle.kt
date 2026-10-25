@@ -37,7 +37,7 @@ data class DocumentCaptureHandle(
      * to draw the outline — and re-detecting on the other side of the callback would analyse
      * the same photograph twice.
      */
-    val onScanned: (File, CropQuad?, ScanStyle) -> Unit = { _, _, _ -> },
+    val onScanned: (File, CropQuad?, ScanStyle, automatic: Boolean) -> Unit = { _, _, _, _ -> },
     val onRotate: (Int) -> Unit,
     val onMove: (Int, Int) -> Unit,
     val onRemovePage: (Int) -> Unit,
