@@ -45,7 +45,7 @@ Builds:
 
   - versionName: 1.0.2
     versionCode: 31
-    commit: 802988062f84bf4a4e931c35833d9a2b732af12f
+    commit: 5f661a2294b4b947770c673d3bcd44594191f966
     subdir: app
     sudo:
       - apt-get update
@@ -61,7 +61,7 @@ Builds:
 
   - versionName: 1.0.2
     versionCode: 32
-    commit: 802988062f84bf4a4e931c35833d9a2b732af12f
+    commit: 5f661a2294b4b947770c673d3bcd44594191f966
     subdir: app
     sudo:
       - apt-get update
