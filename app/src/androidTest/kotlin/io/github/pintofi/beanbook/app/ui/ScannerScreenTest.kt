@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -65,7 +67,7 @@ class ScannerScreenTest {
                     pages = pages.pages,
                     fileFor = { File(dir, it) },
                     captureFile = { File(dir, "shot-${System.nanoTime()}.jpg") },
-                    onCaptured = { _, _, _ -> },
+                    onCaptured = { _, _, _, _ -> },
                     onRemovePage = {},
                     onDone = {},
                     onCancel = {},
@@ -120,7 +122,7 @@ class ScannerScreenTest {
                     pages = session.pages.pages,
                     fileFor = { File(dir, it) },
                     captureFile = { File(dir, "shot-${System.nanoTime()}.jpg") },
-                    onCaptured = { _, _, _ -> },
+                    onCaptured = { _, _, _, _ -> },
                     onRemovePage = {},
                     onDone = onDone,
                     onCancel = onCancel,
@@ -169,5 +171,16 @@ class ScannerScreenTest {
         compose.onNodeWithText("Add page").performClick()
         compose.onNodeWithContentDescription("Leave the scanner").assertIsDisplayed()
         assertEquals(1, session.pages.size)
+    }
+
+    @Test fun theCameraOffersAutomaticAndEveryStyleWithAutomaticChosen() {
+        scanner(Session(CapturedPages()))
+        compose.onNodeWithContentDescription("Capture pages in the style the scanner chooses").assertIsSelected()
+        listOf("Colour", "Document", "Greyscale", "Black and white").forEach {
+            compose.onNodeWithContentDescription("Capture pages in $it").assertExists()
+        }
+        compose.onNodeWithContentDescription("Capture pages in Greyscale").performClick()
+        compose.onNodeWithContentDescription("Capture pages in Greyscale").assertIsSelected()
+        compose.onNodeWithContentDescription("Capture pages in the style the scanner chooses").assertIsNotSelected()
     }
 }

@@ -879,14 +879,14 @@ internal fun MainActivity.captureHandle(
             scanning = scanning,
             onStartScanning = { setScanning(true) },
             onStopScanning = { setScanning(false) },
-            onScanned = { file, quad, style ->
+            onScanned = { file, quad, style, automatic ->
                 // Add first, then apply the outline the scanner found. The
                 // crop is a description of the photograph, never a rewrite of
                 // it: the file on disk stays the one the camera produced, so
                 // a wrong detection is a drag away from being corrected
                 // rather than something that destroyed the original.
                 if (file.length() > 0) {
-                    app.documentCapture.add(file, pageStyleOf(style), crop = quad, automatic = true)
+                    app.documentCapture.add(file, pageStyleOf(style), crop = quad, automatic = automatic)
                 }
             },
             onRotate = { app.documentCapture.rotate(it) },
