@@ -154,7 +154,12 @@ fun ScannerScreen(
     LaunchedEffect(Unit) { focus.clearFocus(force = true) }
 
     // How big the photographs are; the camera is bound again when it changes.
-    var photoSize by rememberSaveable { mutableStateOf(PhotoSize.LARGE) }
+    // The sizes are the phone's own, from the system; none chosen means the camera's default.
+    val photoSizes = remember { PhotoSize.supported(context) }
+    var chosenSize by rememberSaveable { mutableStateOf<String?>(null) }
+    val photoSize = photoSizes.firstOrNull { it.key == chosenSize }
+    val defaultSize = PhotoSize.defaultOf(photoSizes)
+    val shownSize = photoSize ?: defaultSize
     var photoMenu by remember { mutableStateOf(false) }
     // Whether a shot is cropped to the page the scanner found. Off keeps the whole photograph, for a
     // page the detector gets wrong or a photograph that is not a page.
@@ -174,7 +179,18 @@ fun ScannerScreen(
                         androidx.camera.core.resolutionselector.AspectRatioStrategy
                             .RATIO_4_3_FALLBACK_AUTO_STRATEGY,
                     )
-                    .apply { photoSize.strategy()?.let { setResolutionStrategy(it) } }
+                    .apply {
+                        photoSize?.let {
+                            setResolutionStrategy(it.strategy())
+                            // A high-resolution size is only offered when the allowed mode says so.
+                            if (it.highResolution) {
+                                setAllowedResolutionMode(
+                                    androidx.camera.core.resolutionselector.ResolutionSelector
+                                        .PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE,
+                                )
+                            }
+                        }
+                    }
                     .build(),
             )
             .build()
@@ -706,26 +722,31 @@ fun ScannerScreen(
                         tint = if (autoCrop) Color(0xFF80D5D4) else Color.White,
                     )
                 }
-                Box {
+                if (photoSizes.isNotEmpty()) Box {
                     IconButton(
                         onClick = { photoMenu = true },
                         modifier = Modifier.semantics {
-                            contentDescription = "Photo size: ${photoSize.label}. Tap to change"
+                            contentDescription = "Photo size: ${shownSize?.label}. Tap to change"
                         },
                     ) { Icon(Icons.Filled.PhotoSizeSelectLarge, contentDescription = null, tint = Color.White) }
                     androidx.compose.material3.DropdownMenu(
                         expanded = photoMenu,
                         onDismissRequest = { photoMenu = false },
                     ) {
-                        PhotoSize.entries.forEach { size ->
+                        photoSizes.forEach { size ->
                             androidx.compose.material3.DropdownMenuItem(
                                 text = {
-                                    Column {
-                                        Text(size.label + if (size == photoSize) " (selected)" else "")
-                                        Text(size.detail, style = MaterialTheme.typography.bodySmall)
+                                    val note = when {
+                                        size.key == shownSize?.key -> " (selected)"
+                                        else -> ""
                                     }
+                                    val default = if (size.key == defaultSize?.key) " · default" else ""
+                                    Text(size.label + default + note)
                                 },
-                                onClick = { photoSize = size; photoMenu = false },
+                                onClick = {
+                                    chosenSize = size.key.takeUnless { it == defaultSize?.key }
+                                    photoMenu = false
+                                },
                             )
                         }
                     }

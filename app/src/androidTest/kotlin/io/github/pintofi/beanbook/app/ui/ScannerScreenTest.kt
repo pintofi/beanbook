@@ -204,12 +204,18 @@ class ScannerScreenTest {
             .assertIsDisplayed()
     }
 
-    @Test fun thePhotoSizeCanBeChosen() {
+    @Test fun thePhotoSizeIsOneOfTheSizesTheCameraOffers() {
+        val offered = PhotoSize.supported(context)
+        // The emulator's camera lists sizes; a phone with none would simply not show the button.
+        org.junit.Assume.assumeTrue("the camera lists no 4:3 sizes", offered.size > 1)
         scanner(Session(CapturedPages()))
-        compose.onNodeWithContentDescription("Photo size: Large. Tap to change").performClick()
-        compose.onNodeWithText("Medium", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("Small", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("Medium", substring = true).performClick()
-        compose.onNodeWithContentDescription("Photo size: Medium. Tap to change").assertIsDisplayed()
+
+        val first = PhotoSize.defaultOf(offered)!!
+        compose.onNodeWithContentDescription("Photo size: ${first.label}. Tap to change").performClick()
+        // Every size the system lists is in the menu, with its pixels, and none that it does not.
+        offered.forEach { compose.onNodeWithText(it.label, substring = true).assertIsDisplayed() }
+        val other = offered.first { it.key != first.key }
+        compose.onNodeWithText(other.label, substring = true).performClick()
+        compose.onNodeWithContentDescription("Photo size: ${other.label}. Tap to change").assertIsDisplayed()
     }
 }
