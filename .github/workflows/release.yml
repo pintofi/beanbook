@@ -58,6 +58,16 @@ jobs:
           fi
           echo "tag $GITHUB_REF_NAME matches versionName $declared"
 
+      - name: The release has its summary
+        # Every release opens with a short summary written by a person, in
+        # release-notes/x.y.z.md. Checked here, before the long build, not after it.
+        run: |
+          file="release-notes/${GITHUB_REF_NAME#v}.md"
+          if [ ! -s "$file" ]; then
+            echo "::error::missing $file: write the release summary before tagging"
+            exit 1
+          fi
+
       - name: Reproducible Python bytecode
         # Hash-based .pyc rather than timestamp-based, so two builds of the same commit are
         # byte-identical. Derived from the commit, so a different commit is still allowed to

@@ -7,8 +7,8 @@ The changes come straight from the version's section of CHANGELOG.md, so the fil
 they are written: its `###` headings (Added, Changed, Fixed, Security and so on) and its entries,
 with the `[#123]` references turned into plain #123, which GitHub links in a release.
 
-A minor or major release may add a short summary above them, in release-notes/<version>.md. A
-patch release has none, and the file is not needed.
+Every release opens with a short summary a person writes, in release-notes/<version>.md; without
+it the release is stopped, so a draft is never made with the changes alone.
 
 The certificate fingerprint is read from the F-Droid recipe, so it lives in one place. The output
 goes to stdout. A version with no section, or an empty one, in the changelog stops the release.
@@ -27,7 +27,9 @@ if not section or "- " not in section.group(1):
 changes = re.sub(r"\[#(\d+)\]", r"#\1", section.group(1)).strip()
 
 summary_file = root / "release-notes" / f"{version}.md"
-summary = summary_file.read_text().strip() + "\n\n" if summary_file.is_file() else ""
+if not summary_file.is_file() or not summary_file.read_text().strip():
+    sys.exit(f"missing release-notes/{version}.md: write the release summary first")
+summary = summary_file.read_text().strip() + "\n\n"
 
 recipe = (root / "fdroid" / "io.github.pintofi.beanbook.expert.yml").read_text()
 cert = re.search(r"^AllowedAPKSigningKeys:\s*([0-9a-f]{64})\s*$", recipe, re.M)
