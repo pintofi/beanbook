@@ -490,7 +490,8 @@ class DirectoryImportSource(private val root: File) : ImportSource {
                         isSymlink = java.nio.file.Files.isSymbolicLink(file.toPath()),
                     )
                 }
-                .toList()
+                // Not Stream.toList(): that is Java 16, and Android 10 to 13 do not have it.
+                .collect(java.util.stream.Collectors.toList())
         }
 
     override fun open(entry: SourceEntry): InputStream = File(root, entry.sourcePath).inputStream()
