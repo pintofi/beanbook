@@ -130,6 +130,15 @@ export ANDROID_SERIAL=<serial from adb devices>
 ./gradlew :app:connectedExpertDebugAndroidTest
 ```
 
+`ScreenshotTest` draws the main screens (Home, Journal, Balances, Documents, More, Add entry) in
+light and dark at normal and double text size and compares them with the pictures in
+`app/src/androidTest/assets/screenshots`. It only runs on API 36, where the pictures are drawn, and
+the weekly job reports a difference as a failure, not a block. After a change to how a screen
+looks that you meant to make, start the weekly workflow by hand with "Draw the screenshots again"
+ticked, download the `screenshots` folder from the API 36 artifact into that assets folder, and
+commit it: the pictures change in the same pull request as the code, so a reviewer sees them.
+A failing run keeps what was drawn and a picture with the differing pixels in red.
+
 The Python layer uses the standard library runner, but the interpreter has to have `beancount`
 importable, because a couple of cases load a ledger:
 
