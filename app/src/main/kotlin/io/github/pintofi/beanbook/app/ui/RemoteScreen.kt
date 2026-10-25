@@ -116,7 +116,7 @@ fun RemoteScreen(
         // Where the connection stands, first: the answer people open the page for.
         when (status) {
             is EngineStatus.Starting ->
-                StatusLine("Connecting…", modifier = Modifier.padding(horizontal = Measure.tight))
+                StatusLine("Connecting…", modifier = Modifier.padding(horizontal = Measure.indent))
             is EngineStatus.Serving ->
                 Notice(NoticeTone.QUIET) {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {

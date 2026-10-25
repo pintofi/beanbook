@@ -774,42 +774,34 @@ private fun CustomiseHomeSheet(
                 ordered.forEach { card ->
                     item {
                         val on = card in cards
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 64.dp)
-                                .padding(start = Measure.tight, end = Measure.tight),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            SquircleCheckbox(
-                                checked = on,
-                                onCheckedChange = { checked ->
-                                    cards = if (checked) cards + card else cards - card
-                                },
-                                modifier = Modifier.semantics { contentDescription = "Show ${card.label}" },
-                            )
-                            Column(Modifier.weight(1f).padding(vertical = Measure.snug)) {
-                                Text(card.label, style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    card.description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            if (on) {
-                                val at = cards.indexOf(card)
-                                IconButton(
-                                    onClick = { cards = cards.swap(at, at - 1) },
-                                    enabled = at > 0,
-                                    modifier = Modifier.semantics { contentDescription = "Move ${card.label} up" },
-                                ) { Icon(Icons.Filled.ArrowUpward, contentDescription = null) }
-                                IconButton(
-                                    onClick = { cards = cards.swap(at, at + 1) },
-                                    enabled = at < cards.lastIndex,
-                                    modifier = Modifier.semantics { contentDescription = "Move ${card.label} down" },
-                                ) { Icon(Icons.Filled.ArrowDownward, contentDescription = null) }
-                            }
-                        }
+                        FolioCheckRow(
+                            title = card.label,
+                            detail = card.description,
+                            checked = on,
+                            onCheckedChange = { checked ->
+                                cards = if (checked) cards + card else cards - card
+                            },
+                            describe = "Show ${card.label}",
+                            trailing = if (on) {
+                                {
+                                    val at = cards.indexOf(card)
+                                    IconButton(
+                                        onClick = { cards = cards.swap(at, at - 1) },
+                                        enabled = at > 0,
+                                        modifier = Modifier.semantics { contentDescription = "Move ${card.label} up" },
+                                    ) { Icon(Icons.Filled.ArrowUpward, contentDescription = null) }
+                                    IconButton(
+                                        onClick = { cards = cards.swap(at, at + 1) },
+                                        enabled = at < cards.lastIndex,
+                                        modifier = Modifier.semantics {
+                                            contentDescription = "Move ${card.label} down"
+                                        },
+                                    ) { Icon(Icons.Filled.ArrowDownward, contentDescription = null) }
+                                }
+                            } else {
+                                null
+                            },
+                        )
                     }
                 }
             }

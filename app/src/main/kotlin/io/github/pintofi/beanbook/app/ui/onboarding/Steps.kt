@@ -36,6 +36,7 @@ import io.github.pintofi.beanbook.app.onboarding.SetupDraft
 import io.github.pintofi.beanbook.app.ui.AmountField
 import io.github.pintofi.beanbook.app.ui.DateField
 import io.github.pintofi.beanbook.app.ui.FolioBody
+import io.github.pintofi.beanbook.app.ui.FolioCheckRow
 import io.github.pintofi.beanbook.app.ui.FolioGroup
 import io.github.pintofi.beanbook.app.ui.FolioHeading
 import io.github.pintofi.beanbook.app.ui.FolioNote
@@ -319,60 +320,40 @@ internal fun AccountsStep(draft: SetupDraft, update: Update) {
 /** One account of the setup as a row of a folio: a checkbox and its name, and its currencies when asked for. */
 @Composable
 private fun AccountChoiceRow(choice: AccountChoice, everyAccountUsesMain: Boolean, update: Update) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // One toggle for the whole row, so a screen reader reads the account's name with its state.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .toggleable(
-                    value = choice.on || choice.locked,
-                    enabled = !choice.locked,
-                    role = Role.Checkbox,
-                    onValueChange = { on ->
+    FolioCheckRow(
+        title = choice.name,
+        checked = choice.on || choice.locked,
+        onCheckedChange = { on ->
+            update { d ->
+                val flipped = d.accounts.map { if (it.name == choice.name) it.copy(on = on) else it }
+                d.copy(accounts = flipped)
+            }
+        },
+        enabled = !choice.locked,
+        detail = if (choice.locked) "Always kept: opening balances come from here." else null,
+        below = {
+            if (!everyAccountUsesMain && !choice.locked && choice.on) {
+                OutlinedTextField(
+                    value = choice.currencies,
+                    onValueChange = { v ->
                         update { d ->
-                            val flipped = d.accounts.map { if (it.name == choice.name) it.copy(on = on) else it }
-                            d.copy(accounts = flipped)
+                            d.copy(
+                                accounts = d.accounts.map {
+                                    if (it.name == choice.name) it.copy(currencies = v) else it
+                                },
+                            )
                         }
                     },
+                    label = { Text("Currencies for ${choice.name.substringAfterLast(':')}") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Measure.indent)
+                        .padding(bottom = Measure.gap),
                 )
-                .heightIn(min = Measure.rowMinHeight)
-                .padding(horizontal = Measure.indent, vertical = Measure.gap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SquircleCheckbox(checked = choice.on || choice.locked, onCheckedChange = null, enabled = !choice.locked)
-            Spacer(Modifier.width(Measure.indent))
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(choice.name, style = MaterialTheme.typography.titleMedium)
-                if (choice.locked) {
-                    Text(
-                        "Always kept: opening balances come from here.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
-        }
-        if (!everyAccountUsesMain && !choice.locked && choice.on) {
-            OutlinedTextField(
-                value = choice.currencies,
-                onValueChange = { v ->
-                    update { d ->
-                        d.copy(
-                            accounts = d.accounts.map {
-                                if (it.name == choice.name) it.copy(currencies = v) else it
-                            },
-                        )
-                    }
-                },
-                label = { Text("Currencies for ${choice.name.substringAfterLast(':')}") },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Measure.indent)
-                    .padding(bottom = Measure.gap),
-            )
-        }
-    }
+        },
+    )
 }
 
 @Composable

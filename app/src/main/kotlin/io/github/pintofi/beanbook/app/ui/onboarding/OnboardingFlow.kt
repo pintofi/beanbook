@@ -275,7 +275,7 @@ private fun WaysInPage(
                         )
                     }
                 }
-                busyMessage?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
+                busyMessage?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.indent)) }
 
                 RemoteCard(onConnect = actions.onRemoteConnect, note = remoteNote)
                 TrashSection(trash)

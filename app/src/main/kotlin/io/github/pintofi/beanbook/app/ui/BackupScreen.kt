@@ -151,7 +151,7 @@ fun BackupScreen(
                 .semantics { contentDescription = "Back up $projectTitle now" },
         ) { Text(if (encrypt) "Back up, encrypted" else "Back up now") }
 
-        message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
+        message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.indent)) }
 
         FolioHeading("Restore")
         FolioGroup {

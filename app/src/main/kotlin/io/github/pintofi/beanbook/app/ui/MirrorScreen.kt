@@ -121,7 +121,7 @@ fun MirrorScreen(
                     .semantics { contentDescription = "Mirror now" },
             ) { Text("Mirror now") }
 
-            message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
+            message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.indent)) }
 
             if (conflicts.isNotEmpty()) {
                 // One summary, then one compact row per file (device audit 2026-10-10: four loud
