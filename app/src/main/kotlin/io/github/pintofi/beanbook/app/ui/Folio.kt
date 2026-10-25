@@ -62,7 +62,7 @@ fun FolioHeading(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = Measure.tight, end = Measure.tight, top = Measure.gap, bottom = Measure.snug)
+            .padding(start = Measure.indent, end = Measure.indent, top = Measure.gap, bottom = Measure.snug)
             .semantics { heading() },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -83,7 +83,7 @@ fun FolioNote(text: String, modifier: Modifier = Modifier) {
         text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(horizontal = Measure.tight, vertical = Measure.snug),
+        modifier = modifier.padding(horizontal = Measure.indent, vertical = Measure.snug),
     )
 }
 
@@ -249,6 +249,79 @@ fun FolioRow(
         }
     }
 }
+
+/**
+ * A row that is a check box: the standard for a list of things to choose.
+ *
+ * The box's own square starts where every other row's content starts ([Measure.indent] in from
+ * the card's edge), not 13dp further in where its 48dp touch target would put it, and the label
+ * follows at one gap, so a list of choices lines up with the rows above and below it. The box and
+ * the label are one target, named once. [trailing] sits outside that target, for buttons that
+ * do something else, and [below] is laid under the row (a field that belongs to the choice).
+ */
+@Composable
+fun FolioCheckRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    detail: String? = null,
+    enabled: Boolean = true,
+    describe: String = title,
+    trailing: (@Composable RowScope.() -> Unit)? = null,
+    below: (@Composable ColumnScope.() -> Unit)? = null,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = if (detail != null) 64.dp else Measure.rowMinHeight),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .toggleable(
+                        value = checked,
+                        enabled = enabled,
+                        role = Role.Checkbox,
+                        onValueChange = onCheckedChange,
+                    )
+                    .semantics(mergeDescendants = true) { contentDescription = describe }
+                    .heightIn(min = if (detail != null) 64.dp else Measure.rowMinHeight)
+                    .padding(
+                        start = Measure.indent - CHECK_SLOT_INSET,
+                        end = Measure.indent,
+                        top = Measure.gap,
+                        bottom = Measure.gap,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SquircleCheckbox(checked = checked, onCheckedChange = null, enabled = enabled)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    val dimmed = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (enabled) Color.Unspecified else dimmed,
+                    )
+                    if (detail != null) {
+                        Text(
+                            detail,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            trailing?.invoke(this)
+        }
+        below?.invoke(this)
+    }
+}
+
+/** How far the square of a [SquircleCheckbox] sits inside its 48dp slot: (48 - 22) / 2. */
+private val CHECK_SLOT_INSET = 13.dp
 
 /**
  * A row that is a switch: the whole row toggles, and says its state.

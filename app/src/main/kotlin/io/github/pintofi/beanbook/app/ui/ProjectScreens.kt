@@ -108,7 +108,7 @@ fun ProjectPickerScreen(
 
     Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         FolioPage(modifier = Modifier.readableMeasureCentred()) {
-            busyMessage?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
+            busyMessage?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.indent)) }
 
             FolioHeading("Your projects")
             FolioGroup {

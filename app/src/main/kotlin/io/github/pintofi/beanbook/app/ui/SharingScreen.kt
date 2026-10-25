@@ -173,7 +173,7 @@ fun SharingScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
             ) { Text("Stop sharing") }
             SharingStatus.Starting ->
-                StatusLine("Starting to share…", modifier = Modifier.padding(horizontal = Measure.tight))
+                StatusLine("Starting to share…", modifier = Modifier.padding(horizontal = Measure.indent))
             is SharingStatus.Failed -> {
                 Notice(NoticeTone.PROBLEM) { Text(current.reason, style = MaterialTheme.typography.bodyMedium) }
                 Button(

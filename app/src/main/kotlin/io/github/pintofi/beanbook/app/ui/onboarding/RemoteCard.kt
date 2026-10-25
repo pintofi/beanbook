@@ -86,6 +86,6 @@ internal fun RemoteCard(
             "For a server you host yourself. It sits beside a ledger on this phone, which keeps your " +
                 "documents and backups: connect here, then set one up or import one above.",
         )
-        note?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
+        note?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.indent)) }
     }
 }

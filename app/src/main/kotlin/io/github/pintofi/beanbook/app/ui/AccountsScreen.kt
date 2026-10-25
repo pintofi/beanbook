@@ -68,7 +68,7 @@ fun AccountsScreen(
     val (closed, open) = accounts.partition { it.isClosed }
     Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         FolioPage(modifier = Modifier.readableMeasureCentred()) {
-            message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
+            message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.indent)) }
 
             if (open.isEmpty()) FolioNote("No account is open yet.")
             names.roots.forEach { root ->

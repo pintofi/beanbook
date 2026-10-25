@@ -116,7 +116,7 @@ fun ScriptRunnerScreen(
         // The result directly under the button that produced it. It used to come last,
         // below every saved script, so after a run it was off the bottom of the screen and
         // the run looked as if it had printed nothing.
-        message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.tight)) }
+        message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.indent)) }
         outcome?.let { Outcome(it) }
 
         if (saved.isNotEmpty()) {
