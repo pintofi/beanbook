@@ -157,6 +157,27 @@ class DocumentStoreTest {
     }
 
     @Test
+    fun `the trash lists what was deleted, newest first, and can delete one or all for good`() {
+        val first = store.store("p", "Expenses:Food:Groceries", date, "one".toByteArray())
+        val second = store.store("p", "Expenses:Food:Dining", date, "three".toByteArray())
+        val a = assertNotNull(store.trash("p", first.relativePath))
+        Thread.sleep(5)
+        val b = assertNotNull(store.trash("p", second.relativePath))
+
+        val listed = store.trashedFiles("p")
+        assertEquals(listOf(b, a), listed.map { it.trashed })
+        assertEquals(listOf(5L, 3L), listed.map { it.bytes })
+
+        store.deleteForever(b)
+        assertEquals(listOf(a), store.trashedFiles("p").map { it.trashed })
+        assertFalse(store.restore(b), "restored after deleting for good")
+
+        store.emptyTrash("p")
+        assertEquals(emptyList(), store.trashedFiles("p"))
+        assertEquals(emptyList(), store.trashedFiles("other"))
+    }
+
+    @Test
     fun `a trashed document is not in the project tree, so a backup or an export cannot carry it`() {
         val stored = store.store("p", "Assets:Cash", date, "secret".toByteArray())
 

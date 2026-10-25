@@ -69,6 +69,7 @@ internal fun SurfaceContent(
     onRefileDocument: (String, String, String?) -> Unit,
     onUnlinkDocument: (String, String?) -> Unit,
     onDeleteDocumentFile: (String) -> Unit,
+    documentTrash: io.github.pintofi.beanbook.app.ui.DocumentTrash = io.github.pintofi.beanbook.app.ui.DocumentTrash(),
     onShareDocument: (String) -> Unit,
     /** The app's own record of what it did, and what a person can do with it. */
     diagnostics: io.github.pintofi.beanbook.app.ui.DiagnosticsUi,
@@ -525,6 +526,7 @@ internal fun SurfaceContent(
                                 onRefile = onRefileDocument,
                                 onUnlink = onUnlinkDocument,
                                 onDeleteFile = onDeleteDocumentFile,
+                                trash = documentTrash,
                                 onShare = onShareDocument,
                                 fileForDocument = fileForDocument,
                                 message = documentMessage,

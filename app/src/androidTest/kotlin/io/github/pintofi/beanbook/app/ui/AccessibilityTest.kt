@@ -397,6 +397,17 @@ class AccessibilityTest {
                 onDeleteFile = {},
                 onShare = {},
                 hasCamera = false,
+                trash = DocumentTrash(
+                    items = listOf(
+                        io.github.pintofi.beanbook.core.data.DocumentStore.TrashedFile(
+                            io.github.pintofi.beanbook.core.data.DocumentStore.Trashed(
+                                "p", "documents/Expenses/old.pdf", "1-1",
+                            ),
+                            trashedAt = 1_700_000_000_000L,
+                            bytes = 12_000,
+                        ),
+                    ),
+                ),
             )
         }
 
@@ -431,6 +442,9 @@ class AccessibilityTest {
         // The unfiled document offers filing, and does not offer to unlink a link it has
         // not got. Asserting the absence matters as much as the presence: an Unlink there
         // could only ever produce an error.
+        // Deleted documents are listed in Organize, each named for what it restores or deletes.
+        compose.onNodeWithContentDescription("Restore documents/Expenses/old.pdf").performScrollTo().assertExists()
+        compose.onNodeWithContentDescription("Delete old.pdf for good").performScrollTo().assertExists()
         compose.onNodeWithContentDescription("File documents/stray.pdf under an account")
             .performScrollTo().assertExists()
         compose.onNodeWithContentDescription("Unlink documents/stray.pdf from its entry")

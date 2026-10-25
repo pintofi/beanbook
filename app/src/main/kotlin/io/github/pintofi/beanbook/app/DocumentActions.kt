@@ -1,5 +1,7 @@
 package io.github.pintofi.beanbook.app
 
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.unit.dp
@@ -28,7 +30,29 @@ internal fun MainActivity.refreshDocuments(app: BeancountApplication, projectId:
         // links to files that were not there.
         val roots = app.ledgerState.snapshot.value?.documentRoots.orEmpty()
         documents = app.documentCapture.existing(projectId, roots)
+        app.documentCapture.refreshTrash(projectId)
     }
+}
+
+/** The document trash for the open project, with its restore and delete actions wired. */
+@androidx.compose.runtime.Composable
+internal fun MainActivity.documentTrashUi(
+    app: BeancountApplication,
+    projectId: String?,
+): io.github.pintofi.beanbook.app.ui.DocumentTrash {
+    val items by app.documentCapture.trash.collectAsStateWithLifecycle()
+    val id = projectId ?: return io.github.pintofi.beanbook.app.ui.DocumentTrash()
+    return io.github.pintofi.beanbook.app.ui.DocumentTrash(
+        items = items,
+        onRestore = { trashed ->
+            lifecycleScope.launch {
+                app.documentCapture.restoreFromTrash(trashed)
+                refreshDocuments(app, id)
+            }
+        },
+        onDeleteForever = { trashed -> lifecycleScope.launch { app.documentCapture.deleteFromTrash(trashed) } },
+        onEmpty = { lifecycleScope.launch { app.documentCapture.emptyTrash(id) } },
+    )
 }
 
 /**
@@ -918,48 +942,53 @@ internal fun MainActivity.captureHandle(
                 // there the directive still goes to files/documents.beancount.
                 val id = projectId.orEmpty()
                 app.documentCapture.save(id, account, label = label, attached = true) { paths ->
-                    // The application's scope, like the save that follows.
-                    app.workScope.launch {
-                        val main = app.workspace.mainFile(id)
-                        val linksDocuments = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                            runCatching { main.readText().contains("link_documents") }.getOrDefault(false)
-                        }
-                        if (!linksDocuments) {
-                            onFiled(paths)
-                            app.documentCapture.finish()
-                            refreshDocuments(app, id)
-                            return@launch
-                        }
-                        val ledger = documentsLedger(app, id) ?: return@launch
-                        val projectDir = app.workspace.projectDir(id)
-                        val directives = paths.joinToString("") { path ->
-                            io.github.pintofi.beanbook.core.domain.DirectiveDraft.Document(
-                                date = java.time.LocalDate.now().toString(),
-                                account = account,
-                                path = documentPathIn(ledger, projectDir, path),
-                            ).render()
-                        }
-                        saveText(
-                            app, id, directives,
-                            operation = "attach-document",
-                            target = ledger,
-                            reload = false,
-                            onResult = { outcome ->
-                            // The entry is saved next, so a success here is not the end of
-                            // the save and is not announced as one: the form would take
-                            // "Saved." as its own result and stop showing that it is working.
-                            if (!outcome.startsWith("Saved")) saveMessage = outcome
-                            // Only when the directive is actually in the ledger. Reporting the
-                            // path back on a rolled-back write would let the caller write an
-                            // entry pointing at a document the file does not declare.
-                            if (outcome.startsWith("Saved")) {
+                    // Runs again once the include line is approved, so adding it carries on
+                    // into the save instead of leaving the entry for a second tap.
+                    fun fileEntry() {
+                        // The application's scope, like the save that follows.
+                        app.workScope.launch {
+                            val main = app.workspace.mainFile(id)
+                            val linksDocuments = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                runCatching { main.readText().contains("link_documents") }.getOrDefault(false)
+                            }
+                            if (!linksDocuments) {
                                 onFiled(paths)
                                 app.documentCapture.finish()
                                 refreshDocuments(app, id)
+                                return@launch
                             }
-                            },
-                        )
+                            val ledger = documentsLedger(app, id, then = ::fileEntry) ?: return@launch
+                            val projectDir = app.workspace.projectDir(id)
+                            val directives = paths.joinToString("") { path ->
+                                io.github.pintofi.beanbook.core.domain.DirectiveDraft.Document(
+                                    date = java.time.LocalDate.now().toString(),
+                                    account = account,
+                                    path = documentPathIn(ledger, projectDir, path),
+                                ).render()
+                            }
+                            saveText(
+                                app, id, directives,
+                                operation = "attach-document",
+                                target = ledger,
+                                reload = false,
+                                onResult = { outcome ->
+                                // The entry is saved next, so a success here is not the end of
+                                // the save and is not announced as one: the form would take
+                                // "Saved." as its own result and stop showing that it is working.
+                                if (!outcome.startsWith("Saved")) saveMessage = outcome
+                                // Only when the directive is actually in the ledger. Reporting the
+                                // path back on a rolled-back write would let the caller write an
+                                // entry pointing at a document the file does not declare.
+                                if (outcome.startsWith("Saved")) {
+                                    onFiled(paths)
+                                    app.documentCapture.finish()
+                                    refreshDocuments(app, id)
+                                }
+                                },
+                            )
+                        }
                     }
+                    fileEntry()
                 }
             },
         )
