@@ -1,7 +1,7 @@
 name: verify
 
 # The gate. Every check here must pass before a change lands. Instrumentation tests need an
-# emulator and are run by hand; this file lists only what runs on a plain runner.
+# emulator and run weekly in weekly.yml; this file lists only what runs on a plain runner.
 
 on:
   # Callable so a release runs exactly the same gates as a push.
