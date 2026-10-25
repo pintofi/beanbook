@@ -51,7 +51,7 @@ internal object PageStyles {
      * The light falling on [channel] (8-bit, one channel), or null for a dark page, which cannot be
      * flattened: a navy statement divided by its own colour would come out white.
      */
-    private fun lighting(channel: Mat): Lighting? {
+    private fun lighting(channel: Mat, wantFull: Boolean = true): Lighting? {
         val small = Mat()
         val longEdge = maxOf(channel.cols(), channel.rows())
         if (longEdge > WORK_EDGE) {
@@ -63,10 +63,19 @@ internal object PageStyles {
         val short = minOf(small.cols(), small.rows())
 
         val light = Mat()
-        // Erase the ink: a kernel wider than a stroke, so what is left is the paper and its light.
+        // Sensor noise first. Dilation keeps the brightest pixel of each neighbourhood, so on noise it
+        // reads the top of the noise as the light, and the noisiest channel (blue) comes out too bright:
+        // dividing by it leaves a yellow cast. A small median takes the speckle out before it can.
+        val calm = Mat()
+        Imgproc.medianBlur(small, calm, NOISE_MEDIAN)
+        // Erase the ink: a closing with a kernel wider than a stroke, so what is left is the paper and its
+        // light. A closing (dilate, then erode) and not a dilation alone: along a gradient of light a
+        // dilation reads the brighter side of every window, a bias that differs by channel when the light
+        // is coloured and leaves a cast; the erosion puts the level back.
         val eraser = KernelSizes.inkEraser(short)
         val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(eraser.toDouble(), eraser.toDouble()))
-        Imgproc.dilate(small, light, kernel)
+        Imgproc.morphologyEx(calm, light, Imgproc.MORPH_CLOSE, kernel)
+        calm.release()
         kernel.release()
         Imgproc.medianBlur(light, light, KernelSizes.lightingMedian(short))
         Imgproc.GaussianBlur(light, light, Size(0.0, 0.0), short / SMOOTH_DIVISOR)
@@ -79,7 +88,7 @@ internal object PageStyles {
         fillDarkAreas(light, paper, short)
 
         val full = Mat()
-        Imgproc.resize(light, full, channel.size(), 0.0, 0.0, Imgproc.INTER_LINEAR)
+        if (wantFull) Imgproc.resize(light, full, channel.size(), 0.0, 0.0, Imgproc.INTER_LINEAR)
         return Lighting(small, light, full)
     }
 
@@ -172,7 +181,9 @@ internal object PageStyles {
         Imgproc.cvtColor(page, rgb, Imgproc.COLOR_RGBA2RGB)
         val flat = flattenedColour(rgb) ?: rgb.also { }
         val hist = histogram(greyOf(downscale(flat, WORK_EDGE)))
-        val toned = applyCurve(flat, hist, COLOUR_GAMMA)
+        val curved = applyCurve(flat, hist, COLOUR_GAMMA)
+        val toned = smoothColour(curved)
+        curved.release()
         val out = Mat()
         Imgproc.cvtColor(toned, out, Imgproc.COLOR_RGB2RGBA)
         toned.release()
@@ -181,22 +192,99 @@ internal object PageStyles {
         return out
     }
 
-    /** Each channel divided by its own lighting, or null when any channel says the page is dark. */
+    /**
+     * The colour page flattened, or null when it is dark.
+     *
+     * The *brightness* of the light is estimated once, on the grey page, where the three channels'
+     * sensor noise averages out. What differs between the channels is the colour of the light, and
+     * that varies slowly across a page (a window on one side, a lamp on the other). It is measured as
+     * each channel's share of the grey light over the paper pixels only (not the ink), averaged over a
+     * wide window: an average, where the brightest-pixel estimate used for the brightness reads the
+     * top of the noise, and the noisiest channel (blue) came out too bright, which left patches of
+     * yellow on the paper.
+     */
     private fun flattenedColour(rgb: Mat): Mat? {
         val channels = mutableListOf<Mat>()
         Core.split(rgb, channels)
-        val lights = channels.map { lighting(it) }
+        val grey = greyOf(rgb)
+        val greyLight = lighting(grey, wantFull = false)
         try {
-            if (lights.any { it == null }) return null
-            val flats = channels.indices.map { flatten(channels[it], lights[it]!!.full) }
+            if (greyLight == null) return null
+            val small = greyLight.small
+            val short = minOf(small.cols(), small.rows())
+            val sigma = short / TINT_DIVISOR
+            val lightSmall = greyLight.smallLight
+
+            // The paper: pixels about as bright as the light there.
+            val paper = Mat()
+            val limit = Mat()
+            lightSmall.convertTo(limit, CvType.CV_8U, PAPER_SHARE)
+            Core.compare(small, limit, paper, Core.CMP_GE)
+            val weight = Mat()
+            paper.convertTo(weight, CvType.CV_32F, 1.0 / 255.0)
+            val greyF = Mat()
+            small.convertTo(greyF, CvType.CV_32F)
+            Core.multiply(greyF, weight, greyF)
+            Imgproc.GaussianBlur(greyF, greyF, Size(0.0, 0.0), sigma)
+            Core.max(greyF, Scalar(1.0), greyF)
+            val coverage = weight.clone()
+            Imgproc.GaussianBlur(coverage, coverage, Size(0.0, 0.0), sigma)
+            val thin = Mat()
+            Core.compare(coverage, Scalar(MIN_COVERAGE), thin, Core.CMP_LT)
+
+            val lightF = Mat()
+            lightSmall.convertTo(lightF, CvType.CV_32F)
+            val flats = channels.map { channel ->
+                val smallChannel = Mat()
+                Imgproc.resize(channel, smallChannel, small.size(), 0.0, 0.0, Imgproc.INTER_AREA)
+                val num = Mat()
+                smallChannel.convertTo(num, CvType.CV_32F)
+                Core.multiply(num, weight, num)
+                Imgproc.GaussianBlur(num, num, Size(0.0, 0.0), sigma)
+                Core.divide(num, greyF, num)
+                // Where there is hardly any paper to measure, the channel is taken to share the grey light.
+                num.setTo(Scalar(1.0), thin)
+                Core.multiply(num, lightF, num)
+                val small8 = Mat()
+                num.convertTo(small8, CvType.CV_8U)
+                val full = Mat()
+                Imgproc.resize(small8, full, channel.size(), 0.0, 0.0, Imgproc.INTER_LINEAR)
+                val flat = flatten(channel, full)
+                listOf(smallChannel, num, small8, full).forEach { it.release() }
+                flat
+            }
+            listOf(paper, limit, weight, greyF, coverage, thin, lightF).forEach { it.release() }
             val merged = Mat()
             Core.merge(flats, merged)
             flats.forEach { it.release() }
             return merged
         } finally {
             channels.forEach { it.release() }
-            lights.forEach { it?.release() }
+            grey.release()
+            greyLight?.release()
         }
+    }
+
+    /**
+     * The colour of every pixel averaged a little with its neighbours, the brightness untouched: the
+     * speckle a phone sensor puts in the colour channels (worst in blue) would otherwise show as
+     * yellow and blue dots on white paper. Stamps and highlights are areas, and keep their colour;
+     * only single-pixel colour is smoothed.
+     */
+    private fun smoothColour(rgb: Mat): Mat {
+        val ycc = Mat()
+        Imgproc.cvtColor(rgb, ycc, Imgproc.COLOR_RGB2YCrCb)
+        val parts = mutableListOf<Mat>()
+        Core.split(ycc, parts)
+        val sigma = maxOf(1.0, maxOf(rgb.cols(), rgb.rows()) / CHROMA_DIVISOR)
+        Imgproc.GaussianBlur(parts[1], parts[1], Size(0.0, 0.0), sigma)
+        Imgproc.GaussianBlur(parts[2], parts[2], Size(0.0, 0.0), sigma)
+        Core.merge(parts, ycc)
+        val out = Mat()
+        Imgproc.cvtColor(ycc, out, Imgproc.COLOR_YCrCb2RGB)
+        parts.forEach { it.release() }
+        ycc.release()
+        return out
     }
 
     private fun greyOf(image: Mat): Mat = Mat().also { Imgproc.cvtColor(image, it, Imgproc.COLOR_RGB2GRAY) }
@@ -244,8 +332,19 @@ internal object PageStyles {
         val thresholdFull = Mat()
         Imgproc.resize(threshold8, thresholdFull, grey.size(), 0.0, 0.0, Imgproc.INTER_LINEAR)
 
+        // Not a hard cut: the distance from the threshold, stretched, so a pixel well off it is black or
+        // white and one near it is grey. A hard cut made every edge of every letter a staircase of whole
+        // pixels. The stretch is steep (full black and white within 16 grey levels), so the page is
+        // still black ink on white paper and not a grey scan.
+        val grey16 = Mat()
+        val threshold16 = Mat()
+        grey.convertTo(grey16, CvType.CV_16S)
+        thresholdFull.convertTo(threshold16, CvType.CV_16S)
+        Core.subtract(grey16, threshold16, grey16)
         val out = Mat()
-        Core.compare(grey, thresholdFull, out, Core.CMP_GT)
+        grey16.convertTo(out, CvType.CV_8U, EDGE_GAIN, MIDDLE_GREY)
+        grey16.release()
+        threshold16.release()
         val black = Mat()
         val white = Mat()
         Core.compare(grey, Scalar(BLACK_FLOOR.toDouble()), black, Core.CMP_LT)
@@ -313,14 +412,21 @@ internal object PageStyles {
     private const val STATS_EDGE = 256
     private const val STATS_MARGIN = 0.03
     private const val HIST_BINS = 256
+    private const val NOISE_MEDIAN = 5
     private const val SMOOTH_DIVISOR = 48.0
     private const val FILL_DIVISOR = 6.0
+    private const val TINT_DIVISOR = 8.0
+    private const val CHROMA_DIVISOR = 900.0
+    private const val PAPER_SHARE = 0.88
+    private const val MIN_COVERAGE = 0.02
     private const val MIN_WEIGHT = 1e-3
     private const val PAPER_PERCENTILE = 0.90f
     private const val DARK_PAGE = 110
     private const val DARK_FRACTION = 0.4
     private const val GREY_GAMMA = 1.4f
     private const val COLOUR_GAMMA = 1.1f
+    private const val EDGE_GAIN = 8.0
+    private const val MIDDLE_GREY = 128.0
     private const val SAUVOLA_K = 0.15
     private const val SAUVOLA_R = 128.0
     private const val BLACK_FLOOR = 90
