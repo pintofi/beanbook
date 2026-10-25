@@ -183,4 +183,33 @@ class ScannerScreenTest {
         compose.onNodeWithContentDescription("Capture pages in Greyscale").assertIsSelected()
         compose.onNodeWithContentDescription("Capture pages in the style the scanner chooses").assertIsNotSelected()
     }
+
+    @Test fun theLightGoesOutWhenAPageIsOpenedForReview() {
+        val session = Session(CapturedPages().add(page("a.jpg")))
+        scanner(session)
+        compose.onNodeWithContentDescription("Turn the light on").performClick()
+        compose.onNodeWithContentDescription("Turn the light off").assertIsDisplayed()
+
+        compose.onNodeWithContentDescription("Review the 1 pages").performClick()
+        compose.onNodeWithContentDescription("Back to the camera").performClick()
+        // Back at the camera, the light is off and has to be asked for again.
+        compose.onNodeWithContentDescription("Turn the light on").assertIsDisplayed()
+    }
+
+    @Test fun croppingToThePageCanBeTurnedOff() {
+        scanner(Session(CapturedPages()))
+        compose.onNodeWithContentDescription("Crop to the page automatically is on. Tap to keep the whole photo")
+            .performClick()
+        compose.onNodeWithContentDescription("Keep the whole photo is on. Tap to crop to the page automatically")
+            .assertIsDisplayed()
+    }
+
+    @Test fun thePhotoSizeCanBeChosen() {
+        scanner(Session(CapturedPages()))
+        compose.onNodeWithContentDescription("Photo size: Large. Tap to change").performClick()
+        compose.onNodeWithText("Medium", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Small", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Medium", substring = true).performClick()
+        compose.onNodeWithContentDescription("Photo size: Medium. Tap to change").assertIsDisplayed()
+    }
 }

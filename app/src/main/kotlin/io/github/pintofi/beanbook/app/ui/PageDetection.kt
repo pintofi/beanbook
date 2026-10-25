@@ -19,13 +19,14 @@ internal fun detectPageIn(file: File): CropQuad? = inspectPage(file, chooseStyle
 
 /**
  * The page in the photograph and the style the scanner would give it (a colour scan when the page has
- * real colour, grey when it does not), from one decode. [chooseStyle] false skips the style.
+ * real colour, grey when it does not), from one decode. [chooseStyle] false skips the style; [detect]
+ * false skips the page, for a photograph that is kept whole.
  */
-internal fun inspectPage(file: File, chooseStyle: Boolean = true): PageInspection {
+internal fun inspectPage(file: File, chooseStyle: Boolean = true, detect: Boolean = true): PageInspection {
     val sampled = io.github.pintofi.beanbook.app.documents.Photos.decodeUpright(file, maxEdge = DETECT_EDGE)
         ?: return PageInspection(null, ScanStyle.COLOUR)
     try {
-        val found = Scanner.detect(sampled)
+        val found = if (detect) Scanner.detect(sampled) else null
         val style = if (chooseStyle) Scanner.chooseStyle(sampled, found) else ScanStyle.COLOUR
         return PageInspection(found?.let { scaledToFull(it, sampled, file) }, style)
     } finally {

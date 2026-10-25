@@ -236,4 +236,57 @@ class PageStylesTest {
             assertTrue("$style differs by $mean grey levels between sizes", mean <= 6.0)
         }
     }
+
+    // --- the paper stays neutral everywhere, and black and white has smooth edges --------------------
+
+    /** A page lit warm on the left and neutral on the right, with sensor-like noise that is worst in blue. */
+    private fun unevenlyLitPage(): Bitmap {
+        val source = page { textRows(it, rows = 17, top = 140f) }
+        val random = Random(9)
+        val out = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        for (y in 0 until height) for (x in 0 until width) {
+            val p = source.getPixel(x, y)
+            val warmth = 1f - x / width.toFloat()           // 1 on the left, 0 on the right
+            val r = Color.red(p) * (1f - 0.02f * warmth)
+            val g = Color.green(p) * (1f - 0.08f * warmth)
+            val b = Color.blue(p) * (1f - 0.22f * warmth) + random.nextGaussian().toFloat() * 7f
+            out.setPixel(x, y, Color.rgb(r.toInt().coerceIn(0, 255), g.toInt().coerceIn(0, 255), b.toInt().coerceIn(0, 255)))
+        }
+        return out
+    }
+
+    @Test fun documentPaperHasNoColourCastAnywhereOnAnUnevenlyLitNoisyPage() {
+        val out = styled(unevenlyLitPage(), ScanStyle.DOCUMENT)
+        var worst = 0
+        var where = ""
+        // Margins and the blank right of the text, which is paper whatever the light.
+        for (x in listOf(10, 400, 800, 1000, 1150)) for (y in listOf(10, 600, 1000, 1400, 1650)) {
+            if (x in 60..760 && y in 100..1350) continue
+            // A 40 x 40 block, not one pixel: the cast is what the eye sees of an area.
+            var r = 0; var b = 0
+            for (j in y until y + 40) for (i in x until x + 40) { val q = out.getPixel(i, j); r += Color.red(q); b += Color.blue(q) }
+            val cast = abs(r - b) / 1600
+            if (cast > worst) { worst = cast; where = "($x, $y)" }
+        }
+        Log.i("PageStyles", "worst paper cast $worst at $where")
+        assertTrue("paper has a colour cast of $worst at $where", worst <= 5)
+    }
+
+    @Test fun blackAndWhiteEdgesAreSmoothNotJagged() {
+        val big = Paint(ink).apply { textSize = 120f; color = Color.BLACK }
+        val source = page { it.drawText("B8", 100f, 400f, big) }
+        val bw = styled(source, ScanStyle.BLACK_AND_WHITE)
+        // Along a curved edge a hard threshold has only black and white; smooth edges have grey between.
+        var grey = 0
+        var edge = 0
+        for (y in 250 until 420) for (x in 100 until 330) {
+            val v = Color.red(bw.getPixel(x, y))
+            if (v in 40..215) grey++
+            if (v < 215) edge++
+        }
+        Log.i("PageStyles", "black and white edge pixels $edge, of which grey $grey")
+        assertTrue("edges have no grey ($grey of $edge)", grey >= 60)
+        // Still black ink and white paper.
+        assertTrue(grey(bw, 1000, 20, 100, 40) >= 250)
+    }
 }

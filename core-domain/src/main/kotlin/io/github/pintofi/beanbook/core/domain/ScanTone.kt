@@ -46,6 +46,9 @@ object ToneCurve {
     /** The black point never sits above this, so a nearly blank receipt does not turn paper into ink. */
     const val MAX_BLACK = 128
 
+    /** How far under the paper peak white is set. */
+    const val WHITE_MARGIN = 4
+
     /** The paper peak is looked for between here and white. */
     const val PAPER_FROM = 128
 
@@ -53,7 +56,10 @@ object ToneCurve {
     fun lut(hist: IntArray, gamma: Float): IntArray {
         require(hist.size == LEVELS) { "a histogram has $LEVELS bins" }
         val black = minOf(Percentiles.at(hist, 0.005f), MAX_BLACK)
-        val white = maxOf(Percentiles.mode(hist, PAPER_FROM, LEVELS - 1), Percentiles.at(hist, 0.60f))
+        // A little under the paper's peak: paper grain on both sides of the peak then reaches white together
+        // in every channel, and the noisier channel does not leave a tint on the paper.
+        val peak = maxOf(Percentiles.mode(hist, PAPER_FROM, LEVELS - 1), Percentiles.at(hist, 0.60f))
+        val white = (peak - WHITE_MARGIN).coerceAtLeast(black + 1)
         if (white - black < MIN_SPREAD) {
             // Blank or very low contrast: a linear lift of [black, white] to [black, 255], never a stretch of noise.
             return IntArray(LEVELS) { v ->

@@ -31,6 +31,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.PhotoSizeSelectLarge
+import androidx.compose.material.icons.filled.CropFree
+import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.HighlightOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.MotionPhotosAuto
@@ -150,7 +153,13 @@ fun ScannerScreen(
     val focus = androidx.compose.ui.platform.LocalFocusManager.current
     LaunchedEffect(Unit) { focus.clearFocus(force = true) }
 
-    val capture = remember {
+    // How big the photographs are; the camera is bound again when it changes.
+    var photoSize by rememberSaveable { mutableStateOf(PhotoSize.LARGE) }
+    var photoMenu by remember { mutableStateOf(false) }
+    // Whether a shot is cropped to the page the scanner found. Off keeps the whole photograph, for a
+    // page the detector gets wrong or a photograph that is not a page.
+    var autoCrop by rememberSaveable { mutableStateOf(true) }
+    val capture = remember(photoSize) {
         ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
             // 4:3, which is the sensor's own shape on almost every phone. Without it CameraX
@@ -165,6 +174,7 @@ fun ScannerScreen(
                         androidx.camera.core.resolutionselector.AspectRatioStrategy
                             .RATIO_4_3_FALLBACK_AUTO_STRATEGY,
                     )
+                    .apply { photoSize.strategy()?.let { setResolutionStrategy(it) } }
                     .build(),
             )
             .build()
@@ -179,7 +189,8 @@ fun ScannerScreen(
     var notice by remember { mutableStateOf<String?>(null) }
 
     /** The page in a photograph, and its style unless the person has already chosen one. */
-    fun inspect(file: File): PageInspection = inspectPage(file, chooseStyle = chosenStyle == null)
+    fun inspect(file: File): PageInspection =
+        inspectPage(file, chooseStyle = chosenStyle == null, detect = autoCrop)
 
     /** Hands a new photograph on: as a page, or in place of the one being retaken. */
     fun deliver(file: File, inspected: PageInspection) {
@@ -219,6 +230,7 @@ fun ScannerScreen(
     var flash by rememberSaveable { mutableIntStateOf(ImageCapture.FLASH_MODE_OFF) }
     var zoom by remember { mutableStateOf(0f) }
     var autoCapture by rememberSaveable { mutableStateOf(true) }
+
     var aimed by remember { mutableStateOf(false) }
     // When the shutter fires by itself, and how far through the hold the page is.
     val shutter = remember { AutoShutter() }
@@ -301,6 +313,9 @@ fun ScannerScreen(
         if (previewing != null) {
             shutter.shot(null)
             holdProgress = 0f
+            // The lamp is for taking a photograph. It does not stay lit behind the review.
+            torch = false
+            runCatching { camera?.cameraControl?.enableTorch(false) }
         }
     }
 
@@ -359,7 +374,7 @@ fun ScannerScreen(
 
     // Bound once, to the back camera: pages are photographed facing away from you, and
     // the front camera switch it once offered did nothing a scanner needs.
-    LaunchedEffect(Unit) {
+    LaunchedEffect(capture) {
         val cameraProvider = ProcessCameraProvider.awaitInstance(context)
         provider = cameraProvider
         val preview = androidx.camera.core.Preview.Builder()
@@ -674,6 +689,46 @@ fun ScannerScreen(
                     contentDescription = null,
                     tint = if (aimed) Color(0xFF80D5D4) else Color.White,
                 )
+                }
+                IconButton(
+                    onClick = { autoCrop = !autoCrop },
+                    modifier = Modifier.semantics {
+                        contentDescription = if (autoCrop) {
+                            "Crop to the page automatically is on. Tap to keep the whole photo"
+                        } else {
+                            "Keep the whole photo is on. Tap to crop to the page automatically"
+                        }
+                    },
+                ) {
+                    Icon(
+                        if (autoCrop) Icons.Filled.Crop else Icons.Filled.CropFree,
+                        contentDescription = null,
+                        tint = if (autoCrop) Color(0xFF80D5D4) else Color.White,
+                    )
+                }
+                Box {
+                    IconButton(
+                        onClick = { photoMenu = true },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Photo size: ${photoSize.label}. Tap to change"
+                        },
+                    ) { Icon(Icons.Filled.PhotoSizeSelectLarge, contentDescription = null, tint = Color.White) }
+                    androidx.compose.material3.DropdownMenu(
+                        expanded = photoMenu,
+                        onDismissRequest = { photoMenu = false },
+                    ) {
+                        PhotoSize.entries.forEach { size ->
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(size.label + if (size == photoSize) " (selected)" else "")
+                                        Text(size.detail, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                },
+                                onClick = { photoSize = size; photoMenu = false },
+                            )
+                        }
+                    }
                 }
             }
 
