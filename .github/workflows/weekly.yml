@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: '17 3 * * 1'
   workflow_dispatch:
+    inputs:
+      update-screenshots:
+        description: 'Draw the screenshots again and attach them, instead of comparing (then commit them)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -140,11 +145,9 @@ jobs:
           profile: pixel_6
           ram-size: 4096M
           disable-animations: true
-          # Three tests are run by hand: one drives the system document picker, two need a file
-          # pushed to the device first, and each fails on purpose when its set-up is missing.
-          script: >-
-            ./gradlew :app:connectedExpertDebugAndroidTest -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
-            -Pandroid.testInstrumentationRunnerArguments.notClass=io.github.pintofi.beanbook.app.SafExportTest,io.github.pintofi.beanbook.app.ScriptWithMissingModuleTest,io.github.pintofi.beanbook.app.ZakatExtensionTest
+          # See tools/weekly-instrumentation.sh: it runs the suite, then copies the screenshots
+          # off the emulator, which is gone by the time the next step runs.
+          script: tools/weekly-instrumentation.sh "${{ inputs.update-screenshots || 'false' }}"
 
       - name: Summary
         # Read from the result files, so the numbers are what Gradle recorded. Runs even when
@@ -175,6 +178,7 @@ jobs:
         with:
           name: instrumentation-api-${{ matrix.api }}
           path: |
+            screenshots
             app/build/reports/androidTests
             app/build/outputs/androidTest-results
           retention-days: 14
