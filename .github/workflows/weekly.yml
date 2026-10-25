@@ -37,16 +37,16 @@ jobs:
 
       - name: Build twice and compare
         # F-Droid compares its own build of each wheel with ours, so a wheel that differs from
-        # one run to the next would fail its check. Each build has its own work folder, so the
-        # second does not reuse the first's files. The two folders are the same length: a path
-        # is written into one wheel's SBOM, and names of different lengths looked like a
-        # difference in the build. Each wheel is compared entry by entry, so a failure names
-        # what differs.
+        # one run to the next would fail its check. Each wheel is compared entry by entry, so a
+        # failure names what differs.
         run: |
           set -eu
-          mkdir "$RUNNER_TEMP/a" "$RUNNER_TEMP/b"
-          tools/build-wheels.sh --out "$RUNNER_TEMP/a/out" --work "$RUNNER_TEMP/a/work"
-          tools/build-wheels.sh --out "$RUNNER_TEMP/b/out" --work "$RUNNER_TEMP/b/work"
+          # The default work folder, /tmp/bca-wheels, is emptied between the two builds: the
+          # build records its own path in a wheel's SBOM, so both must run at the same one, as
+          # every real build does.
+          tools/build-wheels.sh --out "$RUNNER_TEMP/a/out"
+          rm -rf /tmp/bca-wheels
+          tools/build-wheels.sh --out "$RUNNER_TEMP/b/out"
           status=0
           for wheel in "$RUNNER_TEMP"/a/out/*.whl; do
             name="$(basename "$wheel")"
