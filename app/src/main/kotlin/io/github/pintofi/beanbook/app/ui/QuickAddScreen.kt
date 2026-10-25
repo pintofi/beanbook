@@ -637,9 +637,9 @@ fun QuickAddScreen(
             // last posting, and reaching them meant scrolling past every amount. The row stays
             // where it is as fields open beneath it, so the next tap lands where the last did.
             androidx.compose.foundation.layout.FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(Measure.tight),
+                horizontalArrangement = Arrangement.spacedBy(Measure.snug),
                 // A gap between lines as well, so a wrapped row does not sit against the one above.
-                verticalArrangement = Arrangement.spacedBy(Measure.tight),
+                verticalArrangement = Arrangement.spacedBy(Measure.snug),
             ) {
                 SmallAction(
                     text = if (tagRows.isEmpty()) "Tag" else "Another tag",
@@ -795,8 +795,8 @@ fun QuickAddScreen(
         // Secondary actions stay with the form; Save is on the bar below it.
         androidx.compose.foundation.layout.FlowRow(
             modifier = Modifier.padding(top = Measure.snug),
-            horizontalArrangement = Arrangement.spacedBy(Measure.tight),
-            verticalArrangement = Arrangement.spacedBy(Measure.tight),
+            horizontalArrangement = Arrangement.spacedBy(Measure.snug),
+            verticalArrangement = Arrangement.spacedBy(Measure.snug),
         ) {
             OutlinedButton(
                 onClick = { namingTemplate = true },
@@ -948,25 +948,27 @@ private fun FormGap() {
 }
 
 /**
- * A small action that adds something to the form: an outlined button with a plus, so it reads as
- * something to press without competing with Save, which is filled. Several sit on one line, so the
- * row that holds them spaces its lines as well as its items. The target is 48dp tall.
+ * An action that adds something to the form: Material's own outlined button with a plus, so it reads
+ * as something to press without competing with Save, which is filled. It is the same button as on
+ * every other page, in the standard size and with the standard icon padding; several sit on one line,
+ * so the row that holds them spaces its lines as well as its items.
  */
 @Composable
 private fun SmallAction(text: String, describe: String, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .semantics { contentDescription = describe },
+        contentPadding = androidx.compose.material3.ButtonDefaults.ButtonWithIconContentPadding,
+        modifier = Modifier.semantics { contentDescription = describe },
     ) {
         Icon(
             androidx.compose.material.icons.Icons.Filled.Add,
             contentDescription = null,
-            modifier = Modifier.padding(end = 4.dp).size(18.dp),
+            modifier = Modifier.size(androidx.compose.material3.ButtonDefaults.IconSize),
         )
-        Text(text, style = MaterialTheme.typography.labelLarge)
+        androidx.compose.foundation.layout.Spacer(
+            Modifier.size(androidx.compose.material3.ButtonDefaults.IconSpacing),
+        )
+        Text(text)
     }
 }
 
@@ -1111,7 +1113,7 @@ private fun PostingEditor(
             showAddButton = false,
         )
         androidx.compose.foundation.layout.FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(Measure.tight),
+            horizontalArrangement = Arrangement.spacedBy(Measure.snug),
         ) {
             if (!row.showDetails) {
                 SmallAction(
