@@ -431,20 +431,22 @@ and the status of every item.
 - [x] **1.0**: local Beancount and Fava on the phone, entry forms, documents and scanning, backup,
       mirror, remote Fava, plugins and extensions, Share on Wi-Fi
 - [x] **1.0.1**: one APK per processor type, Trash for deleted projects, and fixes from the repository review
-- [ ] **1.0.2 Trust and polish** (now)
+- [x] **1.0.2 Trust and polish**: the scanner reworked, account details, encrypted scheduled backups, a document trash, and many fixes
   - [x] Review every file in the repository: 15 of 15 areas done ([#16](https://github.com/pintofi/beanbook/issues/16))
   - [x] A guided first run and an Accounts page, merged for 1.0.2 ([#128](https://github.com/pintofi/beanbook/issues/128), [#130](https://github.com/pintofi/beanbook/issues/130))
   - [x] Fixes from daily use: filter, widgets, amounts, documents, buttons, merged for 1.0.2 ([#138](https://github.com/pintofi/beanbook/pull/138), [#141](https://github.com/pintofi/beanbook/pull/141))
   - [x] Safety fixes from a second look: remote retry, backups, PDF pages, plugin list, import, templates, merged for 1.0.2 ([#156](https://github.com/pintofi/beanbook/issues/156), [#157](https://github.com/pintofi/beanbook/issues/157), [#158](https://github.com/pintofi/beanbook/issues/158))
   - [x] The document scanner reworked: auto-capture, review screen, styles, crop, detection, page size, merged for 1.0.2 ([#179](https://github.com/pintofi/beanbook/issues/179) to [#184](https://github.com/pintofi/beanbook/issues/184))
   - [x] A smaller OpenCV build, measured and deferred for its small gain ([#185](https://github.com/pintofi/beanbook/issues/185))
-  - [ ] The rest of the 1.0.2 bugs and tidy-ups, in the [milestone](https://github.com/pintofi/beanbook/milestone/1)
+  - [x] The rest of the 1.0.2 bugs and tidy-ups ([milestone](https://github.com/pintofi/beanbook/milestone/1))
   - [x] Fava's own editor stays Fava's: it saves as Fava does, and the limitation is documented ([#17](https://github.com/pintofi/beanbook/issues/17))
+- [ ] **Trust and polish, continued** (now)
   - [ ] TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18))
   - [ ] Instrumentation tests in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19))
   - [ ] Screenshot tests, light and dark, 200% text ([#20](https://github.com/pintofi/beanbook/issues/20))
   - [ ] User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21))
   - [ ] Reproducible wheels and APK checked in CI ([#22](https://github.com/pintofi/beanbook/issues/22))
+  - [ ] Hand-passed parameters grouped into state holders ([#67](https://github.com/pintofi/beanbook/issues/67))
 - [ ] **1.0.3 Capture**: add an entry from shared text, photos and PDFs ([#23](https://github.com/pintofi/beanbook/issues/23)); a Quick Settings tile and shortcut ([#24](https://github.com/pintofi/beanbook/issues/24)); templates and recurring reminders ([#25](https://github.com/pintofi/beanbook/issues/25))
 - [ ] **1.0.4 Reconcile and import**: a reconcile screen ([#26](https://github.com/pintofi/beanbook/issues/26)); bank statements on the phone ([#27](https://github.com/pintofi/beanbook/issues/27)); Syncthing conflict files ([#28](https://github.com/pintofi/beanbook/issues/28))
 - [ ] **1.0.5 Reach**: a send queue for a remote Fava ([#29](https://github.com/pintofi/beanbook/issues/29)); price updates on request ([#30](https://github.com/pintofi/beanbook/issues/30)); translations ([#31](https://github.com/pintofi/beanbook/issues/31)); Git sync that never merges for you ([#154](https://github.com/pintofi/beanbook/issues/154))

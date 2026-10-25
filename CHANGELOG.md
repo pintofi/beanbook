@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-10-25
+
 ### Added
 - Two more scanner controls. Crop to the page automatically can be turned off (the button next to automatic shooting), so a shot is kept whole, and Photo size lists the 4:3 picture sizes your phone's camera reports, largest first, with its megapixels and pixels; the default is the camera's largest ordinary picture, as before. ([#180])
 - Scanned pages are flattened properly. The old Document style left a shadowed half of a page grey; the lighting is now estimated and divided out per colour, so the paper goes white and the ink dark in the shadow too, while a stamp or a highlighter keeps its colour. Greyscale is flattened and darkened for faded thermal print, and a new Black and white style gives black ink on white paper. The camera offers Automatic, Colour, Document, Greyscale and Black and white, with Automatic chosen: it gives a page a colour scan when it has real colour and a grey one when it does not (a lamp's yellow is not colour). The review says "Chosen automatically", and cropping such a page chooses again until you choose a style yourself. ([#181])
@@ -147,7 +149,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A refused save names the errors it would add; accounts the ledger has not opened are refused.
 - Widgets keep each project's figures.
 
-[Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/pintofi/beanbook/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/pintofi/beanbook/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/pintofi/beanbook/releases/tag/v1.0.0
 [#47]: https://github.com/pintofi/beanbook/issues/47
