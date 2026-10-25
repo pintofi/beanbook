@@ -33,23 +33,26 @@ jobs:
       - name: Build twice and compare
         # F-Droid compares its own build of each wheel with ours, so a wheel that differs from
         # one run to the next would fail its check. Each build has its own work folder, so the
-        # second does not reuse the first's files, and each wheel is compared entry by entry, so
-        # a failure names what differs.
+        # second does not reuse the first's files. The two folders are the same length: a path
+        # is written into one wheel's SBOM, and names of different lengths looked like a
+        # difference in the build. Each wheel is compared entry by entry, so a failure names
+        # what differs.
         run: |
           set -eu
-          tools/build-wheels.sh --out "$RUNNER_TEMP/first" --work "$RUNNER_TEMP/work-first"
-          tools/build-wheels.sh --out "$RUNNER_TEMP/second" --work "$RUNNER_TEMP/work-second"
+          mkdir "$RUNNER_TEMP/a" "$RUNNER_TEMP/b"
+          tools/build-wheels.sh --out "$RUNNER_TEMP/a/out" --work "$RUNNER_TEMP/a/work"
+          tools/build-wheels.sh --out "$RUNNER_TEMP/b/out" --work "$RUNNER_TEMP/b/work"
           status=0
-          for wheel in "$RUNNER_TEMP"/first/*.whl; do
+          for wheel in "$RUNNER_TEMP"/a/out/*.whl; do
             name="$(basename "$wheel")"
-            if [ ! -f "$RUNNER_TEMP/second/$name" ]; then
+            if [ ! -f "$RUNNER_TEMP/b/out/$name" ]; then
               echo "::error::$name was built the first time and not the second"
               status=1
               continue
             fi
-            python3 tools/check-reproducible.py "$wheel" "$RUNNER_TEMP/second/$name" || status=1
+            python3 tools/check-reproducible.py "$wheel" "$RUNNER_TEMP/b/out/$name" || status=1
           done
-          [ "$(ls "$RUNNER_TEMP"/first | wc -l)" = "$(ls "$RUNNER_TEMP"/second | wc -l)" ] || {
+          [ "$(ls "$RUNNER_TEMP"/a/out | wc -l)" = "$(ls "$RUNNER_TEMP"/b/out | wc -l)" ] || {
             echo "::error::the two builds made different sets of wheels"
             status=1
           }
@@ -132,8 +135,16 @@ jobs:
           api-level: ${{ matrix.api }}
           arch: x86_64
           target: google_apis
+          # A phone-sized screen. The default profile is 320 by 480, too short for the screens
+          # the layout and pixel tests draw, which then fail for a reason that is not a bug.
+          profile: pixel_6
+          ram-size: 4096M
           disable-animations: true
-          script: ./gradlew :app:connectedExpertDebugAndroidTest -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
+          # Three tests are run by hand: one drives the system document picker, two need a file
+          # pushed to the device first, and each fails on purpose when its set-up is missing.
+          script: >-
+            ./gradlew :app:connectedExpertDebugAndroidTest -Pbeancount.wheelDir="$BCA_WHEEL_DIR"
+            -Pandroid.testInstrumentationRunnerArguments.notClass=io.github.pintofi.beanbook.app.SafExportTest,io.github.pintofi.beanbook.app.ScriptWithMissingModuleTest,io.github.pintofi.beanbook.app.ZakatExtensionTest
 
       - name: Summary
         # Read from the result files, so the numbers are what Gradle recorded. Runs even when
