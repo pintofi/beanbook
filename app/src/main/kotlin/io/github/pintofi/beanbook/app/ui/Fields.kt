@@ -100,7 +100,9 @@ fun DateField(
             },
             dismissButton = { OutlinedButton(onClick = { picking = false }) { Text("Cancel") } },
         ) {
-            DatePicker(state = state)
+            // No pencil: the field the picker belongs to is already a text box, and the toggle
+            // between calendar and text input resized the whole dialog on every press.
+            DatePicker(state = state, showModeToggle = false)
         }
     }
 }

@@ -36,12 +36,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material3.Icon
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import io.github.pintofi.beanbook.core.data.DocumentStore
 import io.github.pintofi.beanbook.core.domain.BeancountText
 import io.github.pintofi.beanbook.core.domain.DocumentRow
 import io.github.pintofi.beanbook.core.domain.DocumentStatus
@@ -104,6 +107,8 @@ fun DocumentsScreen(
      */
     mode: DocumentsMode? = null,
     onModeChange: (DocumentsMode) -> Unit = {},
+    /** Documents deleted in the last month, to put back or delete for good. */
+    trash: DocumentTrash = DocumentTrash(),
 ) {
     var account by remember {
         mutableStateOf(
@@ -438,6 +443,8 @@ fun DocumentsScreen(
                 }
             }
         }
+
+        if (shownMode == DocumentsMode.ORGANIZE) DocumentTrashSection(trash)
     }
 
     editingPages?.let { index ->
@@ -612,4 +619,87 @@ private fun inAccountFolder(path: String): Boolean {
     return parts.size > 2 &&
         parts[0] == io.github.pintofi.beanbook.core.domain.DocumentName.ROOT &&
         parts[1] in setOf("Assets", "Liabilities", "Equity", "Income", "Expenses")
+}
+
+/** The documents deleted from this project, and what can be done with them. */
+class DocumentTrash(
+    val items: List<DocumentStore.TrashedFile> = emptyList(),
+    val onRestore: (DocumentStore.Trashed) -> Unit = {},
+    val onDeleteForever: (DocumentStore.Trashed) -> Unit = {},
+    val onEmpty: () -> Unit = {},
+)
+
+/**
+ * Deleted documents are kept for 30 days. Tapping one puts it back where it was; the bin button
+ * deletes it for good. Draws nothing when the trash is empty.
+ */
+@Composable
+internal fun DocumentTrashSection(trash: DocumentTrash) {
+    var pendingForever by remember {
+        mutableStateOf<DocumentStore.TrashedFile?>(null)
+    }
+    var confirmEmpty by remember { mutableStateOf(false) }
+    if (trash.items.isEmpty()) return
+    FolioHeading("Trash")
+    FolioGroup {
+        trash.items.forEach { entry ->
+            val name = entry.trashed.relativePath.substringAfterLast('/')
+            val deleted = java.time.Instant.ofEpochMilli(entry.trashedAt)
+                .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            item {
+                FolioRow(
+                    title = name,
+                    detail = "Deleted $deleted · ${entry.bytes / 1000}\u00a0KB",
+                    icon = Icons.Outlined.Description,
+                    onClick = { trash.onRestore(entry.trashed) },
+                    describe = "Restore ${entry.trashed.relativePath}",
+                ) {
+                    androidx.compose.material3.IconButton(
+                        onClick = { pendingForever = entry },
+                        modifier = Modifier.semantics { contentDescription = "Delete $name for good" },
+                    ) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            }
+        }
+        item {
+            FolioRow(
+                title = "Empty the trash",
+                detail = "${trash.items.size} document${if (trash.items.size == 1) "" else "s"}, deleted for good",
+                icon = Icons.Outlined.Delete,
+                onClick = { confirmEmpty = true },
+            )
+        }
+    }
+    FolioNote("Tap a deleted document to put it back where it was. Anything in here is deleted for good after 30 days.")
+
+    pendingForever?.let { item ->
+        AlertDialog(
+            onDismissRequest = { pendingForever = null },
+            title = { Text("Delete this document for good?") },
+            text = { Text("${item.trashed.relativePath} will be deleted and cannot be brought back.") },
+            confirmButton = {
+                Button(onClick = { trash.onDeleteForever(item.trashed); pendingForever = null }) {
+                    Text("Delete for good")
+                }
+            },
+            dismissButton = { OutlinedButton(onClick = { pendingForever = null }) { Text("Keep it") } },
+        )
+    }
+    if (confirmEmpty) {
+        AlertDialog(
+            onDismissRequest = { confirmEmpty = false },
+            title = { Text("Empty the trash?") },
+            text = { Text("This deletes ${trash.items.size} document(s) for good. It cannot be undone.") },
+            confirmButton = {
+                Button(onClick = { trash.onEmpty(); confirmEmpty = false }) { Text("Empty the trash") }
+            },
+            dismissButton = { OutlinedButton(onClick = { confirmEmpty = false }) { Text("Keep them") } },
+        )
+    }
 }

@@ -44,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The setup checklist has rounder checkboxes with room before each label, its currency field takes the whole line, and the notification button reads Granted once permission is given. ([#141], fixes [#135])
 
 ### Fixed
+- Saving an entry with a scanned document no longer needs a second Save. The first time, the app asks to add one `include` line to your main file; pressing Add the line now carries on and saves the entry. ([#234])
+- Deleted documents can be found again. The Organize tab on Documents lists what was deleted in the last 30 days, with a button to put each one back or delete it for good, and Empty the trash. ([#235])
+- The date picker no longer stutters. Its pencil button, which switched to a second text box and resized the dialog each time, is gone; the date field it opens from is already a text box. ([#236])
 - The scanner's light goes out when you open a page for review, instead of staying lit behind it. ([#180])
 - Black and white no longer turns every edge into a staircase of whole pixels: edges are smooth, with grey only where ink meets paper. ([#181])
 - Document no longer leaves yellow patches on the paper. The brightness of the light is measured once, on the grey page, the colour of the light is measured over the paper and averaged wide, and single-pixel colour speckle is smoothed away, so sensor noise in the blue channel cannot tint the paper. ([#181])
@@ -226,3 +229,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#210]: https://github.com/pintofi/beanbook/issues/210
 [#229]: https://github.com/pintofi/beanbook/issues/229
 [#230]: https://github.com/pintofi/beanbook/issues/230
+[#234]: https://github.com/pintofi/beanbook/issues/234
+[#235]: https://github.com/pintofi/beanbook/issues/235
+[#236]: https://github.com/pintofi/beanbook/issues/236

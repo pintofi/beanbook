@@ -603,11 +603,10 @@ class MainActivity : ComponentActivity() {
                         documentMessage = documentMessage,
                         onSaveDocument = { account, label -> attachDocument(app, activeId!!, account, label) },
                         onDiscardPages = { app.documentCapture.reset(discardCaptures = true) },
-                        onRefileDocument = { path, account, from ->
-                            refileDocument(app, activeId!!, path, account, from)
-                        },
+                        onRefileDocument = { path, to, from -> refileDocument(app, activeId!!, path, to, from) },
                         onUnlinkDocument = { path, from -> unlinkDocument(app, activeId!!, path, from) },
                         onDeleteDocumentFile = { path -> deleteDocumentFile(app, activeId!!, path) },
+                        documentTrash = documentTrashUi(app, activeId),
                         onShareDocument = { path -> shareDocument(app, activeId!!, path) },
                         diagnostics = diagnosticsUi(),
                         fileForDocument = { path -> documentFile(app, activeId, path) },

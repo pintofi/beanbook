@@ -368,8 +368,45 @@ class DocumentCapture(
             } else {
                 "Could not delete $relativePath: it is not in this project."
             }
+            refreshTrash(projectId)
             onDone(trashed)
         }
+    }
+
+    private val _trash = MutableStateFlow<List<DocumentStore.TrashedFile>>(emptyList())
+
+    /** The documents deleted from the open project in the last month, newest first. */
+    val trash: StateFlow<List<DocumentStore.TrashedFile>> = _trash.asStateFlow()
+
+    /** Reads the trash for [projectId] again. */
+    suspend fun refreshTrash(projectId: String) {
+        _trash.value = withContext(Dispatchers.IO) { store.trashedFiles(projectId) }
+    }
+
+    /** Puts a document from the trash back. Says so when it cannot, rather than failing quietly. */
+    suspend fun restoreFromTrash(trashed: DocumentStore.Trashed): Boolean {
+        val back = restoreFile(trashed)
+        _message.value = if (back) {
+            "Restored ${trashed.relativePath}."
+        } else {
+            "Could not restore ${trashed.relativePath}: a file with that name is already there."
+        }
+        refreshTrash(trashed.projectId)
+        return back
+    }
+
+    /** Deletes one trashed document for good. */
+    suspend fun deleteFromTrash(trashed: DocumentStore.Trashed) {
+        withContext(Dispatchers.IO) { store.deleteForever(trashed) }
+        _message.value = "Deleted ${trashed.relativePath} for good."
+        refreshTrash(trashed.projectId)
+    }
+
+    /** Deletes everything in the project's trash for good. */
+    suspend fun emptyTrash(projectId: String) {
+        withContext(Dispatchers.IO) { store.emptyTrash(projectId) }
+        _message.value = "Emptied the trash."
+        refreshTrash(projectId)
     }
 
     /** Puts a deleted document back. False when it is gone or something is there now. */

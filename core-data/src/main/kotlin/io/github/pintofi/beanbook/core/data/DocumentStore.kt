@@ -149,6 +149,31 @@ class DocumentStore(private val workspace: ProjectWorkspace) {
         return true
     }
 
+    /** A trashed document as the trash screen lists it. */
+    data class TrashedFile(val trashed: Trashed, val trashedAt: Long, val bytes: Long)
+
+    /** What is in the trash for a project, newest first. Anything past [TRASH_DAYS] days is purged first. */
+    fun trashedFiles(projectId: String): List<TrashedFile> {
+        purgeOldTrash()
+        val projectDir = File(workspace.documentTrashDir, projectId)
+        return projectDir.listFiles().orEmpty().filter { it.isDirectory }.mapNotNull { stampDir ->
+            val file = stampDir.walkTopDown().firstOrNull { it.isFile } ?: return@mapNotNull null
+            val made = stampDir.name.substringBefore('-').toLongOrNull() ?: return@mapNotNull null
+            val relative = file.relativeTo(stampDir).path.replace(File.separatorChar, '/')
+            TrashedFile(Trashed(projectId, relative, stampDir.name), made, file.length())
+        }.sortedByDescending { it.trashedAt }
+    }
+
+    /** Deletes one trashed document for good. */
+    fun deleteForever(trashed: Trashed) {
+        File(workspace.documentTrashDir, "${trashed.projectId}/${trashed.stamp}").deleteRecursively()
+    }
+
+    /** Deletes everything this project has in the trash, for good. */
+    fun emptyTrash(projectId: String) {
+        File(workspace.documentTrashDir, projectId).deleteRecursively()
+    }
+
     private fun held(projectId: String, stamp: String, relative: String): File =
         File(workspace.documentTrashDir, "$projectId/$stamp/$relative")
 
