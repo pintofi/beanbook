@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An Open button beside the message when an entry names an account the ledger has not opened. The entry you typed stays as it is. ([#140], fixes [#131])
 
 ### Changed
-- Lists of things to tick (the accounts in first-run setup, and the cards on Home) share one row. The tick box now starts where the text of every other row starts, not 13 dp further in, and the label follows closely instead of a wide gap away. Headings, notes and status lines above and below the cards now start at that same line, so the box, the names and the headings sit on one edge on every page.
+- Lists of things to tick (the accounts in first-run setup, and the cards on Home) share one row. The tick box now starts where the text of every other row starts, not 13 dp further in, and the label follows closely instead of a wide gap away. Headings, notes and status lines above and below the cards now start at that same line, so the box, the names and the headings sit on one edge on every page. ([#229])
 - Opening and closing an account is done on the Accounts page only. The Directives tab of the entry form no longer has Open and Close. Closing an account now asks for the date. ([#208])
 - The sharing sign-in password is now stored with 600,000 rounds of PBKDF2 instead of 150,000, the figure OWASP recommends. Saving the password takes a few seconds on a phone and runs in the background; a password saved earlier keeps working. ([#56])
 - First-run setup uses the same cards as the rest of the app: Add a ledger, and each of the three setup steps, are a heading and a card for each group, with choices as rows and switches as switch rows. It works as before. ([#197])
@@ -219,3 +219,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#197]: https://github.com/pintofi/beanbook/issues/197
 [#208]: https://github.com/pintofi/beanbook/issues/208
 [#210]: https://github.com/pintofi/beanbook/issues/210
+[#229]: https://github.com/pintofi/beanbook/issues/229
