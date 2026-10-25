@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Opening a project folder no longer fails on Android 10 to 13. Reading the folder used a call that only newer Android versions have. ([#249])
+
 ## [1.0.2] - 2026-10-25
 
 ### Added
@@ -235,3 +238,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#234]: https://github.com/pintofi/beanbook/issues/234
 [#235]: https://github.com/pintofi/beanbook/issues/235
 [#236]: https://github.com/pintofi/beanbook/issues/236
+[#249]: https://github.com/pintofi/beanbook/issues/249
