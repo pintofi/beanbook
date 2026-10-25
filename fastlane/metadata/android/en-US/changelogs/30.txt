@@ -1,0 +1,6 @@
+Scanner, accounts and backups, plus fixes.
+• The document scanner is reworked: a review screen, a crop screen with a magnifier, better page detection, flat black and white or greyscale pages, A4 or Letter size.
+• Accounts can carry details such as the bank, and be closed with a date.
+• Scheduled and manual backups can be encrypted.
+• Deleted documents are kept for 30 days in a trash you can open.
+• Safer saves, backups and remote retries, and many smaller fixes.

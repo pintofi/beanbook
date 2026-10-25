@@ -13,13 +13,14 @@ milestone), **in progress**, **shipped in x.y.z**.
 
 ## Shipped
 
+- **1.0.2** (2026-10-25): the document scanner reworked (review screen, crop screen with a magnifier, better page detection, flat black-and-white and greyscale styles, A4 or Letter), a guided first run and an Accounts page with account details, encrypted scheduled backups, a trash for deleted documents, a new entry form with standard buttons, and the safety fixes from a second review. See the [changelog](CHANGELOG.md).
 - **1.0.1** (2026-10-18): one APK per processor type for F-Droid, a Trash list for deleted projects, receipt-photo cleanup, a safer document Unlink, a more careful balance check, and many other fixes from the repository review. See the [changelog](CHANGELOG.md).
 - **1.0.0** (2026-10-15): local Beancount and Fava on the phone, entry forms and editors, documents and scanning, backup and restore, mirror, remote Fava, plugins and Fava extensions (Expert), Share on Wi-Fi. See the [changelog](CHANGELOG.md).
 
-## Now: 1.0.2 Trust and polish
+## Now: Trust and polish, continued
 
-Make the app sturdier before it grows. 1.0.2 is released once the items down to Fava's own editor
-([#17](https://github.com/pintofi/beanbook/issues/17)) are done; the ones below it follow.
+1.0.2 shipped the items below marked merged or done. The ones still marked accepted, and the
+parameter-passing refactor ([#67](https://github.com/pintofi/beanbook/issues/67)), come next.
 
 | Item | Status | Why |
 |---|---|---|
@@ -81,4 +82,4 @@ when a milestone takes it. A bug is not a roadmap item: use the
 [bug form](https://github.com/pintofi/beanbook/issues/new?template=bug_report.yml). Security
 problems go through [SECURITY.md](SECURITY.md).
 
-Last reviewed: 2026-10-23. The README carries a shorter checklist of the same plan; this page is the detail.
+Last reviewed: 2026-10-25. The README carries a shorter checklist of the same plan; this page is the detail.
