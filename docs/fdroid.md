@@ -80,10 +80,12 @@ The release workflow checks each APK's code with `aapt2` before it publishes any
 text for a code is read from `changelogs/<versionCode>.txt`, so each release adds one file for
 each of its three codes.
 
-For each release the recipe gets one `Builds` entry per ABI, each pointing at its own file on
+For each release the recipe has one `Builds` entry per ABI, each pointing at its own file on
 the GitHub release through `binary:`. This is the shape to submit to `fdroiddata` once the
-release commit exists; the commit, and the final recipe text, are filled in at release time. The finished
-entries are in `fdroid/io.github.pintofi.beanbook.expert.yml`; F-Droid's server has not yet built
+release commit exists; the commit, and the final recipe text, are filled in at release time. Only the
+latest version is kept in the submitted metadata: the fdroiddata maintainers ask for the old
+versions to be replaced by the new ones, so each release swaps the two entries instead of adding
+two. The finished entries are in `fdroid/io.github.pintofi.beanbook.expert.yml`; F-Droid's server has not yet built
 this layout:
 
 ```yaml
