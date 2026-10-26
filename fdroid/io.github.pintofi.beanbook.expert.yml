@@ -2,9 +2,12 @@ Categories:
   - Finance Manager
 License: GPL-2.0-only
 AuthorName: pintofi
+WebSite: https://pintofi.github.io/beanbook/
 SourceCode: https://github.com/pintofi/beanbook
 IssueTracker: https://github.com/pintofi/beanbook/issues
 Changelog: https://github.com/pintofi/beanbook/blob/HEAD/CHANGELOG.md
+Donate:
+  - https://ko-fi.com/pintofi
 
 AutoName: Beanbook
 
@@ -75,6 +78,19 @@ Builds:
     ndk: r27d
 
 AllowedAPKSigningKeys: d7039d79b2afa3ffc81aeba7bc8dbf45a73b07b94f982ca913d65028b9b2ff55
+
+MaintainerNotes: |
+  One APK per processor type, each its own version code: the release number times
+  ten, plus 1 for arm64-v8a and 2 for x86_64 (the universal APK, code +0, is only on GitHub
+  and is not built here). versionCode in app/build.gradle.kts is the release number, so
+  VercodeOperation turns it into the two codes, and the Builds entries must stay in ascending
+  code order because AutoUpdateMode copies the last entries.
+
+  Each build pulls its APK from the GitHub release with binary:, so the release must be
+  published before a build can verify. The cross-built wheels (beancount, watchfiles) come
+  from tools/build-wheels.sh in init:, at its fixed work folder /tmp/bca-wheels; the build
+  records that path, so the folder must not change. The release workflow and this recipe are
+  described in docs/fdroid.md and CONTRIBUTING.md in the source repository.
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
