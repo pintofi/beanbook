@@ -15,37 +15,6 @@ RepoType: git
 Repo: https://github.com/pintofi/beanbook.git
 
 Builds:
-  - versionName: 1.0.1
-    versionCode: 21
-    commit: 52f3486c5821f824d85492574d7608700cf8e59a
-    subdir: app
-    sudo:
-      - apt-get update
-      - apt-get install -y python3.13 python3.13-venv rustup m4 gcc libc6-dev
-    init: ../tools/build-wheels.sh --out ../wheels
-    gradle:
-      - expert
-    output: build/outputs/apk/expert/release/*arm64-v8a*.apk
-    binary: 
-      https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
-    prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
-    ndk: r27d
-
-  - versionName: 1.0.1
-    versionCode: 22
-    commit: 52f3486c5821f824d85492574d7608700cf8e59a
-    subdir: app
-    sudo:
-      - apt-get update
-      - apt-get install -y python3.13 python3.13-venv rustup m4 gcc libc6-dev
-    init: ../tools/build-wheels.sh --out ../wheels
-    gradle:
-      - expert
-    output: build/outputs/apk/expert/release/*x86_64*.apk
-    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-x86_64.apk
-    prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
-    ndk: r27d
-
   - versionName: 1.0.2
     versionCode: 31
     commit: 5f661a2294b4b947770c673d3bcd44594191f966
@@ -57,8 +26,7 @@ Builds:
     gradle:
       - expert
     output: build/outputs/apk/expert/release/*arm64-v8a*.apk
-    binary: 
-      https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
+    binary: https://github.com/pintofi/beanbook/releases/download/v%v/beanbook-%v-arm64-v8a.apk
     prebuild: echo "beancount.wheelDir=$(realpath ../wheels)" >> ../gradle.properties
     ndk: r27d
 
@@ -80,6 +48,9 @@ Builds:
 AllowedAPKSigningKeys: d7039d79b2afa3ffc81aeba7bc8dbf45a73b07b94f982ca913d65028b9b2ff55
 
 MaintainerNotes: |
+  Only the latest version is kept in the submitted metadata: its two entries replace the
+  previous version's two, as the fdroiddata maintainers ask.
+
   One APK per processor type, each its own version code: the release number times
   ten, plus 1 for arm64-v8a and 2 for x86_64 (the universal APK, code +0, is only on GitHub
   and is not built here). versionCode in app/build.gradle.kts is the release number, so
