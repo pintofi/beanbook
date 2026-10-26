@@ -48,9 +48,6 @@ Builds:
 AllowedAPKSigningKeys: d7039d79b2afa3ffc81aeba7bc8dbf45a73b07b94f982ca913d65028b9b2ff55
 
 MaintainerNotes: |
-  Only the latest version is kept in the submitted metadata: its two entries replace the
-  previous version's two, as the fdroiddata maintainers ask.
-
   One APK per processor type, each its own version code: the release number times
   ten, plus 1 for arm64-v8a and 2 for x86_64 (the universal APK, code +0, is only on GitHub
   and is not built here). versionCode in app/build.gradle.kts is the release number, so
