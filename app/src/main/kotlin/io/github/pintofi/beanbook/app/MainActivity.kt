@@ -365,7 +365,7 @@ class MainActivity : ComponentActivity() {
     /**
      * Android 13+ shows no notification, not even a foreground service's, until the user
      * allows it, and the app never asked. Asked once: a refusal is respected, and the
-     * work still runs -- only the "Beanbook keeps working" notice is not shown.
+     * work still runs -- only the notice that says what it is doing is not shown.
      */
     internal fun askForNotifications(force: Boolean = false) {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return

@@ -140,7 +140,6 @@ object KeepWorking {
         return Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle(what)
-            .setContentText("Beanbook keeps working if you leave the app.")
             .setProgress(0, 0, true)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
