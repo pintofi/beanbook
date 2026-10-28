@@ -82,9 +82,11 @@ class ProjectRegistryTest {
     @Test
     fun `deleting the open project opens the most recently changed other one`() {
         listOf("old", "recent", "open").forEach { workspace.createProject(it) }
-        workspace.mainFile("old").setLastModified(1_000_000_000_000)
-        workspace.mainFile("recent").setLastModified(1_700_000_000_000)
-        workspace.mainFile("open").setLastModified(1_600_000_000_000)
+        // A project's age is its newest file, so every file in it is dated, not only the main one.
+        mapOf("old" to 1_000_000_000_000, "recent" to 1_700_000_000_000, "open" to 1_600_000_000_000)
+            .forEach { (id, time) ->
+                workspace.projectDir(id).walkTopDown().filter { it.isFile }.forEach { it.setLastModified(time) }
+            }
         registry.setActive("open")
 
         registry.moveToTrash("open")
