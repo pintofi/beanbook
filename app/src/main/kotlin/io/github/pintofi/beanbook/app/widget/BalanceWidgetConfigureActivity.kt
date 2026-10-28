@@ -120,14 +120,6 @@ class BalanceWidgetConfigureActivity : ComponentActivity() {
     }
 }
 
-/** The three ways to read a balance, and "whatever the app is set to" for a widget that never chose. */
-private val BASES: List<Pair<io.github.pintofi.beanbook.core.domain.Valuation?, String>> = listOf(
-    null to "Same as the app",
-    io.github.pintofi.beanbook.core.domain.Valuation.UNITS to "Units",
-    io.github.pintofi.beanbook.core.domain.Valuation.COST to "At cost",
-    io.github.pintofi.beanbook.core.domain.Valuation.VALUE to "Market value",
-)
-
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun ChooseAccounts(
@@ -144,7 +136,6 @@ internal fun ChooseAccounts(
     val subsets = remember {
         androidx.compose.runtime.mutableStateMapOf<String, Set<String>>().apply { putAll(initialOption.commodities) }
     }
-    var basis by remember { mutableStateOf(initialOption.basis) }
     var filter by remember { mutableStateOf("") }
 
     Column(modifier = modifier) {
@@ -170,20 +161,6 @@ internal fun ChooseAccounts(
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
         )
-        // How the figures are read: a widget used to follow the app's setting and nothing else.
-        androidx.compose.foundation.layout.FlowRow(
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
-        ) {
-            BASES.forEach { (value, label) ->
-                androidx.compose.material3.FilterChip(
-                    selected = basis == value,
-                    onClick = { basis = value },
-                    label = { Text(label) },
-                    modifier = Modifier.semantics { contentDescription = "Show figures: $label" },
-                )
-            }
-        }
         // Every account in the ledger reaches this list now, which is long enough to need
         // finding rather than scrolling.
         OutlinedTextField(
@@ -260,7 +237,7 @@ internal fun ChooseAccounts(
             onClick = {
                 onChoose(
                     picked.toList(),
-                    WidgetOption(basis, subsets.filterKeys { it in picked }.filterValues { it.isNotEmpty() }),
+                    WidgetOption(initialOption.basis, subsets.filterKeys { it in picked }.filterValues { it.isNotEmpty() }),
                 )
             },
             // Nothing picked is not a widget: it would be placed showing the default account

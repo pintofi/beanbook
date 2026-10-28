@@ -22,6 +22,12 @@ import io.github.pintofi.beanbook.core.data.WidgetCache
  */
 abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvider() {
 
+    companion object {
+        /** Sent by the Units, At cost and Market value row on a widget. */
+        const val ACTION_BASIS = "io.github.pintofi.beanbook.WIDGET_BASIS"
+        const val EXTRA_BASIS = "basis"
+    }
+
     override fun onUpdate(
         context: Context,
         manager: AppWidgetManager,
@@ -52,6 +58,29 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
         // it was given until told the data changed.
         @Suppress("DEPRECATION") // Its replacement, RemoteCollectionItems, is API 31.
         manager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list)
+    }
+
+    /**
+     * A tap on Units, At cost or Market value on a widget.
+     *
+     * The id has to be one of this provider's own, and the basis one of the three: the provider is
+     * exported for the launcher, so anything else that sends this is ignored.
+     */
+    override fun onReceive(context: Context, intent: android.content.Intent) {
+        if (intent.action != ACTION_BASIS) {
+            super.onReceive(context, intent)
+            return
+        }
+        val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        val basis = runCatching {
+            io.github.pintofi.beanbook.core.domain.Valuation.valueOf(intent.getStringExtra(EXTRA_BASIS).orEmpty())
+        }.getOrNull() ?: return
+        val manager = AppWidgetManager.getInstance(context)
+        val ours = manager.getAppWidgetIds(android.content.ComponentName(context, this::class.java))
+        if (id !in ours) return
+        val options = WidgetOptions(context)
+        options.setOptionFor(id, options.optionFor(id).copy(basis = basis))
+        onUpdate(context, manager, intArrayOf(id))
     }
 
     /** A removed widget's account choice goes with it -- ids are reused. */

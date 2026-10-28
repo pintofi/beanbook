@@ -95,6 +95,63 @@
                 android:text="—"
                 android:textColor="@color/widget_value" />
 
+            <!-- Units, At cost, Market value: the same three choices as Home, Journal and Balances,
+                 on the widget itself. Selecting one changes this widget only. Hidden by the renderer on
+                 a widget too short to hold it. -->
+            <LinearLayout
+                android:id="@+id/widget_basis"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingEnd="12dp"
+                android:paddingRight="12dp">
+
+                <TextView
+                    android:id="@+id/widget_basis_units"
+                    android:layout_width="0dp"
+                    android:layout_height="28dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:textSize="11sp"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="8sp"
+                    android:autoSizeMaxTextSize="11sp"
+                    android:text="Units"
+                    android:contentDescription="Show units"
+                    android:textColor="@color/widget_footnote" />
+
+                <TextView
+                    android:id="@+id/widget_basis_cost"
+                    android:layout_width="0dp"
+                    android:layout_height="28dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:textSize="11sp"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="8sp"
+                    android:autoSizeMaxTextSize="11sp"
+                    android:text="At cost"
+                    android:contentDescription="Show at cost"
+                    android:textColor="@color/widget_footnote" />
+
+                <TextView
+                    android:id="@+id/widget_basis_value"
+                    android:layout_width="0dp"
+                    android:layout_height="28dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:textSize="11sp"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="8sp"
+                    android:autoSizeMaxTextSize="11sp"
+                    android:text="Market value"
+                    android:contentDescription="Show market value"
+                    android:textColor="@color/widget_footnote" />
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/widget_footnote"
                 android:layout_width="match_parent"
