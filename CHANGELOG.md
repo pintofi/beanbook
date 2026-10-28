@@ -9,11 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - The notification shown while Beanbook installs a package or finishes a save no longer repeats itself with a second line under its title. ([#259])
+- Adding a project from the Projects page goes through the same setup as a first run, with Back to my projects. ([#264])
 
 ### Fixed
 - The decimal places box in the new-ledger setup takes numbers only, shows the number keyboard, and can be cleared and retyped; before, it ignored some keys. ([#261])
 - The plus/minus button on an amount keeps the cursor on the character it was on: after the 0 of 1230 stays after the 0 of -1230. ([#261])
 - Every password and passphrase box now asks the keyboard not to suggest or remember what is typed; four of the eight did not. ([#261])
+- Deleting the project that is open no longer sends you to the first-run screen when you have other projects: the most recently changed one opens. Deleting a project that is not open leaves the open one alone. The first-run screen is for a new user, a new ledger, and deleting the only project. ([#263])
+- Opening a folder no longer fails with "project already exists" when an unfinished import left a folder of that name behind, or a second one was started while the first was running. ([#266])
+- In the new-ledger setup, an account you added can be removed again, the page says a custom account starts with its type, and the buttons read Next instead of naming the next page. ([#265])
 
 ## [1.0.2] - 2026-10-25
 
@@ -247,3 +251,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#249]: https://github.com/pintofi/beanbook/issues/249
 [#259]: https://github.com/pintofi/beanbook/issues/259
 [#261]: https://github.com/pintofi/beanbook/issues/261
+[#263]: https://github.com/pintofi/beanbook/issues/263
+[#264]: https://github.com/pintofi/beanbook/issues/264
+[#265]: https://github.com/pintofi/beanbook/issues/265
+[#266]: https://github.com/pintofi/beanbook/issues/266

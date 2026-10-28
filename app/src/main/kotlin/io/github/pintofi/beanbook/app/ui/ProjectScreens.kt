@@ -158,14 +158,14 @@ fun ProjectPickerScreen(
                         Button(
                             onClick = { onCreateNew(newTitle); newTitle = "" },
                             enabled = newTitle.isNotBlank(),
-                            modifier = Modifier.semantics { contentDescription = "Create a new project" },
-                        ) { Text("Create project") }
+                            modifier = Modifier.semantics { contentDescription = "Set up a new project" },
+                        ) { Text("Set it up") }
                     }
                 }
             }
             FolioNote(
                 "A project is the folder that holds one ledger. " +
-                    "A new one starts with a main file you can add to.",
+                    "A new one starts with a few short questions: currency, accounts and preferences.",
             )
 
             FolioHeading("Bring one in")

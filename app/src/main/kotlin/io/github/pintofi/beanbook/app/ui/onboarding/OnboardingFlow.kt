@@ -65,6 +65,8 @@ class SetupActions(
     val onThemeChoice: (ThemeChoice) -> Unit,
     /** Leaves the setup for the new ledger; true opens the entry form straight away. */
     val onFinish: (projectId: String, addEntry: Boolean) -> Unit,
+    /** Back out of adding a ledger to the project that is open; null on the first run, which has none. */
+    val onCancel: (() -> Unit)? = null,
     /** Saves a Fava server's address and credentials and connects to it. */
     val onRemoteConnect: (String, String?, CharArray?) -> Unit = { _, _, _ -> },
 )
@@ -100,7 +102,8 @@ fun OnboardingFlow(
         SetupStep.WAYS_IN -> WaysInPage(
             draft = draft,
             onName = { name -> update { it.copy(name = name) } },
-            onBack = { setup.go(SetupStep.WELCOME) },
+            onBack = actions.onCancel ?: { setup.go(SetupStep.WELCOME) },
+            backLabel = if (actions.onCancel != null) "Back to my projects" else "Back to the welcome",
             onSetUp = { setup.go(SetupStep.BASICS) },
             actions = actions,
             modifier = modifier,
@@ -111,7 +114,7 @@ fun OnboardingFlow(
         SetupStep.BASICS -> SetupPage(
             step = 1, title = "The basics",
             onBack = { setup.go(SetupStep.WAYS_IN) },
-            primaryLabel = "Next: accounts",
+            primaryLabel = "Next",
             onPrimary = { setup.go(SetupStep.ACCOUNTS) },
             primaryEnabled = draft.basicsReady(),
             modifier = modifier,
@@ -119,7 +122,7 @@ fun OnboardingFlow(
         SetupStep.ACCOUNTS -> SetupPage(
             step = 2, title = "Accounts",
             onBack = { setup.go(SetupStep.BASICS) },
-            primaryLabel = "Next: get set",
+            primaryLabel = "Next",
             onPrimary = { setup.go(SetupStep.GET_SET) },
             primaryEnabled = draft.accountsReady(),
             modifier = modifier,
@@ -195,6 +198,7 @@ private fun WaysInPage(
     draft: SetupDraft,
     onName: (String) -> Unit,
     onBack: () -> Unit,
+    backLabel: String,
     onSetUp: () -> Unit,
     actions: SetupActions,
     modifier: Modifier = Modifier,
@@ -210,7 +214,7 @@ private fun WaysInPage(
         ) {
             IconButton(
                 onClick = onBack,
-                modifier = Modifier.semantics { contentDescription = "Back to the welcome" },
+                modifier = Modifier.semantics { contentDescription = backLabel },
             ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
             Text("Add a ledger", style = MaterialTheme.typography.titleLarge)
         }

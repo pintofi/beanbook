@@ -51,6 +51,12 @@ class NewLedgerSetup(private val file: File) {
 
     fun go(step: SetupStep) = update { it.copy(step = step) }
 
+    /** Starts a setup for one more ledger: no welcome, the name already typed, nothing left from an earlier try. */
+    fun begin(name: String) {
+        reset()
+        update { it.copy(name = name.trim(), step = SetupStep.WAYS_IN) }
+    }
+
     fun creating(state: Creation) {
         _creation.value = state
     }

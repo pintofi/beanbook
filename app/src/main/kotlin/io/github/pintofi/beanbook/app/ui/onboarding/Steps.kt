@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Tune
@@ -29,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.onboarding.AccountChoice
 import io.github.pintofi.beanbook.app.onboarding.Creation
@@ -310,6 +313,11 @@ internal fun AccountsStep(draft: SetupDraft, update: Update) {
     }
     FolioHeading("Add an account")
     FolioGroup { item { FolioBody { AddAccount(draft, update) } } }
+    FolioNote(
+        "Pick the type first, then type the rest of the name. A custom account always starts with its " +
+            "type: Savings under Assets becomes Assets:Savings, and Car loan under Liabilities " +
+            "becomes Liabilities:Car-Loan. Accounts you add can be removed again with the bin.",
+    )
     if (!draft.accounts.any { it.on && it.name.startsWith("Assets:") }) {
         FolioNote("Choose at least one Assets account, so there is somewhere for money to be.")
     }
@@ -329,6 +337,30 @@ private fun AccountChoiceRow(choice: AccountChoice, everyAccountUsesMain: Boolea
         },
         enabled = !choice.locked,
         detail = if (choice.locked) "Always kept: opening balances come from here." else null,
+        // Only an account the person added can be taken out again; the starter list is switched off instead.
+        trailing = if (choice.user) {
+            {
+                androidx.compose.material3.IconButton(
+                    onClick = {
+                        update { d ->
+                            d.copy(
+                                accounts = d.accounts.filter { it.name != choice.name },
+                                opening = d.opening - choice.name,
+                            )
+                        }
+                    },
+                    modifier = Modifier.semantics { contentDescription = "Remove ${choice.name}" },
+                ) {
+                    androidx.compose.material3.Icon(
+                        androidx.compose.material.icons.Icons.Outlined.Delete,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        } else {
+            null
+        },
         below = {
             if (!everyAccountUsesMain && !choice.locked && choice.on) {
                 OutlinedTextField(

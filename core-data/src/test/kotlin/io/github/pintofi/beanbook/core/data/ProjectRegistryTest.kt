@@ -80,6 +80,54 @@ class ProjectRegistryTest {
     }
 
     @Test
+    fun `deleting the open project opens the most recently changed other one`() {
+        listOf("old", "recent", "open").forEach { workspace.createProject(it) }
+        // A project's age is its newest file, so every file in it is dated, not only the main one.
+        mapOf("old" to 1_000_000_000_000, "recent" to 1_700_000_000_000, "open" to 1_600_000_000_000)
+            .forEach { (id, time) ->
+                workspace.projectDir(id).walkTopDown().filter { it.isFile }.forEach { it.setLastModified(time) }
+            }
+        registry.setActive("open")
+
+        registry.moveToTrash("open")
+
+        assertEquals("recent", registry.activeProjectId())
+        assertEquals(listOf("old", "recent"), workspace.listProjects())
+    }
+
+    @Test
+    fun `deleting a project that is not open leaves the open one open`() {
+        listOf("one", "two", "three").forEach { workspace.createProject(it) }
+        registry.setActive("two")
+
+        registry.moveToTrash("one")
+
+        assertEquals("two", registry.activeProjectId())
+    }
+
+    @Test
+    fun `deleting the only project leaves none open`() {
+        workspace.createProject("only")
+        registry.setActive("only")
+
+        registry.moveToTrash("only")
+
+        assertNull(registry.activeProjectId())
+        assertEquals(emptyList(), workspace.listProjects())
+    }
+
+    @Test
+    fun `a folder with no ledger in it still takes its id`() {
+        // What an interrupted import can leave: a folder with a project's name that is not a project.
+        workspace.projectDir("primary-documents-hamza-beanbook").mkdirs()
+        assertEquals(emptyList(), workspace.listProjects())
+
+        val id = ProjectRegistry.idFor("primary:Documents/Hamza/Beanbook", workspace.takenIds())
+
+        assertEquals("primary-documents-hamza-beanbook-2", id)
+    }
+
+    @Test
     fun `setting a nonexistent project active is refused`() {
         assertFailsWith<IllegalArgumentException> { registry.setActive("nope") }
     }

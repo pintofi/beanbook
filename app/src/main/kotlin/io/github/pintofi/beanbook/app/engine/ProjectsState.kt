@@ -46,6 +46,14 @@ class ProjectsState(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    private val _onboarding = MutableStateFlow(false)
+
+    /** True while the setup is on screen with a project open, because a new one is being added. */
+    val onboarding: StateFlow<Boolean> = _onboarding.asStateFlow()
+
+    /** Only one import at a time: a second one started on top of the first picked the same id. */
+    private val importing = java.util.concurrent.atomic.AtomicBoolean(false)
+
     private val _trash = MutableStateFlow<List<TrashedProject>>(emptyList())
     val trash: StateFlow<List<TrashedProject>> = _trash.asStateFlow()
 
@@ -58,17 +66,18 @@ class ProjectsState(
     fun open(projectId: String) {
         registry.setActive(projectId)
         _activeId.value = projectId
+        _onboarding.value = false
         _message.value = null
     }
 
-    fun createNew(title: String, onOpened: (String) -> Unit) {
-        scope.launch {
-            val id = ProjectRegistry.idFor(title, workspace.listProjects().toSet())
-            withContext(Dispatchers.IO) { workspace.createProject(id, title = title.trim()) }
-            refresh()
-            open(id)
-            onOpened(id)
-        }
+    /** Shows the setup for a new ledger even though a project is open. */
+    fun startOnboarding() {
+        _onboarding.value = true
+    }
+
+    /** Leaves the setup for the project that was open. */
+    fun endOnboarding() {
+        _onboarding.value = false
     }
 
     /**
@@ -80,7 +89,7 @@ class ProjectsState(
     suspend fun createFromBlueprint(
         blueprint: io.github.pintofi.beanbook.core.domain.LedgerBlueprint,
     ): Result<String> = withContext(Dispatchers.IO) {
-        val id = ProjectRegistry.idFor(blueprint.title, workspace.listProjects().toSet())
+        val id = ProjectRegistry.idFor(blueprint.title, workspace.takenIds())
         runCatching {
             workspace.createFromBlueprint(id, blueprint) { staged ->
                 validator?.validate(staged.absolutePath)
@@ -159,57 +168,72 @@ class ProjectsState(
     ) {
         // From the first-run screen (nothing open yet) the import is not opened for the caller: the
         // setup's last page says what came in and asks what to do next.
-        val firstRun = activeId.value == null
+        val firstRun = activeId.value == null || onboarding.value
+        if (!importing.compareAndSet(false, true)) {
+            _message.value = "Still reading the last one. Wait for it to finish."
+            return
+        }
         scope.launch {
-            _message.value = "Reading…"
-            val outcome = withContext(Dispatchers.IO) {
-                runCatching {
-                    try {
-                        val (source, name) = open()
-                        val id = ProjectRegistry.idFor(name, workspace.listProjects().toSet())
-                        importer.import(source, id) to id
-                    } finally {
-                        cleanup()
+            try {
+                _message.value = "Reading…"
+                val outcome = withContext(Dispatchers.IO) {
+                    runCatching {
+                        try {
+                            val (source, name) = open()
+                            val id = ProjectRegistry.idFor(name, workspace.takenIds())
+                            importer.import(source, id) to id
+                        } finally {
+                            cleanup()
+                        }
                     }
                 }
-            }
 
-            _message.value = outcome.fold(
-                onSuccess = { (result, id) ->
-                    when (result) {
-                        is ImportResult.Imported -> {
-                            refresh()
-                            if (!firstRun) open(id)
-                            onOpened(id)
-                            "Imported ${result.fileCount} file(s)." + when {
-                                result.rootName == null -> ""
-                                result.rootMoved ->
-                                    " Your main ledger, ${result.rootName}, is now called main.beancount."
-                                else ->
-                                    " main.beancount includes your main ledger, ${result.rootName}, " +
-                                        "which stays where it was."
+                _message.value = outcome.fold(
+                    onSuccess = { (result, id) ->
+                        when (result) {
+                            is ImportResult.Imported -> {
+                                refresh()
+                                if (!firstRun) open(id)
+                                onOpened(id)
+                                "Imported ${result.fileCount} file(s)." + when {
+                                    result.rootName == null -> ""
+                                    result.rootMoved ->
+                                        " Your main ledger, ${result.rootName}, is now called main.beancount."
+                                    else ->
+                                        " main.beancount includes your main ledger, ${result.rootName}, " +
+                                            "which stays where it was."
+                                }
                             }
+                            is ImportResult.Rejected ->
+                                "Not imported. " + result.problems.take(3)
+                                    .joinToString("; ") { it.describe() } +
+                                    if (result.problems.size > 3) " (and ${result.problems.size - 3} more)" else ""
+                            is ImportResult.NoLedgerFound ->
+                                "No .beancount file found in that ${result.checked} file(s)."
                         }
-                        is ImportResult.Rejected ->
-                            "Not imported. " + result.problems.take(3)
-                                .joinToString("; ") { it.describe() } +
-                                if (result.problems.size > 3) " (and ${result.problems.size - 3} more)" else ""
-                        is ImportResult.NoLedgerFound ->
-                            "No .beancount file found in that ${result.checked} file(s)."
-                    }
-                },
-                onFailure = { error ->
-                    Log.w(TAG, "import failed", error)
-                    "Could not read that: ${error.message ?: "unknown error"}"
-                },
-            )
+                    },
+                    onFailure = { error ->
+                        Log.w(TAG, "import failed", error)
+                        "Could not read that: ${error.message ?: "unknown error"}"
+                    },
+                )
+            } finally {
+                importing.set(false)
+            }
         }
     }
 
-    fun delete(projectId: String) {
+    /**
+     * Moves a project to the trash. Deleting one that is not open changes nothing about the open
+     * one. Deleting the open one opens the next, and [onNowOpen] gets its id so the caller can load it;
+     * only when it was the last project is nothing left open, and the first-run screen shows.
+     */
+    fun delete(projectId: String, onNowOpen: (String) -> Unit = {}) {
         scope.launch {
+            val wasOpen = activeId.value == projectId
             val trashed = withContext(Dispatchers.IO) { registry.moveToTrash(projectId) }
             refresh()
+            if (wasOpen) activeId.value?.let(onNowOpen)
             _message.value = "Moved to the trash. Nothing was deleted from any export you made."
             Log.i(TAG, "project moved to trash: ${trashed.name}")
         }
