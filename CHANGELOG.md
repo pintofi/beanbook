@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - The notification shown while Beanbook installs a package or finishes a save no longer repeats itself with a second line under its title. ([#259])
 
+### Fixed
+- The decimal places box in the new-ledger setup takes numbers only, shows the number keyboard, and can be cleared and retyped; before, it ignored some keys. ([#261])
+- The plus/minus button on an amount keeps the cursor on the character it was on: after the 0 of 1230 stays after the 0 of -1230. ([#261])
+- Every password and passphrase box now asks the keyboard not to suggest or remember what is typed; four of the eight did not. ([#261])
+
 ## [1.0.2] - 2026-10-25
 
 ### Added
@@ -241,3 +246,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#236]: https://github.com/pintofi/beanbook/issues/236
 [#249]: https://github.com/pintofi/beanbook/issues/249
 [#259]: https://github.com/pintofi/beanbook/issues/259
+[#261]: https://github.com/pintofi/beanbook/issues/261

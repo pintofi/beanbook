@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -24,8 +23,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.pintofi.beanbook.app.BeancountApplication
@@ -116,16 +113,11 @@ fun SharingScreen(modifier: Modifier = Modifier) {
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        OutlinedTextField(
+                        PasswordField(
                             value = password,
                             onValueChange = { password = it },
-                            label = { Text("Password") },
-                            supportingText = {
-                                Text("At least $MIN_PASSWORD characters. Kept on this phone only as a hash.")
-                            },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            label = "Password",
+                            supportingText = "At least $MIN_PASSWORD characters. Kept on this phone only as a hash.",
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Button(

@@ -30,6 +30,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.coerceIn
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.verticalScroll
@@ -279,12 +280,37 @@ internal fun withSignToggled(value: String): String {
 }
 
 /**
+ * [field] with its sign switched and the cursor kept on the character it was on.
+ *
+ * The text changes the way [withSignToggled] says. A sign added in front pushes everything one place
+ * to the right, so the cursor goes one place right with it: after the 0 of 1230 stays after the 0
+ * of -1230. A sign taken away moves it one place left. Anything in the text that was cut off in
+ * front (spaces, a plus) is taken out of the cursor's position the same way.
+ */
+internal fun withSignToggled(field: TextFieldValue): TextFieldValue {
+    val text = field.text
+    val toggled = withSignToggled(text)
+    val lead = text.length - text.trimStart().length
+    val trimmed = text.trimStart()
+    val signLength = if (trimmed.startsWith("-") || trimmed.startsWith("+")) 1 else 0
+    val afterSign = trimmed.drop(signLength)
+    val removedInFront = lead + signLength + (afterSign.length - afterSign.trimStart().length)
+    val addedInFront = if (toggled.startsWith("-")) 1 else 0
+    fun moved(position: Int) =
+        (position - removedInFront).coerceAtLeast(0).plus(addedInFront).coerceIn(0, toggled.length)
+    return TextFieldValue(toggled, TextRange(moved(field.selection.start), moved(field.selection.end)))
+}
+
+/**
  * An amount box with a button that switches it between positive and negative.
  *
  * The number keyboard Android shows for a decimal field has digits and a point and no minus, so a
  * posting could be typed positive but never negative without switching to the full keyboard.
  * Compose has no flag for the signed number keyboard, and not every keyboard app honours it, so
  * the sign is a control of the form's own: always there, whichever keyboard is installed.
+ *
+ * This is the one field for a figure that can have a point and a sign. The cursor is kept by the
+ * field (a string alone loses it), so the sign button leaves it on the character it was on.
  */
 @Composable
 fun AmountField(
@@ -294,21 +320,100 @@ fun AmountField(
     label: String = "Amount",
     placeholder: String? = null,
 ) {
+    var selection by remember { mutableStateOf(TextRange(value.length)) }
+    val field = TextFieldValue(value, selection.coerceIn(0, value.length))
     OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = field,
+        onValueChange = {
+            selection = it.selection
+            onValueChange(it.text)
+        },
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it) } },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         trailingIcon = {
             IconButton(
-                onClick = { onValueChange(withSignToggled(value)) },
+                onClick = {
+                    val toggled = withSignToggled(field)
+                    selection = toggled.selection
+                    onValueChange(toggled.text)
+                },
                 modifier = Modifier.semantics {
                     contentDescription = "Switch the $label between positive and negative"
                 },
             ) { Text("\u00B1", style = MaterialTheme.typography.titleMedium) }
         },
+        modifier = modifier,
+    )
+}
+
+/**
+ * The one field for a whole number in a range, such as the decimal places of a currency.
+ *
+ * Shows the number keyboard and accepts only digits, no more than the range's largest value has.
+ * The box may be empty while it is being retyped, which a field bound straight to a number cannot
+ * do: it would refuse the backspace that clears the only digit, and then refuse every digit that
+ * would make a two-digit number. [onValueChange] is told only about numbers that are in [range], and
+ * the box goes back to the last good number when it loses focus empty.
+ */
+@Composable
+fun NumberField(
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    range: IntRange,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    var text by remember { mutableStateOf(value.toString()) }
+    // The number changed from outside (another field set it): show it, unless this box already says it.
+    androidx.compose.runtime.LaunchedEffect(value) {
+        if (text.toIntOrNull() != value) text = value.toString()
+    }
+    val width = range.last.toString().length
+    val parsed = text.toIntOrNull()
+    OutlinedTextField(
+        value = text,
+        onValueChange = { typed ->
+            val digits = typed.filter { it.isDigit() }.take(width)
+            text = digits
+            digits.toIntOrNull()?.takeIf { it in range }?.let(onValueChange)
+        },
+        label = { Text(label) },
+        singleLine = true,
+        isError = parsed == null || parsed !in range,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = modifier.onFocusChanged { focus ->
+            if (!focus.isFocused && (text.toIntOrNull()?.let { it in range } != true)) text = value.toString()
+        },
+    )
+}
+
+/**
+ * The one field for a password or passphrase.
+ *
+ * Hidden as it is typed, and asks the keyboard for its password mode, which turns off suggestions
+ * and autocorrect so the keyboard does not learn the word. Several boxes asked only for the
+ * hiding, and the keyboard was free to remember a backup passphrase.
+ */
+@Composable
+fun PasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    isError: Boolean = false,
+    supportingText: String? = null,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = true,
+        isError = isError,
+        supportingText = supportingText?.let { { Text(it) } },
+        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         modifier = modifier,
     )
 }

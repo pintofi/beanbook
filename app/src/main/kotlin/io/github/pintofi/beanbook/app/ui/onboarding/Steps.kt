@@ -42,6 +42,7 @@ import io.github.pintofi.beanbook.app.ui.FolioHeading
 import io.github.pintofi.beanbook.app.ui.FolioNote
 import io.github.pintofi.beanbook.app.ui.FolioRow
 import io.github.pintofi.beanbook.app.ui.FolioSwitchRow
+import io.github.pintofi.beanbook.app.ui.NumberField
 import io.github.pintofi.beanbook.app.ui.StatusLine
 import io.github.pintofi.beanbook.app.ui.SquircleCheckbox
 import io.github.pintofi.beanbook.app.ui.SuggestingField
@@ -175,14 +176,11 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
         item {
             FolioBody {
                 draft.currencies.forEach { code ->
-                    OutlinedTextField(
-                        value = (draft.places[code] ?: SetupDraft.usualPlaces(code)).toString(),
-                        onValueChange = { v ->
-                            v.toIntOrNull()?.takeIf { it in 0..8 }
-                                ?.let { n -> update { it.copy(places = it.places + (code to n)) } }
-                        },
-                        label = { Text("Decimal places for $code") },
-                        singleLine = true,
+                    NumberField(
+                        value = draft.places[code] ?: SetupDraft.usualPlaces(code),
+                        onValueChange = { n -> update { it.copy(places = it.places + (code to n)) } },
+                        range = 0..8,
+                        label = "Decimal places for $code",
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
