@@ -23,6 +23,11 @@ internal data class WidgetPalette(
     val label: Int,
     val value: Int,
     val footnote: Int,
+    /** An unchosen segment of the basis row: the app's raised paper. */
+    val segment: Int,
+    /** The chosen segment: the app's sage container, with [segmentOnText] on it. */
+    val segmentOn: Int,
+    val segmentOnText: Int,
 ) {
 
     companion object {
@@ -44,6 +49,9 @@ internal data class WidgetPalette(
                     label = 0xFFAFBDB8.toInt(),
                     value = 0xFFE4EAE7.toInt(),
                     footnote = 0xFF8A9A94.toInt(),
+                    segment = if (choice == ThemeChoice.BLACK) 0xFF141C1A.toInt() else 0xFF1A2220.toInt(),
+                    segmentOn = 0xFF2A4A44.toInt(),
+                    segmentOnText = 0xFFCFE4DE.toInt(),
                 )
             } else {
                 WidgetPalette(
@@ -52,6 +60,9 @@ internal data class WidgetPalette(
                     label = 0xFF4A5754.toInt(),
                     value = 0xFF16201E.toInt(),
                     footnote = 0xFF5E6B66.toInt(), // 4.9:1 on the paper; #6B7873 was 4.2 (WCAG 1.4.3 asks 4.5)
+                    segment = 0xFFE1E7E1.toInt(),
+                    segmentOn = 0xFFCFE4DE.toInt(),
+                    segmentOnText = 0xFF05201C.toInt(),
                 )
             }
         }

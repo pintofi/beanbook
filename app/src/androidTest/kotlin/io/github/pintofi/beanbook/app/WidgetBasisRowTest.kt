@@ -1,10 +1,6 @@
 package io.github.pintofi.beanbook.app
 
 import android.content.Intent
-import android.graphics.Typeface
-import android.text.Spanned
-import android.text.style.StyleSpan
-import android.text.style.UnderlineSpan
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -56,11 +52,8 @@ class WidgetBasisRowTest {
         return views.apply(context, FrameLayout(context))
     }
 
-    private fun isMarked(view: TextView): Boolean {
-        val text = view.text as? Spanned ?: return false
-        val bold = text.getSpans(0, text.length, StyleSpan::class.java).any { it.style == Typeface.BOLD }
-        return bold && text.getSpans(0, text.length, UnderlineSpan::class.java).isNotEmpty()
-    }
+    /** The chosen segment carries a tick, as the app's connected buttons do. */
+    private fun isMarked(view: TextView): Boolean = view.text.toString().startsWith("\u2713")
 
     @Test fun theRowMarksTheBasisTheWidgetChose() {
         val view = inflate(WidgetOption(basis = Valuation.COST), valuation = "VALUE")
@@ -70,6 +63,7 @@ class WidgetBasisRowTest {
         assertFalse(isMarked(view.findViewById(R.id.widget_basis_value)))
         assertEquals("Units", (view.findViewById<TextView>(R.id.widget_basis_units)).text.toString())
         assertEquals("Market value", (view.findViewById<TextView>(R.id.widget_basis_value)).text.toString())
+        assertEquals("\u2713 At cost", (view.findViewById<TextView>(R.id.widget_basis_cost)).text.toString())
     }
 
     @Test fun aWidgetWithNoChoiceMarksTheBasisTheAppWasSetTo() {

@@ -105,33 +105,78 @@
                 android:paddingEnd="12dp"
                 android:paddingRight="12dp">
 
-                <TextView
+                <FrameLayout
                     android:layout_width="0dp"
-                    android:layout_height="28dp"
+                    android:layout_height="32dp"
                     android:layout_weight="1"
-                    android:gravity="center"
-                    android:textSize="11sp"
-                    android:text="Units"
-                    android:textColor="@color/widget_footnote" />
+                    android:layout_marginLeft="0dp"
+                    android:layout_marginStart="0dp">
 
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="28dp"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:textSize="11sp"
-                    android:text="At cost"
-                    android:textColor="@color/widget_footnote" />
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="fitXY"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/widget_segment_start"
+                        android:tint="@color/widget_segment"
+                        tools:ignore="UseAppTint" />
 
-                <TextView
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:textSize="12sp"
+                        android:text="Units"
+                        android:textColor="@color/widget_footnote" />
+                </FrameLayout>
+                <FrameLayout
                     android:layout_width="0dp"
-                    android:layout_height="28dp"
+                    android:layout_height="32dp"
                     android:layout_weight="1"
-                    android:gravity="center"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:text="Market value"
-                    android:textColor="@color/widget_value" />
+                    android:layout_marginLeft="2dp"
+                    android:layout_marginStart="2dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="fitXY"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/widget_segment_middle"
+                        android:tint="@color/widget_segment"
+                        tools:ignore="UseAppTint" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:textSize="12sp"
+                        android:text="At cost"
+                        android:textColor="@color/widget_footnote" />
+                </FrameLayout>
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:layout_marginLeft="2dp"
+                    android:layout_marginStart="2dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="fitXY"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/widget_segment_end"
+                        android:tint="@color/widget_segment_on"
+                        tools:ignore="UseAppTint" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:textSize="12sp"
+                        android:text="✓ Market value"
+                        android:textColor="@color/widget_value" />
+                </FrameLayout>
             </LinearLayout>
 
             <TextView

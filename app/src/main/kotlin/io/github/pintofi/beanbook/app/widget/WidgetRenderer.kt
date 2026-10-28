@@ -217,12 +217,20 @@ object WidgetRenderer {
         Valuation.VALUE -> R.id.widget_basis_value
     }
 
+    private fun basisBackgroundId(basis: Valuation): Int = when (basis) {
+        Valuation.UNITS -> R.id.widget_basis_units_bg
+        Valuation.COST -> R.id.widget_basis_cost_bg
+        Valuation.VALUE -> R.id.widget_basis_value_bg
+    }
+
     /**
-     * The Units, At cost and Market value row on the widget itself.
+     * The Units, At cost and Market value row on the widget itself, drawn the way the app's
+     * connected buttons are: three segments side by side, the outer corners round, the chosen one
+     * filled with the app's sage container and ticked, the others on the raised paper.
      *
-     * Tapping one asks the widget's provider to show that basis, for this widget only. The one
-     * shown is bold and underlined, not only coloured, so it reads in any wallpaper colour. The row
-     * is left out on a widget too short to hold it beside the figure.
+     * Tapping one asks the widget's provider to show that basis, for this widget only. The tick, as
+     * in the app, says it in a mark as well as in colour. The row is left out on a widget too short
+     * to hold it beside the figure.
      */
     private fun RemoteViews.bindBasis(
         context: Context,
@@ -237,15 +245,9 @@ object WidgetRenderer {
         Valuation.entries.forEach { basis ->
             val id = basisViewId(basis)
             val on = basis == selected
-            val label = android.text.SpannableString(basis.label)
-            if (on) {
-                label.setSpan(android.text.style.UnderlineSpan(), 0, label.length, 0)
-                label.setSpan(
-                    android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, label.length, 0,
-                )
-            }
-            setTextViewText(id, label)
-            setTextColor(id, if (on) palette.value else palette.footnote)
+            setInt(basisBackgroundId(basis), "setColorFilter", if (on) palette.segmentOn else palette.segment)
+            setTextViewText(id, if (on) "\u2713 ${basis.label}" else basis.label)
+            setTextColor(id, if (on) palette.segmentOnText else palette.label)
             val intent = Intent(context, provider)
                 .setAction(MetricWidget.ACTION_BASIS)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
