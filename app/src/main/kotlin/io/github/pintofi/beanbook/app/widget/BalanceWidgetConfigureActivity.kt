@@ -237,7 +237,11 @@ internal fun ChooseAccounts(
             onClick = {
                 onChoose(
                     picked.toList(),
-                    WidgetOption(initialOption.basis, subsets.filterKeys { it in picked }.filterValues { it.isNotEmpty() }),
+                    // The basis is chosen on the widget itself now; what it had is kept.
+                    WidgetOption(
+                        initialOption.basis,
+                        subsets.filterKeys { it in picked }.filterValues { it.isNotEmpty() },
+                    ),
                 )
             },
             // Nothing picked is not a widget: it would be placed showing the default account

@@ -103,6 +103,8 @@ class WidgetCommoditiesTest {
         )
         val root = views.apply(context, null)
         assertEquals("c", root.findViewById<TextView>(R.id.widget_value).text.toString())
-        assertTrue(root.findViewById<TextView>(R.id.widget_label).text.toString().contains("At cost"))
+        // The basis is named by the row on the widget now, not by its label.
+        assertFalse(root.findViewById<TextView>(R.id.widget_label).text.toString().contains("At cost"))
+        assertEquals("At cost", root.findViewById<TextView>(R.id.widget_basis_cost).text.toString())
     }
 }

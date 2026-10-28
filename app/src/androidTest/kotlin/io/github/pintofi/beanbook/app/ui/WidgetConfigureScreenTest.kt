@@ -99,10 +99,19 @@ class WidgetConfigureScreenTest {
         assertEquals(setOf("SAR"), option!!.commodities["Assets:Cash"])
     }
 
-    @Test fun theBasisIsChosenOnTheSameScreen() {
+    @Test fun theBasisIsChosenOnTheWidgetNotOnThisScreen() {
         var option: io.github.pintofi.beanbook.app.widget.WidgetOption? = null
-        compose.setContent { ChooseAccounts(accounts = accounts, onChoose = { _, o -> option = o }) }
-        compose.onNodeWithContentDescription("Show figures: At cost").performClick()
+        compose.setContent {
+            ChooseAccounts(
+                accounts = accounts,
+                onChoose = { _, o -> option = o },
+                initialOption = io.github.pintofi.beanbook.app.widget.WidgetOption(
+                    basis = io.github.pintofi.beanbook.core.domain.Valuation.COST,
+                ),
+            )
+        }
+        // No choice of basis here; what the widget already had is kept.
+        compose.onNodeWithContentDescription("Show figures: At cost").assertDoesNotExist()
         compose.onNodeWithText("Assets:Bank:Current").performClick()
         compose.onNodeWithText("Add this widget").performClick()
         assertEquals(io.github.pintofi.beanbook.core.domain.Valuation.COST, option!!.basis)
