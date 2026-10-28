@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- A zoom control in the scanner. Round stops (0.5× where the camera has a wide lens, 1×, 2×, 5×, 10×, as far as the camera goes) sit on a track: tap one to zoom there, or press and slide along the track to zoom smoothly. The one the zoom is on is filled, and the zoom is shown above. It is the camera's real zoom, and pinching moves it too. ([#272])
+- The Journal has the Units, At cost and Market value choice that Home and Balances have, the same one for the whole app, and shows its amounts on it; where an amount differs from the units, the units stay beneath it. ([#274])
+- Home and Journal have the same Filters button as Balances: a sheet for the period, the search, and tags or links. The period now narrows all three screens. ([#275])
+
 ### Changed
 - The notification shown while Beanbook installs a package or finishes a save no longer repeats itself with a second line under its title. ([#259])
 - Adding a project from the Projects page goes through the same setup as a first run, with Back to my projects. ([#264])
@@ -18,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deleting the project that is open no longer sends you to the first-run screen when you have other projects: the most recently changed one opens. Deleting a project that is not open leaves the open one alone. The first-run screen is for a new user, a new ledger, and deleting the only project. ([#263])
 - Opening a folder no longer fails with "project already exists" when an unfinished import left a folder of that name behind, or a second one was started while the first was running. ([#266])
 - In the new-ledger setup, an account you added can be removed again, the page says a custom account starts with its type, and the buttons read Next instead of naming the next page. ([#265])
+- Adding and removing documents no longer makes files/documents.beancount grow by a blank line each time: removing a document's line takes the blank line that followed it too. Lines already added are left as they are. ([#268])
+- A running script's output now appears as it prints, like a terminal, instead of all at once when the script has finished. ([#270])
 
 ## [1.0.2] - 2026-10-25
 
@@ -255,3 +262,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#264]: https://github.com/pintofi/beanbook/issues/264
 [#265]: https://github.com/pintofi/beanbook/issues/265
 [#266]: https://github.com/pintofi/beanbook/issues/266
+[#268]: https://github.com/pintofi/beanbook/issues/268
+[#270]: https://github.com/pintofi/beanbook/issues/270
+[#272]: https://github.com/pintofi/beanbook/issues/272
+[#274]: https://github.com/pintofi/beanbook/issues/274
+[#275]: https://github.com/pintofi/beanbook/issues/275
