@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import io.github.pintofi.beanbook.core.domain.LedgerSummary
 import io.github.pintofi.beanbook.core.domain.Valuation
+import io.github.pintofi.beanbook.core.domain.PriceBook
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -228,6 +229,10 @@ fun JournalScreen(
     onOpenEntry: (JournalEntry) -> Unit = {},
     /** Deletes the entries picked by holding one and tapping others. */
     onDeleteEntries: (List<JournalEntry>) -> Unit = {},
+    /** The period the figures cover, as Fava's time filter expresses it, and how to change it. */
+    dateFrom: String = "",
+    dateTo: String = "",
+    onDateRange: (String, String) -> Unit = { _, _ -> },
 ) {
     // Picked by holding a row; then a tap adds or removes rather than opening. Keyed by
     // file and line, which is what identifies an entry until the ledger is read again.
@@ -254,6 +259,11 @@ fun JournalScreen(
     val faults = remember(snapshot.journal, snapshot.errors) {
         JournalErrors.attach(snapshot.journal, snapshot.errors)
     }
+    // The app-wide basis, the same one Home and Balances read: Units, At cost or Market value.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val basis by remember(context) { ValuationPreference(context) }.flow.collectAsState()
+    val book = remember(snapshot.rates) { PriceBook(snapshot.rates) }
+    val operating = snapshot.operatingCurrencies.firstOrNull()
     var onlyErrors by rememberSaveable { mutableStateOf(false) }
     // Pending is `!` -- seen, not settled -- and Flagged is any other mark but the plain `*`.
     // Together they are one choice of "which marks", so they add up; errors narrow further.
@@ -318,29 +328,8 @@ fun JournalScreen(
             ) { Text("Delete") }
         }
     } else {
-    OutlinedTextField(
-        value = query,
-        onValueChange = sharedFilter::setQuery,
-        label = { Text("Search entries") },
-        singleLine = true,
-        leadingIcon = {
-            Icon(androidx.compose.material.icons.Icons.Filled.Search, contentDescription = null)
-        },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(
-                    onClick = { sharedFilter.setQuery("") },
-                    modifier = Modifier.semantics { contentDescription = "Clear the search" },
-                ) { Icon(Icons.Filled.Close, contentDescription = null) }
-            }
-        },
-        shape = BeanbookShape.control,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Measure.gutter, vertical = Measure.snug)
-            .semantics { contentDescription = "Search entries by date, payee, description or account" },
-    )
-    LedgerFilterBar()
+    EntryFilterBar(snapshot, dateFrom, dateTo, onDateRange)
+    BasisChoice(describe = { "Show amounts ${it.label}" })
     }
 
     if (confirmingDelete) {
@@ -497,6 +486,9 @@ fun JournalScreen(
                 selected = key in picked,
                 selecting = selecting,
                 errors = faults[JournalErrors.keyOf(entry)].orEmpty(),
+                valuation = basis,
+                book = book,
+                operating = operating,
             )
             // Indented to where the entry's own text starts, so the hairlines run down the
             // page as one column rather than cutting across the marks in the gutter.
@@ -566,6 +558,10 @@ private fun JournalRow(
     selected: Boolean = false,
     /** Whether rows are being picked, so every row shows whether it is one of them. */
     selecting: Boolean = false,
+    /** The basis the amounts are shown on, with the prices and the currency market value is in. */
+    valuation: Valuation = Valuation.UNITS,
+    book: PriceBook = PriceBook.EMPTY,
+    operating: String? = null,
 ) {
     val mark = when {
         errors.isNotEmpty() -> LedgerMark.ATTENTION
@@ -725,8 +721,22 @@ private fun JournalRow(
                             )
                             // In ink, like every balance: the sign says which way it went, and
                             // colour is kept for a difference.
-                            posting.amount?.let {
-                                AmountText(it, format = format, style = LedgerType.row)
+                            posting.amount?.let { units ->
+                                // On the basis the app is set to, as Home and Balances are. When that is
+                                // not the units, the units stay beneath it so nothing is hidden.
+                                val shown = valuation.ofPosting(posting, book, operating) ?: units
+                                androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.End) {
+                                    AmountText(shown, format = format, style = LedgerType.row)
+                                    if (shown != units) {
+                                        val unitsText = format.format(units)
+                                        Text(
+                                            text = unitsText,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.semantics { contentDescription = "units $unitsText" },
+                                        )
+                                    }
+                                }
                             }
                         }
                         PostingLotText(posting, format = format)

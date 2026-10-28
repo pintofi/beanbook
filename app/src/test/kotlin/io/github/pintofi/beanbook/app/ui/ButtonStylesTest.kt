@@ -19,7 +19,7 @@ class ButtonStylesTest {
 
     /** Where a style other than filled or outlined is allowed, and why. */
     private val allowed = mapOf(
-        "ui/BalancesScreen.kt" to "the valuation choice: the selected option is tonal, the others outlined",
+        "ui/LedgerFilterControls.kt" to "the Filters button: tonal while a filter is on, outlined while none is",
         "UndoBar.kt" to "the action inside a snackbar, which Material draws as a text button",
     )
 
