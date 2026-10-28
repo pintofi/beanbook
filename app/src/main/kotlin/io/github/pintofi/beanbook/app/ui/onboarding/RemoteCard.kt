@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.app.ui.onboarding
 
+import io.github.pintofi.beanbook.app.ui.PasswordField
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,7 +18,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import io.github.pintofi.beanbook.app.ui.FolioBody
 import io.github.pintofi.beanbook.app.ui.FolioGroup
 import io.github.pintofi.beanbook.app.ui.FolioHeading
@@ -62,13 +62,10 @@ internal fun RemoteCard(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    OutlinedTextField(
+                    PasswordField(
                         value = secret,
                         onValueChange = { secret = it },
-                        label = { Text("Password (optional)") },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        label = "Password (optional)",
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedButton(

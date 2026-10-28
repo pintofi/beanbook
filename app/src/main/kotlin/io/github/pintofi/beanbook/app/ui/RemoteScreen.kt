@@ -21,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.engine.EngineStatus
 import io.github.pintofi.beanbook.engine.remote.RemoteAddress
@@ -207,12 +206,10 @@ fun RemoteScreen(
                             .fillMaxWidth()
                             .semantics { contentDescription = "Username" },
                     )
-                    OutlinedTextField(
+                    PasswordField(
                         value = secret,
                         onValueChange = { secret = it },
-                        label = { Text("Password (optional)") },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
+                        label = "Password (optional)",
                         modifier = Modifier
                             .fillMaxWidth()
                             .semantics { contentDescription = "Password" },

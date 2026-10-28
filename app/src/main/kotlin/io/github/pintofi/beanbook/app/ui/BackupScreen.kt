@@ -23,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.data.RestoreStaged
 import io.github.pintofi.beanbook.app.ui.theme.Measure
@@ -106,25 +105,21 @@ fun BackupScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                         }
-                        OutlinedTextField(
+                        PasswordField(
                             value = passphrase,
                             onValueChange = { passphrase = it },
-                            label = { Text("Passphrase") },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
+                            label = "Passphrase",
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .semantics { contentDescription = "Passphrase" },
                         )
-                        OutlinedTextField(
+                        PasswordField(
                             value = confirmation,
                             onValueChange = { confirmation = it },
-                            label = { Text("Passphrase again") },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
+                            label = "Passphrase again",
                             isError = confirmation.isNotEmpty() && !passphrasesMatch,
                             supportingText = if (confirmation.isNotEmpty() && !passphrasesMatch) {
-                                { Text("The two passphrases are different.") }
+                                "The two passphrases are different."
                             } else {
                                 null
                             },
@@ -168,12 +163,10 @@ fun BackupScreen(
                 if (passphraseNeeded) {
                     item {
                         FolioBody {
-                            OutlinedTextField(
+                            PasswordField(
                                 value = unlockPassphrase,
                                 onValueChange = { unlockPassphrase = it },
-                                label = { Text("Passphrase for this backup") },
-                                singleLine = true,
-                                visualTransformation = PasswordVisualTransformation(),
+                                label = "Passphrase for this backup",
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .semantics { contentDescription = "Passphrase for this backup" },
@@ -286,25 +279,21 @@ fun BackupScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                         }
-                        OutlinedTextField(
+                        PasswordField(
                             value = schedulePassphrase,
                             onValueChange = { schedulePassphrase = it },
-                            label = { Text("Passphrase for scheduled backups") },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
+                            label = "Passphrase for scheduled backups",
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .semantics { contentDescription = "Passphrase for scheduled backups" },
                         )
-                        OutlinedTextField(
+                        PasswordField(
                             value = scheduleConfirmation,
                             onValueChange = { scheduleConfirmation = it },
-                            label = { Text("Passphrase again") },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
+                            label = "Passphrase again",
                             isError = scheduleConfirmation.isNotEmpty() && !schedulePassphrasesMatch,
                             supportingText = if (scheduleConfirmation.isNotEmpty() && !schedulePassphrasesMatch) {
-                                { Text("The two passphrases are different.") }
+                                "The two passphrases are different."
                             } else {
                                 null
                             },
