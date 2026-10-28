@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The notification shown while Beanbook installs a package or finishes a save no longer repeats itself with a second line under its title. ([#259])
+
 ## [1.0.2] - 2026-10-25
 
 ### Added
@@ -237,3 +240,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#235]: https://github.com/pintofi/beanbook/issues/235
 [#236]: https://github.com/pintofi/beanbook/issues/236
 [#249]: https://github.com/pintofi/beanbook/issues/249
+[#259]: https://github.com/pintofi/beanbook/issues/259
