@@ -81,10 +81,7 @@ fun BalancesScreen(
 
     // Tags and links, as Fava's filter bar takes them: `#trip`, `^invoice-4411`, or
     // both. The totals below then come from the matching transactions only.
-    val offeredTags = tagSuggestions ?: remember(snapshot.journal) {
-        (snapshot.journal.flatMap { it.tags }.distinct().sorted().map { "#$it" } +
-            snapshot.journal.flatMap { it.links }.distinct().sorted().map { "^$it" })
-    }
+    val tagChoices = offeredTags(snapshot, tagSuggestions)
     var filtering by rememberSaveable { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -121,44 +118,12 @@ fun BalancesScreen(
                 modifier = Modifier.padding(top = Measure.snug),
             )
         }
-        // Said plainly, because a balance for part of a year looks exactly like a balance for
-        // all of it and is a different number.
         LedgerFilterBar()
-        if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = Measure.gutter, end = Measure.tight),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    filterSummary(dateFrom, dateTo, ""),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                OutlinedButton(
-                    onClick = { onDateRange("", "") },
-                    modifier = Modifier.semantics { contentDescription = "Clear the period" },
-                ) { Text("Clear") }
-            }
-        }
-
-        // A connected choice, not chips. These are one basis at a time -- the same figures
-        // valued three ways -- and a connected row is what Material uses to say "pick one
-        // of these". Chips read as filters that combine, which is the opposite.
-        ConnectedChoiceRow(
-            options = Valuation.entries,
-            selected = basis,
-            onSelect = { store.write(it) },
-            label = { it.label },
-            describe = { "Show balances ${it.label}" },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Measure.gutter)
-                .padding(bottom = Measure.snug),
-        )
+        PeriodLine(dateFrom, dateTo, onDateRange)
+        BasisChoice(describe = { "Show balances ${it.label}" })
 
         if (filtering) {
-            BalanceFiltersSheet(
+            FiltersSheet(
                 dateFrom = dateFrom,
                 dateTo = dateTo,
                 onDateRange = onDateRange,
@@ -166,7 +131,7 @@ fun BalancesScreen(
                 onTagFilter = shared::setTags,
                 query = shared.filter.query,
                 onQuery = shared::setQuery,
-                tagSuggestions = offeredTags,
+                tagSuggestions = tagChoices,
                 onDismiss = { filtering = false },
             )
         }
@@ -502,166 +467,3 @@ private fun AccountRow(
     LedgerHairline(Modifier.padding(start = Measure.gutter + Measure.rule + Measure.gap))
 }
 
-/**
- * The button that opens the period and tag filters, saying how many are on.
- *
- * Tonal while any is on, outlined while none is, and the count is in the words as well as on
- * the badge: "Filters, 2 on".
- */
-@Composable
-private fun FiltersButton(active: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val describe = if (active == 0) "Filters: period, tags and links" else "Filters, $active on"
-    val content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {
-        androidx.compose.material3.Icon(
-            androidx.compose.material.icons.Icons.Filled.Tune,
-            contentDescription = null,
-            modifier = Modifier.padding(end = Measure.tight),
-        )
-        Text(if (active == 0) "Filters" else "Filters · $active")
-    }
-    if (active == 0) {
-        androidx.compose.material3.OutlinedButton(
-            onClick = onClick,
-            shape = io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.control,
-            modifier = modifier
-                .heightIn(min = 56.dp)
-                .semantics { contentDescription = describe },
-            content = content,
-        )
-    } else {
-        androidx.compose.material3.FilledTonalButton(
-            onClick = onClick,
-            shape = io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.control,
-            modifier = modifier
-                .heightIn(min = 56.dp)
-                .semantics { contentDescription = describe },
-            content = content,
-        )
-    }
-}
-
-/** "From 2026-01-01 to 2026-06-30 · #trip": what the figures below are limited to. */
-private fun filterSummary(dateFrom: String, dateTo: String, tags: String): String {
-    val period = listOfNotNull(
-        dateFrom.takeIf { it.isNotBlank() }?.let { "from $it" },
-        dateTo.takeIf { it.isNotBlank() }?.let { "to $it" },
-    ).joinToString(" ")
-    val parts = listOfNotNull(
-        period.takeIf { it.isNotEmpty() }?.let { "Showing $it" },
-        tags.trim().takeIf { it.isNotEmpty() }?.let { "only $it" },
-    )
-    return parts.joinToString(" · ")
-}
-
-/**
- * The period and the tags, in a sheet. The two bounds are what Fava puts
- * above its own reports: they go to the engine and narrow what is computed.
- */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-@Composable
-private fun BalanceFiltersSheet(
-    dateFrom: String,
-    dateTo: String,
-    onDateRange: (String, String) -> Unit,
-    tagFilter: String,
-    onTagFilter: (String) -> Unit,
-    query: String,
-    onQuery: (String) -> Unit,
-    tagSuggestions: List<String>,
-    onDismiss: () -> Unit,
-) {
-    androidx.compose.material3.ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.sheet,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        Column(
-            modifier = Modifier
-                .androidxVerticalScroll()
-                .navigationBarsPadding()
-                .padding(horizontal = Measure.gutter)
-                .padding(bottom = Measure.section),
-            verticalArrangement = Arrangement.spacedBy(Measure.snug),
-        ) {
-            Text(
-                "Filter balances",
-                style = MaterialTheme.typography.titleLargeEmphasized,
-                modifier = Modifier.semantics { heading() },
-            )
-            FolioHeading("Period")
-            FolioGroup {
-                item {
-                    FolioBody {
-                        DateField(
-                            value = dateFrom,
-                            onValueChange = { onDateRange(it, dateTo) },
-                            label = "From",
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        DateField(
-                            value = dateTo,
-                            onValueChange = { onDateRange(dateFrom, it) },
-                            label = "To",
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
-                            OutlinedButton(
-                                onClick = { onDateRange("", "") },
-                                modifier = Modifier.semantics { contentDescription = "Show every date again" },
-                            ) { Text("Clear dates") }
-                        }
-                    }
-                }
-            }
-            FolioNote("A balance for part of a year is a different number from the balance for all of it.")
-            FolioHeading("Search")
-            FolioGroup {
-                item {
-                    FolioBody {
-                        OutlinedTextField(
-                            value = query,
-                            onValueChange = onQuery,
-                            label = { Text("Search entries") },
-                            singleLine = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .semantics {
-                                    contentDescription = "Search entries by date, payee, description or account"
-                                },
-                        )
-                    }
-                }
-            }
-            FolioNote("Home, Journal and Balances share this search and the tags below.")
-            FolioHeading("Tags and links")
-            FolioGroup {
-                item {
-                    FolioBody {
-                        SuggestingField(
-                            value = tagFilter,
-                            onValueChange = onTagFilter,
-                            label = "Tags or links",
-                            suggestions = tagSuggestions,
-                            describe = "Filter balances by tags or links",
-                            placeholder = "#trip ^invoice-4411",
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-            }
-            FolioNote("Totals then come from the entries with these tags or links only.")
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = Measure.gap),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                androidx.compose.material3.Button(onClick = onDismiss) { Text("Show balances") }
-            }
-        }
-    }
-}
-
-/** The sheet's own scroll, so a tall keyboard never hides the last field. */
-@Composable
-private fun Modifier.androidxVerticalScroll(): Modifier =
-    this.verticalScroll(androidx.compose.foundation.rememberScrollState())

@@ -248,6 +248,9 @@ internal fun SurfaceContent(
                         onSelectSurface(Surface.MORE)
                         onMoreSection(MoreSection.MIRROR)
                     },
+                    dateFrom = dateFrom,
+                    dateTo = dateTo,
+                    onDateRange = onDateRange,
                 )
             }
 
@@ -556,6 +559,9 @@ internal fun SurfaceContent(
                                 Modifier.padding(padding),
                                 onOpenEntry = { openEntry = it },
                                 onDeleteEntries = onDeleteEntries,
+                                dateFrom = dateFrom,
+                                dateTo = dateTo,
+                                onDateRange = onDateRange,
                             )
                         }
                     } else {
