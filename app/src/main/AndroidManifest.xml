@@ -85,17 +85,6 @@
             </intent-filter>
         </activity>
 
-        <!-- The same, for a net-worth widget: how its figure reads. -->
-        <activity
-            android:name=".widget.NetWorthWidgetConfigureActivity"
-            android:exported="true"
-            android:label="Net worth"
-            android:theme="@style/Theme.Beancount">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
-            </intent-filter>
-        </activity>
-
         <receiver
             android:name=".widget.BalanceWidget"
             android:label="Account balances"

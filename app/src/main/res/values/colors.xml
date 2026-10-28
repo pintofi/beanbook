@@ -12,4 +12,8 @@
     <color name="widget_label">#4A5754</color>
     <color name="widget_value">#16201E</color>
     <color name="widget_footnote">#5E6B66</color>
+    <!-- The Units, At cost, Market value segments in the picker preview: the app's raised paper
+         and sage container (light). The live widget takes them from WidgetPalette. -->
+    <color name="widget_segment">#E1E7E1</color>
+    <color name="widget_segment_on">#CFE4DE</color>
 </resources>

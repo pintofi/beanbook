@@ -98,6 +98,88 @@
                 android:text="6,568.65 EUR"
                 android:textColor="@color/widget_value" />
 
+            <!-- The same row the live widget carries, Market value chosen. -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingEnd="12dp"
+                android:paddingRight="12dp">
+
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:layout_marginLeft="0dp"
+                    android:layout_marginStart="0dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="fitXY"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/widget_segment_start"
+                        android:tint="@color/widget_segment"
+                        tools:ignore="UseAppTint" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:textSize="12sp"
+                        android:text="Units"
+                        android:textColor="@color/widget_footnote" />
+                </FrameLayout>
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:layout_marginLeft="2dp"
+                    android:layout_marginStart="2dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="fitXY"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/widget_segment_middle"
+                        android:tint="@color/widget_segment"
+                        tools:ignore="UseAppTint" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:textSize="12sp"
+                        android:text="At cost"
+                        android:textColor="@color/widget_footnote" />
+                </FrameLayout>
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:layout_marginLeft="2dp"
+                    android:layout_marginStart="2dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="fitXY"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/widget_segment_end"
+                        android:tint="@color/widget_segment_on"
+                        tools:ignore="UseAppTint" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:textSize="12sp"
+                        android:text="✓ Market value"
+                        android:textColor="@color/widget_value" />
+                </FrameLayout>
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/widget_footnote"
                 android:layout_width="match_parent"

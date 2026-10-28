@@ -10,14 +10,15 @@ import android.widget.RemoteViews
 import io.github.pintofi.beanbook.app.MainActivity
 import io.github.pintofi.beanbook.app.R
 import io.github.pintofi.beanbook.core.data.WidgetSnapshot
+import io.github.pintofi.beanbook.core.domain.Valuation
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /** What a widget shows. */
-enum class WidgetMetric(val label: String) {
-    BALANCE("Balance"),
-    NET_WORTH("Net worth"),
+enum class WidgetMetric(val label: String, val provider: Class<out MetricWidget>) {
+    BALANCE("Balance", BalanceWidget::class.java),
+    NET_WORTH("Net worth", NetWorthWidget::class.java),
 }
 
 /**
@@ -45,7 +46,7 @@ object WidgetRenderer {
         // figure with a label. One account keeps the original single-figure shape,
         // which reads better at the size most people place a balance widget at.
         if (metric == WidgetMetric.BALANCE && chosenAccounts.size > 1) {
-            return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs, widgetId)
+            return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs, widgetId, option)
         }
         val chosenAccount = chosenAccounts.firstOrNull()
         val views = RemoteViews(context.packageName, R.layout.widget_metric)
@@ -71,13 +72,13 @@ object WidgetRenderer {
         val label = listOfNotNull(
             account?.substringAfterLast(':')?.let { "${metric.label} · $it" } ?: metric.label,
             shownCommodities.joinToString(" ").takeIf { it.isNotEmpty() },
-            option.basis?.label,
         ).joinToString(" · ")
         views.setTextViewText(R.id.widget_label, label)
         // The whole widget, not just the figure: a home-screen tile is one target, and a tap
         // that lands on the label or the footnote and does nothing reads as a broken widget.
         views.setOnClickPendingIntent(R.id.widget_root, launchIntent(context, snapshot, metric))
         views.setOnClickPendingIntent(R.id.widget_add, addIntent(context, snapshot))
+        views.bindBasis(context, metric.provider, widgetId, effectiveBasis(option, snapshot), palette)
 
         if (snapshot == null) {
             views.setTextViewText(R.id.widget_value, "—")
@@ -126,9 +127,12 @@ object WidgetRenderer {
         redacted: Boolean,
         nowEpochMs: Long,
         widgetId: Int,
+        option: WidgetOption,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_balances)
-        views.paint(WidgetPalette.of(context))
+        val palette = WidgetPalette.of(context)
+        views.paint(palette)
+        views.bindBasis(context, WidgetMetric.BALANCE.provider, widgetId, effectiveBasis(option, snapshot), palette)
         views.setTextViewText(R.id.widget_label, WidgetMetric.BALANCE.label)
         views.setOnClickPendingIntent(
             R.id.widget_root,
@@ -200,6 +204,78 @@ object WidgetRenderer {
         row.setOnClickFillInIntent(R.id.row_root, Intent())
         return row
     }
+
+    /** The basis a widget is showing: its own choice, else the one the app was set to, else market value. */
+    internal fun effectiveBasis(option: WidgetOption, snapshot: WidgetSnapshot?): Valuation =
+        option.basis
+            ?: snapshot?.valuation?.let { runCatching { Valuation.valueOf(it) }.getOrNull() }
+            ?: Valuation.VALUE
+
+    private fun basisViewId(basis: Valuation): Int = when (basis) {
+        Valuation.UNITS -> R.id.widget_basis_units
+        Valuation.COST -> R.id.widget_basis_cost
+        Valuation.VALUE -> R.id.widget_basis_value
+    }
+
+    private fun basisBackgroundId(basis: Valuation): Int = when (basis) {
+        Valuation.UNITS -> R.id.widget_basis_units_bg
+        Valuation.COST -> R.id.widget_basis_cost_bg
+        Valuation.VALUE -> R.id.widget_basis_value_bg
+    }
+
+    /**
+     * The Units, At cost and Market value row on the widget itself, drawn the way the app's
+     * connected buttons are: three segments side by side, the outer corners round, the chosen one
+     * filled with the app's sage container and ticked, the others on the raised paper.
+     *
+     * Tapping one asks the widget's provider to show that basis, for this widget only. The tick, as
+     * in the app, says it in a mark as well as in colour. The row is left out on a widget too short
+     * to hold it beside the figure.
+     */
+    private fun RemoteViews.bindBasis(
+        context: Context,
+        provider: Class<out MetricWidget>,
+        widgetId: Int,
+        selected: Valuation,
+        palette: WidgetPalette,
+    ) {
+        val room = roomForBasis(context, widgetId)
+        setViewVisibility(R.id.widget_basis, if (room) android.view.View.VISIBLE else android.view.View.GONE)
+        if (!room) return
+        Valuation.entries.forEach { basis ->
+            val id = basisViewId(basis)
+            val on = basis == selected
+            setInt(basisBackgroundId(basis), "setColorFilter", if (on) palette.segmentOn else palette.segment)
+            setTextViewText(id, if (on) "\u2713 ${basis.label}" else basis.label)
+            setTextColor(id, if (on) palette.segmentOnText else palette.label)
+            val intent = Intent(context, provider)
+                .setAction(MetricWidget.ACTION_BASIS)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+                .putExtra(MetricWidget.EXTRA_BASIS, basis.name)
+            setOnClickPendingIntent(
+                id,
+                PendingIntent.getBroadcast(
+                    context,
+                    BASIS_REQUEST + widgetId * BASES + basis.ordinal,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
+        }
+    }
+
+    /** Whether the widget is tall enough for the basis row; one whose size is not known gets it. */
+    private fun roomForBasis(context: Context, widgetId: Int): Boolean {
+        val height = runCatching {
+            AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId)
+                .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
+        }.getOrDefault(0)
+        return height == 0 || height >= MIN_HEIGHT_FOR_BASIS_DP
+    }
+
+    private const val BASIS_REQUEST = 1000
+    private const val BASES = 3
+    private const val MIN_HEIGHT_FOR_BASIS_DP = 90
 
     /**
      * Colours one widget from the app's appearance settings.
