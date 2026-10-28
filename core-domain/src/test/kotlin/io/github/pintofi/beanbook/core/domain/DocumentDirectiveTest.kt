@@ -182,7 +182,8 @@ class DocumentDirectiveTest {
 
     @Test
     fun `a directive written straight under an entry leaves the entry set apart from what follows`() {
-        val source = "2026-01-01 open Assets:Cash\n" + directive("documents/a.pdf") + "\n\n2026-01-02 open Assets:Bank\n"
+        val source = "2026-01-01 open Assets:Cash\n" + directive("documents/a.pdf") +
+            "\n\n2026-01-02 open Assets:Bank\n"
 
         assertEquals(
             "2026-01-01 open Assets:Cash\n\n2026-01-02 open Assets:Bank\n",
