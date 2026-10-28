@@ -119,6 +119,7 @@ class ProjectRegistry(
      */
     fun moveToTrash(projectId: String): File {
         require(workspace.exists(projectId)) { "no such project: $projectId" }
+        val wasActive = activeProjectId() == projectId
         val trash = File(stateDir, "trash").apply { mkdirs() }
         val target = File(trash, "$projectId-${System.currentTimeMillis()}")
         val source = workspace.projectDir(projectId)
@@ -126,7 +127,15 @@ class ProjectRegistry(
             source.copyRecursively(target, overwrite = true)
             source.deleteRecursively()
         }
-        if (activeProjectId() == null) activeFile.delete()
+        // Deleting the project that is open leaves another one open, the most recently changed, when
+        // there is one: the person is not sent to the first-run screen with projects still there.
+        // Deleting any other project leaves the open one alone.
+        if (wasActive) {
+            val next = summaries().firstOrNull()?.id
+            if (next != null) setActive(next) else activeFile.delete()
+        } else if (activeProjectId() == null) {
+            activeFile.delete()
+        }
         return target
     }
 
@@ -138,7 +147,7 @@ class ProjectRegistry(
      */
     fun restoreFromTrash(trashed: File): String {
         val wanted = trashed.name.substringBeforeLast('-')
-        val projectId = if (workspace.exists(wanted)) idFor(wanted, workspace.listProjects().toSet()) else wanted
+        val projectId = if (wanted in workspace.takenIds()) idFor(wanted, workspace.takenIds()) else wanted
         val target = workspace.projectDir(projectId)
         require(!target.exists()) { "a project with that id already exists: $projectId" }
         check(trashed.renameTo(target)) { "could not restore ${trashed.name}" }

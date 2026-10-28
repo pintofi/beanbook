@@ -43,6 +43,12 @@ internal fun MainActivity.setupActions(app: BeancountApplication): SetupActions 
         },
         onOpenFolder = { folderPicker.launch(null) },
         onOpenArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
+        // Only when another project is open to go back to; the first run has nowhere to go back to.
+        onCancel = if (app.projectsState.activeId.value != null) {
+            { setup.reset(); app.projectsState.endOnboarding() }
+        } else {
+            null
+        },
         onPickMirrorFolder = { mirrorFolderPicker.launch(null) },
         onAskNotifications = { askForNotifications(force = true) },
         onThemeChoice = { app.themeSettings.setChoice(it) },
@@ -64,7 +70,7 @@ internal fun MainActivity.setupActions(app: BeancountApplication): SetupActions 
  * simply opens, as it always did.
  */
 internal fun MainActivity.afterImport(app: BeancountApplication, id: String) {
-    if (app.projectsState.activeId.value != null) {
+    if (app.projectsState.activeId.value != null && !app.projectsState.onboarding.value) {
         openProject(app, id)
         return
     }
@@ -73,6 +79,12 @@ internal fun MainActivity.afterImport(app: BeancountApplication, id: String) {
     setup.go(SetupStep.FINISH)
     val summary = "Imported $title. Your files were copied as they are; nothing in them was changed."
     setup.finished(id, summary, imported = true)
+}
+
+/** Shows the setup for one more ledger, with the name typed on the projects page already in. */
+internal fun startNewLedger(app: BeancountApplication, title: String) {
+    app.newLedgerSetup.begin(title)
+    app.projectsState.startOnboarding()
 }
 
 /** What the server card says: connected, or the last thing the connection reported. */

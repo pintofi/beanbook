@@ -472,6 +472,7 @@ class MainActivity : ComponentActivity() {
                     val ledgerLoading by app.ledgerState.loading.collectAsStateWithLifecycle()
                     val projects by app.projectsState.projects.collectAsStateWithLifecycle()
                     val trashedProjects by app.projectsState.trash.collectAsStateWithLifecycle()
+                    val addingLedger by app.projectsState.onboarding.collectAsStateWithLifecycle()
                     val activeId by app.projectsState.activeId.collectAsStateWithLifecycle()
                     val projectMessage by app.projectsState.message.collectAsStateWithLifecycle()
                     val editorState by app.editorController.state.collectAsStateWithLifecycle()
@@ -526,8 +527,8 @@ class MainActivity : ComponentActivity() {
                     val scriptMessage by app.scriptRunner.message.collectAsStateWithLifecycle()
                     val savedScripts by app.scriptRunner.saved.collectAsStateWithLifecycle()
 
-                    if (activeId == null) {
-                        // No project yet: onboarding, not an empty ledger screen.
+                    if (activeId == null || addingLedger) {
+                        // No project yet, or one is being added: onboarding, not an empty ledger screen.
                         // Outside the Scaffold, so it takes the insets itself. This is the
                         // first screen anybody sees and the one where the title once sat
                         // flush against the status bar.
@@ -770,13 +771,11 @@ class MainActivity : ComponentActivity() {
                         activeProjectId = activeId,
                         projectMessage = projectMessage,
                         onOpenProject = { id -> openProject(app, id) },
-                        onCreateProject = { title ->
-                            app.projectsState.createNew(title) { openProject(app, it) }
-                        },
+                        onCreateProject = { title -> startNewLedger(app, title) },
                         onExportProject = { exportPicker.launch(null) },
                         onImportFolder = { folderPicker.launch(null) },
                         onImportArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
-                        onDeleteProject = { id -> app.projectsState.delete(id) },
+                        onDeleteProject = { id -> app.projectsState.delete(id) { openProject(app, it) } },
                         projectTrash = app.projectsState.trashUi(trashedProjects),
                         editorState = editorState,
                         editorMessage = editorMessage,

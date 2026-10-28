@@ -80,6 +80,52 @@ class ProjectRegistryTest {
     }
 
     @Test
+    fun `deleting the open project opens the most recently changed other one`() {
+        listOf("old", "recent", "open").forEach { workspace.createProject(it) }
+        workspace.mainFile("old").setLastModified(1_000_000_000_000)
+        workspace.mainFile("recent").setLastModified(1_700_000_000_000)
+        workspace.mainFile("open").setLastModified(1_600_000_000_000)
+        registry.setActive("open")
+
+        registry.moveToTrash("open")
+
+        assertEquals("recent", registry.activeProjectId())
+        assertEquals(listOf("old", "recent"), workspace.listProjects())
+    }
+
+    @Test
+    fun `deleting a project that is not open leaves the open one open`() {
+        listOf("one", "two", "three").forEach { workspace.createProject(it) }
+        registry.setActive("two")
+
+        registry.moveToTrash("one")
+
+        assertEquals("two", registry.activeProjectId())
+    }
+
+    @Test
+    fun `deleting the only project leaves none open`() {
+        workspace.createProject("only")
+        registry.setActive("only")
+
+        registry.moveToTrash("only")
+
+        assertNull(registry.activeProjectId())
+        assertEquals(emptyList(), workspace.listProjects())
+    }
+
+    @Test
+    fun `a folder with no ledger in it still takes its id`() {
+        // What an interrupted import can leave: a folder with a project's name that is not a project.
+        workspace.projectDir("primary-documents-hamza-beanbook").mkdirs()
+        assertEquals(emptyList(), workspace.listProjects())
+
+        val id = ProjectRegistry.idFor("primary:Documents/Hamza/Beanbook", workspace.takenIds())
+
+        assertEquals("primary-documents-hamza-beanbook-2", id)
+    }
+
+    @Test
     fun `setting a nonexistent project active is refused`() {
         assertFailsWith<IllegalArgumentException> { registry.setActive("nope") }
     }

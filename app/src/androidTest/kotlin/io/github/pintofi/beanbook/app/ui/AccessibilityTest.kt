@@ -313,12 +313,12 @@ class AccessibilityTest {
         assertAccessible()
 
         compose.onNodeWithText("Set it up").performScrollTo().performClick()
-        compose.onNodeWithText("Next: accounts").assertExists()
+        compose.onNodeWithText("Next").assertExists()
         assertAccessible()
-        compose.onNodeWithText("Next: accounts").performClick()
-        compose.onNodeWithText("Next: get set").assertExists()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Next").assertExists()
         assertAccessible()
-        compose.onNodeWithText("Next: get set").performClick()
+        compose.onNodeWithText("Next").performClick()
         compose.onNodeWithText("Create my ledger").assertExists()
         assertAccessible()
     }

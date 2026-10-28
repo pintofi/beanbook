@@ -62,6 +62,14 @@ class ProjectWorkspace(private val root: File) {
     fun exists(id: String): Boolean = mainFile(id).isFile
 
     /**
+     * Every name in the projects folder, a project or not. A new project's id must avoid all of
+     * them, not only the ones [listProjects] offers: a folder with that name and no ledger in it
+     * (what a failed or interrupted import can leave) is not a project, but creating or importing
+     * into its name is refused with "project already exists".
+     */
+    fun takenIds(): Set<String> = (listProjects() + projectsDir.list().orEmpty()).toSet()
+
+    /**
      * Creates the starter layout described in docs/storage-and-backup.md §2.
      *
      * These filenames are a convention for new projects only — imported projects keep
