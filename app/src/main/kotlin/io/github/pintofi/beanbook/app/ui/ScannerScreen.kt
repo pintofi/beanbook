@@ -244,7 +244,11 @@ fun ScannerScreen(
     // is a separate control because it is a different thing: a lamp for framing, not a flash
     // for the shot.
     var flash by rememberSaveable { mutableIntStateOf(ImageCapture.FLASH_MODE_OFF) }
-    var zoom by remember { mutableStateOf(0f) }
+    // The camera's zoom as a ratio, and the smallest and largest it offers; read from the camera
+    // itself, which reports each as soon as it is bound and whenever a pinch changes the zoom.
+    var zoomRatio by remember { mutableStateOf(1f) }
+    var zoomMin by remember { mutableStateOf(1f) }
+    var zoomMax by remember { mutableStateOf(1f) }
     var autoCapture by rememberSaveable { mutableStateOf(true) }
 
     var aimed by remember { mutableStateOf(false) }
@@ -413,6 +417,19 @@ fun ScannerScreen(
         )
     }
 
+    // The camera's own zoom: its range and where it is now. Observed, so a pinch, a rebind after a
+    // change of photo size (which resets the zoom) and the control's own taps all show the same number.
+    androidx.compose.runtime.DisposableEffect(camera) {
+        val liveZoom = camera?.cameraInfo?.zoomState
+        val watcher = androidx.lifecycle.Observer<androidx.camera.core.ZoomState> { state ->
+            zoomMin = state.minZoomRatio
+            zoomMax = state.maxZoomRatio
+            zoomRatio = state.zoomRatio
+        }
+        liveZoom?.observe(lifecycleOwner, watcher)
+        onDispose { liveZoom?.removeObserver(watcher) }
+    }
+
     // Photographs already on the phone become pages too: a receipt someone else sent, a
     // screenshot of a bill. The system photo picker needs no storage permission, and each
     // picture goes through the same detection as a shot from the camera.
@@ -449,8 +466,8 @@ fun ScannerScreen(
             .pointerInput(camera) {
                 detectTransformGestures { _, _, gestureZoom, _ ->
                     val control = camera?.cameraControl ?: return@detectTransformGestures
-                    zoom = (zoom + (gestureZoom - 1f)).coerceIn(0f, 1f)
-                    control.setLinearZoom(zoom)
+                    zoomRatio = (zoomRatio * gestureZoom).coerceIn(zoomMin, zoomMax)
+                    control.setZoomRatio(zoomRatio)
                 }
             }
             // The preview runs under the system bars; the controls must not.
@@ -788,16 +805,16 @@ fun ScannerScreen(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Shown only while it means something, as OSS-DocumentScanner shows its slider:
-            // a zoom readout on a camera at 1x is a number nobody asked for.
-            if (zoom > 0f) {
-                Text(
-                    text = "%.1fx".format(1f + zoom * MAX_ZOOM_LABEL),
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-            }
+            ZoomControl(
+                ratio = zoomRatio,
+                min = zoomMin,
+                max = zoomMax,
+                onRatio = { ratio ->
+                    zoomRatio = ratio
+                    camera?.cameraControl?.setZoomRatio(ratio)
+                },
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
 
             if (pages.isNotEmpty() && target is ScanTarget.Append) {
                 PageStrip(
@@ -1032,9 +1049,6 @@ private fun ShutterButton(
         }
     }
 }
-
-/** What a linear zoom of 1.0 is called on screen. Cameras vary; the label is a hint. */
-private const val MAX_ZOOM_LABEL = 5f
 
 
 /** How much a page grows while it is being dragged, so it reads as lifted. */
