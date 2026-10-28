@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - The notification shown while Beanbook installs a package or finishes a save no longer repeats itself with a second line under its title. ([#259])
 - Adding a project from the Projects page goes through the same setup as a first run, with Back to my projects. ([#264])
+- Units, At cost and Market value are on the widgets themselves: tap one to change that widget's basis, instead of choosing it in the widget's settings. The row is left out on a widget too short to hold it, and the net worth widget no longer has a settings screen. The preview shown when you pick a widget shows the row. ([#277])
 
 ### Fixed
 - The decimal places box in the new-ledger setup takes numbers only, shows the number keyboard, and can be cleared and retyped; before, it ignored some keys. ([#261])
@@ -267,3 +268,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#272]: https://github.com/pintofi/beanbook/issues/272
 [#274]: https://github.com/pintofi/beanbook/issues/274
 [#275]: https://github.com/pintofi/beanbook/issues/275
+[#277]: https://github.com/pintofi/beanbook/issues/277
