@@ -88,9 +88,12 @@ interface IEngineService {
      * @param pluginDirs the same directories a ledger load gets: the plugins the user turned
      *   on, and the packages they fetched. Without them a script can only import what the app
      *   bundles, which made fetching a module it asked for look like it had done nothing.
+     * @param liveDir the folder the script's output is written to as it prints, which the app reads
+     *   while the script runs. Python's own temporary folder is inside the app's cache folder
+     *   rather than the cache folder itself, so the app says where instead of both guessing.
      */
     String runScript(String scriptPath, String ledgerPath, double timeoutSeconds,
-                     boolean allowBridge, String handle, String pluginDirs);
+                     boolean allowBridge, String handle, String pluginDirs, String liveDir);
 
     /**
      * Asks a running script to stop.

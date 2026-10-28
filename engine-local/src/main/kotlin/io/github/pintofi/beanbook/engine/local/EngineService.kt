@@ -129,6 +129,7 @@ class EngineService : Service() {
             allowBridge: Boolean,
             handle: String,
             pluginDirs: String?,
+            liveDir: String?,
         ): String = guarded {
             python().getModule("plugins").callAttr(
                 "run_script",
@@ -139,6 +140,7 @@ class EngineService : Service() {
                 emptyArray<String>(),
                 handle,
                 pluginDirs.orEmpty(),
+                liveDir.orEmpty(),
             ).toString()
         }
 

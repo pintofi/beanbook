@@ -43,8 +43,10 @@ class PluginLoader(
         handle: String,
         /** The plugins and fetched packages a script may import. */
         pluginDirs: String = "",
+        /** Where the script's output is written as it prints, for the app to read while it runs. */
+        liveDir: String = "",
     ): Result<String> = connection.withEngine {
-        it.runScript(scriptPath, ledgerPath, timeoutSeconds, allowBridge, handle, pluginDirs)
+        it.runScript(scriptPath, ledgerPath, timeoutSeconds, allowBridge, handle, pluginDirs, liveDir)
     }
 
     /**

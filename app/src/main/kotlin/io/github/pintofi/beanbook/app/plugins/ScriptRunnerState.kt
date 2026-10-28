@@ -228,6 +228,7 @@ class ScriptRunnerState(
                         allowBridge = policy.allowsAndroidBridge,
                         handle = id,
                         pluginDirs = importable(),
+                        liveDir = context.cacheDir.absolutePath,
                     )
                 }
                 _outcome.value = json.fold(
