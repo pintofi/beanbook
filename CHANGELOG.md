@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- A zoom control in the scanner: the zoom is said in the middle of a small dial above the shutter. Press it and slide left to zoom in or right to zoom out, and the number changes in place with a small tick for each step; pinching ticks too. It is the camera's real zoom. The white corner marks that showed before a page was found are gone. ([#272], [#280])
+- A zoom control in the scanner: the zoom is said in the middle of a small dial above the shutter. Press it and hold your finger to the left and the zoom keeps going up, faster the further over; hold it to the right and it keeps coming down; bring the finger back, or lift it, and it stops. The number changes in place with a small tick for each step, and pinching ticks too. It is the camera's real zoom. The white corner marks that showed before a page was found are gone. ([#272], [#280])
 - The Journal has the Units, At cost and Market value choice that Home and Balances have, the same one for the whole app, and shows its amounts on it; where an amount differs from the units, the units stay beneath it. ([#274])
 - Home and Journal have the same Filters button as Balances: a sheet for the period, the search, and tags or links. The period now narrows all three screens. ([#275])
 

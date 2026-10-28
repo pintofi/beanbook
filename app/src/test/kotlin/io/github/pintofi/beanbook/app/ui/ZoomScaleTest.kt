@@ -5,26 +5,45 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ZoomScaleTest {
-    private val perDoubling = ZoomScale.DP_PER_DOUBLING
+    private val dead = ZoomScale.DEAD_ZONE_DP
+    private val perDoubling = ZoomScale.DP_PER_DOUBLING_PER_SECOND
 
-    @Test fun `sliding left zooms in and sliding right zooms out`() {
-        assertTrue(ZoomScale.slid(1f, -50f, perDoubling, 0.5f, 10f) > 1f)
-        assertTrue(ZoomScale.slid(2f, 50f, perDoubling, 0.5f, 10f) < 2f)
+    @Test fun `holding the finger left zooms in and holding it right zooms out`() {
+        assertTrue(ZoomScale.doublingsPerSecond(-60f) > 0f)
+        assertTrue(ZoomScale.doublingsPerSecond(60f) < 0f)
     }
 
-    @Test fun `a slide of the doubling distance doubles the zoom wherever it starts`() {
-        assertEquals(2f, ZoomScale.slid(1f, -perDoubling, perDoubling, 0.5f, 10f), 1e-4f)
-        assertEquals(6f, ZoomScale.slid(3f, -perDoubling, perDoubling, 0.5f, 10f), 1e-4f)
-        assertEquals(1.5f, ZoomScale.slid(3f, perDoubling, perDoubling, 0.5f, 10f), 1e-4f)
+    @Test fun `nothing moves inside the dead zone`() {
+        assertEquals(0f, ZoomScale.doublingsPerSecond(0f), 0f)
+        assertEquals(0f, ZoomScale.doublingsPerSecond(-dead), 0f)
+        assertEquals(0f, ZoomScale.doublingsPerSecond(dead - 1f), 0f)
     }
 
-    @Test fun `no slide leaves the zoom where it was`() {
-        assertEquals(2.4f, ZoomScale.slid(2.4f, 0f, perDoubling, 0.5f, 10f), 1e-5f)
+    @Test fun `the further the finger is held, the faster the zoom changes`() {
+        assertTrue(ZoomScale.doublingsPerSecond(-80f) > ZoomScale.doublingsPerSecond(-40f))
+        assertEquals(1f, ZoomScale.doublingsPerSecond(-(dead + perDoubling)), 1e-5f)
     }
 
-    @Test fun `the zoom stops at the camera's own limits`() {
-        assertEquals(10f, ZoomScale.slid(5f, -10 * perDoubling, perDoubling, 0.5f, 10f), 1e-4f)
-        assertEquals(0.5f, ZoomScale.slid(1f, 10 * perDoubling, perDoubling, 0.5f, 10f), 1e-4f)
+    @Test fun `the speed has a ceiling`() {
+        assertEquals(ZoomScale.MAX_DOUBLINGS_PER_SECOND, ZoomScale.doublingsPerSecond(-10_000f), 0f)
+        assertEquals(-ZoomScale.MAX_DOUBLINGS_PER_SECOND, ZoomScale.doublingsPerSecond(10_000f), 0f)
+    }
+
+    @Test fun `holding a rate for a second doubles the zoom that many times, wherever it starts`() {
+        assertEquals(2f, ZoomScale.advanced(1f, 1f, 1f, 0.5f, 10f), 1e-4f)
+        assertEquals(6f, ZoomScale.advanced(3f, 1f, 1f, 0.5f, 10f), 1e-4f)
+        assertEquals(1.5f, ZoomScale.advanced(3f, -1f, 1f, 0.5f, 10f), 1e-4f)
+    }
+
+    @Test fun `the zoom keeps climbing frame after frame until the camera's limit`() {
+        var ratio = 1f
+        val seen = mutableListOf(ratio)
+        repeat(300) {
+            ratio = ZoomScale.advanced(ratio, 1f, 1f / 60f, 0.5f, 10f)
+            seen += ratio
+        }
+        assertTrue("it should never go down while held", seen.zipWithNext().all { (a, b) -> b >= a })
+        assertEquals(10f, ratio, 1e-4f)
     }
 
     @Test fun `a step is a tenth of the zoom`() {

@@ -7,7 +7,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,7 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -25,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -40,19 +44,26 @@ import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sign
 
 /**
  * The arithmetic of the scanner's zoom dial.
  *
- * A zoom is a ratio, and 1x to 2x is the same step as 2x to 4x, so a slide changes it by a factor
- * and not by an amount: the same distance doubles the zoom wherever it starts.
+ * A zoom is a ratio, and 1x to 2x is the same step as 2x to 4x, so the dial changes it by a
+ * factor and not by an amount: the same push doubles the zoom wherever it starts.
  */
 internal object ZoomScale {
     /** The size of one step of the readout: the zoom is said to a tenth, and each tenth ticks. */
     private const val STEP = 0.1f
 
-    /** How far a finger travels, in dp, to double the zoom. */
-    const val DP_PER_DOUBLING = 160f
+    /** How far from where the finger came down it has to go before the zoom starts to move. */
+    const val DEAD_ZONE_DP = 8f
+
+    /** How far past the dead zone, in dp, makes the zoom double every second. */
+    const val DP_PER_DOUBLING_PER_SECOND = 90f
+
+    /** The fastest the zoom changes, in doublings a second, however far the finger goes. */
+    const val MAX_DOUBLINGS_PER_SECOND = 2.5f
 
     /** Which step of the readout [ratio] is on. */
     fun step(ratio: Float): Int = floor(ratio / STEP + EPSILON).toInt()
@@ -61,11 +72,20 @@ internal object ZoomScale {
     fun stepsBetween(from: Float, to: Float): Int = abs(step(to) - step(from))
 
     /**
-     * The zoom after the finger has moved [dx] sideways from where the slide began at [start].
-     * Sliding left (a negative [dx]) zooms in and sliding right zooms out.
+     * How fast the zoom changes while the finger is [offsetDp] to the side of where it came down,
+     * in doublings a second. Left (a negative offset) zooms in and right zooms out; the further it
+     * is held, the faster; inside the dead zone nothing moves.
      */
-    fun slid(start: Float, dx: Float, dpPerDoubling: Float, min: Float, max: Float): Float =
-        (start * 2f.pow(-dx / dpPerDoubling)).coerceIn(min, max)
+    fun doublingsPerSecond(offsetDp: Float): Float {
+        val beyond = abs(offsetDp) - DEAD_ZONE_DP
+        if (beyond <= 0f) return 0f
+        val rate = beyond / DP_PER_DOUBLING_PER_SECOND
+        return (-sign(offsetDp) * rate).coerceIn(-MAX_DOUBLINGS_PER_SECOND, MAX_DOUBLINGS_PER_SECOND)
+    }
+
+    /** The zoom after [seconds] at [doublingsPerSecond], held inside the camera's range. */
+    fun advanced(ratio: Float, doublingsPerSecond: Float, seconds: Float, min: Float, max: Float): Float =
+        (ratio * 2f.pow(doublingsPerSecond * seconds)).coerceIn(min, max)
 
     /** `2x` on a whole number, `2.4x` otherwise, as the readout shows it. */
     fun label(ratio: Float): String {
@@ -89,9 +109,10 @@ internal fun View.zoomTick() {
 /**
  * The scanner's zoom: the zoom said in the middle, and nothing else.
  *
- * Press it and slide left to zoom in, right to zoom out; the number follows the finger, and each
- * step of it gives a small tick under the fingertip. There are no fixed stops to tap: a dial that
- * can be set anywhere has no use for them.
+ * Press it and hold the finger to the left of where it came down, and the zoom keeps going up,
+ * faster the further over; hold it to the right and it keeps coming down; bring the finger back
+ * to where it started, or lift it, and it stops. The number changes in place, and each step of it
+ * gives a small tick under the fingertip.
  */
 @Composable
 internal fun ZoomControl(
@@ -106,8 +127,34 @@ internal fun ZoomControl(
     val accent = Color(0xFF80D5D4)
     val view = LocalView.current
     val current by rememberUpdatedState(ratio)
+    val report by rememberUpdatedState(onRatio)
     var pressed by remember { mutableStateOf(false) }
+    // How far to the side of where it came down the finger is, in dp, while it is down.
+    var offsetDp by remember { mutableFloatStateOf(0f) }
     val grow by animateFloatAsState(if (pressed) PRESSED_SCALE else 1f, label = "zoom-pressed")
+
+    // While the finger is down the zoom moves every frame at the speed the offset asks for.
+    LaunchedEffect(pressed, min, max) {
+        if (!pressed) return@LaunchedEffect
+        var last = 0L
+        var lastTick = 0L
+        while (true) {
+            androidx.compose.runtime.withFrameNanos { now ->
+                val seconds = if (last == 0L) 0f else (now - last) / NANOS_PER_SECOND
+                last = now
+                val rate = ZoomScale.doublingsPerSecond(offsetDp)
+                if (rate != 0f && seconds > 0f) {
+                    val next = ZoomScale.advanced(current, rate, seconds, min, max)
+                    // A tick for each step, and no more often than the hand can tell them apart.
+                    if (ZoomScale.stepsBetween(current, next) > 0 && now - lastTick >= MIN_TICK_GAP_NANOS) {
+                        view.zoomTick()
+                        lastTick = now
+                    }
+                    report(next)
+                }
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -119,23 +166,20 @@ internal fun ZoomControl(
                 BorderStroke(1.dp, if (pressed) accent else Color.White.copy(alpha = 0.6f)),
                 RoundedCornerShape(22.dp),
             )
-            .pointerInput(min, max) {
-                var start = 1f
-                var travelled = 0f
-                detectHorizontalDragGestures(
-                    onDragStart = {
-                        start = current
-                        travelled = 0f
-                        pressed = true
-                    },
-                    onDragEnd = { pressed = false },
-                    onDragCancel = { pressed = false },
-                ) { change, drag ->
-                    change.consume()
-                    travelled += drag
-                    val next = ZoomScale.slid(start, travelled / density, ZoomScale.DP_PER_DOUBLING, min, max)
-                    if (ZoomScale.stepsBetween(current, next) > 0) view.zoomTick()
-                    onRatio(next)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(pass = PointerEventPass.Initial)
+                    down.consume()
+                    pressed = true
+                    offsetDp = 0f
+                    do {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val point = event.changes.firstOrNull { it.id == down.id } ?: break
+                        offsetDp = (point.position.x - down.position.x) / density
+                        point.consume()
+                    } while (point.pressed)
+                    pressed = false
+                    offsetDp = 0f
                 }
             }
             .semantics {
@@ -161,3 +205,8 @@ private const val MIN_USEFUL_RANGE = 1.1f
 
 /** How much the dial swells while a finger is on it. */
 private const val PRESSED_SCALE = 1.08f
+
+private const val NANOS_PER_SECOND = 1_000_000_000f
+
+/** Ticks closer together than this blur into a buzz. */
+private const val MIN_TICK_GAP_NANOS = 40_000_000L
