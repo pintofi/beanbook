@@ -417,13 +417,15 @@ def cancel_script(handle: str) -> None:
 class _LiveOutput(io.StringIO):
     """A script's output, also written as it prints to a file the app reads while it runs.
 
-    The file is `beanbook-script-<handle>.live` in the temporary directory, which is the app's
-    cache folder in both processes, so no new call crosses the process boundary. Written
+    The file is `beanbook-script-<handle>.live` in the folder the app names (`live_dir`), which
+    is its cache folder. Python's own temporary folder is *inside* that folder
+    (`cache/chaquopy/tmp`) and not the same one, so the output written there was never seen by the
+    app, and the terminal stayed empty until the script ended. Written
     through to disk on every line break and at most every fifth of a second otherwise, and
     removed when the script ends; the final output still comes back in the result.
     """
 
-    def __init__(self, handle: str):
+    def __init__(self, handle: str, live_dir: str = ""):
         super().__init__()
         self._path = None
         self._file = None
@@ -436,7 +438,7 @@ class _LiveOutput(io.StringIO):
                 # The handle is the app's own, but it is a file name here, so nothing in it may
                 # be a path.
                 safe = re.sub(r"[^A-Za-z0-9_-]", "_", handle)
-                self._path = os.path.join(tempfile.gettempdir(), f"beanbook-script-{safe}.live")
+                self._path = os.path.join(live_dir or tempfile.gettempdir(), f"beanbook-script-{safe}.live")
                 self._file = open(self._path, "w", encoding="utf-8")
             except OSError:
                 self._path = self._file = None
@@ -472,6 +474,7 @@ def run_script(
     secrets=(),
     handle: str = "",
     plugin_dirs: str = "",
+    live_dir: str = "",
 ) -> dict:
     """Runs one user script with a deadline, and a way to stop it early.
 
@@ -496,7 +499,7 @@ def run_script(
     # ends when it finishes, when it fails, or when the user cancels it.
     deadline = started + float(timeout_seconds) if float(timeout_seconds) > 0 else None
     guard = None if allow_bridge else BridgeGuard().install()
-    captured = _LiveOutput(handle)
+    captured = _LiveOutput(handle, live_dir)
 
     result = {
         "ok": False,

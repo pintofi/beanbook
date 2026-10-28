@@ -3,6 +3,7 @@
 import os
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -57,6 +58,35 @@ class LiveScriptTest(unittest.TestCase):
         self.assertTrue(seen, "the first line was not readable before the script ended")
         self.assertIn("second", result["output"])
         self.assertFalse(os.path.exists(live), "the live file is removed when the script ends")
+
+
+    def test_the_live_file_goes_where_the_app_says_not_into_tempfiles_own_folder(self):
+        # On Android tempfile's folder is inside the app's cache folder, not the cache folder.
+        cache = tempfile.mkdtemp()
+        inner = os.path.join(cache, "chaquopy", "tmp")
+        os.makedirs(inner)
+        path = self._script("import time\nprint('hello', flush=True)\ntime.sleep(0.8)\n")
+        saved = tempfile.tempdir
+        tempfile.tempdir = inner
+        try:
+            found = []
+
+            def watch():
+                live = os.path.join(cache, "beanbook-script-t4.live")
+                for _ in range(30):
+                    if os.path.isfile(live) and "hello" in open(live).read():
+                        found.append(True)
+                        return
+                    time.sleep(0.05)
+
+            watcher = threading.Thread(target=watch)
+            watcher.start()
+            plugins.run_script(path, timeout_seconds=0, handle="t4", live_dir=cache)
+            watcher.join()
+            self.assertTrue(found, "the folder the app named never held the script's output")
+            self.assertEqual([], os.listdir(inner), "nothing should have been written to tempfile's folder")
+        finally:
+            tempfile.tempdir = saved
 
 
 if __name__ == "__main__":
