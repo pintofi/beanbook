@@ -137,4 +137,63 @@ class DocumentDirectiveTest {
 
         assertNull(BeancountText.removeDocumentDirective(source, "r.pdf", from = "Equity:Opening"))
     }
+
+    // Filing a document writes its directive followed by a blank line, as every entry is; unlinking
+    // used to take the directive and leave that blank line, so the file grew by a line each time a
+    // document was added and removed.
+
+    /** What ProjectWriter.append makes of [existing] and a new directive: set apart, then a blank line. */
+    private fun appended(existing: String, directive: String): String {
+        val separator = when {
+            existing.isEmpty() -> ""
+            existing.endsWith("\n\n") -> ""
+            existing.endsWith("\n") -> "\n"
+            else -> "\n\n"
+        }
+        return existing + separator + directive.trimEnd() + "\n\n"
+    }
+
+    private fun directive(path: String) = "2026-10-24 document Expenses:Food \"$path\""
+
+    @Test
+    fun `filing and unlinking again and again does not grow the file`() {
+        val start = "; Documents filed under an account, written by Beanbook.\n"
+        var text = start
+        val sizes = mutableListOf<Int>()
+        repeat(6) { round ->
+            text = appended(text, directive("documents/r$round.pdf"))
+            text = BeancountText.removeDocumentDirective(text, "documents/r$round.pdf")!!
+            sizes += text.length
+        }
+        assertEquals(1, sizes.distinct().size, "the file changed size between rounds: $sizes")
+        assertEquals(start + "\n", text)
+    }
+
+    @Test
+    fun `a directive between two others takes its own blank line and no more`() {
+        val source = directive("documents/a.pdf") + "\n\n" + directive("documents/b.pdf") + "\n\n" +
+            directive("documents/c.pdf") + "\n\n"
+
+        assertEquals(
+            directive("documents/a.pdf") + "\n\n" + directive("documents/c.pdf") + "\n\n",
+            BeancountText.removeDocumentDirective(source, "documents/b.pdf"),
+        )
+    }
+
+    @Test
+    fun `a directive written straight under an entry leaves the entry set apart from what follows`() {
+        val source = "2026-01-01 open Assets:Cash\n" + directive("documents/a.pdf") + "\n\n2026-01-02 open Assets:Bank\n"
+
+        assertEquals(
+            "2026-01-01 open Assets:Cash\n\n2026-01-02 open Assets:Bank\n",
+            BeancountText.removeDocumentDirective(source, "documents/a.pdf"),
+        )
+    }
+
+    @Test
+    fun `the blank line after a directive goes with it under CRLF too`() {
+        val source = "; header\r\n\r\n" + directive("documents/a.pdf") + "\r\n\r\n"
+
+        assertEquals("; header\r\n\r\n", BeancountText.removeDocumentDirective(source, "documents/a.pdf"))
+    }
 }

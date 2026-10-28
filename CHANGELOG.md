@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The decimal places box in the new-ledger setup takes numbers only, shows the number keyboard, and can be cleared and retyped; before, it ignored some keys. ([#261])
 - The plus/minus button on an amount keeps the cursor on the character it was on: after the 0 of 1230 stays after the 0 of -1230. ([#261])
 - Every password and passphrase box now asks the keyboard not to suggest or remember what is typed; four of the eight did not. ([#261])
+- Adding and removing documents no longer makes files/documents.beancount grow by a blank line each time: removing a document's line takes the blank line that followed it too. Lines already added are left as they are. ([#268])
 
 ## [1.0.2] - 2026-10-25
 
@@ -247,3 +248,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#249]: https://github.com/pintofi/beanbook/issues/249
 [#259]: https://github.com/pintofi/beanbook/issues/259
 [#261]: https://github.com/pintofi/beanbook/issues/261
+[#268]: https://github.com/pintofi/beanbook/issues/268

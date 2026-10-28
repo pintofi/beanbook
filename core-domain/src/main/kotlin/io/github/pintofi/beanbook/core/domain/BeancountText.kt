@@ -57,11 +57,15 @@ object BeancountText {
         val kept = StringBuilder()
         var removedAny = false
         var index = 0
+        // Whether the last line kept is blank (or nothing is kept yet): what the removed directive
+        // was set apart by, so the blank line the writer put after it is not left behind.
+        var keptEndsBlank = true
         while (index < lines.size) {
             val line = lines[index]
             val match = directive.find(line.trimEnd('\r', '\n'))
             if (match == null || (from != null && match.groups["account"]!!.value != from)) {
                 kept.append(line)
+                keptEndsBlank = line.isBlank()
                 index++
                 continue
             }
@@ -73,6 +77,12 @@ object BeancountText {
                 val body = next.trimEnd('\r', '\n')
                 if (body.isNotBlank() && body.first().isWhitespace()) index++ else break
             }
+            // The writer sets every directive off with a blank line before and after it. Taking
+            // the directive out and keeping the one after left a blank line behind each time one was
+            // filed and unlinked, and the file grew by one. A blank line that followed a directive
+            // which itself followed a blank line (or the start) goes with it; one that separated
+            // the directive from an entry directly above it stays.
+            if (keptEndsBlank && index < lines.size && lines[index].isBlank()) index++
         }
         return if (removedAny) kept.toString() else null
     }
