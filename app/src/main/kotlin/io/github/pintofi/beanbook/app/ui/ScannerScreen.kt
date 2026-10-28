@@ -123,6 +123,7 @@ fun ScannerScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val view = androidx.compose.ui.platform.LocalView.current
     // The style new pages are given: one of the four, or null for Automatic, which is the default. It is
     // the name so that it survives the screen being recreated.
     var chosenStyle by rememberSaveable { mutableStateOf<String?>(null) }
@@ -466,7 +467,10 @@ fun ScannerScreen(
             .pointerInput(camera) {
                 detectTransformGestures { _, _, gestureZoom, _ ->
                     val control = camera?.cameraControl ?: return@detectTransformGestures
-                    zoomRatio = (zoomRatio * gestureZoom).coerceIn(zoomMin, zoomMax)
+                    val next = (zoomRatio * gestureZoom).coerceIn(zoomMin, zoomMax)
+                    // The same small tick as the dial gives, for each step of the readout.
+                    if (ZoomScale.stepsBetween(zoomRatio, next) > 0) view.zoomTick()
+                    zoomRatio = next
                     control.setZoomRatio(zoomRatio)
                 }
             }
@@ -592,23 +596,6 @@ fun ScannerScreen(
                         style = Stroke(width = 5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round),
                     )
                 }
-            }
-        }
-        // No page found yet: four quiet brackets where one would sit, so the viewfinder says what
-        // it is looking for.
-        if (liveQuad == null && surfaceRequest != null) {
-            androidx.compose.foundation.Canvas(Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 140.dp)) {
-                pageBrackets(
-                    colour = Color.White,
-                    points = listOf(
-                        Offset.Zero,
-                        Offset(size.width, 0f),
-                        Offset(size.width, size.height),
-                        Offset(0f, size.height),
-                    ),
-                    arm = SCAN_BRACKET_ARM.dp.toPx(),
-                    thickness = 4.dp.toPx(),
-                )
             }
         }
 
