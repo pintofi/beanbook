@@ -440,16 +440,16 @@ and the status of every item.
   - [x] A smaller OpenCV build, measured and deferred for its small gain ([#185](https://github.com/pintofi/beanbook/issues/185))
   - [x] The rest of the 1.0.2 bugs and tidy-ups ([milestone](https://github.com/pintofi/beanbook/milestone/1))
   - [x] Fava's own editor stays Fava's: it saves as Fava does, and the limitation is documented ([#17](https://github.com/pintofi/beanbook/issues/17))
-- [ ] **Trust and polish, continued** (now)
+- [ ] **1.0.3 Trust and polish** (now)
   - [ ] TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18))
   - [ ] Instrumentation tests in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19))
   - [ ] Screenshot tests, light and dark, 200% text ([#20](https://github.com/pintofi/beanbook/issues/20))
   - [ ] User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21))
   - [ ] Reproducible wheels and APK checked in CI ([#22](https://github.com/pintofi/beanbook/issues/22))
   - [ ] Hand-passed parameters grouped into state holders ([#67](https://github.com/pintofi/beanbook/issues/67))
-- [ ] **1.0.3 Capture**: add an entry from shared text, photos and PDFs ([#23](https://github.com/pintofi/beanbook/issues/23)); a Quick Settings tile and shortcut ([#24](https://github.com/pintofi/beanbook/issues/24)); templates and recurring reminders ([#25](https://github.com/pintofi/beanbook/issues/25))
-- [ ] **1.0.4 Reconcile and import**: a reconcile screen ([#26](https://github.com/pintofi/beanbook/issues/26)); bank statements on the phone ([#27](https://github.com/pintofi/beanbook/issues/27)); Syncthing conflict files ([#28](https://github.com/pintofi/beanbook/issues/28))
-- [ ] **1.0.5 Reach**: a send queue for a remote Fava ([#29](https://github.com/pintofi/beanbook/issues/29)); price updates on request ([#30](https://github.com/pintofi/beanbook/issues/30)); translations ([#31](https://github.com/pintofi/beanbook/issues/31)); Git sync that never merges for you ([#154](https://github.com/pintofi/beanbook/issues/154))
+- [ ] **1.1.0 Capture**: add an entry from shared text, photos and PDFs ([#23](https://github.com/pintofi/beanbook/issues/23)); a Quick Settings tile and shortcut ([#24](https://github.com/pintofi/beanbook/issues/24)); templates and recurring reminders ([#25](https://github.com/pintofi/beanbook/issues/25))
+- [ ] **1.2.0 Reconcile and import**: a reconcile screen ([#26](https://github.com/pintofi/beanbook/issues/26)); bank statements on the phone ([#27](https://github.com/pintofi/beanbook/issues/27)); Syncthing conflict files ([#28](https://github.com/pintofi/beanbook/issues/28))
+- [ ] **1.3.0 Reach**: a send queue for a remote Fava ([#29](https://github.com/pintofi/beanbook/issues/29)); price updates on request ([#30](https://github.com/pintofi/beanbook/issues/30)); translations ([#31](https://github.com/pintofi/beanbook/issues/31)); Git sync that never merges for you ([#154](https://github.com/pintofi/beanbook/issues/154))
 
 Not planned: merging conflicting edits for you, cloud OCR or text AI, accounts, analytics and ads.
 
