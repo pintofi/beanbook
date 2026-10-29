@@ -54,6 +54,8 @@ Get an entry into the ledger faster, from anywhere on the phone.
 | Add an entry from shared text, photos and PDFs ([#23](https://github.com/pintofi/beanbook/issues/23)) | proposed | A bank SMS or receipt should become a draft in two taps |
 | A Quick Settings tile and launcher shortcut for a new entry ([#24](https://github.com/pintofi/beanbook/issues/24)) | proposed | The form is the most used screen |
 | Entry templates and recurring reminders ([#25](https://github.com/pintofi/beanbook/issues/25)) | proposed | Rent and subscriptions are the same entry every month |
+| Rules that suggest the account for a shared message ([#283](https://github.com/pintofi/beanbook/issues/283)) | proposed | "Zomato" should land in Expenses:Food without choosing it each time |
+| Settle an entry: a refund, pay-back or reimbursement linked to the original ([#242](https://github.com/pintofi/beanbook/issues/242)) | proposed | Shows what was really spent when a friend or employer pays you back |
 
 ## Later
 
