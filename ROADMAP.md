@@ -11,16 +11,22 @@ telemetry, no ads, and no network use in local mode. Ideas that need any of thos
 Status of an item: **proposed** (an idea, not yet taken), **accepted** (it has a design and a
 milestone), **in progress**, **shipped in x.y.z**.
 
+Versions follow [semantic versioning](https://semver.org/): a new feature goes in a minor release
+(1.1.0, 1.2.0 and so on), and fixes and tidy-ups go in patch releases (1.0.3, 1.0.4). The milestones
+are named that way.
+
 ## Shipped
 
 - **1.0.2** (2026-10-25): the document scanner reworked (review screen, crop screen with a magnifier, better page detection, flat black-and-white and greyscale styles, A4 or Letter), a guided first run and an Accounts page with account details, encrypted scheduled backups, a trash for deleted documents, a new entry form with standard buttons, and the safety fixes from a second review. See the [changelog](CHANGELOG.md).
 - **1.0.1** (2026-10-18): one APK per processor type for F-Droid, a Trash list for deleted projects, receipt-photo cleanup, a safer document Unlink, a more careful balance check, and many other fixes from the repository review. See the [changelog](CHANGELOG.md).
 - **1.0.0** (2026-10-15): local Beancount and Fava on the phone, entry forms and editors, documents and scanning, backup and restore, mirror, remote Fava, plugins and Fava extensions (Expert), Share on Wi-Fi. See the [changelog](CHANGELOG.md).
 
-## Now: Trust and polish, continued
+## Now: 1.0.3 Trust and polish
 
-1.0.2 shipped the items below marked merged or done. The ones still marked accepted, and the
-parameter-passing refactor ([#67](https://github.com/pintofi/beanbook/issues/67)), come next.
+1.0.2 shipped the items below marked merged or done. The ones still marked accepted, the
+parameter-passing refactor ([#67](https://github.com/pintofi/beanbook/issues/67)) and the open bug
+fixes come in 1.0.3, a patch release: fixes and tidy-ups only. New features are in the 1.x.0
+releases that follow.
 
 | Item | Status | Why |
 |---|---|---|
@@ -39,7 +45,7 @@ parameter-passing refactor ([#67](https://github.com/pintofi/beanbook/issues/67)
 | User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21)) | accepted | Groundwork for translations |
 | Reproducible wheels and APK checked in CI ([#22](https://github.com/pintofi/beanbook/issues/22)) | accepted | F-Droid verifies the build byte for byte |
 
-## Next: 1.0.3 Capture
+## Next: 1.1.0 Capture
 
 Get an entry into the ledger faster, from anywhere on the phone.
 
@@ -51,7 +57,7 @@ Get an entry into the ledger faster, from anywhere on the phone.
 
 ## Later
 
-**1.0.4 Reconcile and import**
+**1.2.0 Reconcile and import**
 
 | Item | Status | Why |
 |---|---|---|
@@ -59,7 +65,7 @@ Get an entry into the ledger faster, from anywhere on the phone.
 | Import bank statements on the phone ([#27](https://github.com/pintofi/beanbook/issues/27)) | proposed | The importers are already bundled |
 | Syncthing conflict files in Mirror ([#28](https://github.com/pintofi/beanbook/issues/28)) | proposed | A common way to sync a ledger folder |
 
-**1.0.5 Reach**
+**1.3.0 Reach**
 
 | Item | Status | Why |
 |---|---|---|
@@ -82,4 +88,4 @@ when a milestone takes it. A bug is not a roadmap item: use the
 [bug form](https://github.com/pintofi/beanbook/issues/new?template=bug_report.yml). Security
 problems go through [SECURITY.md](SECURITY.md).
 
-Last reviewed: 2026-10-25. The README carries a shorter checklist of the same plan; this page is the detail.
+Last reviewed: 2026-10-29. The README carries a shorter checklist of the same plan; this page is the detail.
