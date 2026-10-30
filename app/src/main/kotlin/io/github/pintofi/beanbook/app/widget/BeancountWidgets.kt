@@ -33,31 +33,28 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
         manager: AppWidgetManager,
         widgetIds: IntArray,
     ) {
+        widgetIds.forEach { id -> update(context, manager, id, manager.getAppWidgetOptions(id)) }
+    }
+
+    /** Draws one widget at the size the launcher last reported for it, which a resize hands over. */
+    private fun update(context: Context, manager: AppWidgetManager, id: Int, sizes: android.os.Bundle) {
         val cache = WidgetCache(context.filesDir.resolve("state"))
-        val hideAmounts = WidgetPreferences(context).hideAmounts()
-
         val accounts = WidgetAccounts(context)
-        val options = WidgetOptions(context)
-
-        widgetIds.forEach { id ->
-            val snapshot = cache.read(prefer = accounts.accountsFor(id))
-            manager.updateAppWidget(
-                id,
-                WidgetRenderer.render(
-                    context = context,
-                    metric = metric,
-                    snapshot = snapshot,
-                    redacted = WidgetRenderer.shouldRedact(context, id, hideAmounts),
-                    chosenAccounts = accounts.accountsFor(id),
-                    widgetId = id,
-                    option = options.optionFor(id),
-                ),
-            )
-        }
-        // The multi-account list is filled by a service the launcher binds, and it keeps what
-        // it was given until told the data changed.
+        manager.updateAppWidget(
+            id,
+            WidgetRenderer.render(
+                context = context,
+                metric = metric,
+                snapshot = cache.read(prefer = accounts.accountsFor(id)),
+                redacted = WidgetRenderer.shouldRedact(context, id, WidgetPreferences(context).hideAmounts()),
+                chosenAccounts = accounts.accountsFor(id),
+                widgetId = id,
+                option = WidgetOptions(context).optionFor(id),
+                sizes = sizes,
+            ),
+        )
         @Suppress("DEPRECATION") // Its replacement, RemoteCollectionItems, is API 31.
-        manager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list)
+        manager.notifyAppWidgetViewDataChanged(intArrayOf(id), R.id.widget_list)
     }
 
     /**
@@ -96,7 +93,7 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
         widgetId: Int,
         newOptions: android.os.Bundle,
     ) {
-        onUpdate(context, manager, intArrayOf(widgetId))
+        update(context, manager, widgetId, newOptions)
     }
 }
 
