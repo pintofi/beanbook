@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.widget.RemoteViews
 import io.github.pintofi.beanbook.app.MainActivity
@@ -41,12 +42,13 @@ object WidgetRenderer {
         chosenAccounts: List<String> = emptyList(),
         widgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID,
         option: WidgetOption = WidgetOption(),
+        sizes: Bundle? = null,
     ): RemoteViews {
         // Several accounts on one widget is its own layout: a row each, rather than one
         // figure with a label. One account keeps the original single-figure shape,
         // which reads better at the size most people place a balance widget at.
         if (metric == WidgetMetric.BALANCE && chosenAccounts.size > 1) {
-            return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs, widgetId, option)
+            return renderRows(context, snapshot, chosenAccounts, redacted, nowEpochMs, widgetId, option, sizes)
         }
         val chosenAccount = chosenAccounts.firstOrNull()
         val views = RemoteViews(context.packageName, R.layout.widget_metric)
@@ -78,7 +80,7 @@ object WidgetRenderer {
         // that lands on the label or the footnote and does nothing reads as a broken widget.
         views.setOnClickPendingIntent(R.id.widget_root, launchIntent(context, snapshot, metric))
         views.setOnClickPendingIntent(R.id.widget_add, addIntent(context, snapshot))
-        views.bindBasis(context, metric.provider, widgetId, effectiveBasis(option, snapshot), palette)
+        views.bindBasis(context, metric.provider, widgetId, effectiveBasis(option, snapshot), palette, sizes)
 
         if (snapshot == null) {
             views.setTextViewText(R.id.widget_value, "—")
@@ -128,11 +130,14 @@ object WidgetRenderer {
         nowEpochMs: Long,
         widgetId: Int,
         option: WidgetOption,
+        sizes: Bundle?,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_balances)
         val palette = WidgetPalette.of(context)
         views.paint(palette)
-        views.bindBasis(context, WidgetMetric.BALANCE.provider, widgetId, effectiveBasis(option, snapshot), palette)
+        views.bindBasis(
+            context, WidgetMetric.BALANCE.provider, widgetId, effectiveBasis(option, snapshot), palette, sizes,
+        )
         views.setTextViewText(R.id.widget_label, WidgetMetric.BALANCE.label)
         views.setOnClickPendingIntent(
             R.id.widget_root,
@@ -238,8 +243,9 @@ object WidgetRenderer {
         widgetId: Int,
         selected: Valuation,
         palette: WidgetPalette,
+        sizes: Bundle?,
     ) {
-        val room = roomForBasis(context, widgetId)
+        val room = roomForBasis(context, widgetId, sizes)
         setViewVisibility(R.id.widget_basis, if (room) android.view.View.VISIBLE else android.view.View.GONE)
         if (!room) return
         Valuation.entries.forEach { basis ->
@@ -264,12 +270,30 @@ object WidgetRenderer {
         }
     }
 
-    /** Whether the widget is tall enough for the basis row; one whose size is not known gets it. */
-    private fun roomForBasis(context: Context, widgetId: Int): Boolean {
-        val height = runCatching {
+    /**
+     * Whether the widget is tall enough for the basis row; one whose size is not known gets it.
+     *
+     * [sizes] are the options the launcher just reported, which a resize passes along: reading them
+     * again from the manager while the widget is still being dragged can return the size from a
+     * step before, and the row then comes and goes.
+     */
+    private fun roomForBasis(context: Context, widgetId: Int, sizes: Bundle?): Boolean {
+        val options = sizes ?: runCatching {
             AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId)
-                .getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
-        }.getOrDefault(0)
+        }.getOrNull()
+        return basisRowFits(
+            minHeightDp = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0) ?: 0,
+            maxHeightDp = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0) ?: 0,
+            landscape = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
+        )
+    }
+
+    /**
+     * The launcher reports the height twice: the smaller one is what the widget gets held upright
+     * and the larger one held on its side. The row has to be judged by the one in use.
+     */
+    internal fun basisRowFits(minHeightDp: Int, maxHeightDp: Int, landscape: Boolean): Boolean {
+        val height = if (landscape) maxHeightDp else minHeightDp
         return height == 0 || height >= MIN_HEIGHT_FOR_BASIS_DP
     }
 
