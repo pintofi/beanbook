@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- A zoom control in the scanner: the zoom is said in the middle of a slider above the shutter, with small lines, a longer line and a plus on the right and the same with a minus on the left. Slide the number to the right and the zoom keeps going up, faster the further over; slide it to the left and it keeps coming down. The number sits in a bordered capsule that follows your finger, and when you let go it springs back to the middle, quicker from further away, and the zoom stays where it is. It ticks for each step, and pinching ticks too. It is the camera's real zoom. The white corner marks that showed before a page was found are gone. ([#272], [#280], [#285], [#289])
+- A zoom control in the scanner: the zoom is said in the middle of a slider above the shutter, with small lines, a longer line and a plus on the right and the same with a minus on the left. Slide the number to the right and the zoom keeps going up, faster the further over; slide it to the left and it keeps coming down. The number sits in a bordered capsule that follows your finger, and when you let go it springs back to the middle, quicker from further away, and the zoom stays where it is. It is the camera's real zoom. The white corner marks that showed before a page was found are gone. ([#272], [#280], [#285], [#289], [#293])
 - The Journal has the Units, At cost and Market value choice that Home and Balances have, the same one for the whole app, and shows its amounts on it; where an amount differs from the units, the units stay beneath it. ([#274])
 - Home and Journal have the same Filters button as Balances: a sheet for the period, the search, and tags or links. The period now narrows all three screens. ([#275])
 
@@ -18,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Units, At cost and Market value are on the widgets themselves: tap one to change that widget's basis, instead of choosing it in the widget's settings. The row is left out on a widget too short to hold it, and the net worth widget no longer has a settings screen. The preview shown when you pick a widget shows the row. ([#277])
 
 ### Fixed
-- The tick on the scanner's zoom slider is a firmer one, and ticks no more often than every 60 ms: the old one was the lightest Android offers and could not be felt on an ordinary phone. ([#291])
 - The Units, At cost and Market value buttons on a widget no longer come and go while you resize it: whether there is room for them is now judged by the size the launcher reports, and by the height that applies when the phone is on its side. ([#286])
 - The decimal places box in the new-ledger setup takes numbers only, shows the number keyboard, and can be cleared and retyped; before, it ignored some keys. ([#261])
 - The plus/minus button on an amount keeps the cursor on the character it was on: after the 0 of 1230 stays after the 0 of -1230. ([#261])
@@ -275,4 +274,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#285]: https://github.com/pintofi/beanbook/issues/285
 [#286]: https://github.com/pintofi/beanbook/issues/286
 [#289]: https://github.com/pintofi/beanbook/issues/289
-[#291]: https://github.com/pintofi/beanbook/issues/291
+[#293]: https://github.com/pintofi/beanbook/issues/293

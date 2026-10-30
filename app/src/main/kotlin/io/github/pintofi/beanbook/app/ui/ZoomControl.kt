@@ -1,8 +1,5 @@
 package io.github.pintofi.beanbook.app.ui
 
-import android.os.Build
-import android.view.HapticFeedbackConstants
-import android.view.View
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -39,7 +36,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -53,7 +49,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sign
@@ -65,9 +60,6 @@ import kotlin.math.sign
  * factor and not by an amount: the same push doubles the zoom wherever it starts.
  */
 internal object ZoomScale {
-    /** The size of one step of the readout: the zoom is said to a tenth, and each tenth ticks. */
-    private const val STEP = 0.1f
-
     /** How far from where the finger came down it has to go before the zoom starts to move. */
     const val DEAD_ZONE_DP = 8f
 
@@ -76,12 +68,6 @@ internal object ZoomScale {
 
     /** The fastest the zoom changes, in doublings a second, however far the finger goes. */
     const val MAX_DOUBLINGS_PER_SECOND = 2.5f
-
-    /** Which step of the readout [ratio] is on. */
-    fun step(ratio: Float): Int = floor(ratio / STEP + EPSILON).toInt()
-
-    /** How many steps lie between two zooms, whichever is larger. */
-    fun stepsBetween(from: Float, to: Float): Int = abs(step(to) - step(from))
 
     /**
      * How fast the zoom changes while the dial is pulled [offsetDp] to the side of the middle,
@@ -104,23 +90,6 @@ internal object ZoomScale {
         val whole = ratio.roundToInt()
         return if (abs(ratio - whole) < 0.05f) "${whole}×" else "%.1f×".format(ratio)
     }
-
-    private const val EPSILON = 1e-3f
-}
-
-/**
- * A short, definite tick, as a dial would give.
- *
- * Not the lightest one the phone offers: that one (`SEGMENT_FREQUENT_TICK`) is played as the faintest
- * texture effect, and on an ordinary phone motor it cannot be felt.
- */
-internal fun View.zoomTick() {
-    val tick = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        HapticFeedbackConstants.SEGMENT_TICK
-    } else {
-        HapticFeedbackConstants.CLOCK_TICK
-    }
-    performHapticFeedback(tick)
 }
 
 /**
@@ -130,7 +99,7 @@ internal fun View.zoomTick() {
  * the left, the same and a plus on the right. Press it and slide the number to the right and the
  * zoom keeps going up, faster the further over; slide it to the left and it keeps coming down. The
  * number follows the finger. Let go and it springs back to the middle, quickly from far away and
- * gently from near, and the zoom stops where it is. Each step of the readout gives a small tick.
+ * gently from near, and the zoom stops where it is.
  */
 @Composable
 internal fun ZoomControl(
@@ -143,7 +112,6 @@ internal fun ZoomControl(
     // A camera that cannot zoom has nothing to offer here.
     if (max < min * MIN_USEFUL_RANGE) return
     val accent = Color(0xFF80D5D4)
-    val view = LocalView.current
     val current by rememberUpdatedState(ratio)
     val report by rememberUpdatedState(onRatio)
     var pressed by remember { mutableStateOf(false) }
@@ -159,7 +127,6 @@ internal fun ZoomControl(
     LaunchedEffect(pressed, min, max) {
         if (!pressed) return@LaunchedEffect
         var last = 0L
-        var lastTick = 0L
         while (true) {
             withFrameNanos { now ->
                 val seconds = if (last == 0L) 0f else (now - last) / NANOS_PER_SECOND
@@ -167,11 +134,6 @@ internal fun ZoomControl(
                 val rate = ZoomScale.doublingsPerSecond(offsetDp)
                 if (rate != 0f && seconds > 0f) {
                     val next = ZoomScale.advanced(current, rate, seconds, min, max)
-                    // A tick for each step, and no more often than the hand can tell them apart.
-                    if (ZoomScale.stepsBetween(current, next) > 0 && now - lastTick >= MIN_TICK_GAP_NANOS) {
-                        view.zoomTick()
-                        lastTick = now
-                    }
                     report(next)
                 }
             }
@@ -295,6 +257,3 @@ private const val SPRING_STIFFNESS = 300f
 private const val PRESSED_SCALE = 1.08f
 
 private const val NANOS_PER_SECOND = 1_000_000_000f
-
-/** Ticks closer together than this blur into a buzz. */
-private const val MIN_TICK_GAP_NANOS = 60_000_000L

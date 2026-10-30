@@ -46,20 +46,6 @@ class ZoomScaleTest {
         assertEquals(10f, ratio, 1e-4f)
     }
 
-    @Test fun `a step is a tenth of the zoom`() {
-        assertEquals(10, ZoomScale.step(1.0f))
-        assertEquals(10, ZoomScale.step(1.04f))
-        assertEquals(11, ZoomScale.step(1.1f))
-        assertEquals(24, ZoomScale.step(2.4f))
-    }
-
-    @Test fun `steps between two zooms count the ticks crossed in either direction`() {
-        assertEquals(0, ZoomScale.stepsBetween(1.01f, 1.09f))
-        assertEquals(1, ZoomScale.stepsBetween(1.09f, 1.11f))
-        assertEquals(1, ZoomScale.stepsBetween(1.11f, 1.09f))
-        assertEquals(10, ZoomScale.stepsBetween(1f, 2f))
-    }
-
     @Test fun `the readout says a whole zoom without a decimal and any other with one`() {
         assertEquals("1×", ZoomScale.label(1f))
         assertEquals("2×", ZoomScale.label(2.01f))
