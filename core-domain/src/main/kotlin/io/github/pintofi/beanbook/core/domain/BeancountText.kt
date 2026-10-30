@@ -225,14 +225,15 @@ object BeancountText {
     ): String? {
         val leaf = path.substringAfterLast('/')
         var removed = false
-        val kept = source.lines().filter { text ->
-            val value = documentMetadataValue(text) ?: return@filter true
+        // Each line keeps its own terminator, so a file with CRLF endings comes back with CRLF endings.
+        val kept = splitKeepingTerminators(source).filter { line ->
+            val value = documentMetadataValue(line.trimEnd('\r', '\n')) ?: return@filter true
             val names = value == path ||
                 (bareNameIsUnique && '/' !in value && value == leaf)
             if (names) removed = true
             !names
         }
-        return if (removed) kept.joinToString("\n") else null
+        return if (removed) kept.joinToString("") else null
     }
 
     /** Whether some `document:` line in [source] names [leaf] with no folder in front of it. */
