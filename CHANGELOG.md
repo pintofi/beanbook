@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-10-30
+
 ### Added
 - Reports say so when the phone's System WebView is too old to run Fava's pages (older than Chrome 80), instead of staying blank with no explanation: a notice at the top names the version and says to update Android System WebView. The ledger and the native screens are not affected. ([#302])
 - A zoom control in the scanner: the zoom is said in the middle of a slider above the shutter, with small lines, a longer line and a plus on the right and the same with a minus on the left. Slide the number to the right and the zoom keeps going up, faster the further over; slide it to the left and it keeps coming down. The number sits in a bordered capsule that follows your finger, and when you let go it springs back to the middle, quicker from further away, and the zoom stays where it is. It is the camera's real zoom. The white corner marks that showed before a page was found are gone. ([#272], [#280], [#285], [#289], [#293])
@@ -175,7 +177,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A refused save names the errors it would add; accounts the ledger has not opened are refused.
 - Widgets keep each project's figures.
 
-[Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/pintofi/beanbook/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/pintofi/beanbook/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/pintofi/beanbook/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/pintofi/beanbook/releases/tag/v1.0.0

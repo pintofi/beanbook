@@ -17,16 +17,19 @@ are named that way.
 
 ## Shipped
 
+- **1.0.3** (2026-10-30): the scanner's zoom slider, one Filters button for Home, Journal and Balances, the Units, At cost and Market value choice on the Journal and on the widgets, a notice when the phone's WebView is too old for Reports, and a set of fixes to setup, importing, unlinking documents, large text and widget resizing. See the [changelog](CHANGELOG.md).
 - **1.0.2** (2026-10-25): the document scanner reworked (review screen, crop screen with a magnifier, better page detection, flat black-and-white and greyscale styles, A4 or Letter), a guided first run and an Accounts page with account details, encrypted scheduled backups, a trash for deleted documents, a new entry form with standard buttons, and the safety fixes from a second review. See the [changelog](CHANGELOG.md).
 - **1.0.1** (2026-10-18): one APK per processor type for F-Droid, a Trash list for deleted projects, receipt-photo cleanup, a safer document Unlink, a more careful balance check, and many other fixes from the repository review. See the [changelog](CHANGELOG.md).
 - **1.0.0** (2026-10-15): local Beancount and Fava on the phone, entry forms and editors, documents and scanning, backup and restore, mirror, remote Fava, plugins and Fava extensions (Expert), Share on Wi-Fi. See the [changelog](CHANGELOG.md).
 
-## Now: 1.0.3 Trust and polish
+## Now: 1.0.4 Trust and polish
 
-1.0.2 shipped the items below marked merged or done. The ones still marked accepted, the
-parameter-passing refactor ([#67](https://github.com/pintofi/beanbook/issues/67)) and the open bug
-fixes come in 1.0.3, a patch release: fixes and tidy-ups only. New features are in the 1.x.0
-releases that follow.
+1.0.3 shipped the fixes and tidy-ups that were ready. What is left, the TalkBack pass, the weekly
+emulator run, user-facing strings in resources ([#21](https://github.com/pintofi/beanbook/issues/21),
+[#76](https://github.com/pintofi/beanbook/issues/76)), the parameter-passing refactor
+([#67](https://github.com/pintofi/beanbook/issues/67)) and the site walkthrough
+([#160](https://github.com/pintofi/beanbook/issues/160)), comes in 1.0.4, a patch release: fixes
+and tidy-ups only. New features are in the 1.x.0 releases that follow.
 
 | Item | Status | Why |
 |---|---|---|
@@ -42,7 +45,8 @@ releases that follow.
 | A TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18)) | accepted | Automated checks do not cover screen-reader order |
 | The instrumentation suite in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19)) | accepted | Regressions and flakes should be visible |
 | Screenshot tests, light and dark, at 200% text ([#20](https://github.com/pintofi/beanbook/issues/20)) | accepted | So the look can change without surprise |
-| User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21)) | accepted | Groundwork for translations |
+| User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21), [#76](https://github.com/pintofi/beanbook/issues/76)) | accepted, with no visible change | Groundwork for translations |
+| A click-through walkthrough of the app on the site ([#160](https://github.com/pintofi/beanbook/issues/160)) | accepted | Show the app before someone installs it |
 | Reproducible wheels and APK checked in CI ([#22](https://github.com/pintofi/beanbook/issues/22)) | accepted | F-Droid verifies the build byte for byte |
 
 ## Next: 1.1.0 Capture
@@ -90,4 +94,4 @@ when a milestone takes it. A bug is not a roadmap item: use the
 [bug form](https://github.com/pintofi/beanbook/issues/new?template=bug_report.yml). Security
 problems go through [SECURITY.md](SECURITY.md).
 
-Last reviewed: 2026-10-29. The README carries a shorter checklist of the same plan; this page is the detail.
+Last reviewed: 2026-10-30. The README carries a shorter checklist of the same plan; this page is the detail.
