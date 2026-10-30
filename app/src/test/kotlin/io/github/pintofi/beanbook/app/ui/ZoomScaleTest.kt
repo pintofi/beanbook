@@ -8,25 +8,25 @@ class ZoomScaleTest {
     private val dead = ZoomScale.DEAD_ZONE_DP
     private val perDoubling = ZoomScale.DP_PER_DOUBLING_PER_SECOND
 
-    @Test fun `holding the finger left zooms in and holding it right zooms out`() {
-        assertTrue(ZoomScale.doublingsPerSecond(-60f) > 0f)
-        assertTrue(ZoomScale.doublingsPerSecond(60f) < 0f)
+    @Test fun `sliding right zooms in and sliding left zooms out`() {
+        assertTrue(ZoomScale.doublingsPerSecond(60f) > 0f)
+        assertTrue(ZoomScale.doublingsPerSecond(-60f) < 0f)
     }
 
     @Test fun `nothing moves inside the dead zone`() {
         assertEquals(0f, ZoomScale.doublingsPerSecond(0f), 0f)
-        assertEquals(0f, ZoomScale.doublingsPerSecond(-dead), 0f)
-        assertEquals(0f, ZoomScale.doublingsPerSecond(dead - 1f), 0f)
+        assertEquals(0f, ZoomScale.doublingsPerSecond(dead), 0f)
+        assertEquals(0f, ZoomScale.doublingsPerSecond(-(dead - 1f)), 0f)
     }
 
     @Test fun `the further the finger is held, the faster the zoom changes`() {
-        assertTrue(ZoomScale.doublingsPerSecond(-80f) > ZoomScale.doublingsPerSecond(-40f))
-        assertEquals(1f, ZoomScale.doublingsPerSecond(-(dead + perDoubling)), 1e-5f)
+        assertTrue(ZoomScale.doublingsPerSecond(80f) > ZoomScale.doublingsPerSecond(40f))
+        assertEquals(1f, ZoomScale.doublingsPerSecond(dead + perDoubling), 1e-5f)
     }
 
     @Test fun `the speed has a ceiling`() {
-        assertEquals(ZoomScale.MAX_DOUBLINGS_PER_SECOND, ZoomScale.doublingsPerSecond(-10_000f), 0f)
-        assertEquals(-ZoomScale.MAX_DOUBLINGS_PER_SECOND, ZoomScale.doublingsPerSecond(10_000f), 0f)
+        assertEquals(ZoomScale.MAX_DOUBLINGS_PER_SECOND, ZoomScale.doublingsPerSecond(10_000f), 0f)
+        assertEquals(-ZoomScale.MAX_DOUBLINGS_PER_SECOND, ZoomScale.doublingsPerSecond(-10_000f), 0f)
     }
 
     @Test fun `holding a rate for a second doubles the zoom that many times, wherever it starts`() {
