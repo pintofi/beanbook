@@ -11,7 +11,9 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.center
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -21,8 +23,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The scanner's zoom dial: the zoom in the middle, and held to the left it keeps zooming in, held
- * to the right it keeps zooming out, until the finger comes back or lifts.
+ * The scanner's zoom dial: the zoom in the middle, and slid to the right it keeps zooming in, slid
+ * to the left it keeps zooming out, and it springs back to the middle when the finger lifts.
  */
 @RunWith(AndroidJUnit4::class)
 class ZoomControlTest {
@@ -43,14 +45,14 @@ class ZoomControlTest {
         compose.onNodeWithContentDescription("Zoom").assert(says("1×"))
     }
 
-    @Test fun heldToTheLeftTheZoomKeepsIncreasing() {
+    @Test fun slidToTheRightTheZoomKeepsIncreasing() {
         var ratio by mutableStateOf(1f)
         compose.setContent { MaterialTheme { ZoomControl(ratio, 0.5f, 10f, { ratio = it }) } }
         held()
 
         compose.onNodeWithContentDescription("Zoom").performTouchInput {
             down(center)
-            moveBy(Offset(-200f, 0f))
+            moveBy(Offset(200f, 0f))
         }
         compose.mainClock.advanceTimeBy(500)
         val early = ratio
@@ -65,14 +67,14 @@ class ZoomControlTest {
         compose.onNodeWithContentDescription("Zoom").assert(says(ZoomScale.label(ratio)))
     }
 
-    @Test fun heldToTheRightTheZoomKeepsDecreasing() {
+    @Test fun slidToTheLeftTheZoomKeepsDecreasing() {
         var ratio by mutableStateOf(4f)
         compose.setContent { MaterialTheme { ZoomControl(ratio, 0.5f, 10f, { ratio = it }) } }
         held()
 
         compose.onNodeWithContentDescription("Zoom").performTouchInput {
             down(center)
-            moveBy(Offset(200f, 0f))
+            moveBy(Offset(-200f, 0f))
         }
         compose.mainClock.advanceTimeBy(500)
         val early = ratio
@@ -91,7 +93,7 @@ class ZoomControlTest {
 
         compose.onNodeWithContentDescription("Zoom").performTouchInput {
             down(center)
-            moveBy(Offset(-200f, 0f))
+            moveBy(Offset(200f, 0f))
         }
         compose.mainClock.advanceTimeBy(500)
         compose.onNodeWithContentDescription("Zoom").performTouchInput { up() }
@@ -109,10 +111,10 @@ class ZoomControlTest {
 
         compose.onNodeWithContentDescription("Zoom").performTouchInput {
             down(center)
-            moveBy(Offset(-200f, 0f))
+            moveBy(Offset(200f, 0f))
         }
         compose.mainClock.advanceTimeBy(400)
-        compose.onNodeWithContentDescription("Zoom").performTouchInput { moveBy(Offset(200f, 0f)) }
+        compose.onNodeWithContentDescription("Zoom").performTouchInput { moveBy(Offset(-200f, 0f)) }
         compose.mainClock.advanceTimeBy(100)
         val held = ratio
         compose.mainClock.advanceTimeBy(1000)
@@ -128,12 +130,35 @@ class ZoomControlTest {
 
         compose.onNodeWithContentDescription("Zoom").performTouchInput {
             down(center)
-            moveBy(Offset(-2000f, 0f))
+            moveBy(Offset(2000f, 0f))
         }
         compose.mainClock.advanceTimeBy(5000)
         compose.onNodeWithContentDescription("Zoom").performTouchInput { up() }
 
         assertEquals(4f, ratio, 1e-3f)
+    }
+
+    @Test fun theNumberFollowsTheFingerAndSpringsBackToTheMiddleOnRelease() {
+        compose.setContent { MaterialTheme { ZoomControl(1f, 0.5f, 10f, {}) } }
+        held()
+        fun left() = compose.onNodeWithText("1×", useUnmergedTree = true).getUnclippedBoundsInRoot().left.value
+        val middle = left()
+
+        compose.onNodeWithContentDescription("Zoom").performTouchInput {
+            down(center)
+            moveBy(Offset(150f, 0f))
+        }
+        compose.mainClock.advanceTimeBy(100)
+        val pulled = left()
+        compose.onNodeWithContentDescription("Zoom").performTouchInput { up() }
+        compose.mainClock.advanceTimeBy(100)
+        val returning = left()
+        compose.mainClock.advanceTimeBy(2000)
+        val rested = left()
+
+        assertTrue("it should follow the finger to the right: $middle -> $pulled", pulled > middle + 10f)
+        assertTrue("it should be on its way back: $pulled -> $returning", returning < pulled)
+        assertEquals("it should rest in the middle", middle, rested, 0.5f)
     }
 
     @Test fun aCameraWithNoZoomShowsNothing() {
