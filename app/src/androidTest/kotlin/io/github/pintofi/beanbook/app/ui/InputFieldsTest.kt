@@ -2,6 +2,7 @@ package io.github.pintofi.beanbook.app.ui
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
@@ -157,7 +158,12 @@ class InputFieldsTest {
     }
 
     @Test fun theJournalIsSearchable() {
-        compose.setContent { MaterialTheme { JournalScreen(snapshot) } }
+        // The app provides one filter that the search box and the journal both read; a screen on its own
+        // would give each its own, and typing in one would filter nothing in the other.
+        val shared = LedgerFilterState()
+        compose.setContent {
+            CompositionLocalProvider(LocalLedgerFilter provides shared) { MaterialTheme { JournalScreen(snapshot) } }
+        }
 
         compose.onNodeWithText("Corner Coffee · Corner Coffee visit").assertIsDisplayed()
         compose.onNodeWithContentDescription(
