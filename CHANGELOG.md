@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- A zoom control in the scanner: the zoom is said in the middle of a slider above the shutter, with small lines, a longer line and a plus on the right and the same with a minus on the left. Slide the number to the right and the zoom keeps going up, faster the further over; slide it to the left and it keeps coming down. The number follows your finger, and when you let go it springs back to the middle, quicker from further away, and the zoom stays where it is. It ticks for each step, and pinching ticks too. It is the camera's real zoom. The white corner marks that showed before a page was found are gone. ([#272], [#280], [#285])
+- A zoom control in the scanner: the zoom is said in the middle of a slider above the shutter, with small lines, a longer line and a plus on the right and the same with a minus on the left. Slide the number to the right and the zoom keeps going up, faster the further over; slide it to the left and it keeps coming down. The number sits in a bordered capsule that follows your finger, and when you let go it springs back to the middle, quicker from further away, and the zoom stays where it is. It ticks for each step, and pinching ticks too. It is the camera's real zoom. The white corner marks that showed before a page was found are gone. ([#272], [#280], [#285], [#289])
 - The Journal has the Units, At cost and Market value choice that Home and Balances have, the same one for the whole app, and shows its amounts on it; where an amount differs from the units, the units stay beneath it. ([#274])
 - Home and Journal have the same Filters button as Balances: a sheet for the period, the search, and tags or links. The period now narrows all three screens. ([#275])
 
@@ -273,3 +273,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#280]: https://github.com/pintofi/beanbook/issues/280
 [#285]: https://github.com/pintofi/beanbook/issues/285
 [#286]: https://github.com/pintofi/beanbook/issues/286
+[#289]: https://github.com/pintofi/beanbook/issues/289
