@@ -24,6 +24,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 
 /**
  * Fava's editor renders, and `100vh` means something inside the app's WebView.
@@ -45,7 +46,20 @@ class FavaEditorRenderTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
 
+    /**
+     * Fava's script uses syntax that Chrome 74, the System WebView on the API 29 emulator image, cannot
+     * parse ("Uncaught SyntaxError: Unexpected token ?"), so on it the page never runs and the editor
+     * stays empty. That says nothing about this app; it is a WebView too old for Fava, and the test is
+     * skipped there rather than failed. See docs/known-limitations.md.
+     */
+    private fun webViewMajor(): Int =
+        WebView.getCurrentWebViewPackage()?.versionName?.substringBefore('.')?.toIntOrNull() ?: Int.MAX_VALUE
+
     @Test fun theEditorIsGivenARealViewportAndDrawsItsText() {
+        assumeTrue(
+            "the System WebView is Chrome ${webViewMajor()}, too old to run Fava's script",
+            webViewMajor() >= MIN_WEBVIEW,
+        )
         val root = File(context.cacheDir, "editor-render-${System.currentTimeMillis()}")
         val workspace = ProjectWorkspace(root)
         val main = workspace.createProject("editor", title = "Editor")
@@ -118,3 +132,9 @@ class FavaEditorRenderTest {
         return result
     }
 }
+
+/**
+ * Chrome 74 is confirmed too old for Fava's script. 80 is where optional chaining and `??` arrived, the
+ * syntax the error points at; it is an estimate of the line, not a measured one.
+ */
+private const val MIN_WEBVIEW = 80

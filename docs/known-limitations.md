@@ -144,6 +144,13 @@ a statement saved with the wrong extension, or none, will not be identified.
 
 **minSdk 29 (Android 10).** Android 9 is not supported, and the reason is worth stating: the embedded Python runtime is killed by Android 9's seccomp filter before it finishes starting, so the app would install and then fail to open any ledger. Verified working on API 29, 30 and 36.
 
+**Reports need a reasonably recent System WebView.** Reports, the editor and the other Fava pages
+run in the phone's System WebView, and Fava's script fails to run on a very old one: on the
+Android 10 emulator image, whose WebView is Chrome 74 from 2019, the page stays blank. Updating
+Android System WebView (or the browser engine your ROM ships) fixes it. The native screens do not
+use a WebView and are not affected. The app does not yet say this on screen
+([#302](https://github.com/pintofi/beanbook/issues/302)).
+
 **Each per-ABI APK carries both ABIs' Python assets**: about 4 MB of waste per download,
 because the ABI split does not split Chaquopy's assets. Fixing it means per-ABI builds or an
 App Bundle, which is a release-pipeline change.
