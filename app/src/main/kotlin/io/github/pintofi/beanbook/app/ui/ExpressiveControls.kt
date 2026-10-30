@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -29,14 +31,17 @@ import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -76,53 +81,111 @@ fun <T> ConnectedChoiceRow(
     border: BorderStroke? = null,
     maxLines: Int = Int.MAX_VALUE,
 ) {
-    // Intrinsic height, so a label that wraps at 200% text makes its whole row taller rather
-    // than leaving one segment standing above the others.
-    Row(
-        modifier = modifier
-            .height(IntrinsicSize.Min)
-            .selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        options.forEachIndexed { index, option ->
-            val chosen = option == selected
-            ToggleButton(
-                checked = chosen,
-                // A chosen segment stays chosen when tapped again: one option is always on,
-                // as it was in the segmented row this replaces.
-                onCheckedChange = { onSelect(option) },
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .semantics {
-                        role = Role.RadioButton
-                        this.selected = chosen
-                        describe?.let { contentDescription = it(option) }
-                    },
-                shapes = connectedShapes(index, options.size),
-                colors = colors,
-                // Flat: the row sits on ruled paper, and a shadow under each segment would
-                // make five objects of what is one control.
-                elevation = null,
-                border = border,
-                contentPadding = ConnectedChoicePadding,
-                icon = if (chosen) {
-                    { Icon(Icons.Filled.Check, contentDescription = null) }
-                } else {
-                    null
-                },
+    BoxWithConstraints(modifier = modifier) {
+        // A label may wrap between words, but never inside one: "Mar / ket / val / ue" is not a
+        // label. When even the longest word does not fit its share of the row, as with three
+        // choices at 200% text on a narrow phone, the segments stack, one to a line.
+        val stacked = maxLines == Int.MAX_VALUE && !wordsFit(options.map(label), maxWidth)
+        if (stacked) {
+            Column(
+                modifier = Modifier.fillMaxWidth().selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
             ) {
-                Text(
-                    label(option),
-                    maxLines = maxLines,
-                    overflow = if (maxLines == Int.MAX_VALUE) TextOverflow.Clip else TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                )
+                options.forEach { option ->
+                    ChoiceButton(
+                        option, option == selected, onSelect, label, describe, colors, border, maxLines,
+                        shapes = connectedShapes(0, 1),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        } else {
+            // Intrinsic height, so a label that wraps at 200% text makes its whole row taller rather
+            // than leaving one segment standing above the others.
+            Row(
+                modifier = Modifier
+                    .height(IntrinsicSize.Min)
+                    .selectableGroup(),
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                options.forEachIndexed { index, option ->
+                    ChoiceButton(
+                        option, option == selected, onSelect, label, describe, colors, border, maxLines,
+                        shapes = connectedShapes(index, options.size),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    )
+                }
             }
         }
     }
 }
+
+/** Whether the longest word of every label fits its share of a row [width] wide, at the current text size. */
+@Composable
+private fun wordsFit(labels: List<String>, width: Dp): Boolean {
+    val measurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.labelLarge
+    val density = LocalDensity.current
+    return remember(labels, width, style, density) {
+        val gaps = ButtonGroupDefaults.ConnectedSpaceBetween * (labels.size - 1)
+        val room = (width - gaps) / labels.size - ConnectedChoicePadding.horizontal() - CHECK_ROOM
+        val share = with(density) { room.toPx() }
+        labels.flatMap { it.split(' ') }.all { measurer.measure(it, style).size.width <= share }
+    }
+}
+
+@Composable
+private fun <T> ChoiceButton(
+    option: T,
+    chosen: Boolean,
+    onSelect: (T) -> Unit,
+    label: (T) -> String,
+    describe: ((T) -> String)?,
+    colors: ToggleButtonColors,
+    border: BorderStroke?,
+    maxLines: Int,
+    shapes: ToggleButtonShapes,
+    modifier: Modifier,
+) {
+    ToggleButton(
+        checked = chosen,
+        // A chosen segment stays chosen when tapped again: one option is always on,
+        // as it was in the segmented row this replaces.
+        onCheckedChange = { onSelect(option) },
+        modifier = modifier.semantics {
+            role = Role.RadioButton
+            this.selected = chosen
+            describe?.let { contentDescription = it(option) }
+        },
+        shapes = shapes,
+        colors = colors,
+        // Flat: the row sits on ruled paper, and a shadow under each segment would
+        // make five objects of what is one control.
+        elevation = null,
+        border = border,
+        contentPadding = ConnectedChoicePadding,
+        icon = if (chosen) {
+            { Icon(Icons.Filled.Check, contentDescription = null) }
+        } else {
+            null
+        },
+    ) {
+        Text(
+            label(option),
+            maxLines = maxLines,
+            overflow = if (maxLines == Int.MAX_VALUE) TextOverflow.Clip else TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/** What the tick on a chosen segment takes from the label: its icon and the space beside it. */
+private val CHECK_ROOM = 26.dp
+
+private fun androidx.compose.foundation.layout.PaddingValues.horizontal(): Dp =
+    calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) +
+        calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
 
 /**
  * Narrower side padding than a standalone button's 16dp: three segments share a phone's width,
