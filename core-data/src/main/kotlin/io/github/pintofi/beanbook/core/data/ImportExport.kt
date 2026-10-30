@@ -151,17 +151,13 @@ class ProjectImporter(
         }
 
         for (entry in entries) {
-            val path = entry.path.replace('\\', '/')
+            val given = entry.path.replace('\\', '/')
 
-            if (entry.isSymlink) {
-                problems += ImportProblem.Symlink(path); continue
-            }
-            if (path.startsWith("/") || path.matches(WINDOWS_ABSOLUTE)) {
-                problems += ImportProblem.AbsolutePath(path); continue
-            }
-            if (escapesRoot(path)) {
-                problems += ImportProblem.PathTraversal(path); continue
-            }
+            unsafeName(entry, given)?.let { problems += it; continue }
+            // Dots and empty parts collapsed, so what is judged, kept and written is the path the file
+            // will really have: "files/../notes.beancount" is "notes.beancount". Left as written, a shared
+            // wrapper folder stripped later could leave ".." in front of it.
+            val path = collapsed(given)
             val segments = path.split('/').filter { it.isNotEmpty() }
             if (segments.size > limits.maxPathSegments) {
                 problems += ImportProblem.TooDeep(path, segments.size); continue
@@ -414,6 +410,31 @@ class ProjectImporter(
             output.write(buffer, 0, read)
         }
         return written
+    }
+
+    /**
+     * Why an entry may not be imported whatever else is true of it: a link, a path that starts at the
+     * root of a file system, one that goes above the project, or one that cancels to the project folder
+     * itself (not a file in it). Null when the name is fine so far.
+     */
+    private fun unsafeName(entry: SourceEntry, given: String): ImportProblem? = when {
+        entry.isSymlink -> ImportProblem.Symlink(given)
+        given.startsWith("/") || given.matches(WINDOWS_ABSOLUTE) -> ImportProblem.AbsolutePath(given)
+        escapesRoot(given) || collapsed(given).isEmpty() -> ImportProblem.PathTraversal(given)
+        else -> null
+    }
+
+    /** [path] with "." and empty parts dropped and each ".." taken together with the part before it. */
+    private fun collapsed(path: String): String {
+        val parts = ArrayDeque<String>()
+        for (segment in path.split('/')) {
+            when (segment) {
+                "", "." -> Unit
+                ".." -> parts.removeLastOrNull()
+                else -> parts.addLast(segment)
+            }
+        }
+        return parts.joinToString("/")
     }
 
     private fun escapesRoot(path: String): Boolean {
