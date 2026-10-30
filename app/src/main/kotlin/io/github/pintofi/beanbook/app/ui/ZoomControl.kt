@@ -108,10 +108,15 @@ internal object ZoomScale {
     private const val EPSILON = 1e-3f
 }
 
-/** A small, soft tick, as a dial would give: the subtlest the phone offers. */
+/**
+ * A short, definite tick, as a dial would give.
+ *
+ * Not the lightest one the phone offers: that one (`SEGMENT_FREQUENT_TICK`) is played as the faintest
+ * texture effect, and on an ordinary phone motor it cannot be felt.
+ */
 internal fun View.zoomTick() {
     val tick = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        HapticFeedbackConstants.SEGMENT_FREQUENT_TICK
+        HapticFeedbackConstants.SEGMENT_TICK
     } else {
         HapticFeedbackConstants.CLOCK_TICK
     }
@@ -292,4 +297,4 @@ private const val PRESSED_SCALE = 1.08f
 private const val NANOS_PER_SECOND = 1_000_000_000f
 
 /** Ticks closer together than this blur into a buzz. */
-private const val MIN_TICK_GAP_NANOS = 40_000_000L
+private const val MIN_TICK_GAP_NANOS = 60_000_000L
