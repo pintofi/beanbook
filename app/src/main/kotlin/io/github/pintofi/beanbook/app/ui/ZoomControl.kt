@@ -72,7 +72,7 @@ internal object ZoomScale {
     const val DEAD_ZONE_DP = 8f
 
     /** How far past the dead zone, in dp, makes the zoom double every second. */
-    const val DP_PER_DOUBLING_PER_SECOND = 30f
+    const val DP_PER_DOUBLING_PER_SECOND = 25f
 
     /** The fastest the zoom changes, in doublings a second, however far the finger goes. */
     const val MAX_DOUBLINGS_PER_SECOND = 2.5f
@@ -214,16 +214,23 @@ internal fun ZoomControl(
             },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = ZoomScale.label(ratio),
-            color = accent,
-            style = MaterialTheme.typography.titleMedium,
+        // The number sits in a bordered capsule of its own, which is what slides; the guides pass
+        // behind it, and it stops short of the signs at the ends.
+        Box(
             modifier = Modifier
                 .offset { IntOffset((offsetDp * density).roundToInt(), 0) }
-                // The guides pass behind the number rather than through it.
-                .background(Color(0xFF1C1C1A))
-                .padding(horizontal = 8.dp),
-        )
+                .width(THUMB_WIDTH_DP.dp)
+                .height(THUMB_HEIGHT_DP.dp)
+                .background(Color(0xFF1C1C1A), RoundedCornerShape((THUMB_HEIGHT_DP / 2).dp))
+                .border(BorderStroke(1.5.dp, accent), RoundedCornerShape((THUMB_HEIGHT_DP / 2).dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = ZoomScale.label(ratio),
+                color = accent,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
     }
 }
 
@@ -256,8 +263,15 @@ private const val MIN_USEFUL_RANGE = 1.1f
 /** The width of the track the number slides along. */
 private const val TRACK_WIDTH_DP = 248
 
-/** How far the middle of the number can be pulled from the middle of the track, in dp. */
-private const val MAX_TRAVEL_DP = 80f
+/** The capsule round the number, in dp. */
+private const val THUMB_WIDTH_DP = 60
+private const val THUMB_HEIGHT_DP = 32
+
+/**
+ * How far the middle of the capsule can be pulled from the middle of the track, in dp: far enough
+ * that its edge stops short of the plus and the minus.
+ */
+private const val MAX_TRAVEL_DP = 68f
 
 /** The small lines either side: how many, where the first is and how far apart, in dp. */
 private const val SMALL_LINES = 4
