@@ -94,6 +94,29 @@ class ImportPathPropertyTest {
         }
     }
 
+    /**
+     * A NUL in a name is not refused by the plan: the file system rejects it later, in the import's own
+     * second check, which stops the import and removes what it had staged. The user is told the import
+     * failed, in general terms. This pins that nothing is left behind and nothing is written.
+     */
+    @Test
+    fun `a name holding a NUL byte stops the import and leaves nothing behind`() {
+        val source = Listed(listOf("main.beancount", "documents/a\u0000b.pdf"))
+        val outcome = runCatching { ProjectImporter(workspace).import(source, "nul-test") }
+
+        assertTrue(
+            outcome.isFailure || outcome.getOrNull() is ImportResult.Rejected,
+            "a name with a NUL must not be imported: ${outcome.getOrNull()}",
+        )
+        assertFalse(workspace.projectDir("nul-test").exists(), "no project may be created")
+        assertFalse(File(workspace.projectsDir, "nul-test.importing").exists(), "no staging folder may remain")
+    }
+
+    /**
+     * An entry like `a/../main.beancount` is `main.beancount`. It used to be planned as written, so when
+     * every entry shared the first folder and it was stripped as a wrapper, `../main.beancount` was left,
+     * pointing above the project. The path is collapsed first, so none of that can happen.
+     */
     @Test
     fun `a name that goes up and down is planned under its collapsed path`() {
         val plan = ProjectImporter(workspace).plan(Listed(listOf("a/../main.beancount")))

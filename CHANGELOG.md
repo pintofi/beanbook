@@ -18,8 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Units, At cost and Market value are on the widgets themselves: tap one to change that widget's basis, instead of choosing it in the widget's settings. The row is left out on a widget too short to hold it, and the net worth widget no longer has a settings screen. The preview shown when you pick a widget shows the row. ([#277])
 
 ### Fixed
-- Unlinking a document that an entry names in its own `document:` metadata no longer changes every line ending in a ledger saved with Windows (CRLF) line endings. ([#295])
-- Importing an archive whose entry names go up and back down a folder, like `a/../main.beancount`, is refused with the usual "tries to escape the project folder" message instead of failing part-way. Nothing was ever written outside the project. ([#296])
+- Importing an archive reads an entry name like `a/../main.beancount` as `main.beancount` before anything else is decided, so a shared top folder can no longer leave a path pointing above the project, and two spellings of one file are reported as a duplicate instead of one silently replacing the other. Nothing was ever written outside the project. ([#296])
 - The Units, At cost and Market value buttons on a widget no longer come and go while you resize it: whether there is room for them is now judged by the size the launcher reports, and by the height that applies when the phone is on its side. ([#286])
 - The decimal places box in the new-ledger setup takes numbers only, shows the number keyboard, and can be cleared and retyped; before, it ignored some keys. ([#261])
 - The plus/minus button on an amount keeps the cursor on the character it was on: after the 0 of 1230 stays after the 0 of -1230. ([#261])
@@ -277,5 +276,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#286]: https://github.com/pintofi/beanbook/issues/286
 [#289]: https://github.com/pintofi/beanbook/issues/289
 [#293]: https://github.com/pintofi/beanbook/issues/293
-[#295]: https://github.com/pintofi/beanbook/issues/295
 [#296]: https://github.com/pintofi/beanbook/issues/296
