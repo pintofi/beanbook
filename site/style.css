@@ -762,6 +762,8 @@ html:not(.js) .shot-cue { display: none; }
 }
 .shot-notes strong { font-weight: 700; }
 .shot-notes span { color: var(--ink-2); line-height: 1.45; }
+/* Hidden until laid out (site.js), so the notes never show piled up before they are placed. */
+.shot-notes.is-placing { visibility: hidden; }
 .shot-leaders { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: visible; }
 .shot-leaders polyline { fill: none; stroke: var(--pending); stroke-width: 1.5; stroke-linejoin: round; }
 .shot-leaders .halo { stroke: var(--halo); stroke-width: 4; }

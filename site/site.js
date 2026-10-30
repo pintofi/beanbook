@@ -279,10 +279,15 @@
     // by a thin rule; notes that would collide are nudged apart. On a narrow one the notes are
     // an ordered list under the image and only the numbered markers remain on it.
     const layout = () => {
+      // A closed dialog has no size to measure; open() lays out again once it is shown.
+      if (!dialog.open) return;
       const notes = [...notesList.children];
       if (leaders) { leaders.remove(); leaders = null; }
       notes.forEach((li) => { li.style.top = ""; });
-      if (!wide.matches || !bigImage.complete) return;
+      // The image box has its shape from the start (9:16 in the stylesheet), so the notes do not
+      // wait for the picture itself. Until they are placed they stay hidden, so they never show
+      // piled up in one spot.
+      if (!wide.matches) { notesList.classList.remove("is-placing"); return; }
       const body = figure.parentElement;
       const box = body.getBoundingClientRect();
       const img = bigImage.getBoundingClientRect();
@@ -318,6 +323,7 @@
         leaders.append(halo, line);
       });
       body.appendChild(leaders);
+      notesList.classList.remove("is-placing");
     };
 
     const fill = (i) => {
@@ -331,6 +337,7 @@
       bigImage.src = src(key, theme, 1080);
       figure.querySelectorAll(".shot-marker").forEach((m) => m.remove());
       notesList.replaceChildren();
+      notesList.classList.add("is-placing");
       data.notes.forEach((note, n) => {
         const marker = document.createElement("span");
         marker.className = "shot-marker";
@@ -360,8 +367,9 @@
       next.disabled = !after;
       prev.textContent = before ? `Previous: ${before.title}` : "Previous";
       next.textContent = after ? `Next: ${after.title}` : "Next";
-      if (bigImage.complete) layout();
-      else bigImage.addEventListener("load", layout, { once: true });
+      // Placed now, and again when the picture arrives in case its box moved a pixel.
+      layout();
+      if (!bigImage.complete) bigImage.addEventListener("load", layout, { once: true });
     };
 
     const open = (i) => {
@@ -370,6 +378,7 @@
       fill(i);
       root.classList.add("dialog-open");
       dialog.showModal();
+      layout();
       dialog.querySelector("[data-shot-close]").focus();
     };
 
@@ -396,6 +405,8 @@
     });
     window.addEventListener("resize", () => { if (dialog.open) layout(); });
     wide.addEventListener("change", () => { if (dialog.open) layout(); });
+    // The notes' heights depend on the page's fonts; place them again if those arrive late.
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (dialog.open) layout(); });
   })();
 
   /* ---------------------------------------------------------------- motion */
