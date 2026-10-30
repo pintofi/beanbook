@@ -58,6 +58,9 @@
   --wash: #b9e7e2;
   --on-wash: #002b28;
   --pending: #9a4c2e;
+  --on-pending: #ffffff;
+  --halo: rgba(255, 255, 255, .7);
+  --halo-ring: rgba(255, 255, 255, .85);
   --pending-wash: #ffdbcd;
   --on-pending-wash: #3a1004;
   --warn: #a02a20;
@@ -98,6 +101,9 @@
     --wash: #0a4a46;
     --on-wash: #cdf1ec;
     --pending: #ffb59b;
+    --on-pending: #561e0a;
+    --halo: rgba(13, 18, 17, .75);
+    --halo-ring: rgba(13, 18, 17, .85);
     --pending-wash: #75331c;
     --on-pending-wash: #ffdbcd;
     --warn: #ffb4ab;
@@ -127,6 +133,9 @@
   --wash: #0a4a46;
   --on-wash: #cdf1ec;
   --pending: #ffb59b;
+  --on-pending: #561e0a;
+  --halo: rgba(13, 18, 17, .75);
+  --halo-ring: rgba(13, 18, 17, .85);
   --pending-wash: #75331c;
   --on-pending-wash: #ffdbcd;
   --warn: #ffb4ab;
@@ -739,7 +748,7 @@ html:not(.js) .shot-cue { display: none; }
   position: absolute; z-index: 2;
   width: .6rem; height: .6rem; margin: -.3rem 0 0 -.3rem;
   border-radius: 50%; background: var(--pending);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, .85);
+  box-shadow: 0 0 0 2px var(--halo-ring);
 }
 .shot-marker span { display: none; }
 /* Beside the screenshot the line alone points at the component; the dot is only for a narrow
@@ -749,13 +758,13 @@ html:not(.js) .shot-cue { display: none; }
 .shot-notes li { counter-increment: note; display: grid; grid-template-columns: 1.6rem 1fr; column-gap: .75rem; row-gap: .15rem; }
 .shot-notes li::before {
   content: counter(note); grid-row: span 2; display: grid; place-items: center;
-  width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--pending); color: #fff; font: 700 .8rem/1 var(--mono);
+  width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--pending); color: var(--on-pending); font: 700 .8rem/1 var(--mono);
 }
 .shot-notes strong { font-weight: 700; }
 .shot-notes span { color: var(--ink-2); line-height: 1.45; }
 .shot-leaders { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: visible; }
 .shot-leaders polyline { fill: none; stroke: var(--pending); stroke-width: 1.5; stroke-linejoin: round; }
-.shot-leaders .halo { stroke: rgba(255, 255, 255, .7); stroke-width: 4; }
+.shot-leaders .halo { stroke: var(--halo); stroke-width: 4; }
 
 @media (min-width: 56rem) {
   /* Beside the screenshot, each note at the height of what it points to. */
@@ -765,7 +774,7 @@ html:not(.js) .shot-cue { display: none; }
 @media (max-width: 55.99rem) {
   /* No lines on a narrow screen: a numbered dot on the component, and the list below. */
   .shot-marker { width: 1.2rem; height: 1.2rem; margin: -.6rem 0 0 -.6rem; }
-  .shot-marker span { display: grid; place-items: center; width: 100%; height: 100%; color: #fff; font: 700 .65rem/1 var(--mono); }
+  .shot-marker span { display: grid; place-items: center; width: 100%; height: 100%; color: var(--on-pending); font: 700 .65rem/1 var(--mono); }
   .shot-dialog-body { grid-template-columns: 1fr; gap: 1.5rem; }
   .shot-figure { width: min(20rem, 100%); justify-self: center; }
 }
