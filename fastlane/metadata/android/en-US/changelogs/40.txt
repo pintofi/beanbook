@@ -1,0 +1,6 @@
+A scanner zoom slider, shared filters and fixes.
+• The scanner's zoom is a slider with guides that springs back to the middle.
+• Home, Journal and Balances share one Filters button, and the Journal has the Units, At cost and Market value choice.
+• The basis choice is on the widgets themselves.
+• Reports say so when the phone's WebView is too old to show them.
+• Fixes for setup, importing a folder, unlinking documents, large text and resizing widgets.
