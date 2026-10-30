@@ -123,7 +123,6 @@ fun ScannerScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val view = androidx.compose.ui.platform.LocalView.current
     // The style new pages are given: one of the four, or null for Automatic, which is the default. It is
     // the name so that it survives the screen being recreated.
     var chosenStyle by rememberSaveable { mutableStateOf<String?>(null) }
@@ -468,8 +467,6 @@ fun ScannerScreen(
                 detectTransformGestures { _, _, gestureZoom, _ ->
                     val control = camera?.cameraControl ?: return@detectTransformGestures
                     val next = (zoomRatio * gestureZoom).coerceIn(zoomMin, zoomMax)
-                    // The same small tick as the dial gives, for each step of the readout.
-                    if (ZoomScale.stepsBetween(zoomRatio, next) > 0) view.zoomTick()
                     zoomRatio = next
                     control.setZoomRatio(zoomRatio)
                 }
