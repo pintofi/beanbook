@@ -601,6 +601,7 @@ private fun androidx.compose.foundation.layout.BoxScope.ReportWorking(busy: Bool
             showWords = false
         }
     }
+    OldWebViewNotice(Modifier.align(androidx.compose.ui.Alignment.TopCenter))
     if (showRule) {
         io.github.pintofi.beanbook.app.ui.LedgerProgressRule(
             modifier = androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.TopCenter),

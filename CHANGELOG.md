@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Reports say so when the phone's System WebView is too old to run Fava's pages (older than Chrome 80), instead of staying blank with no explanation: a notice at the top names the version and says to update Android System WebView. The ledger and the native screens are not affected. ([#302])
 - A zoom control in the scanner: the zoom is said in the middle of a slider above the shutter, with small lines, a longer line and a plus on the right and the same with a minus on the left. Slide the number to the right and the zoom keeps going up, faster the further over; slide it to the left and it keeps coming down. The number sits in a bordered capsule that follows your finger, and when you let go it springs back to the middle, quicker from further away, and the zoom stays where it is. It is the camera's real zoom. The white corner marks that showed before a page was found are gone. ([#272], [#280], [#285], [#289], [#293])
 - The Journal has the Units, At cost and Market value choice that Home and Balances have, the same one for the whole app, and shows its amounts on it; where an amount differs from the units, the units stay beneath it. ([#274])
 - Home and Journal have the same Filters button as Balances: a sheet for the period, the search, and tags or links. The period now narrows all three screens. ([#275])
@@ -281,3 +282,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#293]: https://github.com/pintofi/beanbook/issues/293
 [#295]: https://github.com/pintofi/beanbook/issues/295
 [#296]: https://github.com/pintofi/beanbook/issues/296
+[#302]: https://github.com/pintofi/beanbook/issues/302

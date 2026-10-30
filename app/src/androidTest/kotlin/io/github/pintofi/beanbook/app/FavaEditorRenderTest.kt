@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.pintofi.beanbook.app.web.FavaWebView
+import io.github.pintofi.beanbook.app.web.WebViewSupport
 import io.github.pintofi.beanbook.app.web.installSessionToken
 import io.github.pintofi.beanbook.core.data.ProjectWorkspace
 import io.github.pintofi.beanbook.core.engine.EngineStatus
@@ -47,18 +48,16 @@ class FavaEditorRenderTest {
     private val context = instrumentation.targetContext
 
     /**
-     * Fava's script uses syntax that Chrome 74, the System WebView on the API 29 emulator image, cannot
-     * parse ("Uncaught SyntaxError: Unexpected token ?"), so on it the page never runs and the editor
-     * stays empty. That says nothing about this app; it is a WebView too old for Fava, and the test is
-     * skipped there rather than failed. See docs/known-limitations.md.
+     * Skipped on a System WebView too old for Fava's script (Chrome 74 on the API 29 emulator image stops
+     * with "Unexpected token ?"): the page never runs and the editor stays empty. That says nothing about
+     * this app. The app says so on screen itself; see [WebViewSupport] and docs/known-limitations.md.
      */
-    private fun webViewMajor(): Int =
-        WebView.getCurrentWebViewPackage()?.versionName?.substringBefore('.')?.toIntOrNull() ?: Int.MAX_VALUE
+    private fun webViewMajor(): Int? = WebViewSupport.major()
 
     @Test fun theEditorIsGivenARealViewportAndDrawsItsText() {
         assumeTrue(
             "the System WebView is Chrome ${webViewMajor()}, too old to run Fava's script",
-            webViewMajor() >= MIN_WEBVIEW,
+            !WebViewSupport.tooOld(webViewMajor()),
         )
         val root = File(context.cacheDir, "editor-render-${System.currentTimeMillis()}")
         val workspace = ProjectWorkspace(root)
@@ -132,9 +131,3 @@ class FavaEditorRenderTest {
         return result
     }
 }
-
-/**
- * Chrome 74 is confirmed too old for Fava's script. 80 is where optional chaining and `??` arrived, the
- * syntax the error points at; it is an estimate of the line, not a measured one.
- */
-private const val MIN_WEBVIEW = 80
