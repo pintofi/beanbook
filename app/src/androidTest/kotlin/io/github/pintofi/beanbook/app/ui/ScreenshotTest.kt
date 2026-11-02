@@ -110,7 +110,9 @@ class ScreenshotTest {
     )
 
     @Test fun home() = shoot("home") {
-        HomeScreen(ledger = ledger, hideAmounts = false)
+        // The day is fixed: "this month" follows it, and the fixture ledger is October 2026, so on any
+        // other day Home would show no spending and the picture would stop matching.
+        HomeScreen(ledger = ledger, hideAmounts = false, today = LocalDate.of(2026, 10, 25))
     }
 
     @Test fun journal() = shoot("journal") { JournalScreen(snapshot = ledger) }
