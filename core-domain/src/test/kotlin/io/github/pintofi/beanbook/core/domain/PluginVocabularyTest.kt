@@ -43,7 +43,7 @@ class PluginVocabularyTest {
             ),
         )
 
-        val problems = draft.validate(openAccounts = vocabulary.openAccounts)
+        val problems = draft.validate(declaredAccounts = vocabulary.declaredAccounts)
 
         assertEquals(listOf(DraftProblem.UnknownAccount("Assets:Bank:Ca")), problems)
     }

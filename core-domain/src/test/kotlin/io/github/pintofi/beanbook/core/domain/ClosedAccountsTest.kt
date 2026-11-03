@@ -29,10 +29,47 @@ class ClosedAccountsTest {
     }
 
     @Test
-    fun aPostingToAClosedAccountIsRefusedAsUnknown() {
-        val open = LedgerVocabulary.from(ledger()).openAccounts
-        assertTrue("Assets:Cash" in open!!)
-        assertFalse("Assets:Old" in open)
+    fun aClosedAccountIsStillDeclaredAndKnowsWhenItClosed() {
+        val vocabulary = LedgerVocabulary.from(ledger())
+        assertTrue("Assets:Old" in vocabulary.declaredAccounts!!)
+        assertEquals(mapOf("Assets:Old" to "2026-03-01"), vocabulary.closedOn)
+    }
+
+    private fun draft(date: String) = TransactionDraft(
+        date = date,
+        postings = listOf(
+            PostingDraft("Assets:Old", Amount(java.math.BigDecimal("5"), "USD")),
+            PostingDraft("Assets:Cash"),
+        ),
+    )
+
+    @Test
+    fun anEntryDatedAfterTheCloseIsRefusedAsClosed() {
+        val vocabulary = LedgerVocabulary.from(ledger())
+        val problems = draft("2026-03-02").validate(
+            declaredAccounts = vocabulary.declaredAccounts, closedOn = vocabulary.closedOn,
+        )
+        assertEquals(listOf(DraftProblem.ClosedAccount("Assets:Old", "2026-03-01")), problems)
+    }
+
+    @Test
+    fun anEntryOnOrBeforeTheCloseDayIsAccepted() {
+        val vocabulary = LedgerVocabulary.from(ledger())
+        listOf("2026-02-01", "2026-03-01").forEach { day ->
+            val problems = draft(day).validate(
+                declaredAccounts = vocabulary.declaredAccounts, closedOn = vocabulary.closedOn,
+            )
+            assertEquals(emptyList(), problems, "an entry dated $day")
+        }
+    }
+
+    @Test
+    fun theFormOffersTheClosedAccountOnlyUpToItsCloseDay() {
+        val vocabulary = LedgerVocabulary.from(ledger())
+        assertTrue("Assets:Old" in vocabulary.accountsFor("2026-02-01", null))
+        assertTrue("Assets:Old" in vocabulary.accountsFor("2026-03-01", null))
+        assertFalse("Assets:Old" in vocabulary.accountsFor("2026-03-02", null))
+        assertTrue("Assets:Cash" in vocabulary.accountsFor("2026-03-02", null))
     }
 
     @Test

@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.core.domain.BeancountText
+import io.github.pintofi.beanbook.core.domain.AccountSuggestions
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.DraftProblem
 import io.github.pintofi.beanbook.core.domain.EntryTemplate
@@ -261,7 +262,7 @@ fun QuickAddScreen(
             )
         },
     )
-    val problems = draft.validate(format, vocabulary.openAccounts)
+    val problems = draft.validate(format, vocabulary.declaredAccounts, vocabulary.closedOn)
     // A box with something in it that is not a number. Without this the posting is built with
     // no amount, which reads as "let Beancount work it out" and drops what was typed.
     val unreadableAmounts = rows
@@ -719,6 +720,9 @@ fun QuickAddScreen(
 
         // ---- The postings ---------------------------------------------------------------
         LedgerHeading("Postings")
+        // The same list for every posting: ranked by use and by the payee, and without the accounts
+        // closed before the entry's date, as Fava's entry form offers them.
+        val accountOptions = remember(vocabulary, date, payee) { vocabulary.accountsFor(date.trim(), payee) }
         FormGroup {
             rows.forEachIndexed { index, row ->
                 if (index > 0) LedgerHairline(Modifier.padding(vertical = Measure.tight))
@@ -726,6 +730,7 @@ fun QuickAddScreen(
                     index = index,
                     row = row,
                     vocabulary = vocabulary,
+                    accountOptions = accountOptions,
                     defaultCommodity = commodity.trim(),
                     removable = rows.size > 2,
                     onRemove = { rows.removeAt(index) },
@@ -1038,6 +1043,8 @@ private fun PostingEditor(
     index: Int,
     row: PostingRow,
     vocabulary: LedgerVocabulary,
+    /** The accounts to offer, in the order to offer them: see [LedgerVocabulary.accountsFor]. */
+    accountOptions: List<String>,
     /** What an empty commodity box stands for: the ledger's operating currency, usually. */
     defaultCommodity: String,
     removable: Boolean,
@@ -1049,8 +1056,9 @@ private fun PostingEditor(
                 value = row.account,
                 onValueChange = { row.account = it },
                 label = "Account ${index + 1}",
-                suggestions = vocabulary.accounts,
+                suggestions = accountOptions,
                 describe = "Account for posting ${index + 1}",
+                matcher = AccountSuggestions::matching,
                 modifier = Modifier.weight(1f),
             )
             if (removable) {

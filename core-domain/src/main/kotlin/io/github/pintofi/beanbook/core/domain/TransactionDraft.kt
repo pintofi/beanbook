@@ -108,11 +108,17 @@ data class TransactionDraft(
     fun validate(
         format: LedgerFormat = LedgerFormat.PLAIN,
         /**
-         * The accounts the ledger has opened, or null when that is not known or does not
-         * matter (a ledger with `auto_accounts`). A posting to any other account is an error
-         * Beancount reports for the whole ledger, so it is refused here, before the write.
+         * The accounts the ledger has declared, closed or not, or null when that is not known or
+         * does not matter (a ledger with `auto_accounts`). A posting to any other account is an
+         * error Beancount reports for the whole ledger, so it is refused here, before the write.
          */
-        openAccounts: Set<String>? = null,
+        declaredAccounts: Set<String>? = null,
+        /**
+         * When each closed account was closed. Beancount rejects a posting to an account after the
+         * day it closed and not before, so an entry dated on or before that day is accepted, as the
+         * suggestions already offer it.
+         */
+        closedOn: Map<String, String> = emptyMap(),
     ): List<DraftProblem> {
         val problems = mutableListOf<DraftProblem>()
 
@@ -131,8 +137,10 @@ data class TransactionDraft(
         postings.forEach { posting ->
             if (!ACCOUNT.matches(posting.account)) {
                 problems += DraftProblem.InvalidAccount(posting.account)
-            } else if (openAccounts != null && posting.account !in openAccounts) {
+            } else if (declaredAccounts != null && posting.account !in declaredAccounts) {
                 problems += DraftProblem.UnknownAccount(posting.account)
+            } else if (!AccountSuggestions.offeredOn(closedOn[posting.account], date)) {
+                problems += DraftProblem.ClosedAccount(posting.account, closedOn.getValue(posting.account))
             }
         }
 
@@ -284,6 +292,9 @@ sealed interface DraftProblem {
 
     /** A well-formed name the ledger has not opened. */
     data class UnknownAccount(val account: String) : DraftProblem
+
+    /** An account that was already closed on the day of the entry. */
+    data class ClosedAccount(val account: String, val closed: String) : DraftProblem
     data class TooManyElidedPostings(val count: Int) : DraftProblem
     data class DoesNotBalance(val residuals: List<Amount>) : DraftProblem
     data class InvalidTag(val tag: String) : DraftProblem
@@ -307,6 +318,8 @@ sealed interface DraftProblem {
         is InvalidAccount -> "\"$account\" is not a valid account name; accounts look like Expenses:Food"
         is UnknownAccount ->
             "\"$account\" is not an account in this ledger; pick one from the list, or open it first"
+        is ClosedAccount ->
+            "\"$account\" was closed on $closed; use an earlier date for this entry, or pick another account"
         is TooManyElidedPostings -> "$count postings have no amount; Beancount can work out only one"
         is DoesNotBalance -> "does not balance: " + residuals.joinToString(", ") { it.format() }
         is InvalidTag -> "\"$tag\" is not a valid tag; tags are letters, digits, - _ / . and no spaces"
@@ -343,9 +356,32 @@ data class LedgerVocabulary(
     val recentEntries: List<JournalEntry> = emptyList(),
     /** What the ledger's `commodity_attr` plugin requires of a commodity directive. */
     val commodityAttributes: List<String> = emptyList(),
-    /** Accounts the ledger has opened; null where any name is acceptable. */
-    val openAccounts: Set<String>? = null,
+    /** Accounts the ledger has declared, closed or not; null where any name is acceptable. */
+    val declaredAccounts: Set<String>? = null,
+    /** The day each closed account was closed. */
+    val closedOn: Map<String, String> = emptyMap(),
+    /**
+     * Every account an entry might post to, closed ones included: they are offered for an entry
+     * dated before the day they closed. Empty means [accounts] is all there is.
+     */
+    val entryAccounts: List<String> = emptyList(),
 ) {
+    /** [entryAccounts] ranked by use over the whole journal, which does not change with the entry. */
+    private val rankedByUse: List<String> by lazy {
+        AccountSuggestions.rank(entryAccounts.ifEmpty { accounts }.sorted(), recentEntries)
+    }
+
+    /**
+     * The accounts to suggest for an entry dated [date] and paid to [payee], as Fava's entry form
+     * orders them: most used and most recent first, the payee's own accounts ahead of those, and
+     * none that was closed before [date].
+     */
+    fun accountsFor(date: String, payee: String?): List<String> {
+        val offered = rankedByUse.filter { AccountSuggestions.offeredOn(closedOn[it], date) }
+        val named = payee?.trim().orEmpty()
+        return if (named.isEmpty()) offered else AccountSuggestions.rank(offered, recentEntries, named)
+    }
+
     /**
      * The last transaction recorded for [payee], newest first.
      *
@@ -397,11 +433,18 @@ data class LedgerVocabulary(
             links = snapshot.journal.flatMap { it.links }.distinct().sorted(),
             recentEntries = snapshot.journal,
             commodityAttributes = snapshot.commodityAttributes,
-            openAccounts = if (snapshot.hasPlugin("beancount.plugins.auto_accounts")) {
+            declaredAccounts = if (snapshot.hasPlugin("beancount.plugins.auto_accounts")) {
                 null
             } else {
-                // A closed account takes no more postings, so it is not one to offer or accept.
-                snapshot.accounts.filterNot { it.isClosed }.map { it.name }.toSet()
+                snapshot.accounts.map { it.name }.toSet()
+            },
+            closedOn = snapshot.accounts.mapNotNull { account -> account.closed?.let { account.name to it } }.toMap(),
+            entryAccounts = snapshot.accounts.map { it.name }.distinct().sorted().let { names ->
+                if (snapshot.hasPlugin("beancount.plugins.leafonly")) {
+                    names.filterNot { name -> names.any { it.startsWith("$name:") } }
+                } else {
+                    names
+                }
             },
         )
     }
