@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On the Accounts page, the details of an account now include the currencies it allows: add, change or clear them. Only the currency list on its open line is rewritten, in the same single save as any other detail you changed. ([#315])
 ### Changed
 - Opening or closing an account is always written to files/accounts.beancount. If your ledger does not read that file yet (one brought in from elsewhere, with its accounts in the main file), Beanbook shows the one include line it needs and adds it only after you agree, then finishes the save. Accounts already opened in your ledger stay where they are. ([#318])
+### Changed
+- On the entry form, templates saved with Save as template are listed in alphabetical order. Up to three are shown as buttons that wrap, so none is cut off at large text; with more, one Templates button opens a list showing who is paid and the first account of each, with a search box once there are more than eight, and a way to delete a template there. Before, every template was in one row that had to be scrolled sideways. ([#317])
 
 ## [1.0.3] - 2026-10-30
 
@@ -303,4 +305,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#314]: https://github.com/pintofi/beanbook/issues/314
 [#315]: https://github.com/pintofi/beanbook/issues/315
 [#316]: https://github.com/pintofi/beanbook/issues/316
+[#317]: https://github.com/pintofi/beanbook/issues/317
 [#318]: https://github.com/pintofi/beanbook/issues/318

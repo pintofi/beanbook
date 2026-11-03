@@ -505,20 +505,7 @@ fun QuickAddScreen(
         // been typed. Applying one fills the form and stops there — the entry is still
         // previewed and validated like any other (docs/ux.md 4).
         if (templates.isNotEmpty()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(Measure.snug),
-            ) {
-                templates.forEach { template ->
-                    AssistChip(
-                        onClick = { applyTemplate(template) },
-                        label = { Text(template.name) },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Start from the template ${template.name}"
-                        },
-                    )
-                }
-            }
+            TemplatePicker(templates, onApply = ::applyTemplate, onDelete = onDeleteTemplate)
             FormGap()
         }
 

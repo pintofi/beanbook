@@ -64,7 +64,7 @@ class TemplateEntryTest {
         var saved: TransactionDraft? = null
         show(templates = listOf(rent), onSave = { saved = it })
 
-        compose.onNodeWithContentDescription("Start from the template Rent").performClick()
+        compose.onNodeWithText("Rent").performClick()
 
         // The preview is the contract: what it shows is what gets written.
         preview()
@@ -86,7 +86,7 @@ class TemplateEntryTest {
 
         compose.onNodeWithText("2026-09-01").performTextClearance()
         compose.onNodeWithText("Date").performTextInput("2026-12-24")
-        compose.onNodeWithContentDescription("Start from the template Rent").performClick()
+        compose.onNodeWithText("Rent").performClick()
 
         preview().assertTextContains("2026-12-24 * \"Landlord\" \"Monthly rent\"", substring = true)
     }
