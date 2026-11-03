@@ -24,7 +24,55 @@ object AccountDetails {
      * @param original the metadata the ledger reported for the account, as text.
      * @param edited what the person wants it to be. A key with a blank value is removed.
      */
-    fun rewrite(block: String, original: Map<String, String>, edited: Map<String, String>): Result {
+    fun rewrite(
+        block: String,
+        original: Map<String, String>,
+        edited: Map<String, String>,
+        /** The currencies the account is to allow, in the order to write them; null leaves them as they are. */
+        currencies: List<String>? = null,
+    ): Result {
+        val details = rewriteMetadata(block, original, edited)
+        if (currencies == null) return details
+        val base = when (details) {
+            is Result.Changed -> details.text
+            is Result.Unchanged -> block
+            is Result.Refused -> return details
+        }
+        return when (val allowed = rewriteCurrencies(base, currencies)) {
+            is Result.Changed -> Result.Changed(allowed.text)
+            is Result.Unchanged -> if (base == block) Result.Unchanged else Result.Changed(base)
+            is Result.Refused -> allowed
+        }
+    }
+
+    private val OPEN_LINE = Regex(
+        """^(?<head>\s*${BeancountText.DATE.pattern}\s+open\s+${BeancountText.ACCOUNT.pattern})""" +
+            """(?<list>\s+${BeancountText.CURRENCY.pattern}(?:\s*,\s*${BeancountText.CURRENCY.pattern})*)?""" +
+            """(?<rest>(?:\s+"[^"]*")?\s*(?:;[^\n]*)?)$""",
+    )
+
+    /**
+     * The currencies an `open` directive allows, rewritten on its first line.
+     *
+     * Only the list is touched: the date and its spacing, the account, the booking method, a
+     * trailing comment, the line ending and every line under it stay as they are. An empty list
+     * removes the restriction, so the account takes any currency.
+     */
+    fun rewriteCurrencies(block: String, currencies: List<String>): Result {
+        val bad = currencies.firstOrNull { !BeancountText.CURRENCY.matches(it) }
+        if (bad != null) return Result.Refused("\"$bad\" is not a valid currency name.")
+        val lines = block.split("\n")
+        val match = lines.firstOrNull()?.let { OPEN_LINE.matchEntire(it) }
+            ?: return Result.Refused("that is not an open directive this app can read")
+        val list = currencies.distinct()
+        val first = match.groups["head"]!!.value +
+            (if (list.isEmpty()) "" else " " + list.joinToString(",")) +
+            match.groups["rest"]!!.value
+        val text = (listOf(first) + lines.drop(1)).joinToString("\n")
+        return if (text == block) Result.Unchanged else Result.Changed(text)
+    }
+
+    private fun rewriteMetadata(block: String, original: Map<String, String>, edited: Map<String, String>): Result {
         val keep = edited.filterValues { it.isNotBlank() }
         val bad = keep.keys.firstOrNull { !DirectiveDraft.isMetadataKey(it) }
         if (bad != null) return Result.Refused("\"$bad\" is not a valid name for a detail.")

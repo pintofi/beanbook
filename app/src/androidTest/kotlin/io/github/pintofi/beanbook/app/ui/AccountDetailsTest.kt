@@ -1,7 +1,9 @@
 package io.github.pintofi.beanbook.app.ui
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -103,7 +105,7 @@ class AccountDetailsTest {
             MaterialTheme {
                 AccountsScreen(
                     listOf(account), AccountNames.DEFAULT, onSave = {}, message = null, today = today,
-                    onEditDetails = { changed, details -> saved += changed.name to details },
+                    onEditDetails = { changed, details, _ -> saved += changed.name to details },
                 )
             }
         }
@@ -124,13 +126,68 @@ class AccountDetailsTest {
         )
     }
 
+    private fun cashAccount(allowed: List<String>) = AccountBalance(
+        name = "Assets:Cash",
+        positions = emptyList(),
+        opened = "2020-01-01",
+        openedFile = "/ledger/files/accounts.beancount",
+        openedLine = 2,
+        allowed = allowed,
+    )
+
+    private fun edit(account: AccountBalance, onSave: (List<String>?) -> Unit) {
+        compose.setContent {
+            MaterialTheme {
+                AccountsScreen(
+                    listOf(account), AccountNames.DEFAULT, onSave = {}, message = null, today = today,
+                    onEditDetails = { _, _, currencies -> onSave(currencies) },
+                )
+            }
+        }
+        compose.onNodeWithContentDescription("Assets:Cash. Edit its details").performClick()
+    }
+
+    @Test fun theCurrenciesAnAccountAllowsAreShownAndCanBeChanged() {
+        var sent: List<String>? = emptyList()
+        edit(cashAccount(listOf("EUR"))) { sent = it }
+        compose.onNodeWithContentDescription("Currencies the account allows").assert(hasText("EUR"))
+
+        compose.onNodeWithContentDescription("Currencies the account allows").performTextClearance()
+        compose.onNodeWithContentDescription("Currencies the account allows").performTextInput("usd, EUR")
+        compose.onNodeWithText("Save details").assertIsEnabled().performClick()
+
+        assertEquals(listOf("USD", "EUR"), sent)
+    }
+
+    @Test fun allowingNoCurrencyInParticularIsAnEmptyList() {
+        var sent: List<String>? = null
+        edit(cashAccount(listOf("EUR"))) { sent = it }
+        compose.onNodeWithContentDescription("Currencies the account allows").performTextClearance()
+        compose.onNodeWithText("Save details").performClick()
+        assertEquals(emptyList<String>(), sent)
+    }
+
+    @Test fun currenciesLeftAloneAreNotSentSoTheirLineIsNotRewritten() {
+        var sent: List<String>? = listOf("never set")
+        edit(cashAccount(listOf("EUR", "USD"))) { sent = it }
+        compose.onNodeWithText("Save details").performClick()
+        assertEquals(null, sent)
+    }
+
+    @Test fun aNameThatIsNotACurrencyIsExplainedAndCannotBeSaved() {
+        edit(cashAccount(emptyList())) { }
+        compose.onNodeWithContentDescription("Currencies the account allows").performTextInput("US\$")
+        compose.onNodeWithText("is not a currency name", substring = true).assertExists()
+        compose.onNodeWithText("Save details").assertIsNotEnabled()
+    }
+
     @Test fun anAccountWithNoRecordedPositionCannotBeEdited() {
         val account = AccountBalance(name = "Assets:Auto", positions = emptyList(), opened = null)
         compose.setContent {
             MaterialTheme {
                 AccountsScreen(
                     listOf(account), AccountNames.DEFAULT, onSave = {}, message = null, today = today,
-                    onEditDetails = { _, _ -> },
+                    onEditDetails = { _, _, _ -> },
                 )
             }
         }

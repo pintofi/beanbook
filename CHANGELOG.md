@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The accounts the entry form suggests follow Fava's: the ones you post to most and most recently come first (a posting from a year ago counts half), the ones used with the payee you typed come ahead of those, typed letters match in order and not only as one piece, and an account that has been closed is still offered, and accepted, for an entry dated up to the day it closed. ([#313])
 ### Added
 - The Accounts page has a search box: type words and only the accounts whose name has all of them stay listed, closed accounts included. ([#314])
+### Added
+- On the Accounts page, the details of an account now include the currencies it allows: add, change or clear them. Only the currency list on its open line is rewritten, in the same single save as any other detail you changed. ([#315])
 
 ## [1.0.3] - 2026-10-30
 
@@ -297,4 +299,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#312]: https://github.com/pintofi/beanbook/issues/312
 [#313]: https://github.com/pintofi/beanbook/issues/313
 [#314]: https://github.com/pintofi/beanbook/issues/314
+[#315]: https://github.com/pintofi/beanbook/issues/315
 [#316]: https://github.com/pintofi/beanbook/issues/316

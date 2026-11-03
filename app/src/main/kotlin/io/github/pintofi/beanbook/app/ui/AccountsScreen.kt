@@ -35,11 +35,15 @@ import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
 import io.github.pintofi.beanbook.core.domain.AccountBalance
 import io.github.pintofi.beanbook.core.domain.AccountName
 import io.github.pintofi.beanbook.core.domain.AccountNames
+import io.github.pintofi.beanbook.core.domain.BeancountText
 import io.github.pintofi.beanbook.core.domain.DirectiveDraft
 import java.time.LocalDate
 
-/** Saves the details of an open account: the account and what its details should now be. */
-typealias EditAccountDetails = (AccountBalance, Map<String, String>) -> Unit
+/**
+ * Saves the details of an open account: the account, what its details should now be, and the
+ * currencies it should allow, or null when those were not changed.
+ */
+typealias EditAccountDetails = (AccountBalance, Map<String, String>, List<String>?) -> Unit
 
 /**
  * The ledger's accounts: the open ones by tree, a form to open one, and a way to close one that
@@ -62,8 +66,10 @@ fun AccountsScreen(
 ) {
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var editDetails by rememberSaveable { mutableStateOf("") }
+    var editCurrencies by rememberSaveable { mutableStateOf("") }
     val startEditing = { account: AccountBalance ->
         editDetails = DetailRows.encode(account.metadata.toList())
+        editCurrencies = account.allowed.joinToString(", ")
         editing = account.name
     }
     var closing by rememberSaveable { mutableStateOf<String?>(null) }
@@ -149,6 +155,9 @@ fun AccountsScreen(
             val rows = DetailRows.parse(editDetails)
             val edited = rows.filter { it.first.isNotBlank() }.associate { it.first.trim() to it.second }
             val badKey = edited.filterValues { it.isNotBlank() }.keys.firstOrNull { !DirectiveDraft.isMetadataKey(it) }
+            val currencies = editCurrencies.split(',', ' ')
+                .map { it.trim().uppercase() }.filter { it.isNotEmpty() }.distinct()
+            val badCurrency = currencies.firstOrNull { !BeancountText.CURRENCY.matches(it) }
             AlertDialog(
                 onDismissRequest = { editing = null },
                 title = { Text("Details of ${account.name}") },
@@ -157,6 +166,17 @@ fun AccountsScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.verticalScroll(rememberScrollState()),
                     ) {
+                        OutlinedTextField(
+                            value = editCurrencies,
+                            onValueChange = { editCurrencies = it },
+                            label = { Text("Currencies it allows") },
+                            supportingText = { Text("Separate with commas. Leave empty to allow any currency.") },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { contentDescription = "Currencies the account allows" },
+                        )
+                        badCurrency?.let { Hint("\"$it\" is not a currency name. Use capital letters, like USD.") }
                         DetailsFields(editDetails) { editDetails = it }
                         badKey?.let { Hint("\"$it\" is not a valid name. Use lower-case letters, digits, - and _.") }
                     }
@@ -164,10 +184,11 @@ fun AccountsScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            onEditDetails(account, edited)
+                            // Only a changed list is sent, so a line the person did not touch is not rewritten.
+                            onEditDetails(account, edited, currencies.takeIf { it != account.allowed })
                             editing = null
                         },
-                        enabled = badKey == null,
+                        enabled = badKey == null && badCurrency == null,
                     ) { Text("Save details") }
                 },
                 dismissButton = { OutlinedButton(onClick = { editing = null }) { Text("Cancel") } },
