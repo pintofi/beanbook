@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - "Use last" no longer fills in the currency of the posting whose amount was left blank for Beancount to work out: the commodity stays empty like the amount, so the form and the preview say the same thing. ([#312])
 - Tapping a notification from Beanbook opens the page it is about: Share on Wi-Fi opens its page, an install opens Plugins, a running script opens Scripts, filing a document opens Documents, and a saved entry opens the Journal. If the app is already open it is brought forward and moved there, instead of a second copy starting on top. ([#316])
+### Changed
+- The accounts the entry form suggests follow Fava's: the ones you post to most and most recently come first (a posting from a year ago counts half), the ones used with the payee you typed come ahead of those, typed letters match in order and not only as one piece, and an account that has been closed is still offered, and accepted, for an entry dated up to the day it closed. ([#313])
 
 ## [1.0.3] - 2026-10-30
 
@@ -291,4 +293,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#296]: https://github.com/pintofi/beanbook/issues/296
 [#302]: https://github.com/pintofi/beanbook/issues/302
 [#312]: https://github.com/pintofi/beanbook/issues/312
+[#313]: https://github.com/pintofi/beanbook/issues/313
 [#316]: https://github.com/pintofi/beanbook/issues/316

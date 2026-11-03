@@ -17,6 +17,7 @@ class NoFloatingPointTest {
         "PageChoice.kt" to "choosing a page outline from pixel geometry, not money",
         "CropQuad.kt" to "pixel coordinates of a page crop, not money",
         "HomeInsights.kt" to "CategorySpend.shareOf: a bar's width on screen, from exact amounts",
+        "AccountSuggestions.kt" to "the decay score that orders suggested accounts, compared and never added to money",
     )
 
     private val floating = Regex("""\b(Float|Double|FloatArray|DoubleArray|toDouble|toFloat)\b""")

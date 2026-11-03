@@ -151,6 +151,11 @@ fun SuggestingField(
      */
     placeholder: String? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
+    /**
+     * How typed text picks from [suggestions] and orders what it picks, when a substring match
+     * in the order given is not the right rule: accounts match the way Fava's entry form does.
+     */
+    matcher: ((typed: String, suggestions: List<String>) -> List<String>)? = null,
 ) {
     // The field's own copy, so the selection survives the caller's round trip. It follows the
     // caller whenever the caller's value is something the field did not produce -- a template
@@ -171,9 +176,11 @@ fun SuggestingField(
     var chosen by remember { mutableStateOf(false) }
 
     val needle = value.trim()
-    val offered = remember(suggestions, needle) {
+    val offered = remember(suggestions, needle, matcher) {
         val matching = if (needle.isEmpty()) {
             suggestions
+        } else if (matcher != null) {
+            matcher(needle, suggestions)
         } else {
             suggestions.filter { it.contains(needle, ignoreCase = true) }
         }
