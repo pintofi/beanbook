@@ -12,7 +12,7 @@ internal fun MainActivity.accountDetailsSaver(
     if (remote || projectId == null) {
         null
     } else {
-        { account, details -> saveAccountDetails(app, projectId, account, details) }
+        { account, details, currencies -> saveAccountDetails(app, projectId, account, details, currencies) }
     }
 
 /**
@@ -27,6 +27,8 @@ internal fun MainActivity.saveAccountDetails(
     projectId: String,
     account: io.github.pintofi.beanbook.core.domain.AccountBalance,
     details: Map<String, String>,
+    /** The currencies the account should allow, or null to leave them as they are. */
+    currencies: List<String>? = null,
 ) {
     val file = account.openedFile
     val line = account.openedLine
@@ -46,7 +48,7 @@ internal fun MainActivity.saveAccountDetails(
             return@launch
         }
         val rewritten = io.github.pintofi.beanbook.core.domain.AccountDetails
-            .rewrite(slice.text, account.metadata, details)
+            .rewrite(slice.text, account.metadata, details, currencies)
         val newText = when (rewritten) {
             is io.github.pintofi.beanbook.core.domain.AccountDetails.Result.Unchanged -> {
                 saveMessage = "Nothing changed."
