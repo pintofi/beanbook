@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On the entry form, templates saved with Save as template are listed in alphabetical order. Up to three are shown as buttons that wrap, so none is cut off at large text; with more, one Templates button opens a list showing who is paid and the first account of each, with a search box once there are more than eight, and a way to delete a template there. Before, every template was in one row that had to be scrolled sideways. ([#317])
 
 ### Fixed
+- The Units, At cost and Market value buttons on a home-screen widget no longer vanish for a moment during a resize or when tapped: a widget is redrawn only when its size or place changes how it is drawn, and not each time the launcher repeats the same size. ([#332])
 - Market values worked out through a price quoted the other way round (a price of USD in PKR used to value PKR in USD) now round exactly as Beancount and Fava do. In the rare case the exact result was half a cent the app could show a different cent: 0.165 at a rate of 3 shows 0.05 as in Fava, not 0.06. 1,400 conversions were checked against Beancount 3.2.3 to the last digit. ([#328])
 - The Accounts page shows each balance with the ledger's own decimal places and separators, as every other screen does, and not at the full length of the number. ([#326])
 - The form's sentence "Beancount will put ... on the posting with no amount" now names the figure Beancount really writes. Beancount rounds the leftover to its tolerance (beside 10.1 and 2.22 it writes -12.3, not -12.32), and the sentence used the exact leftover. The balance rule itself, and the figure for the blank posting, were checked against 900 entries run through Beancount 3.2.3 and agree in every one. ([#326])
@@ -311,3 +312,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#318]: https://github.com/pintofi/beanbook/issues/318
 [#326]: https://github.com/pintofi/beanbook/issues/326
 [#328]: https://github.com/pintofi/beanbook/issues/328
+[#332]: https://github.com/pintofi/beanbook/issues/332

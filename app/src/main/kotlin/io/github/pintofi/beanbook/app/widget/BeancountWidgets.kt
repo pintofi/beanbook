@@ -3,6 +3,7 @@ package io.github.pintofi.beanbook.app.widget
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
+import android.content.res.Configuration
 import io.github.pintofi.beanbook.app.R
 import io.github.pintofi.beanbook.core.data.WidgetCache
 
@@ -38,6 +39,7 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
 
     /** Draws one widget at the size the launcher last reported for it, which a resize hands over. */
     private fun update(context: Context, manager: AppWidgetManager, id: Int, sizes: android.os.Bundle) {
+        DrawnShapes.remember(id, shapeOf(context, sizes))
         val cache = WidgetCache(context.filesDir.resolve("state"))
         val accounts = WidgetAccounts(context)
         manager.updateAppWidget(
@@ -56,6 +58,11 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
         @Suppress("DEPRECATION") // Its replacement, RemoteCollectionItems, is API 31.
         manager.notifyAppWidgetViewDataChanged(intArrayOf(id), R.id.widget_list)
     }
+
+    private fun shapeOf(context: Context, options: android.os.Bundle) = WidgetShape.of(
+        options,
+        landscape = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
+    )
 
     /**
      * A tap on Units, At cost or Market value on a widget.
@@ -84,15 +91,21 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
     override fun onDeleted(context: Context, widgetIds: IntArray) {
         WidgetAccounts(context).forget(widgetIds)
         WidgetOptions(context).forget(widgetIds)
+        DrawnShapes.forget(widgetIds)
     }
 
-    /** A widget moved to or from the lock screen has to be redrawn, not just resized. */
+    /**
+     * A widget moved to or from the lock screen, or made too short or tall for the basis row, has
+     * to be redrawn. A report that changes neither is left alone: redrawing for it makes the
+     * launcher rebuild the widget, and the buttons vanish for a moment.
+     */
     override fun onAppWidgetOptionsChanged(
         context: Context,
         manager: AppWidgetManager,
         widgetId: Int,
         newOptions: android.os.Bundle,
     ) {
+        if (DrawnShapes.isDrawn(widgetId, shapeOf(context, newOptions))) return
         update(context, manager, widgetId, newOptions)
     }
 }
