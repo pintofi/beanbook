@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- The Accounts page shows each balance with the ledger's own decimal places and separators, as every other screen does, and not at the full length of the number. ([#326])
+- The form's sentence "Beancount will put ... on the posting with no amount" now names the figure Beancount really writes. Beancount rounds the leftover to its tolerance (beside 10.1 and 2.22 it writes -12.3, not -12.32), and the sentence used the exact leftover. The balance rule itself, and the figure for the blank posting, were checked against 900 entries run through Beancount 3.2.3 and agree in every one. ([#326])
 - "Use last" no longer fills in the currency of the posting whose amount was left blank for Beancount to work out: the commodity stays empty like the amount, so the form and the preview say the same thing. ([#312])
 - Tapping a notification from Beanbook opens the page it is about: Share on Wi-Fi opens its page, an install opens Plugins, a running script opens Scripts, filing a document opens Documents, and a saved entry opens the Journal. If the app is already open it is brought forward and moved there, instead of a second copy starting on top. ([#316])
 ### Changed
@@ -307,3 +309,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#316]: https://github.com/pintofi/beanbook/issues/316
 [#317]: https://github.com/pintofi/beanbook/issues/317
 [#318]: https://github.com/pintofi/beanbook/issues/318
+[#326]: https://github.com/pintofi/beanbook/issues/326

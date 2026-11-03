@@ -185,6 +185,22 @@ data class TransactionDraft(
         Balance.of(postings.mapNotNull { it.weight() }).residuals()
 
     /**
+     * What Beancount will write on the one posting left without an amount, per currency.
+     *
+     * The opposite of what the other postings add up to, rounded as Beancount rounds it
+     * ([Tolerances.quantize]): not the exact leftover. Empty unless exactly one posting is blank,
+     * or when its weight cannot be known here (a lot Beancount has to book).
+     */
+    fun inferredForBlank(format: LedgerFormat = LedgerFormat.PLAIN): List<Amount> {
+        if (postings.count { it.isElided } != 1) return emptyList()
+        if (postings.any { it.amount != null && it.readDetails != null && it.weight() == null }) return emptyList()
+        val tolerances = Tolerances.infer(
+            postings, format.tolerances, format.toleranceMultiplier, format.inferToleranceFromCost,
+        )
+        return residuals().map { Amount(tolerances.quantize(it.currency, it.number.negate()), it.currency) }
+    }
+
+    /**
      * The exact text that will be written. The UI shows this before saving, so what the
      * user approves is what lands in the file (docs/ux.md §4).
      *

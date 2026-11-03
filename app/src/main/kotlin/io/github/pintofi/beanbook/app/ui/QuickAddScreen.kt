@@ -734,6 +734,8 @@ fun QuickAddScreen(
         // to let Beancount finish the arithmetic.
         LedgerReveal(visible = residuals.isNotEmpty(), label = "residual") {
             val shownResiduals = remember(residuals) { residuals }
+            // What Beancount writes, which is the leftover rounded by the ledger's own tolerance.
+            val inferred = remember(draft, format) { draft.inferredForBlank(format) }
             val elided = draft.postings.count { it.isElided }
             Notice(
                 if (elided == 1) NoticeTone.QUIET else NoticeTone.ATTENTION,
@@ -744,7 +746,7 @@ fun QuickAddScreen(
                     // blank receives its opposite, which is the figure the sentence names
                     // (-300.00 on one side must put 300.00 on the other, not -300.00).
                     text = if (elided == 1) {
-                        "Beancount will put ${shownResiduals.joinToString(", ") { format.format(-it) }} " +
+                        "Beancount will put ${inferred.joinToString(", ") { format.format(it) }} " +
                             "on the posting with no amount."
                     } else {
                         "Does not balance: ${shownResiduals.joinToString(", ") { format.format(it) }}"

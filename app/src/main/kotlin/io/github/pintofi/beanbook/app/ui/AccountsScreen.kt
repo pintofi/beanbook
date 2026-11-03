@@ -37,6 +37,7 @@ import io.github.pintofi.beanbook.core.domain.AccountName
 import io.github.pintofi.beanbook.core.domain.AccountNames
 import io.github.pintofi.beanbook.core.domain.BeancountText
 import io.github.pintofi.beanbook.core.domain.DirectiveDraft
+import io.github.pintofi.beanbook.core.domain.LedgerFormat
 import java.time.LocalDate
 
 /**
@@ -63,6 +64,8 @@ fun AccountsScreen(
     today: LocalDate = LocalDate.now(),
     /** Saves the details of an account that is already open; null where the ledger cannot be written. */
     onEditDetails: EditAccountDetails? = null,
+    /** How the ledger writes its figures: its places and separators, as on every other screen. */
+    format: LedgerFormat = LedgerFormat.PLAIN,
 ) {
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var editDetails by rememberSaveable { mutableStateOf("") }
@@ -102,6 +105,7 @@ fun AccountsScreen(
                         item {
                             AccountRow(
                                 account,
+                                format = format,
                                 canClose = onSave != null,
                                 onClose = {
                                     closeDate = today.toString()
@@ -255,6 +259,7 @@ private fun AccountSearchField(query: String, onChange: (String) -> Unit) {
 @Composable
 private fun AccountRow(
     account: AccountBalance,
+    format: LedgerFormat,
     canClose: Boolean,
     onClose: () -> Unit,
     onEdit: (() -> Unit)?,
@@ -262,7 +267,7 @@ private fun AccountRow(
     val empty = account.positions.all { it.number.signum() == 0 }
     val held = account.positions.filter { it.number.signum() != 0 }
     val detail = buildString {
-        append(if (held.isEmpty()) "Empty" else held.joinToString(", ") { it.format() })
+        append(if (held.isEmpty()) "Empty" else held.joinToString(", ") { format.format(it) })
         if (account.allowed.isNotEmpty()) append(" · only ${account.allowed.joinToString(", ")}")
         append(detailsNote(account))
     }
