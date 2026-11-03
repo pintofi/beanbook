@@ -20,7 +20,8 @@ Usage:
 Rules checked, from https://keepachangelog.com/en/1.1.0/:
   * newest version first, each heading `## [x.y.z] - YYYY-MM-DD`, with ` [YANKED]` after the date
     for a release that was pulled;
-  * sections are only Added, Changed, Deprecated, Removed, Fixed and Security, and none is empty;
+  * sections are only Added, Changed, Deprecated, Removed, Fixed and Security, none is empty, and
+    each appears once in a version;
   * [Unreleased] is at the top;
 and one rule of this project: every entry under [Unreleased] and under 1.0.1 or later ends with the
 pull request or issue it came from, such as `([#93], fixes [#69])`. 1.0.0 predates pull requests.
@@ -69,6 +70,7 @@ def problems():
     previous = None
     section = None       # the version whose entries are being read
     kind = None          # the ### heading being read
+    seen = set()         # the ### headings already used in this version
     entries = 0
     referenced = False   # whether this version's entries must cite a pull request or issue
 
@@ -80,6 +82,7 @@ def problems():
         if line.startswith("## "):
             close_kind()
             kind, entries = None, 0
+            seen = set()
             heading = HEADING.match(line)
             if not heading:
                 found.append(f"not a version heading: {line[:80]}")
@@ -102,6 +105,9 @@ def problems():
             kind, entries = line[4:].strip(), 0
             if kind not in TYPES:
                 found.append(f"[{section}] ### {kind}: use one of {', '.join(TYPES)}")
+            elif kind in seen:
+                found.append(f"[{section}] ### {kind} appears twice: put its entries under the first one")
+            seen.add(kind)
         elif line.startswith("- ") and section:
             entries += 1
             if referenced and not REFERENCE.search(line):
