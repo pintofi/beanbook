@@ -719,15 +719,7 @@ class MainActivity : ComponentActivity() {
                         templates = templates,
                         onSaveTemplate = { app.templatesState.save(it) },
                         onDeleteTemplate = { app.templatesState.delete(it) },
-                        onSaveDirective = { draft ->
-                            saveText(
-                                app,
-                                activeId!!,
-                                draft.render(currencyColumnOf(ledger)),
-                                DIRECTIVE_OPERATION,
-                                target = directiveTarget(app, activeId!!, ledger, draft),
-                            )
-                        },
+                        onSaveDirective = { draft -> saveDirective(app, activeId!!, ledger, draft) },
                         onOpenAccount = if (remoteStatus is EngineStatus.Serving) null else { draft ->
                             writeAccountDirective(app, activeId!!, ledger, draft)
                         },

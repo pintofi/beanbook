@@ -27,7 +27,8 @@ internal fun entryTarget(
 }
 
 /**
- * Where a directive from the Add form goes. A commodity belongs in the file the ledger
+ * Where a directive from the Add form goes, other than an `open` or `close`, which [accountsLedger] places.
+ * A commodity belongs in the file the ledger
  * keeps its commodities in, `files/commodities.beancount`, when the ledger reads it; it used
  * to land in the transactions file with everything else.
  */
@@ -37,13 +38,6 @@ internal fun directiveTarget(
     ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?,
     draft: io.github.pintofi.beanbook.core.domain.DirectiveDraft,
 ): java.io.File {
-    if (draft is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Open ||
-        draft is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Close
-    ) {
-        val accounts = app.workspace.projectDir(projectId).resolve("files/accounts.beancount")
-        val read = ledger?.includedFiles.orEmpty().map { java.io.File(it).canonicalPath }
-        if (accounts.canonicalPath in read) return accounts
-    }
     if (draft is io.github.pintofi.beanbook.core.domain.DirectiveDraft.Commodity) {
         val commodities = app.workspace.projectDir(projectId).resolve("files/commodities.beancount")
         val read = ledger?.includedFiles.orEmpty().map { java.io.File(it).canonicalPath }
@@ -146,14 +140,20 @@ internal fun MainActivity.writeAccountDirective(
     projectId: String,
     ledger: io.github.pintofi.beanbook.core.domain.LedgerSnapshot?,
     draft: io.github.pintofi.beanbook.core.domain.DirectiveDraft,
-) = saveText(
-    app,
-    projectId,
-    draft.render(currencyColumnOf(ledger)),
-    OPEN_ACCOUNT_OPERATION,
-    target = directiveTarget(app, projectId, ledger, draft),
-    onResult = { saveMessage = accountSaveMessage(draft, it) },
-)
+) {
+    lifecycleScope.launch {
+        val target = accountsLedger(app, projectId, ledger) { writeAccountDirective(app, projectId, ledger, draft) }
+            ?: return@launch
+        saveText(
+            app,
+            projectId,
+            draft.render(currencyColumnOf(ledger)),
+            OPEN_ACCOUNT_OPERATION,
+            target = target,
+            onResult = { saveMessage = accountSaveMessage(draft, it) },
+        )
+    }
+}
 
 /**
  * Where this ledger keeps its figures: Fava's `currency-column`, so a directive is written in line
