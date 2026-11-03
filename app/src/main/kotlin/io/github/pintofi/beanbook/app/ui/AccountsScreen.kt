@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
@@ -65,12 +68,25 @@ fun AccountsScreen(
     }
     var closing by rememberSaveable { mutableStateOf<String?>(null) }
     var closeDate by rememberSaveable { mutableStateOf(today.toString()) }
-    val (closed, open) = accounts.partition { it.isClosed }
+    var query by rememberSaveable { mutableStateOf("") }
+    val (closed, open) = accounts.filter { it.matchesQuery(query) }.partition { it.isClosed }
     Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         FolioPage(modifier = Modifier.readableMeasureCentred()) {
             message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.indent)) }
 
-            if (open.isEmpty()) FolioNote("No account is open yet.")
+            if (accounts.isNotEmpty()) {
+                FolioGroup {
+                    item {
+                        FolioBody {
+                            AccountSearchField(query, onChange = { query = it })
+                        }
+                    }
+                }
+            }
+            if (accounts.none { !it.isClosed }) FolioNote("No account is open yet.")
+            if (query.isNotBlank() && open.isEmpty() && closed.isEmpty()) {
+                FolioNote("No account matches \"${query.trim()}\".")
+            }
             names.roots.forEach { root ->
                 val rows = open.filter { it.name.substringBefore(':') == root }
                 if (rows.isEmpty()) return@forEach
@@ -188,6 +204,31 @@ fun AccountsScreen(
             dismissButton = { OutlinedButton(onClick = { closing = null }) { Text("Keep it open") } },
         )
     }
+}
+
+/** The box that narrows the list to the accounts whose name has every word typed. */
+@Composable
+private fun AccountSearchField(query: String, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onChange,
+        label = { Text("Search accounts") },
+        singleLine = true,
+        leadingIcon = { androidx.compose.material3.Icon(Icons.Filled.Search, null) },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                androidx.compose.material3.IconButton(
+                    onClick = { onChange("") },
+                    modifier = Modifier.semantics { contentDescription = "Clear the account search" },
+                ) {
+                    androidx.compose.material3.Icon(Icons.Filled.Close, null)
+                }
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "Search accounts by name" },
+    )
 }
 
 @Composable

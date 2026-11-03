@@ -161,6 +161,13 @@ data class AccountBalance(
 ) {
     val isClosed: Boolean get() = closed != null
 
+    /**
+     * Whether every word of [query] is in this account's name, in any order and in any case, so
+     * "food groc" finds Expenses:Food:Groceries. A blank query matches every account.
+     */
+    fun matchesQuery(query: String): Boolean =
+        query.trim().split(' ').filter { it.isNotBlank() }.all { name.contains(it, ignoreCase = true) }
+
     /** The last segment, for display in a tree: "Assets:Bank:Checking" -> "Checking". */
     val leaf: String get() = name.substringAfterLast(':')
 
