@@ -116,7 +116,28 @@ class Tolerances private constructor(
 
     fun forCurrency(currency: String): BigDecimal = byCurrency[currency] ?: fallback
 
+    /**
+     * [number] as Beancount writes it when it fills in the amount of a posting left blank.
+     *
+     * Not the exact leftover: Beancount rounds it to twice the currency's tolerance, so a blank
+     * posting beside `10.1` and `2.22` becomes `-12.3`, not `-12.32` (`quantize_with_tolerance` in
+     * `beancount/core/interpolate.py`, checked against 3.2.3). The rounding is Python's default,
+     * half to even, and happens only when that doubled tolerance is a short number, which is how
+     * Beancount tells a tolerance somebody chose from one it worked out from many digits. A
+     * currency with no tolerance at all is left exact.
+     */
+    fun quantize(currency: String, number: BigDecimal): BigDecimal {
+        val tolerance = forCurrency(currency)
+        if (tolerance.signum() == 0) return number
+        val quantum = tolerance.multiply(BigDecimal(2)).stripTrailingZeros()
+        if (quantum.precision() >= MAX_TOLERANCE_DIGITS) return number
+        return number.setScale(quantum.scale(), java.math.RoundingMode.HALF_EVEN)
+    }
+
     companion object {
+        /** Beancount's `MAX_TOLERANCE_DIGITS`: a doubled tolerance this long was worked out, not chosen. */
+        private const val MAX_TOLERANCE_DIGITS = 5
+
         /** Beancount's `tolerance_multiplier` default. */
         val DEFAULT_MULTIPLIER: BigDecimal = BigDecimal("0.5")
 

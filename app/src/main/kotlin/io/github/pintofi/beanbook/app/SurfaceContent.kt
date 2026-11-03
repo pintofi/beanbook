@@ -376,6 +376,7 @@ internal fun SurfaceContent(
                             names = ledger?.accountNames ?: io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
                             onSave = onOpenAccount,
                             onEditDetails = onEditAccountDetails,
+                            format = ledger?.format ?: io.github.pintofi.beanbook.core.domain.LedgerFormat.PLAIN,
                             message = saveState,
                             modifier = Modifier.padding(padding),
                         )
