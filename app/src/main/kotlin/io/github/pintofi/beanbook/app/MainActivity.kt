@@ -258,27 +258,6 @@ class MainActivity : ComponentActivity() {
         } ?: uri.lastPathSegment?.substringAfterLast('/').orEmpty()
 
     /**
-     * The project a widget asked to open, if it may be honoured.
-     *
-     * A widget is long-lived and the intent it carries was built whenever it was last drawn,
-     * possibly before the project it names was deleted. `WidgetLink` checks the id against
-     * the projects that exist rather than taking the intent's word for it.
-     */
-    private fun widgetTarget(app: BeancountApplication): io.github.pintofi.beanbook.core.data.WidgetLink.Target? {
-        val requested = intent?.getStringExtra(
-            io.github.pintofi.beanbook.app.widget.WidgetRenderer.EXTRA_PROJECT,
-        ) ?: return null
-        return io.github.pintofi.beanbook.core.data.WidgetLink.resolve(
-            requestedProject = requested,
-            requestedSurface = intent?.getStringExtra(
-                io.github.pintofi.beanbook.app.widget.WidgetRenderer.EXTRA_SURFACE,
-            ),
-            knownProjects = app.projectsState.projects.value.map { it.id },
-            activeProject = app.projectsState.activeId.value,
-        )
-    }
-
-    /**
      * Which surface a widget asked the app to open on, if it was launched by one.
      *
      * `WidgetLink.resolve` has always returned this and the caller has always thrown it away
@@ -286,6 +265,12 @@ class MainActivity : ComponentActivity() {
      * on whatever the app opens by default.
      */
     internal var requestedSurface: String? by mutableStateOf(null)
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        OpenPage.request(intent)?.let { requestedSurface = it }
+    }
 
     internal fun openProject(app: BeancountApplication, projectId: String) {
         val ledgerPath = app.workspace.mainFile(projectId).absolutePath
@@ -430,7 +415,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        requestedSurface = widgetTarget(app)?.surface
+        requestedSurface = widgetTarget(app)?.surface ?: OpenPage.from(intent)
 
         setContent {
             val themeChoice by app.themeSettings.choice.collectAsStateWithLifecycle()
