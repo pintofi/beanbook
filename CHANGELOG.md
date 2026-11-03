@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Accounts page has a search box: type words and only the accounts whose name has all of them stay listed, closed accounts included. ([#314])
 ### Added
 - On the Accounts page, the details of an account now include the currencies it allows: add, change or clear them. Only the currency list on its open line is rewritten, in the same single save as any other detail you changed. ([#315])
+### Changed
+- Opening or closing an account is always written to files/accounts.beancount. If your ledger does not read that file yet (one brought in from elsewhere, with its accounts in the main file), Beanbook shows the one include line it needs and adds it only after you agree, then finishes the save. Accounts already opened in your ledger stay where they are. ([#318])
 
 ## [1.0.3] - 2026-10-30
 
@@ -301,3 +303,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#314]: https://github.com/pintofi/beanbook/issues/314
 [#315]: https://github.com/pintofi/beanbook/issues/315
 [#316]: https://github.com/pintofi/beanbook/issues/316
+[#318]: https://github.com/pintofi/beanbook/issues/318
