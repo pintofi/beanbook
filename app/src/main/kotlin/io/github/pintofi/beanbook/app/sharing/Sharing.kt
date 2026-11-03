@@ -16,6 +16,7 @@ import android.os.Build
 import android.os.IBinder
 import io.github.pintofi.beanbook.app.BeancountApplication
 import io.github.pintofi.beanbook.app.MainActivity
+import io.github.pintofi.beanbook.app.OpenPage
 import io.github.pintofi.beanbook.app.R
 import io.github.pintofi.beanbook.app.diagnostics.Diagnostics
 import io.github.pintofi.beanbook.core.engine.EngineStatus
@@ -259,10 +260,7 @@ class SharingService : Service() {
                 },
             )
         }
-        val open = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
+        val open = OpenPage.pending(this, OpenPage.SHARING)
         val stop = PendingIntent.getService(
             this, 1, Intent(this, SharingService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,

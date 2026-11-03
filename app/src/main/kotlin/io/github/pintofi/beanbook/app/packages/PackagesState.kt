@@ -125,6 +125,7 @@ class PackagesState(
             val result = io.github.pintofi.beanbook.app.work.KeepWorking.around(
                 context,
                 "Installing ${pending.request}",
+                page = io.github.pintofi.beanbook.app.OpenPage.PLUGINS,
                 onUnprotected = { _message.value = io.github.pintofi.beanbook.app.work.KeepWorking.KEEP_OPEN },
             ) {
                 withContext(Dispatchers.IO) {

@@ -317,13 +317,16 @@ internal fun LedgerApp(
 ) {
     // Seeded from the widget that launched the app, when one did. Keyed on `openOn` so a
     // second widget tap while the app is already alive still lands where it asked.
+    // `openOn` is a surface, or `MORE:SECTION` for a page inside More, with a `#serial` after it when it
+    // is a request to move again to the same place.
+    val request = openOn?.substringBefore('#')
     var selected by remember(openOn) {
-        mutableStateOf(Surface.entries.firstOrNull { it.name == openOn } ?: Surface.HOME)
+        mutableStateOf(Surface.entries.firstOrNull { it.name == request?.substringBefore(':') } ?: Surface.HOME)
     }
     // The add form, shown over whichever destination is open. The widget's Quick Add tile
     // still asks for "ADD" by name, and that has to keep working now that it is no longer a
     // destination -- landing on Home instead of the form would be a silent regression.
-    var adding by remember(openOn) { mutableStateOf(openOn == "ADD") }
+    var adding by remember(openOn) { mutableStateOf(request == "ADD") }
 
     // Whether anything has been typed into the open form, and what to do once the user has
     // decided. Leaving a half-written entry by tapping a destination is one tap away
@@ -386,7 +389,10 @@ internal fun LedgerApp(
     // entry is a section opened from the one before it -- About, then Licences from About.
     // A stack rather than one section, so Back goes up one page instead of all the way out,
     // and so tapping the More tab can put the user back at its list.
-    var moreStack by remember { mutableStateOf<List<MoreSection>>(emptyList()) }
+    var moreStack by remember(openOn) {
+        val named = request?.substringAfter(':', "")
+        mutableStateOf(listOfNotNull(MoreSection.entries.firstOrNull { it.name == named }))
+    }
     val moreSection = moreStack.lastOrNull()
     // Opening the section already open would stack it twice; `null` closes the top one.
     fun openSection(section: MoreSection?) {

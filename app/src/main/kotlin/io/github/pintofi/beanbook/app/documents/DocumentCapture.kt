@@ -283,6 +283,7 @@ class DocumentCapture(
             val result = io.github.pintofi.beanbook.app.work.KeepWorking.around(
                 context,
                 "Filing ${if (pages.isEmpty) "a document" else "${pages.size} page(s)"}",
+                page = io.github.pintofi.beanbook.app.OpenPage.DOCUMENTS,
             ) {
                 withContext(Dispatchers.IO) {
                     runCatching {

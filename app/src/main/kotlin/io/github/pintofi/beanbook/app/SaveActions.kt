@@ -87,6 +87,8 @@ internal fun MainActivity.saveText(
         val result = io.github.pintofi.beanbook.app.work.KeepWorking.around(
             this@saveText,
             "Saving to ${file.name}",
+            // A saved entry shows up in the Journal; a directive from the Accounts page stays where it is.
+            page = if (operation in ENTRY_OPERATIONS) OpenPage.JOURNAL else null,
             onUnprotected = { saveMessage = io.github.pintofi.beanbook.app.work.KeepWorking.KEEP_OPEN },
         ) {
             app.writer.append(projectId, file, text, operation = operation)

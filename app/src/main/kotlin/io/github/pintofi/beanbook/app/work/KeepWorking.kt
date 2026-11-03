@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import io.github.pintofi.beanbook.app.OpenPage
 import io.github.pintofi.beanbook.app.R
 import io.github.pintofi.beanbook.app.diagnostics.Diagnostics
 
@@ -34,7 +35,10 @@ import io.github.pintofi.beanbook.app.diagnostics.Diagnostics
 object KeepWorking {
 
     private val lock = Any()
-    private val running = LinkedHashMap<Long, String>()
+    private val running = LinkedHashMap<Long, Work>()
+
+    /** What is being done, and the page of the app a tap on its notification opens. */
+    private class Work(val what: String, val page: String?)
     private var next = 0L
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -66,10 +70,12 @@ object KeepWorking {
         context: Context,
         what: String,
         onUnprotected: () -> Unit = {},
+        /** The page a tap on the notification opens: an [io.github.pintofi.beanbook.app.OpenPage]. */
+        page: String? = null,
         block: suspend () -> T,
     ): T {
         val app = context.applicationContext
-        val id = begin(app, what, onUnprotected)
+        val id = begin(app, what, page, onUnprotected)
         try {
             return block()
         } finally {
@@ -77,13 +83,13 @@ object KeepWorking {
         }
     }
 
-    private fun begin(context: Context, what: String, onUnprotected: () -> Unit): Long {
+    private fun begin(context: Context, what: String, page: String?, onUnprotected: () -> Unit): Long {
         val id: Long
         val first: Boolean
         synchronized(lock) {
             id = next++
             first = running.isEmpty()
-            running[id] = what
+            running[id] = Work(what, page)
             if (wakeLock == null) {
                 wakeLock = (context.getSystemService(Context.POWER_SERVICE) as PowerManager)
                     .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Beanbook:work")
@@ -94,7 +100,7 @@ object KeepWorking {
             }
         }
         val started = runCatching {
-            val intent = Intent(context, WorkService::class.java).putExtra(EXTRA_WHAT, what)
+            val intent = Intent(context, WorkService::class.java).putExtra(EXTRA_WHAT, what).putExtra(EXTRA_PAGE, page)
             if (first) context.startForegroundService(intent) else context.startService(intent)
         }
         if (started.isFailure) {
@@ -105,7 +111,7 @@ object KeepWorking {
     }
 
     private fun end(context: Context, id: Long) {
-        val remaining: String?
+        val remaining: Work?
         synchronized(lock) {
             running.remove(id)
             remaining = running.values.lastOrNull()
@@ -121,12 +127,16 @@ object KeepWorking {
                 val up = synchronized(lock) { serviceStarted }
                 if (up) context.stopService(Intent(context, WorkService::class.java))
             } else {
-                context.startService(Intent(context, WorkService::class.java).putExtra(EXTRA_WHAT, remaining))
+                context.startService(
+                    Intent(context, WorkService::class.java)
+                        .putExtra(EXTRA_WHAT, remaining.what)
+                        .putExtra(EXTRA_PAGE, remaining.page),
+                )
             }
         }
     }
 
-    internal fun notification(context: Context, what: String): Notification {
+    internal fun notification(context: Context, what: String, page: String? = null): Notification {
         val manager = context.getSystemService(NotificationManager::class.java)
         if (manager.getNotificationChannel(CHANNEL) == null) {
             manager.createNotificationChannel(
@@ -137,13 +147,15 @@ object KeepWorking {
                 },
             )
         }
-        return Notification.Builder(context, CHANNEL)
+        val builder = Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle(what)
             .setProgress(0, 0, true)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .build()
+        // A tap opens the page the work belongs to; with none given it opens the app where it was.
+        OpenPage.known(page)?.let { builder.setContentIntent(OpenPage.pending(context, it)) }
+        return builder.build()
     }
 
     /**
@@ -156,6 +168,7 @@ object KeepWorking {
     const val KEEP_OPEN = "Keep Beanbook open and the screen on until this finishes."
 
     internal const val EXTRA_WHAT = "what"
+    internal const val EXTRA_PAGE = "page"
     private const val CHANNEL = "work"
     private const val TAG = "KeepWorking"
 }
@@ -172,7 +185,7 @@ class WorkService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val what = intent?.getStringExtra(KeepWorking.EXTRA_WHAT) ?: "Finishing up"
-        val notification = KeepWorking.notification(this, what)
+        val notification = KeepWorking.notification(this, what, intent?.getStringExtra(KeepWorking.EXTRA_PAGE))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {

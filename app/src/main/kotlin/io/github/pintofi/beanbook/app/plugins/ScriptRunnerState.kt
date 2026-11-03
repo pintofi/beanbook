@@ -220,6 +220,7 @@ class ScriptRunnerState(
                 val json = io.github.pintofi.beanbook.app.work.KeepWorking.around(
                     context,
                     "Running $name",
+                    page = io.github.pintofi.beanbook.app.OpenPage.SCRIPTS,
                 ) {
                     loader.runScript(
                         scriptPath = file.absolutePath,

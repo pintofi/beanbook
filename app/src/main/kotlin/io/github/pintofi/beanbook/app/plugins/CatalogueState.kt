@@ -127,6 +127,7 @@ class CatalogueState(
             io.github.pintofi.beanbook.app.work.KeepWorking.around(
                 context,
                 "Installing ${entry.name}",
+                page = io.github.pintofi.beanbook.app.OpenPage.PLUGINS,
                 onUnprotected = {
                     _message.value = io.github.pintofi.beanbook.app.work.KeepWorking.KEEP_OPEN
                 },
