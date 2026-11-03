@@ -16,7 +16,8 @@ class ValuationTest {
     @Test
     fun `a price converts directly, by its inverse, and not at all without a route`() {
         assertEquals(BigDecimal("7500"), book.convert(amount("100", "SAR"), "PKR")?.number)
-        assertEquals(0, BigDecimal("75").compareTo(book.convert(amount("5625", "PKR"), "SAR")?.number))
+        // Through the inverse, as Beancount does it: 5625 x (1 / 75 to 28 digits), not 5625 / 75.
+        assertEquals(BigDecimal("74.99999999999999999999999998"), book.convert(amount("5625", "PKR"), "SAR")?.number)
         assertNull(book.convert(amount("1", "EUR"), "PKR"))
     }
 

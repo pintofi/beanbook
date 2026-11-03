@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Market values worked out through a price quoted the other way round (a price of USD in PKR used to value PKR in USD) now round exactly as Beancount and Fava do. In the rare case the exact result was half a cent the app could show a different cent: 0.165 at a rate of 3 shows 0.05 as in Fava, not 0.06. 1,400 conversions were checked against Beancount 3.2.3 to the last digit. ([#328])
 - The Accounts page shows each balance with the ledger's own decimal places and separators, as every other screen does, and not at the full length of the number. ([#326])
 - The form's sentence "Beancount will put ... on the posting with no amount" now names the figure Beancount really writes. Beancount rounds the leftover to its tolerance (beside 10.1 and 2.22 it writes -12.3, not -12.32), and the sentence used the exact leftover. The balance rule itself, and the figure for the blank posting, were checked against 900 entries run through Beancount 3.2.3 and agree in every one. ([#326])
 - "Use last" no longer fills in the currency of the posting whose amount was left blank for Beancount to work out: the commodity stays empty like the amount, so the form and the preview say the same thing. ([#312])
@@ -310,3 +311,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#317]: https://github.com/pintofi/beanbook/issues/317
 [#318]: https://github.com/pintofi/beanbook/issues/318
 [#326]: https://github.com/pintofi/beanbook/issues/326
+[#328]: https://github.com/pintofi/beanbook/issues/328

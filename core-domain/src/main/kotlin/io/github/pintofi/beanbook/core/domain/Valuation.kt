@@ -67,21 +67,33 @@ class PriceBook(rates: List<PriceRate>) {
     fun convert(amount: Amount, target: String): Amount? {
         val from = amount.currency
         if (from == target) return amount
-        direct[from to target]?.let { return Amount(amount.number.multiply(it), target) }
-        // Divided rather than multiplied by a rounded reciprocal, so 5,625 PKR at 75 is
-        // exactly 75 SAR and not 74.99999999999999.
-        direct[target to from]?.takeIf { it.signum() != 0 }
-            ?.let { return Amount(amount.number.divide(it, MathContext.DECIMAL64), target) }
+        direct[from to target]?.let { return Amount(amount.number.multiply(it, BEANCOUNT_MATH), target) }
+        // A price quoted the other way round is used as Beancount uses it: its price map stores the
+        // inverse as `1 / rate` worked to 28 digits, and the amount is multiplied by that. Dividing the
+        // amount by the rate instead is the better sum and the wrong answer, since the ledger's own
+        // engine (and Fava, which shows the same ledger beside this app) would round a different cent in
+        // the rare case the exact result is half a cent. `5,625 PKR` at 75 is 74.99999999999999999999999998
+        // that way, which shows as 75.00 like everything else.
+        direct[target to from]?.takeIf { it.signum() != 0 }?.let { quoted ->
+            val inverse = BigDecimal.ONE.divide(quoted, BEANCOUNT_MATH)
+            return Amount(amount.number.multiply(inverse, BEANCOUNT_MATH), target)
+        }
         for (middle in quotes[from].orEmpty()) {
             if (middle == target) continue
             val first = direct[from to middle] ?: continue
             val second = direct[middle to target] ?: continue
-            return Amount(amount.number.multiply(first).multiply(second), target)
+            return Amount(amount.number.multiply(first, BEANCOUNT_MATH).multiply(second, BEANCOUNT_MATH), target)
         }
         return null
     }
 
     companion object {
         val EMPTY = PriceBook(emptyList())
+
+        /**
+         * Python's default decimal context, which is what Beancount computes in: 28 significant digits,
+         * rounding half to even.
+         */
+        private val BEANCOUNT_MATH = MathContext(28, java.math.RoundingMode.HALF_EVEN)
     }
 }
