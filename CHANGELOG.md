@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- "Use last" no longer fills in the currency of the posting whose amount was left blank for Beancount to work out: the commodity stays empty like the amount, so the form and the preview say the same thing. ([#312])
+
 ## [1.0.3] - 2026-10-30
 
 ### Added
@@ -286,3 +289,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#295]: https://github.com/pintofi/beanbook/issues/295
 [#296]: https://github.com/pintofi/beanbook/issues/296
 [#302]: https://github.com/pintofi/beanbook/issues/302
+[#312]: https://github.com/pintofi/beanbook/issues/312

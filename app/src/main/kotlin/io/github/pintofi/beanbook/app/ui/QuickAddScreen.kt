@@ -614,8 +614,12 @@ fun QuickAddScreen(
                         }
                         // Only the first posting keeps an amount; the rest stay elided, so
                         // Beancount recomputes them rather than us reusing stale numbers. Their
-                        // commodity stays, because it says what the elided posting is in.
-                        rows.drop(1).forEach { it.amount = "" }
+                        // commodity is left empty with the amount: a currency with no amount is not
+                        // what the entry says, and the preview writes only what is filled in.
+                        rows.drop(1).forEach {
+                            it.amount = ""
+                            it.commodity = ""
+                        }
                     },
                     label = { Text("Use last: ${last.postings.firstOrNull()?.account?.substringAfterLast(':')}") },
                     modifier = Modifier.semantics {
