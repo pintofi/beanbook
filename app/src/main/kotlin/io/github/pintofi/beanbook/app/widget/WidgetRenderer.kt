@@ -149,11 +149,19 @@ object WidgetRenderer {
         // the same cache. It used to be six rows and "N more not shown". The widget id is in
         // the intent's data, not only its extras, because the launcher keeps one adapter per
         // distinct intent and two widgets must not share one.
-        val rows = Intent(context, WidgetRowsService::class.java)
-            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-        rows.data = android.net.Uri.parse(rows.toUri(Intent.URI_INTENT_SCHEME))
-        @Suppress("DEPRECATION") // The collection API that replaces it is API 31; minSdk is 29.
-        views.setRemoteAdapter(R.id.widget_list, rows)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            // The rows travel inside the update itself. The service form below makes the system treat
+            // the update as a "legacy list" one: it tells the launcher only that something changed,
+            // and the launcher has to ask for the views, which a launcher can do late or not at all,
+            // so a tap on the basis row redrew the figures but the widget on screen stayed as it was.
+            views.setRemoteAdapter(R.id.widget_list, rowItems(context, accounts, snapshot, redacted, palette, option))
+        } else {
+            val rows = Intent(context, WidgetRowsService::class.java)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            rows.data = android.net.Uri.parse(rows.toUri(Intent.URI_INTENT_SCHEME))
+            @Suppress("DEPRECATION") // The collection API that replaces it is API 31; minSdk is 29.
+            views.setRemoteAdapter(R.id.widget_list, rows)
+        }
         views.setEmptyView(R.id.widget_list, R.id.widget_list_empty)
         // A row is part of the widget, so tapping one opens the journal like the rest of it.
         views.setPendingIntentTemplate(
@@ -176,6 +184,23 @@ object WidgetRenderer {
             },
         )
         return views
+    }
+
+    /** The rows as items carried in the update itself (API 31), the same rows [WidgetRowsService] gives. */
+    @androidx.annotation.RequiresApi(android.os.Build.VERSION_CODES.S)
+    private fun rowItems(
+        context: Context,
+        accounts: List<String>,
+        snapshot: WidgetSnapshot?,
+        redacted: Boolean,
+        palette: WidgetPalette,
+        option: WidgetOption,
+    ): RemoteViews.RemoteCollectionItems {
+        val items = RemoteViews.RemoteCollectionItems.Builder().setHasStableIds(true).setViewTypeCount(1)
+        accounts.forEach { account ->
+            items.addItem(account.hashCode().toLong(), row(context, account, snapshot, redacted, palette, option))
+        }
+        return items.build()
     }
 
     /**
