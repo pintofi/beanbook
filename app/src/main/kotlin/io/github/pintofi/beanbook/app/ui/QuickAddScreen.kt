@@ -55,6 +55,7 @@ import io.github.pintofi.beanbook.core.domain.AccountSuggestions
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.DraftProblem
 import io.github.pintofi.beanbook.core.domain.EntryTemplate
+import io.github.pintofi.beanbook.core.domain.FlagChoice
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.core.domain.LedgerVocabulary
@@ -203,9 +204,10 @@ fun QuickAddScreen(
     var date by remember { mutableStateOf(today.toString()) }
     var payee by remember { mutableStateOf("") }
     var narration by remember { mutableStateOf("") }
-    // "*" cleared, "!" pending. Beancount treats the second as "look at this again", and the
-    // form had no way to say it, so every entry claimed to be settled.
-    var flag by remember { mutableStateOf("*") }
+    // Cleared (*), Pending (!) or an Other flag typed by the user. Pending is Beancount's "look at this
+    // again"; an Other flag is how a file marks what it generated or set apart.
+    var flagChoice by remember { mutableStateOf(FlagChoice()) }
+    val flag = flagChoice.flag
     // Transaction-level metadata, as editable rows so a half-typed key cannot be committed
     // by accident.
     val metaRows = remember { mutableStateListOf<MetadataRow>() }
@@ -330,6 +332,7 @@ fun QuickAddScreen(
             runCatching { LocalDate.parse(date.trim()) }.getOrDefault(today),
         )
         date = applied.date
+        flagChoice = FlagChoice.of(applied.flag)
         payee = applied.payee.orEmpty()
         narration = applied.narration.orEmpty()
         commodity = template.currency
@@ -355,7 +358,7 @@ fun QuickAddScreen(
     LaunchedEffect(prefill) {
         prefill?.let { draft ->
             date = draft.date
-            flag = draft.flag
+            flagChoice = FlagChoice.of(draft.flag)
             payee = draft.payee.orEmpty()
             narration = draft.narration.orEmpty()
             tagRows.clear()
@@ -400,8 +403,6 @@ fun QuickAddScreen(
         }
     }
 
-    // At large text two fields side by side stop fitting; the flag goes under the date.
-    val large = LocalDensity.current.fontScale > 1.3f
 
     // The link the pages will make, shown before the save that makes it. The preview
     // used to leave it out until the moment of saving, so a person who had just scanned a
@@ -511,55 +512,13 @@ fun QuickAddScreen(
 
         // ---- When and who -------------------------------------------------------------
         FormGroup {
-            val pendingChip: @Composable () -> Unit = {
-                // One chip rather than a two-way segmented row: cleared is what nearly every
-                // entry is, so the control that says otherwise is the one that needs to exist.
-                // A chip stays the height of a finger rather than of a field.
-                //
-                // The label is the *state*, with the entry's own mark beside it; the spoken
-                // description adds the action (device audit 2026-10-10: the chip read "Pending"
-                // on a cleared entry, naming what a tap would do rather than what was true). A
-                // flag the app does not interpret -- `P` -- is shown as it is, and the
-                // description says plainly that a tap replaces it.
-                val mark = markForFlag(flag)
-                FilterChip(
-                    selected = mark != LedgerMark.CLEARED,
-                    onClick = { flag = if (flag == "!") "*" else "!" },
-                    label = { Text(describeFlag(flag)) },
-                    leadingIcon = { StampMark(mark, flag = flag, decorative = true) },
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .semantics {
-                            contentDescription = when (mark) {
-                                LedgerMark.PENDING -> "Pending transaction. Tap to mark cleared"
-                                LedgerMark.FLAGGED -> "Other flag $flag. Tap to mark pending instead"
-                                else -> "Cleared transaction. Tap to mark pending"
-                            }
-                        },
-                )
-            }
-            if (large) {
-                DateField(
-                    value = date,
-                    onValueChange = { date = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    today = today,
-                )
-                pendingChip()
-            } else {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Measure.gap),
-                ) {
-                    DateField(
-                        value = date,
-                        onValueChange = { date = it },
-                        modifier = Modifier.weight(1f),
-                        today = today,
-                    )
-                    pendingChip()
-                }
-            }
+            DateField(
+                value = date,
+                onValueChange = { date = it },
+                modifier = Modifier.fillMaxWidth(),
+                today = today,
+            )
+            FlagChoiceRow(choice = flagChoice, onChoice = { flagChoice = it })
 
             SuggestingField(
                 value = payee,

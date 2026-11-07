@@ -139,7 +139,7 @@ class TransactionDraftTest {
     fun `malformed accounts, dates, flags, tags and links are refused`() {
         val bad = TransactionDraft(
             date = "01-09-2026",
-            flag = "?",
+            flag = "x",
             tags = listOf("has space"),
             links = listOf("also space"),
             postings = listOf(PostingDraft("notanaccount", Amount.parse("1.00", "USD"))),
@@ -171,6 +171,43 @@ class TransactionDraftTest {
             PostingDraft(cash, Amount.parse("-5.00", "EUR")),
         )
         assertEquals(2, d.residuals().size)
+    }
+
+    private fun flagged(flag: String) = draft(
+        PostingDraft(food, Amount.parse("1.00", "USD")),
+        PostingDraft(cash, Amount.parse("-1.00", "USD")),
+    ).copy(flag = flag)
+
+    @Test
+    fun `every flag Beancount's grammar takes is accepted`() {
+        ("*!&#?%" + ('A'..'Z').joinToString("")).forEach { c ->
+            assertTrue(flagged("$c").validate().isEmpty(), "$c should be a flag")
+        }
+    }
+
+    @Test
+    fun `what Beancount's grammar refuses is not a flag, with a message that says why`() {
+        val cases = mapOf(
+            "" to "empty",
+            " " to "empty",
+            "p" to "capital letters, so type \"P\"",
+            "1" to "capital letter from A to Z",
+            "^" to "capital letter from A to Z",
+            "\u00C9" to "capital letter from A to Z",
+            "PS" to "more than one character",
+            "txn" to "more than one character",
+        )
+        cases.forEach { (flag, words) ->
+            val problems = flagged(flag).validate().filterIsInstance<DraftProblem.InvalidFlag>()
+            assertEquals(1, problems.size, "\"$flag\" should be refused")
+            assertTrue(problems.single().describe().contains(words), problems.single().describe())
+        }
+    }
+
+    @Test
+    fun `an other flag is written as it is`() {
+        assertTrue(flagged("P").render().startsWith("2026-"), flagged("P").render())
+        assertTrue(Regex("""^\d{4}-\d{2}-\d{2} P """).containsMatchIn(flagged("P").render()), flagged("P").render())
     }
 }
 
@@ -252,4 +289,5 @@ class RecentValuesTest {
     fun `an unknown payee offers nothing rather than the wrong thing`() {
         assertEquals(null, vocabulary.lastEntryFor("Someone New"))
     }
+
 }
