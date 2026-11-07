@@ -247,10 +247,11 @@ A release is a tag, but the text is written before it. For version `x.y.z`:
    turned into a link GitHub shows), followed by the same Download table with each file's checksum,
    Verify section and compare link every release has. The workflow stops, before the build, if the
    summary is missing, and stops if the changelog section is missing or empty.
-4. Update `ROADMAP.md` and the README checklist, and the builds in
-   `fdroid/io.github.pintofi.beanbook.expert.yml`: replace the previous version's two entries with
-   the new ones (F-Droid keeps only the latest in the metadata), and set `CurrentVersion` and
-   `CurrentVersionCode`.
+4. Update `ROADMAP.md` and the README checklist. The F-Droid recipe is not edited by hand for a
+   release: its `AutoUpdateMode: Version` and `UpdateCheckMode: Tags` make F-Droid's updater add the
+   new version's two builds, at the commit the tag points at, and raise `CurrentVersion` and
+   `CurrentVersionCode` itself (`docs/fdroid.md` has the details). Its builds download the APKs from the
+   GitHub release, so that release has to be published before they can pass.
 5. Tag `vx.y.z`. The workflow builds and signs the APKs and drafts the release from
    `.github/release-notes-template.md`: your notes, a download table, the certificate fingerprint,
    the checksums and a link to the changes since the previous release. A person reads the draft and publishes it.
