@@ -12,24 +12,21 @@ Status of an item: **proposed** (an idea, not yet taken), **accepted** (it has a
 milestone), **in progress**, **shipped in x.y.z**.
 
 Versions follow [semantic versioning](https://semver.org/): a new feature goes in a minor release
-(1.1.0, 1.2.0 and so on), and fixes and tidy-ups go in patch releases (1.0.3, 1.0.4). The milestones
+(1.1.0, 1.2.0 and so on), and fixes and tidy-ups go in patch releases (1.0.4, 1.0.5). The milestones
 are named that way.
 
 ## Shipped
 
+- **1.0.4** (2026-11-07): the entry form's flag is Cleared, Pending or any other flag Beancount allows, a backup (.bcaz) can be restored from the first-run setup, the Journal's filters are one choice, templates can be renamed and deleted, the widgets follow the system colours and the Balances widget shows the basis you tap, Mirror settles a file deleted on one side, and a set of fixes to rounding, suggestions and notifications. See the [changelog](CHANGELOG.md).
 - **1.0.3** (2026-10-30): the scanner's zoom slider, one Filters button for Home, Journal and Balances, the Units, At cost and Market value choice on the Journal and on the widgets, a notice when the phone's WebView is too old for Reports, and a set of fixes to setup, importing, unlinking documents, large text and widget resizing. See the [changelog](CHANGELOG.md).
 - **1.0.2** (2026-10-25): the document scanner reworked (review screen, crop screen with a magnifier, better page detection, flat black-and-white and greyscale styles, A4 or Letter), a guided first run and an Accounts page with account details, encrypted scheduled backups, a trash for deleted documents, a new entry form with standard buttons, and the safety fixes from a second review. See the [changelog](CHANGELOG.md).
 - **1.0.1** (2026-10-18): one APK per processor type for F-Droid, a Trash list for deleted projects, receipt-photo cleanup, a safer document Unlink, a more careful balance check, and many other fixes from the repository review. See the [changelog](CHANGELOG.md).
 - **1.0.0** (2026-10-15): local Beancount and Fava on the phone, entry forms and editors, documents and scanning, backup and restore, mirror, remote Fava, plugins and Fava extensions (Expert), Share on Wi-Fi. See the [changelog](CHANGELOG.md).
 
-## Now: 1.0.4 Trust and polish
+## Now: 1.0.5 Trust and polish, continued
 
-1.0.4 is a patch release: fixes and tidy-ups only, with new features in the 1.x.0 releases that
-follow. Most of it is already on the main branch and listed under Unreleased in the
-[changelog](CHANGELOG.md): an Accounts page with search and allowed currencies, a single Journal
-filter, templates that can be renamed and deleted, a banner for work in progress, restoring a
-backup as a new project, mirror conflicts over deleted files, a Balances widget that follows a tap,
-and a list of fixes to money rounding, widgets, documents and the entry form. What is left:
+1.0.5 is a patch release: fixes and tidy-ups, with new features in the 1.x.0 releases that follow.
+What is left from 1.0.4:
 
 | Item | Status | Why |
 |---|---|---|
@@ -38,6 +35,10 @@ and a list of fixes to money rounding, widgets, documents and the entry form. Wh
 | User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21), [#76](https://github.com/pintofi/beanbook/issues/76)) | accepted, with no visible change | Groundwork for translations |
 | Hand-passed parameters grouped into state holders ([#67](https://github.com/pintofi/beanbook/issues/67)) | accepted | Every new screen needs a parameter threaded through three files |
 | A click-through walkthrough of the app on the site ([#160](https://github.com/pintofi/beanbook/issues/160)) | accepted | Show the app before someone installs it |
+| A way to update and go back for plugins and packages ([#343](https://github.com/pintofi/beanbook/issues/343)) | in progress: catalogue plugins first | Nothing in the app updates an installed plugin yet |
+| A project can be renamed ([#368](https://github.com/pintofi/beanbook/issues/368)) | accepted | A project imported from a ledger with no title keeps a name made of its folder path |
+| Measured speed figures for the README ([#363](https://github.com/pintofi/beanbook/issues/363)) | accepted | A one-off benchmark on a phone and the emulator |
+| Reports fail on a ledger whose included file sets display_precision ([#349](https://github.com/pintofi/beanbook/issues/349)) | cause not confirmed | A report from one ledger, not seen again |
 
 ## Next: 1.1.0 Capture
 

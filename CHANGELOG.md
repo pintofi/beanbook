@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-11-07
+
 ### Added
 - The Accounts page has a search box: type words and only the accounts whose name has all of them stay listed, closed accounts included. ([#314])
 - On the Accounts page, the details of an account now include the currencies it allows: add, change or clear them. Only the currency list on its open line is rewritten, in the same single save as any other detail you changed. ([#315])
@@ -32,7 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The form's sentence "Beancount will put ... on the posting with no amount" now names the figure Beancount really writes. Beancount rounds the leftover to its tolerance (beside 10.1 and 2.22 it writes -12.3, not -12.32), and the sentence used the exact leftover. The balance rule itself, and the figure for the blank posting, were checked against 900 entries run through Beancount 3.2.3 and agree in every one. ([#326])
 - "Use last" no longer fills in the currency of the posting whose amount was left blank for Beancount to work out: the commodity stays empty like the amount, so the form and the preview say the same thing. ([#312])
 - Tapping a notification from Beanbook opens the page it is about: Share on Wi-Fi opens its page, an install opens Plugins, a running script opens Scripts, filing a document opens Documents, and a saved entry opens the Journal. If the app is already open it is brought forward and moved there, instead of a second copy starting on top. ([#316])
-- Choosing a Beanbook backup (.bcaz) in Import zip now says it is a backup and to use Restore, instead of importing its manifest and project folder as if they were ledger files. ([#342])
 - The suggestion list under a field floats over the fields below it instead of pushing them down, and no longer resizes the File dialog on the Organize page as it opens. ([#352])
 
 ## [1.0.3] - 2026-10-30
@@ -205,7 +206,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A refused save names the errors it would add; accounts the ledger has not opened are refused.
 - Widgets keep each project's figures.
 
-[Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/pintofi/beanbook/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/pintofi/beanbook/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/pintofi/beanbook/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/pintofi/beanbook/compare/v1.0.0...v1.0.1
