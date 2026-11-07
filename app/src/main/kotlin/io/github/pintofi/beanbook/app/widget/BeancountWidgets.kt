@@ -55,8 +55,12 @@ abstract class MetricWidget(private val metric: WidgetMetric) : AppWidgetProvide
                 sizes = sizes,
             ),
         )
-        @Suppress("DEPRECATION") // Its replacement, RemoteCollectionItems, is API 31.
-        manager.notifyAppWidgetViewDataChanged(intArrayOf(id), R.id.widget_list)
+        // Only the service-backed list of an older Android has data to ask for again; from API 31 the
+        // rows are inside the update.
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
+            @Suppress("DEPRECATION")
+            manager.notifyAppWidgetViewDataChanged(intArrayOf(id), R.id.widget_list)
+        }
     }
 
     private fun shapeOf(context: Context, options: android.os.Bundle) = WidgetShape.of(

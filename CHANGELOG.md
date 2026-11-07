@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - In Mirror, choosing a side of a conflict works when the file was deleted: Keep the folder's deletes the file here (through the write protocol, so Undo puts it back), and putting it back or deleting it from the folder are offered too. A record of a file gone from both sides is dropped, so a file that arrives later is no longer removed from the folder as if it had been deleted. ([#341])
+- The Balances widget on Android 12 and newer shows the basis you tapped, and its rows are updated in the same step: the list of accounts travels in the update, where a service-backed list made the system hand the launcher only a notice, which the Microsoft Launcher acted on late or not at all. ([#358])
 - Tapping Unlink on the Organize page says at once that it is unlinking, instead of showing nothing until the ledger files have been searched. ([#338])
 - The Units, At cost and Market value buttons on a home-screen widget no longer vanish for a moment during a resize or when tapped: a widget is redrawn only when its size or place changes how it is drawn, and not each time the launcher repeats the same size. ([#332])
 - Market values worked out through a price quoted the other way round (a price of USD in PKR used to value PKR in USD) now round exactly as Beancount and Fava do. In the rare case the exact result was half a cent the app could show a different cent: 0.165 at a rate of 3 shows 0.05 as in Fava, not 0.06. 1,400 conversions were checked against Beancount 3.2.3 to the last digit. ([#328])
@@ -333,3 +334,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#350]: https://github.com/pintofi/beanbook/issues/350
 [#352]: https://github.com/pintofi/beanbook/issues/352
 [#354]: https://github.com/pintofi/beanbook/issues/354
+[#358]: https://github.com/pintofi/beanbook/issues/358
