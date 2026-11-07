@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Use last" no longer fills in the currency of the posting whose amount was left blank for Beancount to work out: the commodity stays empty like the amount, so the form and the preview say the same thing. ([#312])
 - Tapping a notification from Beanbook opens the page it is about: Share on Wi-Fi opens its page, an install opens Plugins, a running script opens Scripts, filing a document opens Documents, and a saved entry opens the Journal. If the app is already open it is brought forward and moved there, instead of a second copy starting on top. ([#316])
 - Choosing a Beanbook backup (.bcaz) in Import zip now says it is a backup and to use Restore, instead of importing its manifest and project folder as if they were ledger files. ([#342])
+- The suggestion list under a field floats over the fields below it instead of pushing them down, and no longer resizes the File dialog on the Organize page as it opens. ([#352])
 
 ## [1.0.3] - 2026-10-30
 
@@ -327,3 +328,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#340]: https://github.com/pintofi/beanbook/issues/340
 [#342]: https://github.com/pintofi/beanbook/issues/342
 [#350]: https://github.com/pintofi/beanbook/issues/350
+[#352]: https://github.com/pintofi/beanbook/issues/352

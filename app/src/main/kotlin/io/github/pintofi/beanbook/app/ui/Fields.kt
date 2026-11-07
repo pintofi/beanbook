@@ -38,6 +38,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.onSizeChanged
 
 /**
  * A date, typed or picked.
@@ -171,6 +174,7 @@ fun SuggestingField(
         TextFieldValue(value, selection = TextRange(value.length))
     }
     var focused by remember { mutableStateOf(false) }
+    var fieldWidth by remember { mutableStateOf(0) }
     // Set when a suggestion is chosen, cleared by the next keystroke: a list that reopens
     // under a value the person just picked from it is the list getting in the way.
     var chosen by remember { mutableStateOf(false) }
@@ -193,7 +197,9 @@ fun SuggestingField(
     }
     val open = focused && !chosen && offered.isNotEmpty()
 
-    androidx.compose.foundation.layout.Column(modifier = modifier) {
+    androidx.compose.foundation.layout.Column(
+        modifier = modifier.onSizeChanged { fieldWidth = it.width },
+    ) {
         OutlinedTextField(
             value = current,
             onValueChange = { next ->
@@ -230,40 +236,65 @@ fun SuggestingField(
                 .onFocusChanged { focused = it.isFocused }
                 .semantics { contentDescription = describe },
         )
-        LedgerReveal(visible = open, label = "suggestions") {
+        // An overlay on the fields below, not a part of the layout: inline, the list pushed
+        // every field under it down, and in a dialog it resized and moved the whole dialog as it
+        // opened. A popup anchored under the field floats above them, takes the field's width,
+        // flips above the field when there is no room below, and never takes the focus, so the
+        // keyboard stays up while it is open.
+        if (open) {
             val shown = remember(offered) { offered }
-            androidx.compose.foundation.layout.Column(
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .fillMaxWidth()
-                    .heightIn(max = SUGGESTION_LIST_HEIGHT)
-                    .clip(io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.control)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .verticalScroll(rememberScrollState()),
+            androidx.compose.ui.window.Popup(
+                popupPositionProvider = SuggestionsBelow,
+                properties = androidx.compose.ui.window.PopupProperties(focusable = false),
             ) {
-                shown.forEach { suggestion ->
-                    Text(
-                        suggestion,
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                chosen = true
-                                field = TextFieldValue(
-                                    suggestion,
-                                    selection = TextRange(suggestion.length),
-                                )
-                                onValueChange(suggestion)
-                            }
-                            .heightIn(min = 48.dp)
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                            .semantics { contentDescription = "Use $suggestion" },
-                    )
+                androidx.compose.foundation.layout.Column(
+                    modifier = Modifier
+                        .width(with(androidx.compose.ui.platform.LocalDensity.current) { fieldWidth.toDp() })
+                        .heightIn(max = SUGGESTION_LIST_HEIGHT)
+                        .shadow(4.dp, io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.control)
+                        .clip(io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.control)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    shown.forEach { suggestion ->
+                        Text(
+                            suggestion,
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    chosen = true
+                                    field = TextFieldValue(
+                                        suggestion,
+                                        selection = TextRange(suggestion.length),
+                                    )
+                                    onValueChange(suggestion)
+                                }
+                                .heightIn(min = 48.dp)
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .semantics { contentDescription = "Use $suggestion" },
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+/** Under the field it belongs to, level with its left edge; above it when the room below is too small. */
+private object SuggestionsBelow : androidx.compose.ui.window.PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: androidx.compose.ui.unit.IntRect,
+        windowSize: androidx.compose.ui.unit.IntSize,
+        layoutDirection: androidx.compose.ui.unit.LayoutDirection,
+        popupContentSize: androidx.compose.ui.unit.IntSize,
+    ): androidx.compose.ui.unit.IntOffset {
+        val below = anchorBounds.bottom
+        val fits = below + popupContentSize.height <= windowSize.height
+        val y = if (fits) below else (anchorBounds.top - popupContentSize.height).coerceAtLeast(0)
+        return androidx.compose.ui.unit.IntOffset(anchorBounds.left, y)
     }
 }
 
