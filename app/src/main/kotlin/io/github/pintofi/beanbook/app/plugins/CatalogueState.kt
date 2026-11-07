@@ -40,10 +40,11 @@ class CatalogueState(
     private val installer = CatalogueInstaller(root)
     private val overlay = CatalogueOverlay(context.assets)
 
-    /** The catalogue shipped in the APK; empty if the asset cannot be read. */
+    /** The catalogue shipped in the APK, less what cannot work on a phone; empty if the asset cannot be read. */
     val catalogue: PluginCatalogue by lazy {
         runCatching {
-            context.assets.open("catalog/plugins.json").bufferedReader().use { PluginCatalogue.parse(it.readText()) }
+            context.assets.open("catalog/plugins.json").bufferedReader()
+                .use { PluginCatalogue.parse(it.readText()).offered() }
         }.onFailure { Diagnostics.w(TAG, "the plugin catalogue could not be read", it) }
             .getOrDefault(PluginCatalogue(emptyList()))
     }
