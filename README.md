@@ -118,6 +118,16 @@ your records out is not a paid feature.
 
 ## See it
 
+**The figures are Beancount's and Fava's.** Beanbook runs the real Beancount 3.2.3 and Fava 1.30.15 on the phone, so a balance sheet there is the one the same file gives on a desktop. Below is one invented ledger, the same Balance Sheet in desktop Fava and in the app's Reports tab. The figures on the app's own screens (balances, rounding, prices) are checked against Beancount's own output by [differential tests](tools/gen-balance-cases.py).
+
+<div align="center">
+
+<img src="docs/assets/screenshots/balance-sheet-compare.webp" width="94%" alt="The Balance Sheet of the same invented household ledger. On the left, Fava 1.30.15 on a desktop. On the right, Beanbook on Android, showing Fava's Balance Sheet in the Reports tab. Both show Assets 6581.90 EUR, with Bank and Checking 6568.65 and Cash 13.25, and Liabilities -18.50 EUR.">
+
+</div>
+
+<br>
+
 <div align="center">
 
 <picture>
