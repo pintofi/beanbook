@@ -333,6 +333,9 @@ not a security boundary: plugins you supply run as ordinary Python in both editi
 ledger in reach. The Play edition tells you the Expert edition exists and what it adds.
 [docs/editions.md](docs/editions.md) explains which to pick.
 
+> [!NOTE]
+> The Play edition is planned but not published yet.
+
 ## Privacy and network use
 
 No account, no sign-in, no telemetry, no analytics, no crash reporting, and no ads, in either
