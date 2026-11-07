@@ -28,6 +28,12 @@ internal data class WidgetPalette(
     /** The chosen segment: the app's sage container, with [segmentOnText] on it. */
     val segmentOn: Int,
     val segmentOnText: Int,
+    /**
+     * The same colours for dark, when the launcher is to pick between light and dark itself
+     * (Android 14 and later), so a change of the system's setting shows without a redraw. Null where
+     * these colours are the ones to use.
+     */
+    val night: WidgetPalette? = null,
 ) {
 
     companion object {
@@ -35,21 +41,44 @@ internal data class WidgetPalette(
         fun of(context: Context): WidgetPalette {
             val settings = ThemeSettings(context.filesDir.resolve("state"))
             val choice = settings.choice.value
-            val dark = when (choice) {
-                ThemeChoice.SYSTEM -> systemIsDark(context)
-                ThemeChoice.LIGHT -> false
-                ThemeChoice.DARK, ThemeChoice.BLACK -> true
+            val dynamic = settings.dynamicColour.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            val source: ((Int) -> Int)? = if (dynamic) { id -> context.getColor(id) } else null
+            val day = build(dark = false, black = false, dynamic = source)
+            val night = build(dark = true, black = choice == ThemeChoice.BLACK, dynamic = source)
+            return when (choice) {
+                // The launcher chooses, where it can; before Android 14 the system's setting now is used.
+                ThemeChoice.SYSTEM -> when {
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> day.copy(night = night)
+                    systemIsDark(context) -> night
+                    else -> day
+                }
+                ThemeChoice.LIGHT -> day
+                ThemeChoice.DARK, ThemeChoice.BLACK -> night
             }
-            val accent = accent(context, dark, settings.dynamicColour.value)
-            return if (dark) {
+        }
+
+        /**
+         * The colours for light or dark. With [dynamic] (a way to read the system's colour resources,
+         * on when dynamic colour is on) they are the ones the app's own dynamic scheme takes from the
+         * wallpaper: surface, text, the raised segment and its chosen state, and the accent.
+         */
+        internal fun build(dark: Boolean, black: Boolean, dynamic: ((Int) -> Int)?): WidgetPalette {
+            val accent = if (dynamic != null) {
+                dynamic(if (dark) android.R.color.system_accent1_200 else android.R.color.system_accent1_600)
+            } else if (dark) {
+                DARK_TEAL
+            } else {
+                LIGHT_TEAL
+            }
+            val base = if (dark) {
                 WidgetPalette(
                     // AMOLED is black paper in the app, and the widget follows it.
-                    paper = if (choice == ThemeChoice.BLACK) BLACK else DARK_PAPER,
+                    paper = if (black) BLACK else DARK_PAPER,
                     rule = accent,
                     label = 0xFFAFBDB8.toInt(),
                     value = 0xFFE4EAE7.toInt(),
                     footnote = 0xFF8A9A94.toInt(),
-                    segment = if (choice == ThemeChoice.BLACK) 0xFF141C1A.toInt() else 0xFF1A2220.toInt(),
+                    segment = if (black) 0xFF141C1A.toInt() else 0xFF1A2220.toInt(),
                     segmentOn = 0xFF2A4A44.toInt(),
                     segmentOnText = 0xFFCFE4DE.toInt(),
                 )
@@ -65,28 +94,24 @@ internal data class WidgetPalette(
                     segmentOnText = 0xFF05201C.toInt(),
                 )
             }
+            if (dynamic == null) return base
+            fun pick(light: Int, night: Int) = dynamic(if (dark) night else light)
+            return base.copy(
+                paper = if (black) BLACK else pick(
+                    android.R.color.system_neutral1_10, android.R.color.system_neutral1_900,
+                ),
+                label = pick(android.R.color.system_neutral2_700, android.R.color.system_neutral2_200),
+                value = pick(android.R.color.system_neutral1_900, android.R.color.system_neutral1_100),
+                footnote = pick(android.R.color.system_neutral2_700, android.R.color.system_neutral2_300),
+                segment = pick(android.R.color.system_neutral1_100, android.R.color.system_neutral1_800),
+                segmentOn = pick(android.R.color.system_accent2_100, android.R.color.system_accent2_700),
+                segmentOnText = pick(android.R.color.system_accent2_900, android.R.color.system_accent2_100),
+            )
         }
 
         private fun systemIsDark(context: Context): Boolean =
             context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
                 Configuration.UI_MODE_NIGHT_YES
-
-        /**
-         * The rule's colour: the wallpaper accent when the app is using one, and the app's own
-         * teal otherwise. The shades are the ones Material takes for `primary` -- 600 on light
-         * paper, 200 on dark -- so the widget's rule is the same colour as the rules in the app.
-         */
-        private fun accent(context: Context, dark: Boolean, dynamic: Boolean): Int {
-            if (dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val id = if (dark) {
-                    android.R.color.system_accent1_200
-                } else {
-                    android.R.color.system_accent1_600
-                }
-                runCatching { return context.getColor(id) }
-            }
-            return if (dark) DARK_TEAL else LIGHT_TEAL
-        }
 
         private const val LIGHT_PAPER = 0xFFF3F5F2.toInt()
         private const val DARK_PAPER = 0xFF141A19.toInt()
