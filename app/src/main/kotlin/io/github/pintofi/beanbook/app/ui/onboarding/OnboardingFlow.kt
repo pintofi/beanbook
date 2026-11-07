@@ -271,8 +271,8 @@ private fun WaysInPage(
                     }
                     item {
                         FolioRow(
-                            title = "Choose .zip",
-                            detail = "A project exported from Beanbook, or any archive of a ledger",
+                            title = "Choose .zip or backup",
+                            detail = "A Beanbook backup (.bcaz), an exported project, or any archive of a ledger",
                             icon = androidx.compose.material.icons.Icons.Outlined.FolderZip,
                             onClick = actions.onOpenArchive,
                             opens = true,

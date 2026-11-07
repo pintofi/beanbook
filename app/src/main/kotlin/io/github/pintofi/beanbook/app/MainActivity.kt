@@ -786,6 +786,7 @@ class MainActivity : ComponentActivity() {
 
                     LedgerEditDialog()
                     ExternalLinkDialog()
+                    BackupPassphraseDialog()
                 }
             }
             }

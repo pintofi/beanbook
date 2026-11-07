@@ -43,6 +43,13 @@ sealed interface RestoreStaged {
     data class Refused(val problems: List<ArchiveProblem>) : RestoreStaged
 }
 
+/** The outcome of restoring a backup as a project of its own. */
+sealed interface RestoredNew {
+    data class Restored(val projectId: String, val manifest: BackupManifest) : RestoredNew
+
+    data class Refused(val problems: List<ArchiveProblem>) : RestoredNew
+}
+
 /**
  * Restores in two deliberate steps: **stage, then activate** (docs/storage-and-backup.md §7).
  *
@@ -81,6 +88,27 @@ class RestorePlan(private val workspace: ProjectWorkspace) {
             ?: return RestoreStaged.Refused(listOf(ArchiveProblem.NotAnArchive))
 
         return RestoreStaged.Ready(staging, manifest, diff(projectId, staging))
+    }
+
+    /**
+     * Restores [archive] as a new project, for somebody with no project to restore over: the first
+     * run, or a backup of a project that is no longer here. It is named from the backup's title,
+     * made unique among the projects that exist, and goes through the same checks as any restore.
+     */
+    fun restoreAsNew(
+        archive: File,
+        passphrase: CharArray? = null,
+        derivation: KeyDerivation? = null,
+    ): RestoredNew {
+        val manifest = archives.peek(archive) ?: return RestoredNew.Refused(listOf(ArchiveProblem.NotAnArchive))
+        val id = ProjectRegistry.idFor(manifest.projectTitle, workspace.takenIds())
+        return when (val staged = stage(id, archive, passphrase, derivation)) {
+            is RestoreStaged.Refused -> RestoredNew.Refused(staged.problems)
+            is RestoreStaged.Ready -> {
+                activate(id, staged.staging)
+                RestoredNew.Restored(id, manifest)
+            }
+        }
     }
 
     /** Compares a staged restore against the project as it stands. */
