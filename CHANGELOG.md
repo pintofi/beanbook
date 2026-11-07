@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Work in progress, such as Saving, Writing or Unlinking, shows as a banner with a larger loading indicator and a moving bar, instead of a small spinner beside small text. ([#339])
 
 ### Fixed
+- Tapping Unlink on the Organize page says at once that it is unlinking, instead of showing nothing until the ledger files have been searched. ([#338])
 - The Units, At cost and Market value buttons on a home-screen widget no longer vanish for a moment during a resize or when tapped: a widget is redrawn only when its size or place changes how it is drawn, and not each time the launcher repeats the same size. ([#332])
 - Market values worked out through a price quoted the other way round (a price of USD in PKR used to value PKR in USD) now round exactly as Beancount and Fava do. In the rare case the exact result was half a cent the app could show a different cent: 0.165 at a rate of 3 shows 0.05 as in Fava, not 0.06. 1,400 conversions were checked against Beancount 3.2.3 to the last digit. ([#328])
 - The Accounts page shows each balance with the ledger's own decimal places and separators, as every other screen does, and not at the full length of the number. ([#326])
@@ -317,4 +318,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#328]: https://github.com/pintofi/beanbook/issues/328
 [#332]: https://github.com/pintofi/beanbook/issues/332
 [#337]: https://github.com/pintofi/beanbook/issues/337
+[#338]: https://github.com/pintofi/beanbook/issues/338
 [#339]: https://github.com/pintofi/beanbook/issues/339

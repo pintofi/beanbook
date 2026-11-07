@@ -10,7 +10,9 @@ import android.net.Uri
 import io.github.pintofi.beanbook.core.domain.DirectiveDraft
 import java.time.LocalDate
 import io.github.pintofi.beanbook.app.documents.reviewActions
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.lifecycle.lifecycleScope
 
 /**
@@ -221,6 +223,9 @@ internal fun MainActivity.unlinkDocument(
     path: String,
     from: String?,
 ) {
+    // Said before any work starts: the search through the ledger files and the write take a
+    // moment, and until they ended the screen looked as if the tap had not registered.
+    app.documentCapture.report("Unlinking ${path.substringAfterLast('/')}…")
     lifecycleScope.launch {
         // A document is linked in one of two ways, and unlinking used to stop after the
         // first: a `document` directive files it under an account, and a `document:` metadata
@@ -236,8 +241,10 @@ internal fun MainActivity.unlinkDocument(
         // A bare `invoice.pdf` in an entry names this file only if no other document in the
         // project is called the same; otherwise it is left for the user to make explicit.
         val leaf = path.substringAfterLast('/')
-        val bareNameIsUnique = app.workspace.projectDir(projectId).walkTopDown()
-            .count { it.isFile && it.name == leaf } <= 1
+        val bareNameIsUnique = withContext(Dispatchers.IO) {
+            app.workspace.projectDir(projectId).walkTopDown()
+                .count { it.isFile && it.name == leaf } <= 1
+        }
         while (removed < MAX_LINKS_PER_DOCUMENT) {
             val projectDir = app.workspace.projectDir(projectId)
             // Metadata first, then the directive. Under Fava's link_documents plugin an
@@ -245,12 +252,14 @@ internal fun MainActivity.unlinkDocument(
             // directive while the key still named the file added "Document not found" to the
             // ledger, the write was rolled back as it should be, and Unlink appeared to do
             // nothing. In this order every step leaves a ledger that reads cleanly.
-            val holder = findDocumentDirective(projectDir, path) { text, named ->
-                io.github.pintofi.beanbook.core.domain.BeancountText
-                    .removeDocumentMetadata(text, named, bareNameIsUnique = bareNameIsUnique)
-            } ?: findDocumentDirective(projectDir, path) { text, named ->
-                io.github.pintofi.beanbook.core.domain.BeancountText
-                    .removeDocumentDirective(text, named, from = from)
+            val holder = withContext(Dispatchers.IO) {
+                findDocumentDirective(projectDir, path) { text, named ->
+                    io.github.pintofi.beanbook.core.domain.BeancountText
+                        .removeDocumentMetadata(text, named, bareNameIsUnique = bareNameIsUnique)
+                } ?: findDocumentDirective(projectDir, path) { text, named ->
+                    io.github.pintofi.beanbook.core.domain.BeancountText
+                        .removeDocumentDirective(text, named, from = from)
+                }
             } ?: break
 
             val (file, rewritten) = holder
