@@ -1,0 +1,6 @@
+Flags, backups, widgets and fixes.
+• The entry form's flag is Cleared, Pending or any other flag Beancount allows.
+• A backup (.bcaz) can be restored from the first-run setup as a new project.
+• The Journal has one filter at a time, and templates can be renamed and deleted.
+• Widgets follow the system colours, and the Balances widget shows the basis you tap.
+• Accounts has a search box and the currencies an account allows; Mirror can settle a deleted file.

@@ -463,12 +463,15 @@ and the status of every item.
 - [x] **1.0.3 Trust and polish**: the scanner's zoom slider, one Filters button for Home, Journal and Balances, the basis choice on the Journal and the widgets, a notice for an old WebView, and many fixes
   - [x] Screenshot tests, light and dark, 200% text ([#20](https://github.com/pintofi/beanbook/issues/20))
   - [x] Reproducible wheels and APK checked in CI ([#22](https://github.com/pintofi/beanbook/issues/22))
-- [ ] **1.0.4 Trust and polish, continued** (now)
+- [x] **1.0.4 Trust and polish, continued**: the flag is Cleared, Pending or any other flag, a backup can be restored from the first-run setup, one Journal filter at a time, widgets that follow the system colours, and many fixes
+- [ ] **1.0.5 Trust and polish, continued** (now)
   - [ ] TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18))
   - [ ] Instrumentation tests in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19))
   - [ ] User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21), [#76](https://github.com/pintofi/beanbook/issues/76))
   - [ ] Hand-passed parameters grouped into state holders ([#67](https://github.com/pintofi/beanbook/issues/67))
   - [ ] A click-through walkthrough of the app on the site ([#160](https://github.com/pintofi/beanbook/issues/160))
+  - [ ] Updating and going back for plugins and packages ([#343](https://github.com/pintofi/beanbook/issues/343))
+  - [ ] Renaming a project ([#368](https://github.com/pintofi/beanbook/issues/368))
 - [ ] **1.1.0 Capture**: add an entry from shared text, photos and PDFs ([#23](https://github.com/pintofi/beanbook/issues/23)); a Quick Settings tile and shortcut ([#24](https://github.com/pintofi/beanbook/issues/24)); templates and recurring reminders ([#25](https://github.com/pintofi/beanbook/issues/25)); rules that suggest the account for a shared message ([#283](https://github.com/pintofi/beanbook/issues/283)); settling an entry with a linked refund or pay-back ([#242](https://github.com/pintofi/beanbook/issues/242))
 - [ ] **1.2.0 Reconcile and import**: a reconcile screen ([#26](https://github.com/pintofi/beanbook/issues/26)); bank statements on the phone ([#27](https://github.com/pintofi/beanbook/issues/27)); Syncthing conflict files ([#28](https://github.com/pintofi/beanbook/issues/28))
 - [ ] **1.3.0 Reach**: a send queue for a remote Fava ([#29](https://github.com/pintofi/beanbook/issues/29)); price updates on request ([#30](https://github.com/pintofi/beanbook/issues/30)); translations ([#31](https://github.com/pintofi/beanbook/issues/31)); Git sync that never merges for you ([#154](https://github.com/pintofi/beanbook/issues/154))
