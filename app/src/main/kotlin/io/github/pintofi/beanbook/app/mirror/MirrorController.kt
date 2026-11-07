@@ -6,9 +6,11 @@ import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import io.github.pintofi.beanbook.core.data.BackupArchive
 import io.github.pintofi.beanbook.core.data.MirrorAction
+import io.github.pintofi.beanbook.core.data.MirrorChoice
 import io.github.pintofi.beanbook.core.domain.PluginPreflight
 import io.github.pintofi.beanbook.core.data.MirrorPlan
 import io.github.pintofi.beanbook.core.data.MirrorPlanResult
+import io.github.pintofi.beanbook.core.data.MirrorResolution
 import io.github.pintofi.beanbook.core.data.MirrorState
 import io.github.pintofi.beanbook.core.data.ProjectWorkspace
 import io.github.pintofi.beanbook.core.data.ProjectWriter
@@ -198,7 +200,7 @@ class MirrorController(
         val refusedNote = if (result.refused.isEmpty()) {
             ""
         } else {
-            " ${result.refused.size} could not be brought in and your project is unchanged " +
+            " ${result.refused.size} could not be applied and your project is unchanged " +
                 "for those: ${result.refused.first()}"
         }
         return when {
@@ -226,8 +228,11 @@ class MirrorController(
         val committed = mutableListOf<String>()
         val refused = mutableListOf<String>()
         // Files that already match on both sides are recorded, so a lost state file heals
-        // itself on the next pass instead of re-copying everything for ever.
-        local.forEach { (path, hash) -> if (external[path] == hash) synced[path] = hash }
+        // itself on the next pass instead of re-copying everything for ever; a record for a
+        // file gone from both sides is dropped.
+        val agreed = MirrorPlan.agreed(local, external, synced)
+        synced.clear()
+        synced.putAll(agreed)
 
         var done = 0
         val total = plan.actions.size
@@ -268,8 +273,13 @@ class MirrorController(
                 }
 
                 is MirrorAction.DeleteThere -> {
-                    externalFiles[action.path]?.delete()
-                    synced.remove(action.path)
+                    // The record goes only when the file really did: a provider that refuses the delete
+                    // leaves it there, and a record saying it is settled would hide that.
+                    if (externalFiles[action.path]?.delete() != false) {
+                        synced.remove(action.path)
+                    } else {
+                        refused += "${action.path}: the folder's app refused to delete it"
+                    }
                 }
 
                 is MirrorAction.Conflict -> preserveBothVersions(
@@ -335,32 +345,26 @@ class MirrorController(
         }
     }
 
-    /** Resolves one conflict by keeping this device's version and copying it out. */
-    fun keepMine(projectId: String, path: String) = resolve(projectId, path) { root, projectDir ->
-        write(root, path, File(projectDir, path).readBytes())
-    }
+    /**
+     * Resolves one conflict by keeping this device's version: it is copied out, or, when this device
+     * deleted the file, deleted from the folder too.
+     */
+    fun keepMine(projectId: String, path: String) = resolve(projectId, path, MirrorChoice.KEEP_MINE)
 
-    /** Resolves one conflict by taking the folder's version. */
-    fun keepTheirs(projectId: String, path: String) = resolve(projectId, path) { root, projectDir ->
-        val document = enumerate(root)[path] ?: error("\"$path\" is no longer in your folder")
-        val target = File(projectDir, path)
-        val result = writer.replaceBytes(
-            projectId = projectId,
-            file = target,
-            expectedSha = if (target.isFile) WriteJournal.sha256(target) else "",
-            newContent = read(document),
-            operation = "mirror-keep-theirs",
-        )
-        check(result is WriteResult.Committed) { describeFailure(result) }
-    }
+    /**
+     * Resolves one conflict by taking the folder's version: it is brought in, or, when the folder
+     * deleted the file, the file is deleted here too (through the write protocol, so Undo and the
+     * snapshot can put it back).
+     */
+    fun keepTheirs(projectId: String, path: String) = resolve(projectId, path, MirrorChoice.KEEP_THEIRS)
 
-    private fun resolve(
-        projectId: String,
-        path: String,
-        apply: suspend (DocumentFile, File) -> Unit,
-    ) {
+    private fun resolve(projectId: String, path: String, choice: MirrorChoice) {
         val folder = folderUri ?: run {
             _message.value = "Choose the mirror folder again, then resolve \"$path\"."
+            return
+        }
+        val seen = _conflicts.value.firstOrNull { it.path == path }?.kind ?: run {
+            _message.value = "\"$path\" is no longer in conflict."
             return
         }
         // Said at once: the choice waits for any sync pass already running, and a button
@@ -372,7 +376,7 @@ class MirrorController(
                     runCatching {
                         val root = DocumentFile.fromTreeUri(context, Uri.parse(folder))
                             ?: error("that folder is no longer reachable")
-                        apply(root, workspace.projectDir(projectId))
+                        apply(projectId, root, path, seen, choice)
                     }
                 }
                 outcome
@@ -385,6 +389,51 @@ class MirrorController(
             }
             // A fresh pass records the new agreement and picks up anything else.
             sync(projectId, announce = false)
+        }
+    }
+
+    /**
+     * Carries out [choice] on the files as they are now. The two sides are hashed again, and a conflict
+     * that changed since it was shown is refused rather than resolved on stale information.
+     */
+    private suspend fun apply(
+        projectId: String,
+        root: DocumentFile,
+        path: String,
+        seen: MirrorAction.Conflict.Kind,
+        choice: MirrorChoice,
+    ) {
+        val projectDir = workspace.projectDir(projectId)
+        val mine = File(projectDir, path)
+        val theirs = enumerate(root)[path]
+        val here = mine.takeIf { it.isFile }?.let { BackupArchive.sha256(it) }
+        val there = theirs?.let { hash(it) }
+        when (MirrorPlan.resolve(here, there, state.read(projectId)[path], seen, choice)) {
+            MirrorResolution.PushOut -> write(root, path, mine.readBytes())
+            MirrorResolution.PullIn -> {
+                val result = writer.replaceBytes(
+                    projectId = projectId,
+                    file = mine,
+                    expectedSha = here.orEmpty(),
+                    newContent = read(requireNotNull(theirs)),
+                    operation = "mirror-keep-theirs",
+                )
+                check(result is WriteResult.Committed) { describeFailure(result) }
+            }
+            MirrorResolution.DeleteHere -> {
+                val result = writer.delete(
+                    projectId = projectId,
+                    file = mine,
+                    expectedSha = here.orEmpty(),
+                    operation = "mirror-accept-delete",
+                )
+                check(result is WriteResult.Committed) { describeFailure(result) }
+            }
+            MirrorResolution.DeleteThere ->
+                check(requireNotNull(theirs).delete()) { "your folder's app refused to delete it" }
+            MirrorResolution.AlreadyAgreed -> Unit
+            MirrorResolution.Stale ->
+                error("it changed again since it was shown. Sync, then choose again")
         }
     }
 
