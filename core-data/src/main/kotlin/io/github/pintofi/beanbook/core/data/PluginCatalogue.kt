@@ -44,7 +44,16 @@ data class PluginCatalogue(val entries: List<Entry>) {
         val modules: List<String>,
     )
 
+    /**
+     * What the app offers: the entries the harness found unsupported are left out, since they
+     * cannot work on a phone. The file and docs/plugin-compatibility.md keep them, so the
+     * repository still records what was tried and why it failed.
+     */
+    fun offered(): PluginCatalogue = PluginCatalogue(entries.filterNot { it.status == UNSUPPORTED })
+
     companion object {
+        const val UNSUPPORTED = "unsupported"
+
         /** Parses the catalogue file, skipping entries it cannot read rather than failing all. */
         fun parse(text: String): PluginCatalogue {
             val root = Json.parse(text) as? Json.Obj ?: return PluginCatalogue(emptyList())
