@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -25,6 +27,9 @@ class TemplatesState(
 
     private var projectId: String? = null
 
+    /** One change at a time, in the order asked: a rename is a save and then a delete. */
+    private val changes = Mutex()
+
     fun open(projectId: String) {
         this.projectId = projectId
         reload()
@@ -37,7 +42,7 @@ class TemplatesState(
     private fun mutate(action: (String) -> Unit) {
         val id = projectId ?: return
         scope.launch {
-            withContext(Dispatchers.IO) { action(id) }
+            changes.withLock { withContext(Dispatchers.IO) { action(id) } }
             reload()
         }
     }

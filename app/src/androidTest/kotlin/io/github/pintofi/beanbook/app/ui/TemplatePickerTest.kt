@@ -8,6 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -28,8 +30,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * A few templates are buttons on the form; many are one button that opens an alphabetical list, with a
- * search box once the list is long.
+ * Templates are one button that opens an alphabetical list, whatever their number, with a search box once
+ * the list is long; each can be chosen, renamed or deleted there.
  */
 @RunWith(AndroidJUnit4::class)
 class TemplatePickerTest {
@@ -45,6 +47,7 @@ class TemplatePickerTest {
 
     private var applied: EntryTemplate? = null
     private var deleted: String? = null
+    private var saved: EntryTemplate? = null
 
     private fun show(names: List<String>, fontScale: Float = 1f, payee: String? = null) {
         compose.setContent {
@@ -56,6 +59,7 @@ class TemplatePickerTest {
                             templates = names.map { template(it, payee) },
                             onApply = { applied = it },
                             onDelete = { deleted = it },
+                            onSave = { saved = it },
                         )
                     }
                 }
@@ -66,16 +70,54 @@ class TemplatePickerTest {
 
     private fun top(text: String) = compose.onNodeWithText(text).fetchSemanticsNode().boundsInRoot.top
 
-    @Test fun aFewTemplatesAreButtonsOnTheForm() {
+    @Test fun evenOneOrThreeTemplatesAreOneButtonThatOpensAList() {
         show(listOf("Rent", "Groceries", "Salary"))
+        compose.onNodeWithText("Rent").assertDoesNotExist()
+        compose.onNodeWithText("Templates (3)").performClick()
+        compose.waitForIdle()
         listOf("Rent", "Groceries", "Salary").forEach { compose.onNodeWithText(it).assertIsDisplayed() }
-        compose.onNodeWithText("Templates (3)").assertDoesNotExist()
     }
 
-    @Test fun aButtonTapAppliesThatTemplate() {
+    @Test fun aTemplateCanBeChosenFromTheList() {
         show(listOf("Rent", "Groceries"))
+        compose.onNodeWithText("Templates (2)").performClick()
+        compose.waitForIdle()
         compose.onNodeWithText("Rent").performClick()
+        compose.waitForIdle()
         assertEquals("Rent", applied?.name)
+    }
+
+    @Test fun renamingSavesTheNewNameAndDeletesTheOldOne() {
+        show(listOf("Rent"))
+        compose.onNodeWithText("Templates (1)").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Rename the template Rent").performClick()
+        compose.onNodeWithText("Template name").performTextReplacement("Flat rent")
+        compose.onNodeWithText("Rename").performClick()
+        compose.waitForIdle()
+        assertEquals("Flat rent", saved?.name)
+        assertEquals("Rent", deleted)
+    }
+
+    @Test fun aNameAnotherTemplateHasIsRefused() {
+        show(listOf("Rent", "Groceries"))
+        compose.onNodeWithText("Templates (2)").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Rename the template Rent").performClick()
+        compose.onNodeWithText("Template name").performTextReplacement("groceries")
+        compose.onNodeWithText("Rename").assertIsNotEnabled()
+    }
+
+    @Test fun aNameChangedOnlyInCaseIsSavedWithoutDeletingAnything() {
+        show(listOf("Rent"))
+        compose.onNodeWithText("Templates (1)").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Rename the template Rent").performClick()
+        compose.onNodeWithText("Template name").performTextReplacement("RENT")
+        compose.onNodeWithText("Rename").performClick()
+        compose.waitForIdle()
+        assertEquals("RENT", saved?.name)
+        assertEquals(null, deleted)
     }
 
     @Test fun manyTemplatesAreOneButtonThatOpensAList() {
