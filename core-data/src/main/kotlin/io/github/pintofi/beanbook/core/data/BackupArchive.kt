@@ -641,3 +641,17 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
     }
 }
+
+/**
+ * Whether [file] is a Beanbook backup (`.bcaz`): a zip that holds the manifest and either the
+ * project or its sealed payload. A ledger zip is not, and importing a backup as one would bring
+ * in its manifest and the `project/` folder as if they were ledger files.
+ */
+fun looksLikeBackup(file: File): Boolean = runCatching {
+    ZipFile(file).use { zip ->
+        zip.getEntry(BackupManifest.MANIFEST_NAME) != null && (
+            zip.getEntry(BackupManifest.PAYLOAD_NAME) != null ||
+                zip.entries().asSequence().any { it.name.startsWith(BackupManifest.PROJECT_PREFIX) }
+            )
+    }
+}.getOrDefault(false)

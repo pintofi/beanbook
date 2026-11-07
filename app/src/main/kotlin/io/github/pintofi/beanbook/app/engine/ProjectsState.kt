@@ -119,6 +119,10 @@ class ProjectsState(
             resolver.openInputStream(archive)?.use { input ->
                 local.outputStream().use { input.copyTo(it) }
             } ?: error("could not read the chosen file")
+            // A backup is restored, not imported: its files sit under project/ beside a manifest.
+            check(!io.github.pintofi.beanbook.core.data.looksLikeBackup(local)) {
+                "this is a Beanbook backup (.bcaz), not a ledger zip. Use Restore on the Backup page"
+            }
             ZipImportSource(local) to (archive.lastPathSegment ?: "imported")
         }
     }

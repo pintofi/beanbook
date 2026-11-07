@@ -56,6 +56,19 @@ class BackupArchiveTest {
     }
 
     @Test
+    fun `a backup is told apart from a ledger zip`() {
+        assertTrue(looksLikeBackup(writeArchive()))
+
+        val ledger = File(root, "ledger.zip")
+        ZipOutputStream(ledger.outputStream()).use { zip ->
+            zip.putNextEntry(ZipEntry("main.beancount")); zip.write("option \"title\" \"x\"\n".toByteArray())
+            zip.closeEntry()
+        }
+        assertFalse(looksLikeBackup(ledger))
+        assertFalse(looksLikeBackup(File(root, "missing.zip")))
+    }
+
+    @Test
     fun `the manifest is readable text, openable years from now without this app`() {
         val archive = writeArchive()
 
