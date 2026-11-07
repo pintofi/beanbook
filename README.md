@@ -426,6 +426,10 @@ edges are today:
 
 [docs/known-limitations.md](docs/known-limitations.md) has the full list.
 
+## How it's made
+
+Beanbook was written with AI coding tools, with a regular power user directing the work and reviewing every change. The tools write fast, so the checks have to be strict: every change goes through unit tests, differential tests that compare Beanbook's balances, rounding and prices with Beancount's own output, screenshot tests, a boundary gate between the two editions, and a CI build that must produce the same APK twice. Every file in the repository has been through a written review.
+
 ## Roadmap
 
 What is planned, as a checklist. Each line is an issue; [ROADMAP.md](ROADMAP.md) has the reasoning
