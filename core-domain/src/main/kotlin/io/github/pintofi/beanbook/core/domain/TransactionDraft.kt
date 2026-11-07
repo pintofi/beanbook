@@ -123,7 +123,7 @@ data class TransactionDraft(
         val problems = mutableListOf<DraftProblem>()
 
         if (!DATE.matches(date)) problems += DraftProblem.InvalidDate(date)
-        if (flag !in VALID_FLAGS) problems += DraftProblem.InvalidFlag(flag)
+        if (!BeancountText.TRANSACTION_FLAG.matches(flag)) problems += DraftProblem.InvalidFlag(flag)
 
         // A key Beancount cannot parse would be written into the file and break the next
         // load, so it is refused here rather than discovered after the write.
@@ -268,7 +268,6 @@ data class TransactionDraft(
         private val DATE = BeancountText.DATE
         private val ACCOUNT = BeancountText.ACCOUNT
         private val TAG = BeancountText.TAG
-        private val VALID_FLAGS = setOf("*", "!")
 
         private fun quote(value: String): String = BeancountText.quote(value)
 
@@ -329,7 +328,14 @@ sealed interface DraftProblem {
     /** Wording the user sees. Says what is wrong, never "invalid input". */
     fun describe(): String = when (this) {
         is InvalidDate -> "\"$value\" is not a date in YYYY-MM-DD form"
-        is InvalidFlag -> "\"$value\" is not a transaction flag (* or !)"
+        is InvalidFlag -> when {
+            value.isBlank() -> "the other flag is empty; type one capital letter, or one of & # ? %"
+            value.codePointCount(0, value.length) > 1 ->
+                "\"$value\" is more than one character; a flag is a single character"
+            value.length == 1 && value[0] in 'a'..'z' ->
+                "\"$value\" cannot be a flag; flags are capital letters, so type \"${value.uppercase()}\""
+            else -> "\"$value\" cannot be a flag; use a capital letter from A to Z, or one of & # ? %"
+        }
         is TooFewPostings -> "a transaction needs at least two postings; this has $count"
         is InvalidAccount -> "\"$account\" is not a valid account name; accounts look like Expenses:Food"
         is UnknownAccount ->

@@ -12,6 +12,14 @@ object BeancountText {
     val DATE = Regex("""\d{4}-\d{2}-\d{2}""")
 
     /** `Assets:Bank:Checking` — a root, then at least one colon-separated component. */
+    /**
+     * A transaction's flag: one of `* ! & # ? %` or one capital letter, as Beancount's lexer takes it
+     * (`FLAGS` and `CAPITAL` in `lexer.l`, the `txn` rule in `grammar.y`, checked against the bundled
+     * 3.2.3). `*` is Cleared and `!` is Pending; any other is an Other flag. Lower case, digits,
+     * other punctuation, anything of two characters or more, and `txn` (which means `*`) are not flags.
+     */
+    val TRANSACTION_FLAG = Regex("[*!&#?%A-Z]")
+
     val ACCOUNT = Regex("""[A-Z][A-Za-z0-9\-]*(:[A-Z0-9][A-Za-z0-9\-]*)+""")
 
     /** Currencies are upper-case and may contain digits, `.`, `_`, `-`, `'`. */

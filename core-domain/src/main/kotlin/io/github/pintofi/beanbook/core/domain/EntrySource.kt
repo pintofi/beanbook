@@ -155,7 +155,7 @@ internal object EntrySource {
         val scan = Scanner(line)
         val date = scan.word().takeIf { BeancountText.DATE.matches(it) } ?: return null
         scan.skipSpaces()
-        val flag = scan.word().takeIf { it == "*" || it == "!" } ?: return null
+        val flag = scan.word().takeIf { BeancountText.TRANSACTION_FLAG.matches(it) } ?: return null
         val strings = mutableListOf<String>()
         val tags = mutableListOf<String>()
         val links = mutableListOf<String>()
