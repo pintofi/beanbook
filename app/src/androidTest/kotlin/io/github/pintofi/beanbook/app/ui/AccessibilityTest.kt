@@ -307,7 +307,7 @@ class AccessibilityTest {
         compose.onNodeWithContentDescription("Get started", substring = true).performClick()
 
         compose.onNodeWithText("Choose folder").performScrollTo().assertExists()
-        compose.onNodeWithText("Choose .zip").performScrollTo().assertExists()
+        compose.onNodeWithText("Choose .zip or backup").performScrollTo().assertExists()
         compose.onNodeWithText("Create with defaults").performScrollTo().assertExists()
         compose.onNodeWithContentDescription("Back to the welcome").assertExists()
         assertAccessible()
