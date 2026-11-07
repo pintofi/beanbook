@@ -193,11 +193,6 @@ class TemplatePickerTest {
 
     private val longName = "Monthly rent for the flat paid to the landlord"
 
-    @Test fun aLongNameStillShowsAtDoubleTextOnANarrowPhoneAsAButton() {
-        show(listOf(longName, "B"), fontScale = 2f)
-        compose.onNodeWithText(longName).assertIsDisplayed()
-    }
-
     @Test fun aLongNameStillShowsAtDoubleTextInTheList() {
         show(listOf(longName, "B", "C", "D"), fontScale = 2f)
         compose.onNodeWithText("Templates (4)").performClick()

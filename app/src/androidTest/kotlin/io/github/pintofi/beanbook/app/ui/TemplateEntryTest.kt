@@ -64,7 +64,7 @@ class TemplateEntryTest {
         var saved: TransactionDraft? = null
         show(templates = listOf(rent), onSave = { saved = it })
 
-        compose.onNodeWithText("Rent").performClick()
+        chooseRent()
 
         // The preview is the contract: what it shows is what gets written.
         preview()
@@ -86,7 +86,7 @@ class TemplateEntryTest {
 
         compose.onNodeWithText("2026-09-01").performTextClearance()
         compose.onNodeWithText("Date").performTextInput("2026-12-24")
-        compose.onNodeWithText("Rent").performClick()
+        chooseRent()
 
         preview().assertTextContains("2026-12-24 * \"Landlord\" \"Monthly rent\"", substring = true)
     }
@@ -149,6 +149,14 @@ class TemplateEntryTest {
         compose.onNodeWithContentDescription("Delete the template Rent").performClick()
 
         assertEquals("Rent", deleted)
+    }
+
+    /** Templates are one button that opens a list; the template is chosen from it. */
+    private fun chooseRent() {
+        compose.onNodeWithText("Templates (1)").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Rent").performClick()
+        compose.waitForIdle()
     }
 
     /** The generated-text preview, addressed by its label so nothing else can match it. */
