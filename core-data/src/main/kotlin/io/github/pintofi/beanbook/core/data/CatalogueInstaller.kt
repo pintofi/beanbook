@@ -44,13 +44,80 @@ class CatalogueInstaller(private val root: File) {
      * moved, so a failure leaves nothing behind that looks installed.
      */
     fun installCode(entry: PluginCatalogue.Entry, archive: ByteArray): Result<File> = runCatching {
+        val staging = stage(entry, archive)
+        val folder = folderFor(entry.id)
+        folder.deleteRecursively()
+        check(staging.renameTo(folder)) { "could not move ${entry.name} into place" }
+        siteFor(entry.id)
+    }.onFailure { File(root, ".${entry.id}-staging").deleteRecursively() }
+
+    /**
+     * Puts a newer [entry] in place of the installed one, keeping the installed one to go back to.
+     *
+     * The same checks as [installCode]. The installed folder is moved aside to `.<id>-previous`, not
+     * deleted, and the new one is moved in; if that fails the installed one is put back. One previous
+     * version is kept: the one before it is deleted when the next update lands. Whatever follows (the
+     * plugin's packages are fetched next) should end in [markInstalled], or in [rollback] if it fails.
+     */
+    fun upgradeCode(entry: PluginCatalogue.Entry, archive: ByteArray): Result<File> = runCatching {
+        val staging = stage(entry, archive)
+        val folder = folderFor(entry.id)
+        val previous = previousFolder(entry.id)
+        check(folder.isDirectory) { "${entry.name} is not installed, so there is nothing to update" }
+        previous.deleteRecursively()
+        check(folder.renameTo(previous)) { "could not set the installed ${entry.name} aside" }
+        if (!staging.renameTo(folder)) {
+            previous.renameTo(folder)
+            error("could not move the new ${entry.name} into place; the installed one is as it was")
+        }
+        siteFor(entry.id)
+    }.onFailure { File(root, ".${entry.id}-staging").deleteRecursively() }
+
+    /** Whether an update of [id] left the version it replaced to go back to. */
+    fun hasPrevious(id: String): Boolean = previousFolder(id).isDirectory
+
+    /** The version [rollback] would bring back, or null when there is none. */
+    fun previousVersion(id: String): String? =
+        File(previousFolder(id), VERSION_FILE).takeIf { it.isFile }?.readText()?.trim()
+
+    /**
+     * Brings back the version an update replaced, and drops the one that replaced it.
+     *
+     * The two folders are exchanged, not copied over each other, and a failed exchange is undone, so
+     * an installed plugin is never left half there.
+     */
+    fun rollback(id: String): Result<Unit> = runCatching {
+        val folder = folderFor(id)
+        val previous = previousFolder(id)
+        check(previous.isDirectory) { "there is no earlier version of $id to go back to" }
+        val failed = File(root, ".$id-failed")
+        failed.deleteRecursively()
+        if (folder.exists()) check(folder.renameTo(failed)) { "could not set the current $id aside" }
+        if (!previous.renameTo(folder)) {
+            failed.renameTo(folder)
+            error("could not bring the earlier $id back; the current one is as it was")
+        }
+        failed.deleteRecursively()
+    }
+
+    /** Deletes the version kept to go back to. */
+    fun discardPrevious(id: String) {
+        previousFolder(id).deleteRecursively()
+    }
+
+    private fun previousFolder(id: String): File {
+        require(ID.matches(id)) { "\"$id\" is not a catalogue id" }
+        return File(root, ".$id-previous")
+    }
+
+    /** Verifies [archive] and takes the named code out of it into a staging folder, which it returns. */
+    private fun stage(entry: PluginCatalogue.Entry, archive: ByteArray): File {
         val install = checkNotNull(entry.install) { "${entry.name} has no install source" }
         val digest = MessageDigest.getInstance("SHA-256").digest(archive).joinToString("") { "%02x".format(it) }
         check(digest == install.sha256) {
             "the download of ${entry.name} does not match the catalogue " +
                 "(expected ${install.sha256.take(12)}…, got ${digest.take(12)}…)"
         }
-        val folder = folderFor(entry.id)
         val staging = File(root, ".${entry.id}-staging")
         staging.deleteRecursively()
         val site = File(staging, "site").apply { mkdirs() }
@@ -70,21 +137,21 @@ class CatalogueInstaller(private val root: File) {
             }
         }
         check(copied > 0) { "the archive for ${entry.name} holds none of ${install.paths}" }
-        folder.deleteRecursively()
-        check(staging.renameTo(folder)) { "could not move ${entry.name} into place" }
-        siteFor(entry.id)
-    }.onFailure { File(root, ".${entry.id}-staging").deleteRecursively() }
+        return staging
+    }
 
     /** Records that [entry] is fully installed, after its packages are in as well. */
     fun markInstalled(entry: PluginCatalogue.Entry) {
         File(folderFor(entry.id), VERSION_FILE).writeText(entry.install?.version.orEmpty())
     }
 
-    /** Deletes [id] and everything it brought. Returns the bytes freed. */
+    /** Deletes [id], everything it brought, and the version kept to go back to. Returns the bytes freed. */
     fun remove(id: String): Long {
         val folder = folderFor(id)
-        val bytes = folder.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+        val bytes = folder.walkTopDown().filter { it.isFile }.sumOf { it.length() } +
+            previousFolder(id).walkTopDown().filter { it.isFile }.sumOf { it.length() }
         folder.deleteRecursively()
+        previousFolder(id).deleteRecursively()
         return bytes
     }
 

@@ -26,6 +26,14 @@ data class PluginCatalogue(val entries: List<Entry>) {
         val install: Install?,
     ) {
         val isExtension: Boolean get() = kind == "fava-extension"
+
+        /**
+         * Whether the catalogue this app carries pins a different version from the one installed.
+         * Compared as written: a version is a tag or a commit, and nothing says which is newer, so it
+         * is "different", and the app shipped with the version it offers.
+         */
+        fun updatesFrom(installedVersion: String): Boolean =
+            install?.version?.isNotEmpty() == true && install.version != installedVersion
     }
 
     data class Install(

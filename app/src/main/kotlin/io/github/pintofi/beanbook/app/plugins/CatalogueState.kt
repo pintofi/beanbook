@@ -55,6 +55,13 @@ class CatalogueState(
     private val _installed = MutableStateFlow(installer.installed())
     val installed: StateFlow<Map<String, String>> = _installed.asStateFlow()
 
+    /** For each installed plugin whose last update left an earlier version to go back to, that version. */
+    private val _previous = MutableStateFlow(previousVersions())
+    val previous: StateFlow<Map<String, String>> = _previous.asStateFlow()
+
+    private fun previousVersions(): Map<String, String> =
+        installer.installed().keys.mapNotNull { id -> installer.previousVersion(id)?.let { id to it } }.toMap()
+
     private val _status = MutableStateFlow<CatalogueStatus>(CatalogueStatus.Idle)
     val status: StateFlow<CatalogueStatus> = _status.asStateFlow()
 
@@ -102,8 +109,13 @@ class CatalogueState(
         assets = context.assets,
     )
 
+    /** Replaces the installed [id] with the version this app carries, keeping the installed one to go back to. */
+    fun update(id: String) = request(id, upgrade = true)
+
     /** Works out what installing [id] needs, and shows it. Downloads no plugin code. */
-    fun request(id: String) {
+    fun request(id: String) = request(id, upgrade = false)
+
+    private fun request(id: String, upgrade: Boolean) {
         val entry = catalogue.entries.firstOrNull { it.id == id } ?: return
         if (!canInstall) {
             _message.value = "This edition does not download plugins. Add ${entry.name} from a " +
@@ -120,6 +132,7 @@ class CatalogueState(
         // One install at a time: a second tap while the first runs would race it in the same
         // folder, and the failure path of either one removes the plugin.
         if (_status.value is CatalogueStatus.Installing) return
+        if (upgrade && id !in installer.installed()) return
         _status.value = CatalogueStatus.Installing(id)
         _message.value = null
         scope.launch {
@@ -127,14 +140,14 @@ class CatalogueState(
             // until they end, even if the user leaves the app or the screen goes off.
             io.github.pintofi.beanbook.app.work.KeepWorking.around(
                 context,
-                "Installing ${entry.name}",
+                if (upgrade) "Updating ${entry.name}" else "Installing ${entry.name}",
                 page = io.github.pintofi.beanbook.app.OpenPage.PLUGINS,
                 onUnprotected = {
                     _message.value = io.github.pintofi.beanbook.app.work.KeepWorking.KEEP_OPEN
                 },
             ) {
                 val resolution = withContext(Dispatchers.IO) { resolve(entry) }
-                install(entry, resolution)
+                install(entry, resolution, upgrade)
             }
         }
     }
@@ -164,12 +177,19 @@ class CatalogueState(
     }
 
     /** Downloads, verifies and installs [entry] and what it needs. */
-    private suspend fun install(entry: PluginCatalogue.Entry, resolution: Resolution) {
+    private suspend fun install(entry: PluginCatalogue.Entry, resolution: Resolution, upgrade: Boolean) {
+        // The installed version is only touched once the new one has passed its checks, and only then is
+        // there anything to go back to: a failure before that must leave the installed plugin alone.
+        var swapped = false
         val outcome = withContext(Dispatchers.IO) {
             runCatching {
                 val install = checkNotNull(entry.install)
                 val archive = ArchiveFetcher().fetch(install.archive).getOrThrow()
-                val site = installer.installCode(entry, archive).getOrThrow()
+                val site = if (upgrade) {
+                    installer.upgradeCode(entry, archive).getOrThrow().also { swapped = true }
+                } else {
+                    installer.installCode(entry, archive).getOrThrow()
+                }
                 overlay.apply(entry, site)
                 if (resolution.wheels.isNotEmpty()) {
                     when (val result = fetcher(entry.id).install(resolution.wheels)) {
@@ -179,25 +199,53 @@ class CatalogueState(
                     }
                 }
                 installer.markInstalled(entry)
-            }.onFailure { installer.remove(entry.id) }
+            }.onFailure {
+                when {
+                    !upgrade -> installer.remove(entry.id)
+                    swapped -> installer.rollback(entry.id)
+                }
+            }
         }
         _status.value = CatalogueStatus.Idle
         Diagnostics.i(TAG, "catalogue install ${entry.id} -> ${outcome.isSuccess}")
         outcome
             .onSuccess {
                 onEngineStale()
+                val done = if (upgrade) "Updated" else "Installed"
                 _message.value = if (resolution.unavailable.isEmpty()) {
-                    "Installed ${entry.name}."
+                    "$done ${entry.name}."
                 } else {
-                    "Installed ${entry.name}. Parts that need ${resolution.unavailable.joinToString()} " +
+                    "$done ${entry.name}. Parts that need ${resolution.unavailable.joinToString()} " +
                         "won't work, because those aren't available for Android."
                 }
             }
             .onFailure {
-                _message.value = "Couldn't install ${entry.name}: ${it.message ?: "the download failed"}. " +
-                    "Check your connection and try again."
+                val what = if (upgrade) "update" else "install"
+                _message.value = "Couldn't $what ${entry.name}: ${it.message ?: "the download failed"}. " +
+                    if (upgrade) "It is as it was. Check your connection and try again." else
+                        "Check your connection and try again."
             }
         _installed.value = installer.installed()
+        _previous.value = previousVersions()
+    }
+
+    /** Goes back to the version an update replaced. */
+    fun rollback(id: String) {
+        val entry = catalogue.entries.firstOrNull { it.id == id }
+        scope.launch {
+            val back = withContext(Dispatchers.IO) {
+                val version = installer.previousVersion(id)
+                installer.rollback(id).map { version }
+            }
+            back
+                .onSuccess {
+                    onEngineStale()
+                    _message.value = "Went back to ${entry?.name ?: id} ${it.orEmpty()}.".replace("  ", " ")
+                }
+                .onFailure { _message.value = "Couldn't go back: ${it.message}" }
+            _installed.value = installer.installed()
+            _previous.value = previousVersions()
+        }
     }
 
     /** Removes [id] and every package it brought, and nothing else. */
@@ -209,17 +257,26 @@ class CatalogueState(
             _message.value = "Removed ${entry?.name ?: id}."
             Diagnostics.i(TAG, "catalogue remove $id freed ${freed / 1_000} kB")
             _installed.value = installer.installed()
+            _previous.value = previousVersions()
         }
     }
 
-    fun ui(installed: Map<String, String>, status: CatalogueStatus, message: String?) = CatalogueUi(
+    fun ui(
+        installed: Map<String, String>,
+        status: CatalogueStatus,
+        message: String?,
+        previous: Map<String, String> = emptyMap(),
+    ) = CatalogueUi(
         entries = catalogue.entries,
         installed = installed,
+        previous = previous,
         status = status,
         message = message,
         canInstall = canInstall,
         onInstall = ::request,
         onRemove = ::remove,
+        onUpdate = ::update,
+        onRollback = ::rollback,
     )
 
     companion object {
@@ -236,7 +293,8 @@ fun CatalogueState.collectUi(): CatalogueUi {
     val installedNow by installed.collectAsStateWithLifecycle()
     val statusNow by status.collectAsStateWithLifecycle()
     val messageNow by message.collectAsStateWithLifecycle()
-    return ui(installedNow, statusNow, messageNow)
+    val previousNow by previous.collectAsStateWithLifecycle()
+    return ui(installedNow, statusNow, messageNow, previousNow)
 }
 
 sealed interface CatalogueStatus {
@@ -248,13 +306,18 @@ sealed interface CatalogueStatus {
 data class CatalogueUi(
     val entries: List<PluginCatalogue.Entry>,
     val installed: Map<String, String>,
+    val previous: Map<String, String>,
     val status: CatalogueStatus,
     val message: String?,
     val canInstall: Boolean,
     val onInstall: (String) -> Unit,
     val onRemove: (String) -> Unit,
+    val onUpdate: (String) -> Unit,
+    val onRollback: (String) -> Unit,
 ) {
     companion object {
-        val EMPTY = CatalogueUi(emptyList(), emptyMap(), CatalogueStatus.Idle, null, false, {}, {})
+        val EMPTY = CatalogueUi(
+            emptyList(), emptyMap(), emptyMap(), CatalogueStatus.Idle, null, false, {}, {}, {}, {},
+        )
     }
 }
