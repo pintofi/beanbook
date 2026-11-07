@@ -122,7 +122,10 @@ your records out is not a paid feature.
 
 <div align="center">
 
-<img src="docs/assets/screenshots/balance-sheet-compare.webp" width="94%" alt="The Balance Sheet of the same invented household ledger. On the left, Fava 1.30.15 on a desktop. On the right, Beanbook on Android, showing Fava's Balance Sheet in the Reports tab. Both show Assets 6581.90 EUR, with Bank and Checking 6568.65 and Cash 13.25, and Liabilities -18.50 EUR.">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/balance-sheet-compare-dark.webp">
+  <img src="docs/assets/screenshots/balance-sheet-compare-light.webp" width="94%" alt="The Balance Sheet of the same invented household ledger. On the left, Fava 1.30.15 on a desktop. On the right, Beanbook on Android, showing Fava's Balance Sheet in the Reports tab. Both show Assets 6581.90 EUR, with Bank and Checking 6568.65 and Cash 13.25, and Liabilities -18.50 EUR.">
+</picture>
 
 </div>
 
