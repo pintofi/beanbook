@@ -57,7 +57,7 @@ object WidgetRenderer {
         // fails when the launcher applies it.
         val palette = WidgetPalette.of(context)
         views.paint(palette)
-        views.setTextColor(R.id.widget_value, palette.value)
+        views.setTextTint(R.id.widget_value, palette) { it.value }
 
         // The balance widget says *which* account, because an unlabelled figure on a home
         // screen is not information. Only the leaf: "Checking" fits where
@@ -219,8 +219,8 @@ object WidgetRenderer {
         option: WidgetOption = WidgetOption(),
     ): RemoteViews {
         val row = RemoteViews(context.packageName, R.layout.widget_balance_row)
-        row.setTextColor(R.id.row_account, palette.label)
-        row.setTextColor(R.id.row_amount, palette.value)
+        row.setTextTint(R.id.row_account, palette) { it.label }
+        row.setTextTint(R.id.row_amount, palette) { it.value }
         row.setTextViewText(R.id.row_account, account.substringAfterLast(':'))
         val value = snapshot?.let { figureFor(it, account, option) }
         row.setTextViewText(
@@ -276,9 +276,9 @@ object WidgetRenderer {
         Valuation.entries.forEach { basis ->
             val id = basisViewId(basis)
             val on = basis == selected
-            setInt(basisBackgroundId(basis), "setColorFilter", if (on) palette.segmentOn else palette.segment)
+            setFilterTint(basisBackgroundId(basis), palette) { if (on) it.segmentOn else it.segment }
             setTextViewText(id, if (on) "\u2713 ${basis.label}" else basis.label)
-            setTextColor(id, if (on) palette.segmentOnText else palette.label)
+            setTextTint(id, palette) { if (on) it.segmentOnText else it.label }
             val intent = Intent(context, provider)
                 .setAction(MetricWidget.ACTION_BASIS)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
@@ -327,6 +327,26 @@ object WidgetRenderer {
     private const val MIN_HEIGHT_FOR_BASIS_DP = 90
 
     /**
+     * Sets a text colour. Where [palette] carries a dark set (Android 14 and later) both go with the
+     * update and the launcher picks, so a change of light or dark shows without a redraw.
+     */
+    private fun RemoteViews.setTextTint(viewId: Int, palette: WidgetPalette, pick: (WidgetPalette) -> Int) =
+        tint(viewId, "setTextColor", palette, pick)
+
+    /** Sets the colour filter of an image, the way [setTextTint] sets a text colour. */
+    private fun RemoteViews.setFilterTint(viewId: Int, palette: WidgetPalette, pick: (WidgetPalette) -> Int) =
+        tint(viewId, "setColorFilter", palette, pick)
+
+    private fun RemoteViews.tint(viewId: Int, method: String, palette: WidgetPalette, pick: (WidgetPalette) -> Int) {
+        val night = palette.night
+        if (night != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            setColorInt(viewId, method, pick(palette), pick(night))
+        } else {
+            setInt(viewId, method, pick(palette))
+        }
+    }
+
+    /**
      * Colours one widget from the app's appearance settings.
      *
      * The paper and the rule are tinted rather than set as background colours: a tint works on
@@ -334,11 +354,11 @@ object WidgetRenderer {
      * corners a flat background colour would lose.
      */
     private fun RemoteViews.paint(palette: WidgetPalette) {
-        setInt(R.id.widget_paper, "setColorFilter", palette.paper)
-        setInt(R.id.widget_rule, "setColorFilter", palette.rule)
-        setTextColor(R.id.widget_label, palette.label)
-        setTextColor(R.id.widget_footnote, palette.footnote)
-        setTextColor(R.id.widget_add, palette.rule)
+        setFilterTint(R.id.widget_paper, palette) { it.paper }
+        setFilterTint(R.id.widget_rule, palette) { it.rule }
+        setTextTint(R.id.widget_label, palette) { it.label }
+        setTextTint(R.id.widget_footnote, palette) { it.footnote }
+        setTextTint(R.id.widget_add, palette) { it.rule }
     }
 
     /**

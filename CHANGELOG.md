@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On the Accounts page, the details of an account now include the currencies it allows: add, change or clear them. Only the currency list on its open line is rewritten, in the same single save as any other detail you changed. ([#315])
 
 ### Changed
+- The widgets take their colours from the system palette when dynamic colour is on (paper, text, the basis row and the accent, as the app does), and on Android 14 and later they follow a change of the system's light or dark setting without waiting for a redraw. ([#357])
 - On the entry form, the flag is one choice of Cleared (`*`), Pending (`!`) or Other, and Other opens a field for any flag Beancount takes (one capital letter, or one of `& # ? %`), refusing the rest with a reason. An entry that carries another flag, such as `P`, can now be edited, saved and cloned from the form, and a template keeps its flag when it is applied. ([#361])
 - The Journal's Errors, Pending and Other flags filters are one choice: choosing one replaces the last, and choosing it again shows every entry. Flags are named as Beancount does: `*` is Cleared, `!` is Pending, and any other character is an Other flag, replacing "Flagged" across the app. ([#350])
 - A Beanbook backup (.bcaz) can be restored from the first-run setup and from the Projects page: it comes back as a new project, and an encrypted one asks for its passphrase. Import zip no longer reads a backup as a ledger. ([#342], [#354])
@@ -332,5 +333,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#350]: https://github.com/pintofi/beanbook/issues/350
 [#352]: https://github.com/pintofi/beanbook/issues/352
 [#354]: https://github.com/pintofi/beanbook/issues/354
+[#357]: https://github.com/pintofi/beanbook/issues/357
 [#358]: https://github.com/pintofi/beanbook/issues/358
 [#361]: https://github.com/pintofi/beanbook/issues/361
