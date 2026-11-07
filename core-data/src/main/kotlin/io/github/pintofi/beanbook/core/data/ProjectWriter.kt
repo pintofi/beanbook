@@ -142,6 +142,23 @@ class ProjectWriter(
     ): WriteResult = write(projectId, file, newContent, expectedSha, operation, policy)
         .also { report(operation, file, it) }
 
+    /**
+     * Deletes [file], through the same protocol as a write: the file is snapshotted first, so the
+     * delete is journalled and [undoLast] puts it back byte for byte, and the ledger is re-parsed
+     * afterwards. Deleting a file the ledger includes breaks the `include`, so that delete is rolled
+     * back and the file is restored.
+     *
+     * Refused for the main ledger file, for a file that is not there, and for a stale [expectedSha].
+     */
+    suspend fun delete(
+        projectId: String,
+        file: File,
+        expectedSha: String,
+        operation: String = "delete",
+        policy: ErrorPolicy = ErrorPolicy.ROLLBACK_ON_NEW_ERRORS,
+    ): WriteResult = write(projectId, file, null, expectedSha, operation, policy)
+        .also { report(operation, file, it) }
+
     /** Appends [text] to [file], creating it if needed. */
     suspend fun append(
         projectId: String,
@@ -190,7 +207,7 @@ class ProjectWriter(
     private suspend fun write(
         projectId: String,
         file: File,
-        newContent: ByteArray,
+        newContent: ByteArray?,
         expectedSha: String,
         operation: String,
         policy: ErrorPolicy,
@@ -206,7 +223,7 @@ class ProjectWriter(
     private suspend fun writeLocked(
         projectId: String,
         file: File,
-        newContent: ByteArray,
+        newContent: ByteArray?,
         expectedSha: String,
         operation: String,
         policy: ErrorPolicy,
@@ -215,6 +232,14 @@ class ProjectWriter(
         if (!file.canonicalPath.startsWith(projectDir.canonicalPath + File.separator)) {
             // Invariant: a write may never escape the project (docs/threat-model.md §3.1).
             return WriteResult.Refused("${file.name} is outside the project")
+        }
+        if (newContent == null) {
+            // A delete (null content). The main file is what Beancount is pointed at, and a file that
+            // is not there has nothing to delete or to put back.
+            if (file.canonicalFile == workspace.mainFile(projectId).canonicalFile) {
+                return WriteResult.Refused("the main ledger file cannot be deleted")
+            }
+            if (!file.isFile) return WriteResult.Refused("${file.name} is already gone")
         }
 
         // Stale-write detection *before* the snapshot: nothing has changed yet, so there
@@ -271,14 +296,14 @@ class ProjectWriter(
     private suspend fun complete(
         record: WriteJournal.Record,
         file: File,
-        newContent: ByteArray,
+        newContent: ByteArray?,
         policy: ErrorPolicy,
         baseline: Int,
         baselineMessages: List<String>,
     ): WriteResult {
         val projectId = record.projectId
         return try {
-            writeAtomically(file, newContent)
+            if (newContent == null) deleteDurably(file) else writeAtomically(file, newContent)
             journal.markRenamed(record)
 
             val validation = validator.validate(workspace.mainFile(projectId).absolutePath)
@@ -436,6 +461,16 @@ class ProjectWriter(
         val operation: String,
         val rolledForward: Boolean,
     )
+
+    /** Removes [file] and syncs the directory, so the removal is as durable as a rename is. */
+    private fun deleteDurably(file: File) {
+        if (!file.delete()) throw IOException("could not delete ${file.name}")
+        runCatching {
+            file.parentFile?.let { parent ->
+                FileChannel.open(parent.toPath(), StandardOpenOption.READ).use { it.force(true) }
+            }
+        }
+    }
 
     /**
      * tmp file → fsync → atomic rename → fsync the directory.

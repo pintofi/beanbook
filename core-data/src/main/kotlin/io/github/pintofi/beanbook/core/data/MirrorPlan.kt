@@ -65,6 +65,30 @@ sealed interface MirrorAction {
     }
 }
 
+/** Which side of a conflict the user chose to keep. */
+enum class MirrorChoice { KEEP_MINE, KEEP_THEIRS }
+
+/** What to do for one conflict, decided from the files as they are *now*. */
+sealed interface MirrorResolution {
+    /** Copy this device's file out to the folder. */
+    data object PushOut : MirrorResolution
+
+    /** Bring the folder's file in. */
+    data object PullIn : MirrorResolution
+
+    /** The folder deleted it and that choice is accepted: remove the file here. */
+    data object DeleteHere : MirrorResolution
+
+    /** This device deleted it and that choice is kept: remove the file from the folder. */
+    data object DeleteThere : MirrorResolution
+
+    /** The two sides already agree: only the record needs to be settled. */
+    data object AlreadyAgreed : MirrorResolution
+
+    /** The files changed again since the conflict was shown, so the choice no longer means what it did. */
+    data object Stale : MirrorResolution
+}
+
 /** Everything the next mirror pass would do. */
 data class MirrorPlanResult(
     val actions: List<MirrorAction>,
@@ -95,6 +119,49 @@ data class MirrorPlanResult(
  * a change however its clock reads.
  */
 object MirrorPlan {
+
+    /**
+     * What a conflict's [choice] does, judged on the files as they are now.
+     *
+     * The conflict is worked out again from the current hashes. If it is no longer the same
+     * conflict the user was shown ([seen]), the answer is [MirrorResolution.Stale]: a card left on
+     * screen must not delete a file that has changed since.
+     */
+    fun resolve(
+        here: String?,
+        there: String?,
+        synced: String?,
+        seen: MirrorAction.Conflict.Kind,
+        choice: MirrorChoice,
+    ): MirrorResolution {
+        if (here == null && there == null) return MirrorResolution.AlreadyAgreed
+        if (here != null && here == there) return MirrorResolution.AlreadyAgreed
+        val now = plan(
+            local = listOfNotNull(here?.let { "f" to it }).toMap(),
+            external = listOfNotNull(there?.let { "f" to it }).toMap(),
+            lastSynced = listOfNotNull(synced?.let { "f" to it }).toMap(),
+        ).actions.singleOrNull()
+        if (now !is MirrorAction.Conflict || now.kind != seen) return MirrorResolution.Stale
+        return when (choice) {
+            MirrorChoice.KEEP_MINE -> if (here != null) MirrorResolution.PushOut else MirrorResolution.DeleteThere
+            MirrorChoice.KEEP_THEIRS -> if (there != null) MirrorResolution.PullIn else MirrorResolution.DeleteHere
+        }
+    }
+
+    /**
+     * The sync record after a pass: what matched is recorded, and a record for a file that is gone
+     * from both sides is dropped. A record left behind made a file of the same content that
+     * arrived in the folder later look like one this device had deleted, and it was removed.
+     */
+    fun agreed(
+        local: Map<String, String>,
+        external: Map<String, String>,
+        lastSynced: Map<String, String>,
+    ): Map<String, String> {
+        val kept = lastSynced.filterKeys { it in local || it in external }.toMutableMap()
+        local.forEach { (path, hash) -> if (external[path] == hash) kept[path] = hash }
+        return kept
+    }
 
     fun plan(
         local: Map<String, String>,

@@ -206,15 +206,31 @@ private fun ConflictRow(
                 modifier = Modifier.semantics {
                     contentDescription = "Keep this device's version of ${conflict.path}"
                 },
-            ) { Text("Keep this device's") }
+            ) { Text(keepMineLabel(conflict.kind)) }
             OutlinedButton(
                 onClick = { onKeepTheirs(conflict.path) },
                 modifier = Modifier.semantics {
                     contentDescription = "Keep the folder's version of ${conflict.path}"
                 },
-            ) { Text("Keep the folder's") }
+            ) { Text(keepTheirsLabel(conflict.kind)) }
         }
     }
+}
+
+/** What the first choice does, in words: a file deleted in the folder is put back there. */
+private fun keepMineLabel(kind: MirrorAction.Conflict.Kind): String = when (kind) {
+    MirrorAction.Conflict.Kind.DELETED_THERE, MirrorAction.Conflict.Kind.CHANGED_HERE_DELETED_THERE ->
+        "Put it back in the folder"
+    MirrorAction.Conflict.Kind.DELETED_HERE_CHANGED_THERE -> "Delete it from the folder"
+    MirrorAction.Conflict.Kind.BOTH_CHANGED -> "Keep this device's"
+}
+
+/** What the second choice does, in words: a file deleted in the folder is deleted here too. */
+private fun keepTheirsLabel(kind: MirrorAction.Conflict.Kind): String = when (kind) {
+    MirrorAction.Conflict.Kind.DELETED_THERE, MirrorAction.Conflict.Kind.CHANGED_HERE_DELETED_THERE ->
+        "Delete it here too"
+    MirrorAction.Conflict.Kind.DELETED_HERE_CHANGED_THERE -> "Bring it back"
+    MirrorAction.Conflict.Kind.BOTH_CHANGED -> "Keep the folder's"
 }
 
 /**

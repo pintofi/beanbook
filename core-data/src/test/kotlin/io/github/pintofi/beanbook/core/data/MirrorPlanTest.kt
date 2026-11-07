@@ -2,6 +2,7 @@ package io.github.pintofi.beanbook.core.data
 
 import java.io.File
 import java.nio.file.Files
+import io.github.pintofi.beanbook.core.data.MirrorAction.Conflict.Kind
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -53,7 +54,7 @@ class MirrorPlanTest {
         val action = plan(here = "b", there = "c", synced = "a").single()
 
         assertEquals(
-            MirrorAction.Conflict(path, MirrorAction.Conflict.Kind.BOTH_CHANGED),
+            MirrorAction.Conflict(path, Kind.BOTH_CHANGED),
             action,
         )
         assertTrue(
@@ -85,7 +86,7 @@ class MirrorPlanTest {
         val action = plan(here = null, there = "b", synced = "a").single()
 
         assertEquals(
-            MirrorAction.Conflict(path, MirrorAction.Conflict.Kind.DELETED_HERE_CHANGED_THERE),
+            MirrorAction.Conflict(path, Kind.DELETED_HERE_CHANGED_THERE),
             action,
         )
         assertTrue(
@@ -97,7 +98,7 @@ class MirrorPlanTest {
     @Test
     fun `changed here but gone there is a conflict, not a silent re-upload`() {
         assertEquals(
-            MirrorAction.Conflict(path, MirrorAction.Conflict.Kind.CHANGED_HERE_DELETED_THERE),
+            MirrorAction.Conflict(path, Kind.CHANGED_HERE_DELETED_THERE),
             plan(here = "b", there = null, synced = "a").single(),
         )
     }
@@ -109,7 +110,7 @@ class MirrorPlanTest {
         val action = plan(here = "a", there = null, synced = "a").single()
 
         assertEquals(
-            MirrorAction.Conflict(path, MirrorAction.Conflict.Kind.DELETED_THERE),
+            MirrorAction.Conflict(path, Kind.DELETED_THERE),
             action,
         )
         assertTrue(
@@ -196,5 +197,71 @@ class MirrorStateTest {
     @Test
     fun `an empty state reads as empty rather than failing`() {
         assertEquals(emptyMap(), state.read("never-mirrored"))
+    }
+
+    // --- choosing a side of a conflict ---
+
+
+    @Test fun `the folder deleted it and the folder's side is kept, so it is deleted here`() {
+        assertEquals(
+            MirrorResolution.DeleteHere,
+            MirrorPlan.resolve("h", null, "h", Kind.DELETED_THERE, MirrorChoice.KEEP_THEIRS),
+        )
+        assertEquals(
+            MirrorResolution.DeleteHere,
+            MirrorPlan.resolve("h2", null, "h", Kind.CHANGED_HERE_DELETED_THERE, MirrorChoice.KEEP_THEIRS),
+        )
+    }
+
+    @Test fun `the folder deleted it and this device's side is kept, so it is put back`() {
+        assertEquals(
+            MirrorResolution.PushOut,
+            MirrorPlan.resolve("h", null, "h", Kind.DELETED_THERE, MirrorChoice.KEEP_MINE),
+        )
+    }
+
+    @Test fun `this device deleted it and this device's side is kept, so the folder's copy goes`() {
+        assertEquals(
+            MirrorResolution.DeleteThere,
+            MirrorPlan.resolve(null, "t2", "t", Kind.DELETED_HERE_CHANGED_THERE, MirrorChoice.KEEP_MINE),
+        )
+        assertEquals(
+            MirrorResolution.PullIn,
+            MirrorPlan.resolve(null, "t2", "t", Kind.DELETED_HERE_CHANGED_THERE, MirrorChoice.KEEP_THEIRS),
+        )
+    }
+
+    @Test fun `a conflict that changed since it was shown is stale and decides nothing`() {
+        // Shown as "deleted there, unchanged here"; the file here has been edited since.
+        assertEquals(
+            MirrorResolution.Stale,
+            MirrorPlan.resolve("edited", null, "h", Kind.DELETED_THERE, MirrorChoice.KEEP_THEIRS),
+        )
+        // The folder's file came back after it was deleted: nothing is left to delete.
+        assertEquals(
+            MirrorResolution.AlreadyAgreed,
+            MirrorPlan.resolve("h", "h", "h", Kind.DELETED_THERE, MirrorChoice.KEEP_THEIRS),
+        )
+        assertEquals(
+            MirrorResolution.AlreadyAgreed,
+            MirrorPlan.resolve(null, null, "h", Kind.DELETED_THERE, MirrorChoice.KEEP_THEIRS),
+        )
+    }
+
+    // --- the record kept between passes ---
+
+    @Test fun `a file gone from both sides has no record left`() {
+        val record = MirrorPlan.agreed(
+            local = mapOf("kept" to "a"),
+            external = mapOf("kept" to "a"),
+            lastSynced = mapOf("kept" to "a", "gone" to "g"),
+        )
+        assertEquals(mapOf("kept" to "a"), record)
+    }
+
+    @Test fun `with no stale record, a file of the same content arriving later is new and not a delete`() {
+        val record = MirrorPlan.agreed(emptyMap(), emptyMap(), mapOf("gone" to "g"))
+        val plan = MirrorPlan.plan(local = emptyMap(), external = mapOf("gone" to "g"), lastSynced = record)
+        assertEquals(listOf<MirrorAction>(MirrorAction.PullIn("gone")), plan.actions)
     }
 }

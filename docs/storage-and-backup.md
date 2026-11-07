@@ -156,6 +156,18 @@ Conflict semantics: the rule is **never silently pick a winner**:
 | ❌ | ✅ | Offer to pull in, showing a diff |
 | ✅ | ✅ | **Conflict**: both versions preserved (`<file>.conflict-<timestamp>`), a conflict card appears, user chooses per file with a diff view. Nothing is overwritten until they choose. |
 
+A file deleted on one side is never deleted on the other without a decision, and each choice is
+checked against the files as they are when it is made (if they changed again since the card was
+shown, nothing is done):
+
+| State | Keep the folder's | Keep this device's |
+|---|---|---|
+| Deleted in the folder, unchanged here, or changed here | The file is deleted here **through the write protocol**: snapshotted, re-parsed, and Undo puts it back. The main ledger file is never deleted, and deleting a file the ledger includes is rolled back because the re-parse finds the broken `include`. | The file is copied back out to the folder. |
+| Deleted here, changed in the folder | The folder's file is brought in. | The folder's copy is deleted. The `<file>.conflict-<timestamp>` copy made when the conflict was found stays here. |
+
+A sync record for a file that is gone from both sides is dropped, so a file of the same content that
+arrives later is treated as new and is not removed as if it had been deleted.
+
 External change detection uses `DocumentFile` last-modified plus content hash: modified
 time alone is unreliable across providers. Mirroring is skipped while a write transaction
 is open. Mirror state (per-file hash of the last known-synced version) lives in the cache
