@@ -91,8 +91,8 @@ fun EntryDetailScreen(
                 Text(
                     entry.flag?.let { flag ->
                         when (markForFlag(flag)) {
-                            LedgerMark.PENDING -> "Pending, flagged for another look"
-                            LedgerMark.FLAGGED -> "Flagged $flag"
+                            LedgerMark.PENDING -> "Pending"
+                            LedgerMark.FLAGGED -> "Other flag $flag"
                             else -> "Cleared"
                         }
                     } ?: "No flag",

@@ -158,7 +158,7 @@ your records out is not a paid feature.
 <tr>
 <td align="center">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/journal-dark.webp"><img src="docs/assets/screenshots/journal-light.webp" width="240" alt="The Journal: a search field, Errors, Pending and Flagged filters, and entries newest first with their postings. One entry is marked pending, one says Has a document."></picture><br>
-<sub><b>Journal</b>: search, and filters for errors, pending and flagged entries.</sub>
+<sub><b>Journal</b>: search, and filters for errors, pending entries and other flags.</sub>
 </td>
 <td align="center">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/reports-dark.webp"><img src="docs/assets/screenshots/reports-light.webp" width="240" alt="Reports: Fava's income statement inside the app, with time, account and filter fields, chart options and a monthly stacked bar chart."></picture><br>

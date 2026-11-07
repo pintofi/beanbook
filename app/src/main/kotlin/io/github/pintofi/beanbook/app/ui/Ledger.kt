@@ -158,17 +158,17 @@ enum class LedgerMark { CLEARED, PENDING, FLAGGED, ATTENTION }
  */
 const val NO_DESCRIPTION = "(no description)"
 
-/** The mark for an entry's flag: `*` cleared, `!` pending, any other character flagged. */
+/** The mark for an entry's flag: `*` cleared, `!` pending, any other character an other flag. */
 fun markForFlag(flag: String?): LedgerMark = when (flag) {
     "!" -> LedgerMark.PENDING
     null, "", "*", "txn" -> LedgerMark.CLEARED
     else -> LedgerMark.FLAGGED
 }
 
-/** What an entry's flag means, in words: "Cleared", "Pending", or "Flagged P". */
+/** What an entry's flag means, in words: "Cleared", "Pending", or "Other flag P". */
 fun describeFlag(flag: String?): String = when (markForFlag(flag)) {
     LedgerMark.PENDING -> "Pending"
-    LedgerMark.FLAGGED -> "Flagged $flag"
+    LedgerMark.FLAGGED -> "Other flag $flag"
     else -> "Cleared"
 }
 
@@ -191,7 +191,7 @@ fun StampMark(
     val described = when (mark) {
         LedgerMark.CLEARED -> "Cleared"
         LedgerMark.PENDING -> "Pending"
-        LedgerMark.FLAGGED -> if (flag.isNullOrBlank()) "Flagged" else "Flagged $flag"
+        LedgerMark.FLAGGED -> if (flag.isNullOrBlank()) "Other flag" else "Other flag $flag"
         LedgerMark.ATTENTION -> "Needs attention"
     }
     Canvas(

@@ -532,7 +532,7 @@ fun QuickAddScreen(
                         .semantics {
                             contentDescription = when (mark) {
                                 LedgerMark.PENDING -> "Pending transaction. Tap to mark cleared"
-                                LedgerMark.FLAGGED -> "Flagged $flag. Tap to mark pending instead"
+                                LedgerMark.FLAGGED -> "Other flag $flag. Tap to mark pending instead"
                                 else -> "Cleared transaction. Tap to mark pending"
                             }
                         },

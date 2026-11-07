@@ -18,25 +18,24 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 
+/** What the Journal is narrowed to. One at a time: errors, pending, or entries with some other flag. */
+internal enum class JournalFilter { ERRORS, PENDING, OTHER_FLAGS }
+
 /**
- * The Journal's three filters: errors, pending, flagged.
+ * The Journal's filter: show everything, or only entries with errors, only pending ones (`!`), or
+ * only those with another flag (`P`, `S`, `T` and the like).
  *
- * Chips, not a connected choice: these combine -- pending *and* flagged is a real question --
- * and chips are what Material uses for filters that combine. What Expressive changes here is
- * the mark: a chosen filter carries a check as well as its tint, so "on" is said in shape and
- * not in colour alone. The row scrolls sideways rather than wrapping, so at 200% text every
- * chip stays whole and reachable.
+ * One choice, as chips that act like radio buttons: choosing one replaces the last, and choosing
+ * the chosen one shows every entry again. A chosen filter carries a check as well as its tint, so
+ * "on" is said in shape and not in colour alone. The row scrolls sideways rather than wrapping, so
+ * at 200% text every chip stays whole and reachable.
  *
  * The descriptions say the state and what a tap will do.
  */
 @Composable
 internal fun JournalFilterChips(
-    onlyErrors: Boolean,
-    onErrors: (Boolean) -> Unit,
-    onlyPending: Boolean,
-    onPending: (Boolean) -> Unit,
-    onlyFlagged: Boolean,
-    onFlagged: (Boolean) -> Unit,
+    chosen: JournalFilter?,
+    onChoose: (JournalFilter?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -45,24 +44,24 @@ internal fun JournalFilterChips(
     ) {
         JournalFilterChip(
             label = "Errors",
-            on = onlyErrors,
-            onChange = onErrors,
+            on = chosen == JournalFilter.ERRORS,
+            onChange = { onChoose(if (it) JournalFilter.ERRORS else null) },
             describeOn = "Showing only entries with errors. Tap to show every entry",
             describeOff = "Show only entries with errors",
         )
         JournalFilterChip(
             label = "Pending",
-            on = onlyPending,
-            onChange = onPending,
-            describeOn = "Showing pending entries. Tap to stop filtering by pending",
-            describeOff = "Show only pending entries, the ones marked with an exclamation mark",
+            on = chosen == JournalFilter.PENDING,
+            onChange = { onChoose(if (it) JournalFilter.PENDING else null) },
+            describeOn = "Showing pending entries. Tap to show every entry",
+            describeOff = "Show only pending entries, the ones with the flag !",
         )
         JournalFilterChip(
-            label = "Flagged",
-            on = onlyFlagged,
-            onChange = onFlagged,
-            describeOn = "Showing flagged entries. Tap to stop filtering by flag",
-            describeOff = "Show only entries with a flag other than the plain star or the pending mark",
+            label = "Other flags",
+            on = chosen == JournalFilter.OTHER_FLAGS,
+            onChange = { onChoose(if (it) JournalFilter.OTHER_FLAGS else null) },
+            describeOn = "Showing entries with another flag. Tap to show every entry",
+            describeOff = "Show only entries with a flag other than * and !",
         )
     }
 }

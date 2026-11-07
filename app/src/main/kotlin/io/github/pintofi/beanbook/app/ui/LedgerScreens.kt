@@ -264,21 +264,18 @@ fun JournalScreen(
     val basis by remember(context) { ValuationPreference(context) }.flow.collectAsState()
     val book = remember(snapshot.rates) { PriceBook(snapshot.rates) }
     val operating = snapshot.operatingCurrencies.firstOrNull()
-    var onlyErrors by rememberSaveable { mutableStateOf(false) }
-    // Pending is `!` -- seen, not settled -- and Flagged is any other mark but the plain `*`.
-    // Together they are one choice of "which marks", so they add up; errors narrow further.
-    var onlyPending by rememberSaveable { mutableStateOf(false) }
-    var onlyFlagged by rememberSaveable { mutableStateOf(false) }
-    // The chips are always on screen; a switch that is on with nothing to match simply shows
+    // One choice: errors, pending (`!`), or any other flag (anything but `*` and `!`).
+    var filter by rememberSaveable { mutableStateOf<JournalFilter?>(null) }
+    // The chips are always on screen; a filter that is on with nothing to match simply shows
     // an empty list and says why, rather than hiding.
-    val found = remember(snapshot.journal, faults, query, onlyErrors, onlyPending, onlyFlagged) {
+    val found = remember(snapshot.journal, faults, query, filter) {
         snapshot.journal
-            .let { all -> if (onlyErrors) all.filter { JournalErrors.keyOf(it) in faults } else all }
             .let { all ->
-                if (!onlyPending && !onlyFlagged) {
-                    all
-                } else {
-                    all.filter { it.hasMark(onlyPending, onlyFlagged) }
+                when (filter) {
+                    JournalFilter.ERRORS -> all.filter { JournalErrors.keyOf(it) in faults }
+                    JournalFilter.PENDING -> all.filter { markForFlag(it.flag) == LedgerMark.PENDING }
+                    JournalFilter.OTHER_FLAGS -> all.filter { markForFlag(it.flag) == LedgerMark.FLAGGED }
+                    null -> all
                 }
             }
             .let { rows -> if (query.isBlank()) rows else rows.filter { it.matches(query) } }
@@ -399,14 +396,7 @@ fun JournalScreen(
         item(key = "filters") {
             val count = faults.values.sumOf { it.size }
             Column(modifier = Modifier.padding(horizontal = Measure.gutter, vertical = Measure.tight)) {
-                JournalFilterChips(
-                    onlyErrors = onlyErrors,
-                    onErrors = { onlyErrors = it },
-                    onlyPending = onlyPending,
-                    onPending = { onlyPending = it },
-                    onlyFlagged = onlyFlagged,
-                    onFlagged = { onlyFlagged = it },
-                )
+                JournalFilterChips(chosen = filter, onChoose = { filter = it })
                 val note = when {
                     snapshot.errors.isEmpty() -> null
                     count == 0 -> "No error is on a single entry; they are listed above."
@@ -423,7 +413,7 @@ fun JournalScreen(
                 }
             }
         }
-        val filtering = onlyErrors || onlyPending || onlyFlagged
+        val filtering = filter != null
         if (found.isEmpty() && filtering && query.isBlank()) {
             item {
                 EmptyState(
@@ -858,10 +848,4 @@ internal fun DisclosureChevron(
         tint = tint,
         modifier = modifier.graphicsLayer { rotationZ = turn },
     )
-}
-
-/** Whether the entry carries a mark the Journal's flag filters ask for. */
-private fun JournalEntry.hasMark(pending: Boolean, flagged: Boolean): Boolean {
-    val mark = flag ?: return false
-    return (pending && mark == "!") || (flagged && mark != "*" && mark != "!")
 }
