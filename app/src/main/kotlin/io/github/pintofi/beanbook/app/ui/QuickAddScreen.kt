@@ -505,7 +505,7 @@ fun QuickAddScreen(
         // been typed. Applying one fills the form and stops there — the entry is still
         // previewed and validated like any other (docs/ux.md 4).
         if (templates.isNotEmpty()) {
-            TemplatePicker(templates, onApply = ::applyTemplate, onDelete = onDeleteTemplate)
+            TemplatePicker(templates, onApply = ::applyTemplate, onDelete = onDeleteTemplate, onSave = onSaveTemplate)
             FormGap()
         }
 

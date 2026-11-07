@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On the Accounts page, the details of an account now include the currencies it allows: add, change or clear them. Only the currency list on its open line is rewritten, in the same single save as any other detail you changed. ([#315])
 
 ### Changed
+- On the entry form, templates are one Templates button that opens the list, whether there is one template or many, and each can be renamed or deleted there. ([#337])
 - The accounts the entry form suggests follow Fava's: the ones you post to most and most recently come first (a posting from a year ago counts half), the ones used with the payee you typed come ahead of those, typed letters match in order and not only as one piece, and an account that has been closed is still offered, and accepted, for an entry dated up to the day it closed. ([#313])
 - Opening or closing an account is always written to files/accounts.beancount. If your ledger does not read that file yet (one brought in from elsewhere, with its accounts in the main file), Beanbook shows the one include line it needs and adds it only after you agree, then finishes the save. Accounts already opened in your ledger stay where they are. ([#318])
 - On the entry form, templates saved with Save as template are listed in alphabetical order. Up to three are shown as buttons that wrap, so none is cut off at large text; with more, one Templates button opens a list showing who is paid and the first account of each, with a search box once there are more than eight, and a way to delete a template there. Before, every template was in one row that had to be scrolled sideways. ([#317])
@@ -313,3 +314,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#326]: https://github.com/pintofi/beanbook/issues/326
 [#328]: https://github.com/pintofi/beanbook/issues/328
 [#332]: https://github.com/pintofi/beanbook/issues/332
+[#337]: https://github.com/pintofi/beanbook/issues/337
