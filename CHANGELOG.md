@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - The Journal's Errors, Pending and Other flags filters are one choice: choosing one replaces the last, and choosing it again shows every entry. Flags are named as Beancount does: `*` is Cleared, `!` is Pending, and any other character is an Other flag, replacing "Flagged" across the app. ([#350])
+- A Beanbook backup (.bcaz) can be restored from the first-run setup and from the Projects page: it comes back as a new project, and an encrypted one asks for its passphrase. Import zip no longer reads a backup as a ledger. ([#342], [#354])
 - On the entry form, templates are one Templates button that opens the list, whether there is one template or many, and each can be renamed or deleted there. ([#337])
 - Work in progress, such as Saving, Writing or Unlinking, shows as a banner with a larger loading indicator and a moving bar, instead of a small spinner beside small text. ([#339])
 - The plugin catalogue in the app no longer lists the two entries that cannot work on a phone (autobean.truelayer and fava-classy-portfolio). The catalogue file and docs/plugin-compatibility.md still record them. ([#340])
@@ -329,3 +330,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#342]: https://github.com/pintofi/beanbook/issues/342
 [#350]: https://github.com/pintofi/beanbook/issues/350
 [#352]: https://github.com/pintofi/beanbook/issues/352
+[#354]: https://github.com/pintofi/beanbook/issues/354

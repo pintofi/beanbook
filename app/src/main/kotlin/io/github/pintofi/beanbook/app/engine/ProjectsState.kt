@@ -54,6 +54,16 @@ class ProjectsState(
     /** Only one import at a time: a second one started on top of the first picked the same id. */
     private val importing = java.util.concurrent.atomic.AtomicBoolean(false)
 
+    private val restores = io.github.pintofi.beanbook.core.data.RestorePlan(workspace)
+    private val derivation = io.github.pintofi.beanbook.app.backup.Argon2idKeyDerivation()
+
+    /** A backup chosen to be restored as a new project, kept while its passphrase is asked for. */
+    private var heldBackup: File? = null
+    private val _backupLocked = MutableStateFlow(false)
+
+    /** True while a chosen backup is encrypted and waiting for its passphrase. */
+    val backupLocked: StateFlow<Boolean> = _backupLocked.asStateFlow()
+
     private val _trash = MutableStateFlow<List<TrashedProject>>(emptyList())
     val trash: StateFlow<List<TrashedProject>> = _trash.asStateFlow()
 
@@ -115,15 +125,91 @@ class ProjectsState(
     fun importArchive(resolver: ContentResolver, archive: Uri, cacheDir: File, onOpened: (String) -> Unit) {
         val local = File(cacheDir, "import-${System.currentTimeMillis()}.zip")
         // Deleted when the import ends, whatever happens: it is a whole copy of the ledger.
+        if (!copyChosen(resolver, archive, local)) {
+            local.delete()
+            _message.value = "Could not read that: could not read the chosen file"
+            return
+        }
+        // A backup is restored, not imported: its files sit under project/ beside a manifest.
+        if (io.github.pintofi.beanbook.core.data.looksLikeBackup(local)) {
+            heldBackup = local
+            restoreHeldBackup(null, onOpened)
+            return
+        }
         import(onOpened, cleanup = { local.delete() }) {
-            resolver.openInputStream(archive)?.use { input ->
-                local.outputStream().use { input.copyTo(it) }
-            } ?: error("could not read the chosen file")
-            // A backup is restored, not imported: its files sit under project/ beside a manifest.
-            check(!io.github.pintofi.beanbook.core.data.looksLikeBackup(local)) {
-                "this is a Beanbook backup (.bcaz), not a ledger zip. Use Restore on the Backup page"
-            }
             ZipImportSource(local) to (archive.lastPathSegment ?: "imported")
+        }
+    }
+
+    private fun copyChosen(resolver: ContentResolver, from: Uri, to: File): Boolean = runCatching {
+        resolver.openInputStream(from)?.use { input -> to.outputStream().use { input.copyTo(it) } } != null
+    }.getOrDefault(false)
+
+    /** Retries the held backup with the passphrase just typed. */
+    fun unlockBackup(passphrase: CharArray, onOpened: (String) -> Unit) = restoreHeldBackup(passphrase, onOpened)
+
+    /** Gives up on the held backup and removes the copy of it. */
+    fun cancelBackup() {
+        heldBackup?.delete()
+        heldBackup = null
+        _backupLocked.value = false
+        _message.value = "Nothing was restored."
+    }
+
+    /** Restores the held backup as a project of its own, asking for a passphrase when it needs one. */
+    private fun restoreHeldBackup(passphrase: CharArray?, onOpened: (String) -> Unit) {
+        val archive = heldBackup ?: return
+        val firstRun = activeId.value == null || onboarding.value
+        if (!importing.compareAndSet(false, true)) {
+            _message.value = "Still reading the last one. Wait for it to finish."
+            return
+        }
+        val own = passphrase?.copyOf()
+        scope.launch {
+            try {
+                _message.value = "Restoring the backup…"
+                val outcome = withContext(Dispatchers.IO) {
+                    runCatching { restores.restoreAsNew(archive, own, if (own == null) null else derivation) }
+                }
+                own?.fill('\u0000')
+                outcome.fold(
+                    onSuccess = { result ->
+                        when (result) {
+                            is io.github.pintofi.beanbook.core.data.RestoredNew.Restored -> {
+                                heldBackup = null
+                                _backupLocked.value = false
+                                withContext(Dispatchers.IO) { archive.delete() }
+                                refresh()
+                                if (!firstRun) open(result.projectId)
+                                onOpened(result.projectId)
+                                _message.value = "Restored ${result.manifest.files.size} file(s) as " +
+                                    "${result.manifest.projectTitle}."
+                            }
+                            is io.github.pintofi.beanbook.core.data.RestoredNew.Refused -> {
+                                val asks = result.problems.any {
+                                    it is io.github.pintofi.beanbook.core.data.ArchiveProblem.PassphraseNeeded ||
+                                        it is io.github.pintofi.beanbook.core.data.ArchiveProblem.WrongPassphrase
+                                }
+                                _backupLocked.value = asks
+                                if (!asks) {
+                                    heldBackup = null
+                                    withContext(Dispatchers.IO) { archive.delete() }
+                                }
+                                _message.value = result.problems.first().describe()
+                            }
+                        }
+                    },
+                    onFailure = { error ->
+                        Log.w(TAG, "restore as a new project failed", error)
+                        heldBackup = null
+                        _backupLocked.value = false
+                        withContext(Dispatchers.IO) { archive.delete() }
+                        _message.value = "Could not restore that: ${error.message ?: "unknown error"}"
+                    },
+                )
+            } finally {
+                importing.set(false)
+            }
         }
     }
 

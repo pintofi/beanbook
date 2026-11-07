@@ -181,8 +181,8 @@ fun ProjectPickerScreen(
                 }
                 item {
                     FolioRow(
-                        title = "Import a .zip",
-                        detail = "A project exported from Beanbook, or any archive of a ledger",
+                        title = "Import a .zip or backup",
+                        detail = "A Beanbook backup (.bcaz), an exported project, or any archive of a ledger",
                         icon = Icons.Outlined.FolderZip,
                         onClick = onOpenArchive,
                         opens = true,
