@@ -233,7 +233,7 @@
         overview: "Every entry in the ledger, newest first, with the accounts and amounts it moves.",
         notes: [
           { x: 95, y: 18.2, label: "Search", text: "Find entries by date, payee, description or account." },
-          { x: 68, y: 27.1, label: "Errors, Pending, Flagged", text: "One tap narrows the list to entries with errors, pending entries, or flagged ones." },
+          { x: 68, y: 27.1, label: "Errors, Pending, Other flags", text: "Choose one to narrow the list to entries with errors, pending entries, or entries with another flag." },
           { x: 61.9, y: 33.9, label: "Open an entry", text: "Tap to see an entry and copy, edit or delete it. Hold to select several." },
           { x: 7, y: 50.8, via: 47, label: "Cleared or pending", text: "Two equal rules mean cleared; a half-drawn rule marks an entry flagged for another look." },
           { x: 55.6, y: 70.6, label: "Linked receipts", text: "An entry with a document says so, and its page opens the file." },
