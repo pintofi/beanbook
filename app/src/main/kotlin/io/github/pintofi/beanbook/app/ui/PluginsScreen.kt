@@ -554,6 +554,8 @@ private fun CatalogueRow(
     status: PluginStatus,
 ) {
     val installed = entry.id in catalogue.installed
+    val installedVersion = catalogue.installed[entry.id].orEmpty()
+    val updatable = installed && entry.updatesFrom(installedVersion)
     val working = catalogue.status
     FolioBody {
         Row(verticalAlignment = Alignment.Top) {
@@ -582,15 +584,43 @@ private fun CatalogueRow(
                     )
                 }
                 if (installed) PluginStatusLine(status)
+                if (updatable) {
+                    Text(
+                        "Update available: $installedVersion → ${entry.install?.version}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         }
+        val busy = (working as? io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Installing)?.id == entry.id
         when {
-            (working as? io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Installing)?.id == entry.id ->
-                StatusLine("Installing…")
-            installed -> OutlinedButton(
-                onClick = { catalogue.onRemove(entry.id) },
-                modifier = Modifier.semantics { contentDescription = "Remove ${entry.name}" },
-            ) { Text("Remove") }
+            busy -> StatusLine(if (updatable) "Updating…" else "Installing…")
+            installed -> androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Measure.snug),
+                verticalArrangement = Arrangement.spacedBy(Measure.snug),
+            ) {
+                if (updatable && catalogue.canInstall) {
+                    Button(
+                        onClick = { catalogue.onUpdate(entry.id) },
+                        enabled = working is io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Idle,
+                        modifier = Modifier.semantics { contentDescription = "Update ${entry.name}" },
+                    ) { Text("Update") }
+                }
+                catalogue.previous[entry.id]?.let { earlier ->
+                    OutlinedButton(
+                        onClick = { catalogue.onRollback(entry.id) },
+                        enabled = working is io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Idle,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Go back to $earlier of ${entry.name}"
+                        },
+                    ) { Text("Go back to $earlier") }
+                }
+                OutlinedButton(
+                    onClick = { catalogue.onRemove(entry.id) },
+                    modifier = Modifier.semantics { contentDescription = "Remove ${entry.name}" },
+                ) { Text("Remove") }
+            }
             catalogue.canInstall && entry.install != null && entry.status != "unsupported" -> Button(
                 onClick = { catalogue.onInstall(entry.id) },
                 enabled = working is io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Idle,

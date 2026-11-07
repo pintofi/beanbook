@@ -118,6 +118,99 @@ class CatalogueInstallerTest {
         assertTrue(File(root, "b").exists())
     }
 
+    private fun versioned(id: String, archive: ByteArray, version: String, paths: List<String>) =
+        entry(id, archive, paths).let { it.copy(install = it.install!!.copy(version = version)) }
+
+    @Test
+    fun `an update keeps the version it replaces, and rollback brings it back`() {
+        val v1 = zip("p/__init__.py" to "VERSION = 1"); val v2 = zip("p/__init__.py" to "VERSION = 2")
+        val one = versioned("p", v1, "v1", listOf("p")); val two = versioned("p", v2, "v2", listOf("p"))
+        installer.installCode(one, v1).getOrThrow(); installer.markInstalled(one)
+
+        installer.upgradeCode(two, v2).getOrThrow(); installer.markInstalled(two)
+
+        assertEquals("VERSION = 2", File(installer.siteFor("p"), "p/__init__.py").readText())
+        assertEquals(mapOf("p" to "v2"), installer.installed())
+        assertTrue(installer.hasPrevious("p"))
+        assertEquals("v1", installer.previousVersion("p"))
+
+        installer.rollback("p").getOrThrow()
+
+        assertEquals("VERSION = 1", File(installer.siteFor("p"), "p/__init__.py").readText())
+        assertEquals(mapOf("p" to "v1"), installer.installed())
+        assertFalse(installer.hasPrevious("p"), "the version that was rolled back is dropped")
+    }
+
+    @Test
+    fun `an update that fails the checks leaves the installed version exactly as it was`() {
+        val v1 = zip("p/__init__.py" to "VERSION = 1"); val bad = zip("p/__init__.py" to "evil")
+        val one = versioned("p", v1, "v1", listOf("p"))
+        installer.installCode(one, v1).getOrThrow(); installer.markInstalled(one)
+        // The catalogue pins v2's hash; what arrives is something else.
+        val two = versioned("p", zip("p/__init__.py" to "VERSION = 2"), "v2", listOf("p"))
+
+        val result = installer.upgradeCode(two, bad)
+
+        assertTrue(result.isFailure)
+        assertEquals("VERSION = 1", File(installer.siteFor("p"), "p/__init__.py").readText())
+        assertEquals(mapOf("p" to "v1"), installer.installed())
+        assertFalse(installer.hasPrevious("p"))
+        assertEquals(listOf("p"), root.list().orEmpty().toList())
+    }
+
+    @Test
+    fun `a second update replaces the version kept, so only one is held`() {
+        val v1 = zip("p/__init__.py" to "1"); val v2 = zip("p/__init__.py" to "2"); val v3 = zip("p/__init__.py" to "3")
+        val e1 = versioned("p", v1, "v1", listOf("p")); val e2 = versioned("p", v2, "v2", listOf("p"))
+        val e3 = versioned("p", v3, "v3", listOf("p"))
+        installer.installCode(e1, v1).getOrThrow(); installer.markInstalled(e1)
+        installer.upgradeCode(e2, v2).getOrThrow(); installer.markInstalled(e2)
+        installer.upgradeCode(e3, v3).getOrThrow(); installer.markInstalled(e3)
+
+        assertEquals("v2", installer.previousVersion("p"))
+    }
+
+    @Test
+    fun `the version kept is not installed, not on the path, and goes when the plugin is removed`() {
+        val v1 = zip("p/__init__.py" to "1"); val v2 = zip("p/__init__.py" to "2")
+        val e1 = versioned("p", v1, "v1", listOf("p")); val e2 = versioned("p", v2, "v2", listOf("p"))
+        installer.installCode(e1, v1).getOrThrow(); installer.markInstalled(e1)
+        installer.upgradeCode(e2, v2).getOrThrow(); installer.markInstalled(e2)
+
+        assertEquals(setOf("p"), installer.installed().keys, "the dot folder is not a plugin")
+        assertTrue(File(root, ".p-previous").isDirectory)
+
+        installer.remove("p")
+
+        assertEquals(emptyList<String>(), root.list().orEmpty().toList())
+    }
+
+    @Test
+    fun `rollback with nothing kept is refused and changes nothing`() {
+        val v1 = zip("p/__init__.py" to "1")
+        val e1 = versioned("p", v1, "v1", listOf("p"))
+        installer.installCode(e1, v1).getOrThrow(); installer.markInstalled(e1)
+
+        assertTrue(installer.rollback("p").isFailure)
+        assertEquals(mapOf("p" to "v1"), installer.installed())
+    }
+
+    @Test
+    fun `an update of a plugin that is not installed is refused`() {
+        val v2 = zip("p/__init__.py" to "2")
+        assertTrue(installer.upgradeCode(versioned("p", v2, "v2", listOf("p")), v2).isFailure)
+        assertEquals(emptyList<String>(), root.list().orEmpty().toList())
+    }
+
+    @Test
+    fun `an update is offered when the shipped version differs from the installed one`() {
+        val a = zip("p/__init__.py" to "")
+        val shipped = versioned("p", a, "v2", listOf("p"))
+        assertTrue(shipped.updatesFrom("v1"))
+        assertFalse(shipped.updatesFrom("v2"))
+        assertFalse(shipped.copy(install = null).updatesFrom("v1"))
+    }
+
     @Test
     fun `the shipped catalogue parses, and every entry it pins is installable in principle`() {
         val catalogue = PluginCatalogue.parse(File("../catalog/plugins.json").readText())

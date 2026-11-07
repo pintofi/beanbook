@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- A plugin installed from the catalogue (Expert edition) can be updated to the version the app carries, and the version it replaces is kept to go back to. The Plugins page says "Update available" with both versions, and an update that fails any check, or whose packages cannot be fetched, leaves the installed plugin as it was. Packages and plugin files you add yourself come next. ([#343])
+
 ## [1.0.4] - 2026-11-07
 
 ### Added
@@ -332,6 +335,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#340]: https://github.com/pintofi/beanbook/issues/340
 [#341]: https://github.com/pintofi/beanbook/issues/341
 [#342]: https://github.com/pintofi/beanbook/issues/342
+[#343]: https://github.com/pintofi/beanbook/issues/343
 [#350]: https://github.com/pintofi/beanbook/issues/350
 [#352]: https://github.com/pintofi/beanbook/issues/352
 [#354]: https://github.com/pintofi/beanbook/issues/354
