@@ -64,7 +64,7 @@ espresso = "3.7.0"
 # UI Automator, to drive the system document picker in one test. Test-only and
 # Apache-2.0, so it raises no GPL-2.0-only question for the same reason espresso and
 # compose-ui-test do not: it is never linked into a shipped APK.
-uiautomator = "2.4.0"
+uiautomator = "2.4.1"
 
 
 # OpenCV, for document edge detection and perspective correction.
