@@ -97,7 +97,10 @@ class ScriptRunnerTest {
 
     @Test fun aSecondScriptIsRefusedWhileOneIsRunning() = runBlocking {
         val state = runner()
-        state.runFrom(script("slow.py", "import time\ntime.sleep(4)\n"), "slow.py", 20.0)
+        // Long enough that it is still running when the second one is offered, however slow the
+        // emulator is to show that it has started (on the API 29 weekly job a 4 second script had
+        // finished by then, the second one simply ran, and no refusal ever came).
+        state.runFrom(script("slow.py", "import time\ntime.sleep(15)\n"), "slow.py", 40.0)
         withTimeout(30_000) { state.running.first { it != null } }
 
         state.runFrom(script("hello.py", "print('hi')\n"), "hello.py")
