@@ -76,6 +76,10 @@ The `play` edition removes this surface entirely.
 - `Host` must name the bound address (DNS rebinding). The token is an `HttpOnly`,
   `SameSite=Strict` cookie, so another site cannot make the browser send it.
 - Server stopped when not needed; never kept alive for widgets.
+- A save in Fava's file editor (`PUT /api/source`) is not written by the engine. It is handed
+  to the app, which commits it through the write protocol (lock, snapshot, journal, re-parse,
+  Undo) with the file's byte hash as the expected state, so a file changed since is refused.
+  Nothing new is reachable from the network: Share on Wi-Fi still answers `405` to a write.
 - No `INTERNET`-independent assumption: local mode functions with the network off, which
   is also the strongest privacy demonstration we can offer.
 

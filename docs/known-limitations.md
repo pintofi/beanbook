@@ -99,9 +99,6 @@ worked. A failure leaves the previous valid ledger recoverable.
 
 **Small differences and gaps that are known**, each with an issue you can follow:
 
-- Saving in Fava's own editor (Reports) does not go through the app's write protocol
-  ([#17](https://github.com/pintofi/beanbook/issues/17)).
-
 ---
 
 ## Plugins and Fava extensions

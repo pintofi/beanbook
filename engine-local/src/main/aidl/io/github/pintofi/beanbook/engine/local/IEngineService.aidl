@@ -1,5 +1,7 @@
 package io.github.pintofi.beanbook.engine.local;
 
+import io.github.pintofi.beanbook.engine.local.IFavaWriteSink;
+
 /**
  * The arm's-length interface to the Beancount engine, which runs in its own process
  *.
@@ -20,6 +22,12 @@ interface IEngineService {
      *  .
      */
     String startEngine(String ledgerPath, String token, String pluginDirs);
+
+    /**
+     * Where the file editor's save goes. Set again after every engine start: a restarted process
+     * has no sink, and without one an editor save is refused rather than written here.
+     */
+    void setWriteSink(IFavaWriteSink sink);
 
     /** Stops the server and joins its non-daemon threads. Stops sharing too. */
     String stopEngine();

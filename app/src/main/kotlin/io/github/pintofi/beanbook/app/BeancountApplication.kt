@@ -333,6 +333,8 @@ class BeancountApplication : Application() {
         filesDir.resolve("entitlement").deleteRecursively()
         filesDir.resolve("state/welcomed").delete()
         ProcessLifecycleOwner.get().lifecycle.addObserver(engineManager)
+        // Fava's file editor saves through the write protocol, not by writing the file itself.
+        engine.editorSaves = { file, content, expectedSha -> saveFromEditor(file, content, expectedSha) }
     }
 
     override fun onTerminate() {
