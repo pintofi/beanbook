@@ -87,7 +87,7 @@ Kotlin unit tests, which is what CI runs:
 
 ```bash
 ./gradlew :core-domain:test :core-data:test :core-engine:test \
-          :core-entitlement:test :engine-remote:test
+          :engine-remote:test :app:testPlayDebugUnitTest
 ```
 
 Static analysis. This gates CI and is attached to no other task, so it is easy to forget until
@@ -107,6 +107,14 @@ it names; `python3 tools/badges.py` redraws the badges (both need `pip install f
 ```bash
 python3 tools/check-versions.py --require-badges
 ```
+
+The numbers in the README's "Testing and reliability" section are counted from the source by
+`tools/check-test-counts.py`: test functions, Python test methods, fixture cases, corpus ledgers,
+screenshots and verify jobs. CI fails when one is out of date. After adding or removing tests, run
+`python3 tools/check-test-counts.py --write` and commit the README with your change. A test counts
+if it is a `@Test` function or a `test*` method in a `unittest.TestCase`; commented-out and
+`@Ignore`d ones do not. A new test source set must be added to the table at the top of the script,
+which also says where CI runs it.
 
 The Play edition's policy boundaries, which is a build gate rather than a lint:
 
