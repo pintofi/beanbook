@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - A plugin installed from the catalogue (Expert edition) can be updated to the version the app carries, and the version it replaces is kept to go back to. The Plugins page says "Update available" with both versions, and an update that fails any check, or whose packages cannot be fetched, leaves the installed plugin as it was. Packages and plugin files you add yourself come next. ([#343])
 
+### Changed
+- Saving an entry shows one working animation, the banner above the Save button, and the button itself no longer has a second spinner. ([#382])
+
 ### Fixed
 - Reports no longer shows "Web page not available" (ERR_INVALID_RESPONSE) after the engine has restarted: the Reports page followed the engine's old port and refused the new one until the app was closed. ([#381])
 - A script offered while another is starting is refused with "A script is already running." and the message stays, where it could be cleared in the same instant it was shown. ([#379])
@@ -348,3 +351,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#361]: https://github.com/pintofi/beanbook/issues/361
 [#379]: https://github.com/pintofi/beanbook/issues/379
 [#381]: https://github.com/pintofi/beanbook/issues/381
+[#382]: https://github.com/pintofi/beanbook/issues/382
