@@ -192,11 +192,12 @@ class ScriptRunnerState(
         }
         val id = UUID.randomUUID().toString()
         handle = id
-        _running.value = name
+        // The reset comes first and "running" last. A second script offered the moment this one shows
+        // as running is refused with a message, and a reset still to come would wipe that message.
         _outcome.value = null
         _message.value = null
-
         _live.value = ""
+        _running.value = name
         scope.launch {
             val started = System.currentTimeMillis()
             // The engine writes what the script prints to this file as it goes; reading
