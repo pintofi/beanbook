@@ -38,7 +38,13 @@ private const val TAG = "FavaWebView"
  * than an anonymous object: it has to be testable.
  */
 class AllowlistWebViewClient(
-    private val allowlist: OriginAllowlist,
+    /**
+     * What may be loaded. A variable because the retained Reports page outlives the engine process
+     * it was opened on: a restarted engine listens on a new port, and a list fixed when the page was
+     * first built blocked the new address, so Reports showed ERR_INVALID_RESPONSE until the app was
+     * closed. [FavaWebView] sets it to the current origin whenever it is composed.
+     */
+    @Volatile var allowlist: OriginAllowlist,
     private val onBlocked: (String) -> Unit = {},
     private val onPageLoaded: (String) -> Unit = {},
     private val onExternalLink: (Uri) -> Unit = {},
@@ -492,6 +498,8 @@ fun FavaWebView(
             // A retained page loads only when the app asks for a different address, never
             // because the person moved to another report inside it.
             val reload = if (retained != null) retained.requested != url else view.url != url
+            // Before the load, so the first request to a new origin is already allowed.
+            (view.webViewClient as? AllowlistWebViewClient)?.allowlist = allowlist
             if (reload) {
                 retained?.requested = url
                 retained?.loaded = false

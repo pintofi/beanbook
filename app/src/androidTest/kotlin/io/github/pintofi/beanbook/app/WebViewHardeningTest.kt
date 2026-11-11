@@ -108,6 +108,35 @@ class WebViewHardeningTest {
     }
 
     @Test
+    fun a_restarted_engine_on_a_new_port_is_allowed_and_the_old_port_is_not() {
+        // The engine runs in its own process, and a restart gives it a new port. The Reports page
+        // outlives that process, so its client has to follow: with the list fixed at the old port
+        // every request to the new one was refused and Reports showed ERR_INVALID_RESPONSE.
+        val client = AllowlistWebViewClient(allowlist = OriginAllowlist(setOf(allowedOrigin)))
+        val restarted = "http://127.0.0.1:45998"
+
+        onMainThread {
+            val webView = WebView(instrumentation.targetContext)
+            assertNotNull(
+                "the new port is not on the list yet",
+                client.shouldInterceptRequest(webView, fakeRequest("$restarted/hmw/", mainFrame = true)),
+            )
+
+            client.allowlist = OriginAllowlist(setOf(restarted))
+
+            assertNull(
+                "the new port must load",
+                client.shouldInterceptRequest(webView, fakeRequest("$restarted/hmw/", mainFrame = true)),
+            )
+            assertNotNull(
+                "the old port must no longer load",
+                client.shouldInterceptRequest(webView, fakeRequest("$allowedOrigin/hmw/", mainFrame = true)),
+            )
+            webView.destroy()
+        }
+    }
+
+    @Test
     fun off_origin_subresources_are_refused_not_passed_through() {
         val client = AllowlistWebViewClient(allowlist = OriginAllowlist(setOf(allowedOrigin)))
 
