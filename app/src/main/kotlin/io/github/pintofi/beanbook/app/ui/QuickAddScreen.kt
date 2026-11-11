@@ -843,13 +843,8 @@ fun QuickAddScreen(
         ) {
             val inFlight = saving
             if (inFlight != null) {
-                // Working, and saying so with more than a word: a save that files pages
-                // and re-reads a large ledger takes seconds.
-                LedgerLoadingIndicator(
-                    modifier = Modifier.padding(end = Measure.snug),
-                    size = 20.dp,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
+                // Only the words. The working banner above the button already shows the save as it
+                // goes, and a second animation on the button said the same thing twice.
                 Text(inFlight.label)
             } else {
                 val what = if (editing != null) "Save changes" else "Save entry"
