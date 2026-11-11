@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - A plugin installed from the catalogue (Expert edition) can be updated to the version the app carries, and the version it replaces is kept to go back to. The Plugins page says "Update available" with both versions, and an update that fails any check, or whose packages cannot be fetched, leaves the installed plugin as it was. Packages and plugin files you add yourself come next. ([#343])
 
+### Fixed
+- A script offered while another is starting is refused with "A script is already running." and the message stays, where it could be cleared in the same instant it was shown. ([#379])
+
 ## [1.0.4] - 2026-11-07
 
 ### Added
@@ -342,3 +345,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#357]: https://github.com/pintofi/beanbook/issues/357
 [#358]: https://github.com/pintofi/beanbook/issues/358
 [#361]: https://github.com/pintofi/beanbook/issues/361
+[#379]: https://github.com/pintofi/beanbook/issues/379
