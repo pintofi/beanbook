@@ -40,6 +40,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -198,6 +200,13 @@ fun QuickAddScreen(
      * Null where it cannot be done (a remote server), and the buttons are then not shown.
      */
     onOpenAccount: ((io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit)? = null,
+    /**
+     * An entry of the ledger as its own text writes it, for Use last: an amount left out stays left
+     * out, and one written stays written. Null where there is no file to read (a remote server), and
+     * Use last then works from the parsed entry.
+     */
+    entryAsWritten: (suspend (io.github.pintofi.beanbook.core.domain.JournalEntry) ->
+        io.github.pintofi.beanbook.core.domain.TransactionDraft?)? = null,
 ) {
     // Today, and intentionally so: almost every entry is for the day it is typed, and the
     // calendar is one tap away for the rest.
@@ -530,42 +539,79 @@ fun QuickAddScreen(
 
             // "Use what you used last time" — offered, never applied silently, because reusing
             // an old amount without being asked is a way to record the wrong number.
+            val reuseScope = rememberCoroutineScope()
+            // Fills the form from an entry that was parsed. Elided postings read as the amounts
+            // Beancount worked out, so only the first keeps its amount; used when the entry's own text
+            // cannot be read.
+            fun reuseFromEntry(last: io.github.pintofi.beanbook.core.domain.JournalEntry) {
+                narration = last.narration.orEmpty()
+                // Grow to fit: reusing a three-posting entry into two rows would drop
+                // a posting silently, which is exactly the quiet loss the app must not do.
+                while (rows.size < last.postings.size) rows.add(PostingRow())
+                // And shrink back: rows left over from a longer entry would sit under
+                // the reused ones as blanks the person has to notice and remove.
+                while (rows.size > maxOf(2, last.postings.size) &&
+                    rows.last().account.isBlank() && rows.last().amount.isBlank()
+                ) {
+                    rows.removeAt(rows.lastIndex)
+                }
+                last.postings.forEachIndexed { index, posting ->
+                    val row = rows[index]
+                    row.account = posting.account
+                    // With its sign. The absolute value was taken here, so a
+                    // refund or a transfer out came back as money in, and the preview
+                    // wrote the opposite of what was reused.
+                    row.amount = posting.amount?.number?.toPlainString().orEmpty()
+                    // The commodity goes in the box, not only into the text: the
+                    // preview was right because it fell back to the default, while the
+                    // field that says what it is stayed empty.
+                    row.commodity = posting.amount?.currency.orEmpty()
+                    val details = CommodityDetails.textOf(posting.cost, posting.price)
+                    row.details = details
+                    row.showDetails = details.isNotBlank()
+                }
+                // Only the first posting keeps an amount; the rest stay elided, so
+                // Beancount recomputes them rather than us reusing stale numbers. Their
+                // commodity is left empty with the amount: a currency with no amount is not
+                // what the entry says, and the preview writes only what is filled in.
+                rows.drop(1).forEach {
+                    it.amount = ""
+                    it.commodity = ""
+                }
+
+            }
+            // Fills the form from the entry's own text: the same accounts, the same amounts where the
+            // text has them and none where it has none, the commodity and lot each posting names, the
+            // description, the flag, and the tags and links the line writes. Not the date, which is
+            // today's, and not what only that entry is: its details, its comments, its documents.
+            fun reuseAsWritten(draft: io.github.pintofi.beanbook.core.domain.TransactionDraft) {
+                narration = draft.narration.orEmpty()
+                flagChoice = FlagChoice.of(draft.flag)
+                tagRows.clear()
+                draft.tags.forEach { tagRows.add(WordRow(it)) }
+                linkRows.clear()
+                draft.links.forEach { linkRows.add(WordRow(it)) }
+                draft.postings.firstOrNull()?.amount?.currency?.let { commodity = it }
+                rows.clear()
+                draft.postings.forEach { posting ->
+                    rows.add(
+                        PostingRow(
+                            account = posting.account,
+                            amount = posting.amount?.number?.toPlainString().orEmpty(),
+                            commodity = posting.amount?.currency.orEmpty(),
+                            details = posting.details ?: CommodityDetails.textOf(posting.cost, posting.price),
+                        ),
+                    )
+                }
+                while (rows.size < 2) rows.add(PostingRow())
+            }
+
             vocabulary.lastEntryFor(payee.trim())?.let { last ->
                 AssistChip(
                     onClick = {
-                        narration = last.narration.orEmpty()
-                        // Grow to fit: reusing a three-posting entry into two rows would drop
-                        // a posting silently, which is exactly the quiet loss the app must not do.
-                        while (rows.size < last.postings.size) rows.add(PostingRow())
-                        // And shrink back: rows left over from a longer entry would sit under
-                        // the reused ones as blanks the person has to notice and remove.
-                        while (rows.size > maxOf(2, last.postings.size) &&
-                            rows.last().account.isBlank() && rows.last().amount.isBlank()
-                        ) {
-                            rows.removeAt(rows.lastIndex)
-                        }
-                        last.postings.forEachIndexed { index, posting ->
-                            val row = rows[index]
-                            row.account = posting.account
-                            // With its sign. The absolute value was taken here, so a
-                            // refund or a transfer out came back as money in, and the preview
-                            // wrote the opposite of what was reused.
-                            row.amount = posting.amount?.number?.toPlainString().orEmpty()
-                            // The commodity goes in the box, not only into the text: the
-                            // preview was right because it fell back to the default, while the
-                            // field that says what it is stayed empty.
-                            row.commodity = posting.amount?.currency.orEmpty()
-                            val details = CommodityDetails.textOf(posting.cost, posting.price)
-                            row.details = details
-                            row.showDetails = details.isNotBlank()
-                        }
-                        // Only the first posting keeps an amount; the rest stay elided, so
-                        // Beancount recomputes them rather than us reusing stale numbers. Their
-                        // commodity is left empty with the amount: a currency with no amount is not
-                        // what the entry says, and the preview writes only what is filled in.
-                        rows.drop(1).forEach {
-                            it.amount = ""
-                            it.commodity = ""
+                        reuseScope.launch {
+                            val written = entryAsWritten?.invoke(last)
+                            if (written != null) reuseAsWritten(written) else reuseFromEntry(last)
                         }
                     },
                     label = { Text("Use last: ${last.postings.firstOrNull()?.account?.substringAfterLast(':')}") },

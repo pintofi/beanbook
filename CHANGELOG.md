@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Saving an entry shows one working animation, the banner above the Save button, and the button itself no longer has a second spinner. ([#382])
+- Use last on the entry form fills the form as the last entry's text writes it: every amount the text writes, none it leaves out, each posting's commodity and lot, the description, the flag, and the tags and links. Before, only the first posting kept an amount. ([#383])\n
 
 ### Fixed
 - Reports no longer shows "Web page not available" (ERR_INVALID_RESPONSE) after the engine has restarted: the Reports page followed the engine's old port and refused the new one until the app was closed. ([#381])
@@ -352,3 +353,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#379]: https://github.com/pintofi/beanbook/issues/379
 [#381]: https://github.com/pintofi/beanbook/issues/381
 [#382]: https://github.com/pintofi/beanbook/issues/382
+[#383]: https://github.com/pintofi/beanbook/issues/383

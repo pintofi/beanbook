@@ -282,6 +282,8 @@ internal fun LedgerApp(
     onRemoteDiscard: () -> Unit,
     onSaveDirective: (io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit,
     onOpenAccount: ((io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit)? = null,
+    entryAsWritten: (suspend (io.github.pintofi.beanbook.core.domain.JournalEntry) ->
+        io.github.pintofi.beanbook.core.domain.TransactionDraft?)? = null,
     onEditAccountDetails: EditAccountDetails? = null,
     saveState: String?,
     /** Entries committed from the form this session; a change closes the form. */
@@ -745,6 +747,7 @@ internal fun LedgerApp(
                 onDeleteTemplate = onDeleteTemplate,
                 onSaveDirective = onSaveDirective,
                 onOpenAccount = onOpenAccount,
+                entryAsWritten = entryAsWritten,
                 onEditAccountDetails = onEditAccountDetails,
                 saveState = formMessage,
                 entryCommits = entryCommits,

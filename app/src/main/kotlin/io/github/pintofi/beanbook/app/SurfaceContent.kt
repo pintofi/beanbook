@@ -156,6 +156,8 @@ internal fun SurfaceContent(
     onDeleteTemplate: (String) -> Unit,
     onSaveDirective: (io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit,
     onOpenAccount: ((io.github.pintofi.beanbook.core.domain.DirectiveDraft) -> Unit)? = null,
+    entryAsWritten: (suspend (io.github.pintofi.beanbook.core.domain.JournalEntry) ->
+        io.github.pintofi.beanbook.core.domain.TransactionDraft?)? = null,
     onEditAccountDetails: EditAccountDetails? = null,
     saveState: String?,
     /** Entries committed from the form this session: what the save sweep marks. */
@@ -282,6 +284,7 @@ internal fun SurfaceContent(
                                 capture = documentCapture,
                                 editing = editSession.editing,
                                 onOpenAccount = onOpenAccount,
+                                entryAsWritten = entryAsWritten,
                             )
                         }
                     } else androidx.compose.foundation.layout.Column {
@@ -321,6 +324,7 @@ internal fun SurfaceContent(
                                 onDeleteTemplate = onDeleteTemplate,
                                 capture = documentCapture,
                                 onOpenAccount = onOpenAccount,
+                                entryAsWritten = entryAsWritten,
                             )
                         }
                     }
