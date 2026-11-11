@@ -9,8 +9,12 @@ What protects it, in the order a request meets it:
   * **Only private addresses.** A client whose address is not on a private, link-local or
     loopback network is refused before anything else, so a phone on a carrier network or a
     port forwarded by mistake does not expose the sign-in page to the internet.
-  * **The Host header** must name the address actually bound, which is what stops a
-    malicious web page from reaching this server through DNS rebinding.
+  * **The Host header** must be the address actually bound, or a name that only a private
+    network can resolve (``phone.home.arpa``, ``phone.local``, ``phone.lan`` or a plain
+    ``phone``), on the port actually bound. A web page on the internet can only reach this
+    server through a name it controls, which has a public domain and is refused: that is what
+    stops DNS rebinding. Which address a private name resolves to is the network's business, not
+    this server's.
   * **A sign-in.** The username and password are checked against a PBKDF2-SHA256 hash the
     app made; the password itself never reaches this process. A successful sign-in gets a
     random session id in an HttpOnly, SameSite=Strict cookie, and every other request needs
@@ -34,6 +38,29 @@ import threading
 import time
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs
+
+# Names under these endings are the network's own: they are not delegated in the public DNS, so a
+# page on the internet cannot own one. ``.home.arpa`` is the home-network domain (RFC 8375), ``.local``
+# is multicast DNS (RFC 6762), ``.internal`` is reserved for private use, and the rest are what
+# routers and offices commonly hand out. A name with no dot at all is the same kind of name.
+PRIVATE_NAME_ENDINGS = (
+    ".home.arpa", ".local", ".lan", ".internal", ".localdomain", ".home", ".corp", ".intranet",
+)
+_NAME = __import__("re").compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$")
+
+
+def private_name(host: str) -> bool:
+    """Whether [host] (no port) is a name only a private network resolves, and not an address."""
+    host = host.lower().rstrip(".")
+    if not host or len(host) > 253 or not _NAME.match(host):
+        return False
+    try:
+        ipaddress.ip_address(host)
+        return False
+    except ValueError:
+        pass
+    return "." not in host or host.endswith(PRIVATE_NAME_ENDINGS)
+
 
 SESSION_COOKIE = "bb_session"
 LOGIN_PATH = "/__beanbook/login"
@@ -112,7 +139,7 @@ class LoginGate:
         client = environ.get("REMOTE_ADDR", "")
         if not _is_private(client):
             return self._plain(start_response, "403 Forbidden", "This server only answers its own network.")
-        if environ.get("HTTP_HOST", "") not in self.expected_hosts:
+        if not self._host_ok(environ.get("HTTP_HOST", "")):
             return self._plain(start_response, "403 Forbidden", "Wrong address.")
 
         path = environ.get("PATH_INFO", "")
@@ -134,11 +161,26 @@ class LoginGate:
                     "This page is shared read-only. Make changes in the app.",
                     [("Allow", "GET, HEAD, OPTIONS")],
                 )
+            if path.rstrip("/").endswith("/api/extract"):
+                # It runs the importers the ledger configures: code, not a view of the ledger.
+                self.refused += 1
+                return self._plain(
+                    start_response, "403 Forbidden", "This is not available on a shared page."
+                )
             return self._app(environ, start_response)
         self.refused += 1
         if environ.get("REQUEST_METHOD", "GET") == "GET" and "text/html" in environ.get("HTTP_ACCEPT", ""):
             return self._redirect(start_response, LOGIN_PATH)
         return self._plain(start_response, "401 Unauthorized", "Sign in first.")
+
+    def _host_ok(self, header: str) -> bool:
+        """The address that was bound, or a private name, on the port that was bound."""
+        if header in self.expected_hosts:
+            return True
+        name, _, port = header.rpartition(":")
+        if not name or port not in {h.rpartition(":")[2] for h in self.expected_hosts}:
+            return False
+        return private_name(name)
 
     # -- sign-in ------------------------------------------------------------------------
 

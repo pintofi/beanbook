@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use last on the entry form fills the form as the last entry's text writes it: every amount the text writes, none it leaves out, each posting's commodity and lot, the description, the flag, and the tags and links. Before, only the first posting kept an amount. ([#383])\n
 
 ### Fixed
+- Share on Wi-Fi opens by the name your network gives the phone (`phone.home.arpa`, `phone.local`, `phone.lan` or a plain `phone`) as well as by its address, where it said "Wrong address." A name on the public internet is still refused, which is what stops DNS rebinding. ([#387])
+- The Share on Wi-Fi screen says the shared page is for reading, as it is, and not that changes made there are saved to the phone; the importers' `/api/extract` is refused on a shared page. ([#387])
 - Reports no longer shows "Web page not available" (ERR_INVALID_RESPONSE) after the engine has restarted: the Reports page followed the engine's old port and refused the new one until the app was closed. ([#381])
 - A script offered while another is starting is refused with "A script is already running." and the message stays, where it could be cleared in the same instant it was shown. ([#379])
 
@@ -354,3 +356,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#381]: https://github.com/pintofi/beanbook/issues/381
 [#382]: https://github.com/pintofi/beanbook/issues/382
 [#383]: https://github.com/pintofi/beanbook/issues/383
+[#387]: https://github.com/pintofi/beanbook/issues/387

@@ -146,6 +146,42 @@ class LoginGateTest(unittest.TestCase):
         status, _, _ = self.call(cookie=cookie, host="evil.example:8467")
         self.assertTrue(status.startswith("403"))
 
+    def test_a_name_only_a_private_network_resolves_is_accepted(self):
+        cookie = self.session_cookie()
+        port = HOST.rpartition(":")[2]
+        for name in ("pixel.home.arpa", "Pixel.Home.Arpa.", "pixel.local", "pixel.lan", "pixel", "pixel.internal"):
+            status, _, _ = self.call(cookie=cookie, host=f"{name}:{port}")
+            self.assertTrue(status.startswith("200"), f"{name}: {status}")
+
+    def test_a_name_on_the_public_internet_is_refused_even_dressed_as_a_private_one(self):
+        # DNS rebinding needs a name the attacker owns, and an attacker owns only public ones.
+        cookie = self.session_cookie()
+        port = HOST.rpartition(":")[2]
+        for name in (
+            "evil.example", "home.arpa.evil.example", "evil-home.arpa", "pixel.local.evil.example",
+            "192.168.1.99", "10.0.0.1", "a b.local", "-x.lan", "x..lan", "",
+        ):
+            status, _, _ = self.call(cookie=cookie, host=f"{name}:{port}")
+            self.assertTrue(status.startswith("403"), f"{name!r}: {status}")
+
+    def test_a_private_name_on_the_wrong_port_is_refused(self):
+        cookie = self.session_cookie()
+        status, _, _ = self.call(cookie=cookie, host="pixel.home.arpa:9999")
+        self.assertTrue(status.startswith("403"), status)
+        status, _, _ = self.call(cookie=cookie, host="pixel.home.arpa")
+        self.assertTrue(status.startswith("403"), status)
+
+    def test_a_private_name_still_needs_the_sign_in(self):
+        port = HOST.rpartition(":")[2]
+        status, _, _ = self.call(host=f"pixel.home.arpa:{port}", accept="application/json")
+        self.assertTrue(status.startswith("401"), status)
+
+    def test_importers_cannot_be_run_from_a_shared_page(self):
+        cookie = self.session_cookie()
+        for path in ("/hmw/api/extract", "/hmw/api/extract/"):
+            status, _, _ = self.call(path=path, cookie=cookie)
+            self.assertTrue(status.startswith("403"), f"{path}: {status}")
+
     def test_repeated_failures_lock_the_address_out(self):
         for _ in range(sharing.FAILURES_BEFORE_LOCKOUT):
             self.sign_in(password="wrong")
