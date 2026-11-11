@@ -64,8 +64,8 @@ fun SharingScreen(modifier: Modifier = Modifier) {
     FolioPage(modifier = Modifier.readableMeasureCentred()) {
         Text(
             "Open your Reports in a browser on another device on the same Wi-Fi, such as a " +
-                "laptop. It shows the same pages as the Reports tab, and changes made there " +
-                "are saved to this phone.",
+                "laptop. It shows the same pages as the Reports tab, to read and search. Changes " +
+                "are made in the app, not on the shared page.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = Measure.tight),

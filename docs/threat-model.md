@@ -89,7 +89,7 @@ one, which is unchanged.
   refuses to start on an address that is not private.
 - Answers only clients on private, link-local or loopback addresses; anything else is `403`
   before the sign-in page.
-- `Host` must name the bound address (DNS rebinding).
+- `Host` must be the bound address, or a name only a private network resolves (`.home.arpa`, `.local`, `.lan`, `.internal`, `.localdomain`, `.home`, `.corp`, `.intranet`, or a name with no dot), on the bound port. A page on the internet can reach the server only through a name it owns, which is a public one and is refused (DNS rebinding).
 - A username and password the user sets. Only a salted PBKDF2-SHA256 hash (600,000
   rounds; hashes made earlier with 150,000 still work) is stored, in the app's private state
   folder, excluded from Android backup, never in a project, backup or mirror; the password never reaches the engine process.
@@ -99,6 +99,8 @@ one, which is unchanged.
 - Read-only: a signed-in browser may use `GET`, `HEAD` and `OPTIONS` only. Fava's saves are
   `PUT`, `POST` and `DELETE`, and are refused with `405`, so the shared pages cannot change
   the ledger.
+- `/api/extract` is refused on a shared page: it runs the importers the ledger configures, which is
+  code and not a view of the ledger.
 - Five wrong attempts from one address lock that address out for a minute, doubling each
   time up to a day.
 - A foreground service with a notification naming the address and offering Stop runs for
