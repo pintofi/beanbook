@@ -141,6 +141,10 @@ def _start(ledger_path: str, token: str, poll_watcher: bool, plugin_dirs: str) -
     # those itself before Fava imports an extension that needs them.
     plugins.preload_companion_libraries(plugin_dirs)
 
+    import source_saves
+
+    source_saves.install()
+
     from fava.application import create_app
 
     flask_app = create_app([path], load=True, poll_watcher=poll_watcher)
@@ -203,6 +207,13 @@ def _discover_slug(flask_app, path: Path) -> str:
                 return slug
         return next(iter(ledgers))
     return path.stem
+
+
+def set_source_sink(sink) -> None:
+    """The app's handler for the editor's save; see ``source_saves``."""
+    import source_saves
+
+    source_saves.set_sink(sink)
 
 
 def stop() -> str:

@@ -6,6 +6,11 @@ import android.os.IBinder
 import android.util.Log
 import java.io.File
 
+/** What the engine's Python calls when Fava's editor saves; answers "ok" or "error: …". */
+fun interface SourceSink {
+    fun save(filePath: String, contentPath: String, expectedSha: String): String
+}
+
 /**
  * The engine, in its own process.
  *
@@ -22,7 +27,8 @@ import java.io.File
  *     can offer safe mode.
  *
  * This class is deliberately thin: it owns no policy, holds no state beyond the Python
- * modules, and never writes to a project. Journalling, snapshots and the atomic rename all
+ * modules, and never writes to a project: the file editor's save is handed to the app
+ * ([SourceSink]). Journalling, snapshots and the atomic rename all
  * stay in `ProjectWriter`, in the UI process, where they were tested.
  */
 class EngineService : Service() {
@@ -39,6 +45,14 @@ class EngineService : Service() {
             python().getModule("engine")
                 .callAttr("start", ledgerPath, token, true, pluginDirs)
                 .toString()
+        }
+
+        override fun setWriteSink(sink: IFavaWriteSink?) {
+            // Python calls `save` on this object, so the method has to be public on a public type.
+            val route = sink?.let { target ->
+                SourceSink { file, content, sha -> target.saveSource(file, content, sha) }
+            }
+            python().getModule("engine").callAttr("set_source_sink", route)
         }
 
         override fun stopEngine(): String = guarded {

@@ -86,6 +86,31 @@ class LocalEngineClient(
      */
     var pluginDirs: List<String> = emptyList()
 
+    /**
+     * Commits what Fava's file editor saves, through the app's write protocol: the file, the new
+     * bytes and the SHA-256 of the file's bytes as the engine read them; returns "ok" or "error: …".
+     * Null refuses every editor save, so the engine never writes a project itself.
+     */
+    @Volatile
+    var editorSaves: (suspend (file: String, content: ByteArray, expectedSha: String) -> String)? = null
+
+    private val writeSink = object : IFavaWriteSink.Stub() {
+        // Runs on a Binder thread while the engine's server thread waits for the answer.
+        override fun saveSource(filePath: String, contentPath: String, expectedSha: String): String {
+            val commit = editorSaves ?: return "error: Saving is not available right now."
+            return try {
+                val bytes = java.io.File(contentPath).readBytes()
+                kotlinx.coroutines.runBlocking { commit(filePath, bytes, expectedSha) }
+            } catch (e: java.io.IOException) {
+                Log.w(TAG, "the editor's save failed", e)
+                "error: ${e.message ?: "The save did not complete."}"
+            } catch (e: IllegalStateException) {
+                Log.w(TAG, "the editor's save failed", e)
+                "error: ${e.message ?: "The save did not complete."}"
+            }
+        }
+    }
+
     /** The ledger the running server was started on, so a different one is not answered by it. */
     @Volatile
     private var servingPath: String? = null
@@ -110,6 +135,7 @@ class LocalEngineClient(
         val started = System.currentTimeMillis()
         val result = withContext(io) {
             connection.withEngine { engine ->
+                engine.setWriteSink(writeSink)
                 engine.startEngine(projectPath, newToken, pluginDirs.joinToString(","))
             }
                 .mapCatching { report ->
