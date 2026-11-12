@@ -38,9 +38,11 @@ interface IEngineService {
      * @param host the device's own address on the Wi-Fi network; refused unless private.
      * @param passwordHash "pbkdf2_sha256$<iterations>$<salt hex>$<hash hex>". The password
      *   itself never crosses into the engine process.
+     * @param allowEdits whether a signed-in browser may also save in Fava's editor. Read only
+     *   unless this is true, and the app never remembers it.
      * @return "host=<h> port=<n>", or "error: …".
      */
-    String startSharing(String host, int port, String username, String passwordHash);
+    String startSharing(String host, int port, String username, String passwordHash, boolean allowEdits);
 
     /** Stops sharing and signs every device out. */
     String stopSharing();

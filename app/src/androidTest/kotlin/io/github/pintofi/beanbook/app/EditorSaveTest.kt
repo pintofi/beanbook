@@ -40,6 +40,10 @@ class EditorSaveTest {
         app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as BeancountApplication
         projectId = "editor-save-${System.currentTimeMillis()}"
         main = app.workspace.createProject(projectId, title = "Editor save")
+        main.appendText(
+            "\n2024-01-01 open Assets:Test\n2024-01-01 open Expenses:Test\n\n" +
+                "2024-01-02 * \"Lunch\"\n  Expenses:Test  5.00 USD\n  Assets:Test\n",
+        )
         val status = runBlocking { app.engine.start(main.absolutePath) }
         assertTrue("engine failed to start: $status", status is EngineStatus.Serving)
         serving = status as EngineStatus.Serving
@@ -117,15 +121,82 @@ class EditorSaveTest {
     fun withoutTheAppsHandlerTheSaveIsRefusedAndNothingIsWritten() {
         val loaded = source()
         val before = main.readText()
-        val handler = app.engine.editorSaves
-        app.engine.editorSaves = null
+        val handler = app.engine.favaWrites
+        app.engine.favaWrites = null
         try {
             val (code, answer) = put(loaded.getString("source") + "\n; refused\n", loaded.getString("sha256sum"))
             assertTrue("expected an error, got $code $answer", code >= 400)
             assertFalse(main.readText().contains("; refused"))
             assertEquals(before, main.readText())
         } finally {
-            app.engine.editorSaves = handler
+            app.engine.favaWrites = handler
         }
+    }
+
+    private fun lunchHash(): String {
+        val (_, journal) = call("GET", "/${serving.ledgerSlug}/api/journal_page?page=1&order=desc")
+        val hashes = Regex("#context-([0-9a-f]{32})").findAll(journal).map { it.groupValues[1] }.distinct()
+        return hashes.first { hash ->
+            val (code, text) = call("GET", "/${serving.ledgerSlug}/api/source_slice?entry_hash=$hash")
+            code == 200 && text.contains("Lunch")
+        }
+    }
+
+    private val lunch = "2024-01-02 * \"Lunch\"\n  Expenses:Test  5.00 USD\n  Assets:Test"
+
+    private fun sha256(text: String): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(text.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+
+    private fun undoRestores(before: String) {
+        val undone = runBlocking { app.writer.undoLast(projectId) }
+        assertTrue("undo: $undone", undone is WriteResult.Committed)
+        assertEquals(before, main.readText())
+    }
+
+    @Test
+    fun anEntryEditedInItsOwnBoxIsSavedThroughTheWriteProtocol() {
+        val before = main.readText()
+        val body = JSONObject().put("entry_hash", lunchHash())
+            .put("source", lunch.replace("Lunch", "Lunch (edited)")).put("sha256sum", sha256(lunch)).toString()
+
+        val (code, answer) = call("PUT", "/${serving.ledgerSlug}/api/source_slice", body)
+
+        assertEquals(answer, 200, code)
+        assertTrue(main.readText().contains("Lunch (edited)"))
+        undoRestores(before)
+    }
+
+    @Test
+    fun anEntryDeletedFromTheJournalIsDeletedThroughTheWriteProtocol() {
+        val before = main.readText()
+        val hash = lunchHash()
+
+        val (code, answer) = call(
+            "DELETE", "/${serving.ledgerSlug}/api/source_slice?entry_hash=$hash&sha256sum=${sha256(lunch)}",
+        )
+
+        assertEquals(answer, 200, code)
+        assertFalse(main.readText().contains("Lunch"))
+        undoRestores(before)
+    }
+
+    @Test
+    fun anEntryAddedByTheFormIsAddedThroughTheWriteProtocol() {
+        val before = main.readText()
+        val entry = JSONObject(
+            """{"t":"Transaction","date":"2024-01-04","flag":"*","payee":"","narration":"Tea","tags":[],
+            "links":[],"meta":{},"postings":[{"account":"Expenses:Test","amount":"2.00 USD"},
+            {"account":"Assets:Test","amount":""}]}""",
+        )
+
+        val (code, answer) = call(
+            "PUT", "/${serving.ledgerSlug}/api/add_entries",
+            JSONObject().put("entries", org.json.JSONArray().put(entry)).toString(),
+        )
+
+        assertEquals(answer, 200, code)
+        assertTrue(main.readText().contains("Tea"))
+        undoRestores(before)
     }
 }

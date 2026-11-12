@@ -51,6 +51,17 @@ connect.
 port behind a per-process token. The one exception to "nothing listens on the network" is
 Share on Wi-Fi, which is off until you turn it on, answers only private addresses behind a
 sign-in, and shows a notification while it runs (see [threat-model.md](threat-model.md) §3.3a).
+It is read only unless you choose Can edit when you start it. Can edit covers Fava's file editor, editing or deleting one entry and the add-entry form, and
+nothing else (no documents, no importers), lasts for that share only (it ends when you stop, when Reports restart and when
+the network changes), and cannot add or change `include`, `plugin`, `option`, `document` or Fava
+settings lines; those are changed in the app. The connection is not encrypted, so on a network you
+do not trust, leave it read only.
+
+Every write Fava makes to a ledger file goes through the app's write protocol, with one exception:
+on the Reports page in the app, uploading, moving or deleting a document is still done by Fava, and
+only the `document:` line it adds to an entry goes through the protocol. An add-entry that Fava
+files into more than one file is written one file at a time, each its own Undo step, and stops at
+the first one the app refuses.
 
 ---
 

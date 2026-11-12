@@ -167,6 +167,7 @@ def _start(ledger_path: str, token: str, poll_watcher: bool, plugin_dirs: str) -
     _state.update({"gate": gate, "port": port, "ledger": str(path)})
 
     slug = _discover_slug(flask_app, path)
+    _state["slug"] = slug
     serving = time.monotonic()
 
     return (
@@ -246,14 +247,20 @@ def stop() -> str:
     return f"stop=ok ms={(time.monotonic() - started) * 1000:.0f} thread_alive={alive}"
 
 
-def share_start(host: str, port: int, username: str, password_hash: str) -> str:
-    """Serves the running Fava on [host] for other devices, behind a sign-in."""
+def share_start(host: str, port: int, username: str, password_hash: str, allow_edits: bool = False) -> str:
+    """Serves the running Fava on [host] for other devices, behind a sign-in.
+
+    [allow_edits] lets a signed-in browser save in Fava's editor; read only unless it is set.
+    """
     import sharing
 
     gate = _state.get("gate")
     if gate is None:
         raise RuntimeError("Reports are not running, so there is nothing to share")
-    return sharing.start(gate._app, host, int(port), username, password_hash)
+    return sharing.start(
+        gate._app, host, int(port), username, password_hash,
+        allow_edits=bool(allow_edits), slug=str(_state.get("slug", "")),
+    )
 
 
 def share_stop() -> str:

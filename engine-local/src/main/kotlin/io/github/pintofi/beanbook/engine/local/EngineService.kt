@@ -6,9 +6,9 @@ import android.os.IBinder
 import android.util.Log
 import java.io.File
 
-/** What the engine's Python calls when Fava's editor saves; answers "ok" or "error: …". */
+/** What the engine's Python calls when Fava writes a file; answers "ok" or "error: …". */
 fun interface SourceSink {
-    fun save(filePath: String, contentPath: String, expectedSha: String): String
+    fun commit(filePath: String, contentPath: String, expectedSha: String, operation: String, viaShare: Boolean): String
 }
 
 /**
@@ -50,7 +50,9 @@ class EngineService : Service() {
         override fun setWriteSink(sink: IFavaWriteSink?) {
             // Python calls `save` on this object, so the method has to be public on a public type.
             val route = sink?.let { target ->
-                SourceSink { file, content, sha -> target.saveSource(file, content, sha) }
+                SourceSink { file, content, sha, operation, viaShare ->
+                    target.commit(file, content, sha, operation, viaShare)
+                }
             }
             python().getModule("engine").callAttr("set_source_sink", route)
         }
@@ -64,9 +66,10 @@ class EngineService : Service() {
             port: Int,
             username: String,
             passwordHash: String,
+            allowEdits: Boolean,
         ): String = guarded {
             python().getModule("engine")
-                .callAttr("share_start", host, port, username, passwordHash)
+                .callAttr("share_start", host, port, username, passwordHash, allowEdits)
                 .toString()
         }
 

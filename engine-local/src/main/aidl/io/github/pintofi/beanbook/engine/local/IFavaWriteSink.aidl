@@ -10,10 +10,12 @@ package io.github.pintofi.beanbook.engine.local;
 interface IFavaWriteSink {
 
     /**
-     * @param filePath the project file the editor is saving.
+     * @param filePath the project file being written.
      * @param contentPath a file holding the bytes to write.
      * @param expectedSha the SHA-256 (hex) of the project file's bytes as the engine last read them.
+     * @param operation what the write is, such as "editor-save"; the app decides how it is written.
+     * @param viaShare whether the request came over Share on Wi-Fi.
      * @return "ok", or "error: " and a sentence the editor shows the person.
      */
-    String saveSource(String filePath, String contentPath, String expectedSha);
+    String commit(String filePath, String contentPath, String expectedSha, String operation, boolean viaShare);
 }

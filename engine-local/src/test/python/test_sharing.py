@@ -220,6 +220,147 @@ class LoginGateTest(unittest.TestCase):
         self.assertTrue(status.startswith("303"))
 
 
+class EditGateTest(unittest.TestCase):
+    """With "Can edit", a signed-in browser may save in the editor, on those routes and no others."""
+
+    SOURCE = "/ledger/api/source"
+
+    def setUp(self):
+        self.clock = Clock()
+        self.seen = []
+
+        def recording(environ, start_response):
+            self.seen.append(environ.get("beanbook.via"))
+            return app(environ, start_response)
+
+        self.gate = sharing.LoginGate(
+            recording, "hmw", sharing.hash_password("correct horse", iterations=1000),
+            now=self.clock, allow_edits=True, slug="ledger",
+        )
+        self.gate.expected_hosts = {HOST}
+        self.cookie = self.sign_in()
+
+    def call(self, path="/", method="GET", client="192.168.1.30", cookie=None, headers=None, body=b""):
+        environ = {
+            "REQUEST_METHOD": method, "PATH_INFO": path, "REMOTE_ADDR": client, "HTTP_HOST": HOST,
+            "HTTP_ACCEPT": "text/html", "HTTP_COOKIE": self.cookie if cookie is None else cookie,
+            "CONTENT_LENGTH": str(len(body)), "wsgi.input": io.BytesIO(body),
+        }
+        environ.update(headers or {})
+        seen = {}
+
+        def start_response(status, response_headers):
+            seen["status"] = status
+
+        b"".join(self.gate(environ, start_response))
+        return seen["status"]
+
+    def sign_in(self, client="192.168.1.30"):
+        environ = {
+            "REQUEST_METHOD": "POST", "PATH_INFO": sharing.LOGIN_PATH, "REMOTE_ADDR": client,
+            "HTTP_HOST": HOST, "HTTP_ACCEPT": "text/html", "HTTP_COOKIE": "",
+        }
+        body = b"username=hmw&password=correct+horse"
+        environ.update({"CONTENT_LENGTH": str(len(body)), "wsgi.input": io.BytesIO(body)})
+        seen = {}
+        self.gate(environ, lambda status, headers: seen.update(headers=dict(headers)))
+        return seen["headers"]["Set-Cookie"].split(";")[0]
+
+    def write(self, path=None, method="PUT", **headers):
+        sent = {
+            "HTTP_ORIGIN": "http://" + HOST, "CONTENT_TYPE": "application/json", "HTTP_SEC_FETCH_SITE": "same-origin",
+        }
+        sent.update(headers)
+        sent = {k: v for k, v in sent.items() if v is not None}
+        return self.call(path or self.SOURCE, method=method, headers=sent, body=b"{}")
+
+    def test_a_save_from_the_page_itself_goes_through_and_is_marked_as_shared(self):
+        self.assertTrue(self.write().startswith("200"))
+        self.assertEqual(["share"], self.seen)
+
+    def test_the_formatter_is_allowed_too(self):
+        self.assertTrue(self.write("/ledger/api/format_source").startswith("200"))
+
+    def test_reading_is_unchanged(self):
+        self.assertTrue(self.call("/ledger/journal/").startswith("200"))
+        self.assertEqual([None], self.seen)
+
+    def test_a_missing_or_foreign_origin_is_refused(self):
+        self.assertTrue(self.write(HTTP_ORIGIN=None).startswith("403"))
+        self.assertTrue(self.write(HTTP_ORIGIN="http://evil.example").startswith("403"))
+        self.assertEqual([], self.seen)
+
+    def test_a_cross_site_request_is_refused_and_a_missing_header_is_not(self):
+        self.assertTrue(self.write(HTTP_SEC_FETCH_SITE="cross-site").startswith("403"))
+        self.assertTrue(self.write(HTTP_SEC_FETCH_SITE=None).startswith("200"))
+
+    def test_only_json_is_accepted(self):
+        self.assertTrue(self.write(CONTENT_TYPE="text/plain").startswith("415"))
+        self.assertTrue(self.write(CONTENT_TYPE="application/x-www-form-urlencoded").startswith("415"))
+        self.assertTrue(self.write(CONTENT_TYPE="application/json; charset=utf-8").startswith("200"))
+
+    def test_a_write_with_no_stated_size_or_too_large_is_refused(self):
+        self.assertTrue(self.write(HTTP_TRANSFER_ENCODING="chunked").startswith("413"))
+        self.assertTrue(self.write(CONTENT_LENGTH=str(sharing.MAX_WRITE_BYTES + 1)).startswith("413"))
+        self.assertTrue(self.write(CONTENT_LENGTH="").startswith("413"))
+
+    def test_what_stays_off_the_network_is_refused(self):
+        for method, path in [
+            ("PUT", "/ledger/api/add_document"), ("PUT", "/ledger/api/move"),
+            ("DELETE", "/ledger/api/document"), ("PUT", "/ledger/api/upload_import_file"),
+            ("PUT", "/ledger/api/attach_document"),
+            ("POST", "/ledger/extension/Thing/run"), ("PUT", "/ledger/extension/Thing/run"),
+            ("PUT", "/other/api/source"), ("PUT", "/ledger/api/source/"), ("POST", self.SOURCE),
+            ("DELETE", self.SOURCE), ("POST", "/ledger/api/add_entries"),
+        ]:
+            self.assertTrue(self.write(path, method=method).startswith("405"), (method, path))
+        self.assertEqual([], self.seen)
+
+    def test_an_entry_can_be_edited_deleted_and_added_from_the_page(self):
+        self.assertTrue(self.write("/ledger/api/source_slice").startswith("200"))
+        self.assertTrue(self.write("/ledger/api/add_entries").startswith("200"))
+        self.assertTrue(
+            self.call(
+                "/ledger/api/source_slice", method="DELETE",
+                headers={"HTTP_ORIGIN": "http://" + HOST, "HTTP_SEC_FETCH_SITE": "same-origin"},
+            ).startswith("200")
+        )
+
+    def test_a_delete_carries_no_body_and_needs_the_same_origin(self):
+        self.assertTrue(self.write("/ledger/api/source_slice", method="DELETE").startswith("413"))
+        self.assertTrue(self.call("/ledger/api/source_slice", method="DELETE").startswith("403"))
+
+    def test_importers_stay_refused(self):
+        self.assertTrue(self.write("/ledger/api/extract").startswith("403"))
+
+    def test_a_session_used_from_another_address_is_not_signed_in(self):
+        self.assertTrue(self.call("/ledger/journal/", client="192.168.1.31").startswith("303"))
+        self.assertTrue(self.call("/ledger/journal/").startswith("200"))
+
+    def test_a_session_that_can_write_expires_sooner(self):
+        self.clock.now += sharing.EDIT_SESSION_IDLE_SECONDS + 1
+        self.assertTrue(self.call("/ledger/journal/").startswith("303"))
+
+    def test_a_session_that_can_write_ends_after_its_longest_life_however_busy(self):
+        for _ in range(17):
+            self.clock.now += 29 * 60
+            self.call("/ledger/journal/")
+        self.assertTrue(self.call("/ledger/journal/").startswith("303"))
+
+    def test_without_the_choice_a_write_is_refused_as_read_only(self):
+        gate = sharing.LoginGate(app, "hmw", sharing.hash_password("x" * 8, iterations=1000), now=self.clock)
+        gate.expected_hosts = {HOST}
+        self.assertTrue(gate.allow_edits is False)
+
+    def test_the_sign_in_page_says_editing_is_allowed(self):
+        environ = {
+            "REQUEST_METHOD": "GET", "PATH_INFO": sharing.LOGIN_PATH, "REMOTE_ADDR": "192.168.1.30",
+            "HTTP_HOST": HOST,
+        }
+        page = b"".join(self.gate(environ, lambda *a: None))
+        self.assertIn(b"This share allows editing.", page)
+
+
 class PasswordHashTest(unittest.TestCase):
     def test_round_trip(self):
         stored = sharing.hash_password("s3cret pass", iterations=1000)

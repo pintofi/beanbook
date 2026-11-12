@@ -29,6 +29,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+/** What a signed-in browser may do on the shared page. Read only unless the person chose otherwise. */
+enum class ShareAccess { READ_ONLY, CAN_EDIT }
 
 /** Where sharing on Wi-Fi stands. */
 sealed interface SharingStatus {
@@ -36,7 +41,7 @@ sealed interface SharingStatus {
     data object Starting : SharingStatus
 
     /** Serving at [address], e.g. `http://192.168.1.20:8467`. */
-    data class On(val address: String) : SharingStatus
+    data class On(val address: String, val access: ShareAccess = ShareAccess.READ_ONLY) : SharingStatus
 
     data class Failed(val reason: String) : SharingStatus
 }
@@ -106,13 +111,30 @@ class SharingState(
     private var network: ConnectivityManager.NetworkCallback? = null
     private var sharedOn: String? = null
 
+    /** What the person chose at Start. Held in memory only, so a restart of the app is read only. */
+    private var access = ShareAccess.READ_ONLY
+
+    /** Only the first share after Start may allow editing; every later one is read only. */
+    private var editPending = false
+
+    private val _editEnded = MutableStateFlow(false)
+
+    /** True after the share was started again read only, because it had been allowing edits. */
+    val editEnded: StateFlow<Boolean> = _editEnded.asStateFlow()
+
+    /** Whether the running share lets a signed-in browser write. Checked again before a write. */
+    fun allowsSharedWrites(): Boolean = (status.value as? SharingStatus.On)?.access == ShareAccess.CAN_EDIT
+
     /** Starts sharing with the saved sign-in. */
-    fun start() {
+    fun start(requested: ShareAccess = ShareAccess.READ_ONLY) {
         if (!settings.hasCredentials) {
             _status.value = SharingStatus.Failed("Set a username and password first.")
             return
         }
         wanted = true
+        access = requested
+        editPending = requested == ShareAccess.CAN_EDIT
+        _editEnded.value = false
         _status.value = SharingStatus.Starting
         watchNetwork()
         watcher?.cancel()
@@ -137,12 +159,20 @@ class SharingState(
         watcher = null
         unwatchNetwork()
         sharedOn = null
+        access = ShareAccess.READ_ONLY
+        editPending = false
+        _editEnded.value = false
         scope.launch { engine.stopSharing() }
         context.stopService(Intent(context, SharingService::class.java))
         _status.value = SharingStatus.Off
     }
 
-    private suspend fun share() {
+    /** One share at a time: the engine's status and the network can both ask for one at once. */
+    private val shareLock = Mutex()
+
+    private suspend fun share() = shareLock.withLock { doShare() }
+
+    private suspend fun doShare() {
         val host = wifiAddress()
         if (host == null) {
             _status.value = SharingStatus.Failed(
@@ -152,15 +182,26 @@ class SharingState(
         }
         val username = settings.username ?: return
         val hash = settings.passwordHash ?: return
-        engine.startSharing(host, PREFERRED_PORT, username, hash)
+        // Editing is allowed for the share the person confirmed and for no other: not after Reports
+        // restart, not after the network moves.
+        val allowEdits = editPending
+        if (!allowEdits && access == ShareAccess.CAN_EDIT) {
+            access = ShareAccess.READ_ONLY
+            _editEnded.value = true
+        }
+        engine.startSharing(host, PREFERRED_PORT, username, hash, allowEdits)
             .onSuccess { port ->
+                // Spent once the share it was for is up; a share that failed to start keeps it.
+                editPending = false
                 val address = "http://$host:$port"
                 sharedOn = host
-                _status.value = SharingStatus.On(address)
+                _status.value = SharingStatus.On(address, access)
                 Diagnostics.i(TAG, "sharing on the local network")
                 runCatching {
                     context.startForegroundService(
-                        Intent(context, SharingService::class.java).putExtra(SharingService.EXTRA_ADDRESS, address),
+                        Intent(context, SharingService::class.java)
+                            .putExtra(SharingService.EXTRA_ADDRESS, address)
+                            .putExtra(SharingService.EXTRA_EDITING, access == ShareAccess.CAN_EDIT),
                     )
                 }.onFailure { Diagnostics.w(TAG, "no foreground service for sharing", it) }
             }
@@ -207,11 +248,13 @@ class SharingState(
     /** The network changed under the share: follow the new address, or say there is none. */
     private fun moved() {
         scope.launch {
-            if (!wanted || engineStatus.value !is EngineStatus.Serving) return@launch
-            val host = wifiAddress()
-            if (host == sharedOn) return@launch
-            engine.stopSharing()
-            share()
+            shareLock.withLock {
+                if (!wanted || engineStatus.value !is EngineStatus.Serving) return@launch
+                val host = wifiAddress()
+                if (host == sharedOn) return@launch
+                engine.stopSharing()
+                doShare()
+            }
         }
     }
 
@@ -241,7 +284,7 @@ class SharingService : Service() {
             return START_NOT_STICKY
         }
         val address = intent?.getStringExtra(EXTRA_ADDRESS).orEmpty()
-        val notification = notification(address)
+        val notification = notification(address, intent?.getBooleanExtra(EXTRA_EDITING, false) == true)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
@@ -250,7 +293,7 @@ class SharingService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun notification(address: String): Notification {
+    private fun notification(address: String, editing: Boolean): Notification {
         val manager = getSystemService(NotificationManager::class.java)
         if (manager.getNotificationChannel(CHANNEL) == null) {
             manager.createNotificationChannel(
@@ -268,7 +311,10 @@ class SharingService : Service() {
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle("Sharing Reports on Wi-Fi")
-            .setContentText("$address · sign-in required · not encrypted")
+            .setContentText(
+                if (editing) "$address · sign-in required · can edit · not encrypted"
+                else "$address · sign-in required · not encrypted",
+            )
             .setContentIntent(open)
             .addAction(Notification.Action.Builder(null, "Stop sharing", stop).build())
             .setOngoing(true)
@@ -277,6 +323,7 @@ class SharingService : Service() {
 
     companion object {
         const val EXTRA_ADDRESS = "address"
+        const val EXTRA_EDITING = "editing"
         private const val ACTION_STOP = "io.github.pintofi.beanbook.STOP_SHARING"
         private const val CHANNEL = "sharing"
         private const val NOTIFICATION_ID = 7202

@@ -141,7 +141,8 @@ Detailed adversary analysis: [threat-model.md](threat-model.md).
   ledger would exceed. The engine never writes to a project. The one request that would
   make it, a save in Fava's file editor, is handed to the app over a Binder callback
   (`IFavaWriteSink`), which writes through `ProjectWriter` and answers; with no app handler
-  registered the save is refused. Superseded note: an earlier draft said the engine lives in the main process (Chaquopy
+  registered the save is refused. The call names the operation and says whether it came over
+  Share on Wi-Fi; the app chooses the error policy and checks that the share allows editing. Superseded note: an earlier draft said the engine lives in the main process (Chaquopy
   initialises one interpreter per process; a second process would double memory and
   complicate wheel loading). Engine state is authoritative on disk, never in memory.
 - **Process death is assumed, not exceptional.** Every mutation goes through a

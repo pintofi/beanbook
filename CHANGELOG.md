@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Share on Wi-Fi can allow editing. Start asks for Read only (the default, chosen again every time) or Can edit, which asks for a confirmation that says the connection is not encrypted. With Can edit, a browser on the network can save in Fava's file editor, edit or delete one entry, and add entries with the add form, and each change goes through the same write protocol as the app's own: snapshot, re-parse, Undo. It ends when you stop sharing, when Reports restart and when the network changes, and it cannot add or change `include`, `plugin`, `option`, `document` or Fava settings lines. Before, the shared page could only read. ([#388])
 - A plugin installed from the catalogue (Expert edition) can be updated to the version the app carries, and the version it replaces is kept to go back to. The Plugins page says "Update available" with both versions, and an update that fails any check, or whose packages cannot be fetched, leaves the installed plugin as it was. Packages and plugin files you add yourself come next. ([#343])
 
 ### Changed
@@ -15,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use last on the entry form fills the form as the last entry's text writes it: every amount the text writes, none it leaves out, each posting's commodity and lot, the description, the flag, and the tags and links. Before, only the first posting kept an amount. ([#383])
 
 ### Fixed
-- Saving in Fava's file editor (Reports) goes through the same write protocol as every other save: the change is snapshotted, journalled and re-parsed, Undo puts the file back, and a file changed since the editor read it is refused instead of overwritten. Before, Fava wrote the file itself. ([#388])
+- Saving in Fava's file editor (Reports) goes through the same write protocol as every other save: the change is snapshotted, journalled and re-parsed, Undo puts the file back, and a file changed since the editor read it is refused instead of overwritten. Editing or deleting one entry and the add-entry form do too, and so does attaching a document to an entry. Before, Fava wrote the file itself. ([#388])
 - Share on Wi-Fi opens by the name your network gives the phone (`phone.home.arpa`, `phone.local`, `phone.lan` or a plain `phone`) as well as by its address, where it said "Wrong address." A name on the public internet is still refused, which is what stops DNS rebinding. ([#387])
 - The Share on Wi-Fi screen says the shared page is for reading, as it is, and not that changes made there are saved to the phone; the importers' `/api/extract` is refused on a shared page. ([#387])
 - Reports no longer shows "Web page not available" (ERR_INVALID_RESPONSE) after the engine has restarted: the Reports page followed the engine's old port and refused the new one until the app was closed. ([#381])
