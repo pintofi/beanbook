@@ -66,8 +66,26 @@ SESSION_COOKIE = "bb_session"
 LOGIN_PATH = "/__beanbook/login"
 LOGOUT_PATH = "/__beanbook/logout"
 
-# The only methods a signed-in browser may use. Everything else could change the ledger.
+# The only methods a signed-in browser may use unless editing was allowed. Everything else could
+# change the ledger.
 READ_METHODS = ("GET", "HEAD", "OPTIONS")
+
+# With "Can edit", the only writes a signed-in browser may make, by method and path under the
+# ledger's name. Everything else Fava can write (uploads, moving and deleting documents, extension
+# endpoints) stays off the network. Each of these is committed by the app through its write
+# protocol; see source_saves.
+EDIT_ROUTES = (
+    ("PUT", "api/source"),
+    ("PUT", "api/format_source"),
+    ("PUT", "api/source_slice"),
+    ("DELETE", "api/source_slice"),
+    ("PUT", "api/add_entries"),
+)
+# A session that can write is shorter than one that only reads, and is tied to the address it
+# signed in from.
+EDIT_SESSION_IDLE_SECONDS = 30 * 60
+EDIT_SESSION_MAX_SECONDS = 8 * 60 * 60
+MAX_WRITE_BYTES = 16 * 1024 * 1024
 
 # How long a sign-in lasts without being used, and how many can be open at once.
 SESSION_IDLE_SECONDS = 12 * 60 * 60
@@ -121,13 +139,19 @@ def _is_private(address: str) -> bool:
 class LoginGate:
     """WSGI middleware: private network, right Host, signed in -- or nothing."""
 
-    def __init__(self, app, username: str, password_hash: str, now=time.monotonic) -> None:
+    def __init__(
+        self, app, username: str, password_hash: str, now=time.monotonic,
+        allow_edits: bool = False, slug: str = "",
+    ) -> None:
         self._app = app
+        self.allow_edits = allow_edits
+        self._slug = slug
         self._username = username
         self._password_hash = password_hash
         self._now = now
         self._lock = threading.Lock()
-        self._sessions: dict[str, float] = {}
+        # token -> (last used, address it signed in from, when it signed in)
+        self._sessions: dict[str, tuple[float, str, float]] = {}
         self._failures: dict[str, tuple[int, float, int]] = {}
         self.expected_hosts: set[str] = set()
         self.signed_in = 0
@@ -148,30 +172,61 @@ class LoginGate:
         if path == LOGOUT_PATH:
             self._end_session(environ)
             return self._redirect(start_response, LOGIN_PATH, clear=True)
-        if self._session(environ):
-            # What is shared is a view of the ledger, not a way to change it. Fava's editor and
-            # add form save with PUT, POST and DELETE; those saves would reach the file through
-            # Fava's own code, without the snapshot, undo and re-parse the app's writer gives
-            # every other change. So a signed-in browser can read, and cannot write.
-            if environ.get("REQUEST_METHOD", "GET") not in READ_METHODS:
-                self.refused += 1
-                return self._plain(
-                    start_response,
-                    "405 Method Not Allowed",
-                    "This page is shared read-only. Make changes in the app.",
-                    [("Allow", "GET, HEAD, OPTIONS")],
-                )
+        if self._session(environ, client):
             if path.rstrip("/").endswith("/api/extract"):
                 # It runs the importers the ledger configures: code, not a view of the ledger.
                 self.refused += 1
                 return self._plain(
                     start_response, "403 Forbidden", "This is not available on a shared page."
                 )
+            method = environ.get("REQUEST_METHOD", "GET")
+            if method not in READ_METHODS:
+                # A write reaches the file through Fava's code, so it is only let through when
+                # editing was allowed, only on the routes in EDIT_ROUTES, and only from the page
+                # itself. The app commits it through its write protocol (snapshot, re-parse, Undo).
+                refusal = self._write_refusal(environ, method, path)
+                if refusal is not None:
+                    self.refused += 1
+                    return self._plain(start_response, *refusal)
+                environ["beanbook.via"] = "share"
             return self._app(environ, start_response)
         self.refused += 1
         if environ.get("REQUEST_METHOD", "GET") == "GET" and "text/html" in environ.get("HTTP_ACCEPT", ""):
             return self._redirect(start_response, LOGIN_PATH)
         return self._plain(start_response, "401 Unauthorized", "Sign in first.")
+
+    def _write_refusal(self, environ, method: str, path: str):
+        """None to let a write through, else ``(status, text[, headers])`` to answer with."""
+        read_only = (
+            "405 Method Not Allowed",
+            "This page is shared read-only. Make changes in the app.",
+            [("Allow", "GET, HEAD, OPTIONS")],
+        )
+        if not self.allow_edits:
+            return read_only
+        if not self._slug or (method, path) not in {(m, f"/{self._slug}/{p}") for m, p in EDIT_ROUTES}:
+            return ("405 Method Not Allowed", "This is not available on a shared page.")
+        # A page on another site can make a browser send a request, but not with this Origin.
+        if environ.get("HTTP_ORIGIN", "") != "http://" + environ.get("HTTP_HOST", ""):
+            return ("403 Forbidden", "This request did not come from the shared page.")
+        if environ.get("HTTP_SEC_FETCH_SITE", "same-origin") != "same-origin":
+            return ("403 Forbidden", "This request did not come from the shared page.")
+        if method == "DELETE":
+            # Fava sends a delete with its arguments in the address and no body.
+            if environ.get("CONTENT_LENGTH") not in (None, "", "0") or environ.get("HTTP_TRANSFER_ENCODING"):
+                return ("413 Payload Too Large", "A delete has no body.")
+            return None
+        if environ.get("CONTENT_TYPE", "").split(";")[0].strip().lower() != "application/json":
+            return ("415 Unsupported Media Type", "A change is sent as JSON.")
+        if environ.get("HTTP_TRANSFER_ENCODING"):
+            return ("413 Payload Too Large", "The size of the change must be stated.")
+        try:
+            length = int(environ.get("CONTENT_LENGTH") or "")
+        except ValueError:
+            return ("413 Payload Too Large", "The size of the change must be stated.")
+        if length < 0 or length > MAX_WRITE_BYTES:
+            return ("413 Payload Too Large", "That change is too large to send this way.")
+        return None
 
     def _host_ok(self, header: str) -> bool:
         """The address that was bound, or a private name, on the port that was bound."""
@@ -214,24 +269,28 @@ class LoginGate:
             self._failures.pop(client, None)
             self._expire()
             if len(self._sessions) >= MAX_SESSIONS:
-                oldest = min(self._sessions, key=self._sessions.get)
+                oldest = min(self._sessions, key=lambda t: self._sessions[t][0])
                 del self._sessions[oldest]
             session = secrets.token_urlsafe(32)
-            self._sessions[session] = self._now()
+            now = self._now()
+            self._sessions[session] = (now, client, now)
         self.signed_in += 1
         cookie = f"{SESSION_COOKIE}={session}; Path=/; HttpOnly; SameSite=Strict"
         start_response("303 See Other", [("Location", "/"), ("Set-Cookie", cookie), ("Content-Length", "0")])
         return [b""]
 
-    def _session(self, environ) -> bool:
+    def _session(self, environ, client: str = "") -> bool:
         token = self._cookie(environ)
         if token is None:
             return False
         with self._lock:
             self._expire()
-            for known in self._sessions:
+            for known, (_, address, started) in self._sessions.items():
                 if hmac.compare_digest(known, token):
-                    self._sessions[known] = self._now()
+                    # A session that can write only works from the address that signed in.
+                    if self.allow_edits and address != client:
+                        return False
+                    self._sessions[known] = (self._now(), address, started)
                     return True
         return False
 
@@ -247,8 +306,12 @@ class LoginGate:
             self._sessions.clear()
 
     def _expire(self) -> None:
-        cutoff = self._now() - SESSION_IDLE_SECONDS
-        for token in [t for t, seen in self._sessions.items() if seen < cutoff]:
+        now = self._now()
+        idle = EDIT_SESSION_IDLE_SECONDS if self.allow_edits else SESSION_IDLE_SECONDS
+        for token in [
+            t for t, (seen, _, started) in self._sessions.items()
+            if seen < now - idle or (self.allow_edits and started < now - EDIT_SESSION_MAX_SECONDS)
+        ]:
             del self._sessions[token]
 
     @staticmethod
@@ -300,9 +363,9 @@ class LoginGate:
         start_response("303 See Other", headers)
         return [b""]
 
-    @staticmethod
-    def _page(start_response, status, problem):
+    def _page(self, start_response, status, problem):
         note = f'<p class="problem" role="alert">{html.escape(problem)}</p>' if problem else ""
+        editing = " This share allows editing." if self.allow_edits else ""
         body = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -324,7 +387,7 @@ button:focus-visible{{outline:2px solid var(--ink);outline-offset:2px}}
 </style></head><body>
 <form method="post" action="{LOGIN_PATH}">
 <h1 style="font-size:20px;margin:0">Beanbook reports</h1>
-<p class="note">Shared from a phone on this network. The connection is not encrypted.</p>
+<p class="note">Shared from a phone on this network. The connection is not encrypted.{editing}</p>
 {note}
 <label>Username<input name="username" autocomplete="username" required></label>
 <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
@@ -342,8 +405,15 @@ button:focus-visible{{outline:2px solid var(--ink);outline-offset:2px}}
         return [body]
 
 
-def start(app, host: str, port: int, username: str, password_hash: str) -> str:
-    """Serves [app] on host:port behind a sign-in. Returns ``host=… port=…``."""
+def start(
+    app, host: str, port: int, username: str, password_hash: str,
+    allow_edits: bool = False, slug: str = "",
+) -> str:
+    """Serves [app] on host:port behind a sign-in. Returns ``host=… port=…``.
+
+    With [allow_edits] a signed-in browser may also save in Fava's editor (see EDIT_ROUTES); [slug]
+    is the ledger's name in Fava's URLs. Editing is never the default.
+    """
     global _server, _thread, _gate
     stop()
     if not _is_private(host):
@@ -353,7 +423,7 @@ def start(app, host: str, port: int, username: str, password_hash: str) -> str:
 
     from cheroot.wsgi import Server
 
-    gate = LoginGate(app, username, password_hash)
+    gate = LoginGate(app, username, password_hash, allow_edits=allow_edits, slug=slug)
     server = None
     for candidate in (port, 0):
         try:
@@ -390,4 +460,5 @@ def stop() -> str:
 def stats() -> str:
     if _gate is None:
         return "share=off"
-    return f"share=on signed_in={_gate.signed_in} refused={_gate.refused}"
+    access = "edit" if _gate.allow_edits else "read"
+    return f"share=on access={access} signed_in={_gate.signed_in} refused={_gate.refused}"

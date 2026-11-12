@@ -87,20 +87,27 @@ class LocalEngineClient(
     var pluginDirs: List<String> = emptyList()
 
     /**
-     * Commits what Fava's file editor saves, through the app's write protocol: the file, the new
-     * bytes and the SHA-256 of the file's bytes as the engine read them; returns "ok" or "error: …".
-     * Null refuses every editor save, so the engine never writes a project itself.
+     * Commits what Fava writes, through the app's write protocol; returns "ok" or "error: …".
+     * Null refuses every write, so the engine never writes a project itself.
      */
     @Volatile
-    var editorSaves: (suspend (file: String, content: ByteArray, expectedSha: String) -> String)? = null
+    var favaWrites: (suspend (FavaWrite) -> String)? = null
 
     private val writeSink = object : IFavaWriteSink.Stub() {
         // Runs on a Binder thread while the engine's server thread waits for the answer.
-        override fun saveSource(filePath: String, contentPath: String, expectedSha: String): String {
-            val commit = editorSaves ?: return "error: Saving is not available right now."
+        override fun commit(
+            filePath: String,
+            contentPath: String,
+            expectedSha: String,
+            operation: String,
+            viaShare: Boolean,
+        ): String {
+            val commit = favaWrites ?: return "error: Saving is not available right now."
             return try {
                 val bytes = java.io.File(contentPath).readBytes()
-                kotlinx.coroutines.runBlocking { commit(filePath, bytes, expectedSha) }
+                kotlinx.coroutines.runBlocking {
+                    commit(FavaWrite(filePath, bytes, expectedSha, operation, viaShare))
+                }
             } catch (e: java.io.IOException) {
                 Log.w(TAG, "the editor's save failed", e)
                 "error: ${e.message ?: "The save did not complete."}"
@@ -164,9 +171,15 @@ class LocalEngineClient(
      * Shares the running Reports on the network, behind a sign-in. Returns the port it
      * listens on. Fails if Reports are not running, or the address is not a private one.
      */
-    suspend fun startSharing(host: String, port: Int, username: String, passwordHash: String): Result<Int> =
+    suspend fun startSharing(
+        host: String,
+        port: Int,
+        username: String,
+        passwordHash: String,
+        allowEdits: Boolean = false,
+    ): Result<Int> =
         withContext(io) {
-            connection.withEngine { it.startSharing(host, port, username, passwordHash) }
+            connection.withEngine { it.startSharing(host, port, username, passwordHash, allowEdits) }
                 .mapCatching { report ->
                     if (report.startsWith("error: ")) error(report.removePrefix("error: "))
                     report.split(' ')
@@ -285,3 +298,16 @@ class LocalEngineClient(
         const val PROCESS_EXIT_POLL_MILLIS = 100L
     }
 }
+
+/**
+ * A write Fava asked the engine to make: the project file, the new bytes, the SHA-256 of the file's
+ * bytes as the engine read them, what the write is (such as "editor-save"), and whether it came
+ * over Share on Wi-Fi.
+ */
+class FavaWrite(
+    val file: String,
+    val content: ByteArray,
+    val expectedSha: String,
+    val operation: String,
+    val viaShare: Boolean,
+)

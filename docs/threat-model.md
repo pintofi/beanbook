@@ -79,7 +79,7 @@ The `play` edition removes this surface entirely.
 - A save in Fava's file editor (`PUT /api/source`) is not written by the engine. It is handed
   to the app, which commits it through the write protocol (lock, snapshot, journal, re-parse,
   Undo) with the file's byte hash as the expected state, so a file changed since is refused.
-  Nothing new is reachable from the network: Share on Wi-Fi still answers `405` to a write.
+  Nothing new is reachable from the network without Can edit on Share on Wi-Fi (§3.3a).
 - No `INTERNET`-independent assumption: local mode functions with the network off, which
   is also the strongest privacy demonstration we can offer.
 
@@ -100,9 +100,25 @@ one, which is unchanged.
 - A signed-in browser holds a random 256-bit session id in an `HttpOnly`,
   `SameSite=Strict` cookie; sessions expire after 12 idle hours, are capped at 32, and all
   end when sharing stops. `SameSite=Strict` is the CSRF defence.
-- Read-only: a signed-in browser may use `GET`, `HEAD` and `OPTIONS` only. Fava's saves are
-  `PUT`, `POST` and `DELETE`, and are refused with `405`, so the shared pages cannot change
-  the ledger.
+- Read only is the default, and the choice is made at every Start and never remembered: a signed-in
+  browser may use `GET`, `HEAD` and `OPTIONS` only. Fava's saves are `PUT`, `POST` and `DELETE`,
+  and are refused with `405`, so the shared pages cannot change the ledger.
+- **Can edit** is chosen on the Share screen behind a confirmation that says the connection is not
+  encrypted and what that means for a write. It lasts for that share: stopping, restarting Reports
+  or moving to another network returns to read only, and the screen says so. It allows exactly the
+  routes in `EDIT_ROUTES`: the file editor (`PUT api/source`, `PUT api/format_source`), editing and
+  deleting one entry (`PUT` and `DELETE api/source_slice`) and the add-entry form (`PUT
+  api/add_entries`). Each needs a matching `Origin` and, if the browser sends it,
+  `Sec-Fetch-Site: same-origin`; a `PUT` needs a JSON body of a stated size and a `DELETE` has none. Uploads, moving and deleting documents, the importers and every
+  extension write stay refused. A session that can write is tied to the address that signed in,
+  idles out after 30 minutes and ends after 8 hours.
+- A write from a shared page is not written by the engine: it is handed to the app, which commits
+  it through the write protocol (snapshot, journal, re-parse, Undo) and checks again that the share
+  allows editing. The journal records it as `shared:` and the operation (`editor-save`, `entry-edit`, `entry-delete`, `add-entries`).
+- The engine refuses a shared-page write that adds or changes an `include`, `plugin`, `option`,
+  `document` or `custom "fava-…"` line, on any file. Otherwise a browser that can write ledger text
+  could name any file the app can read in a `document` line and have Fava serve it (the sharing
+  password hash, another project), or pull in code. Those lines are changed in the app.
 - `/api/extract` is refused on a shared page: it runs the importers the ledger configures, which is
   code and not a view of the ledger.
 - Five wrong attempts from one address lock that address out for a minute, doubling each
@@ -111,9 +127,11 @@ one, which is unchanged.
   exactly as long as sharing is on; the engine is kept running in the background only then.
 
 **Residual risk, accepted and said on screen:** the connection is plain HTTP. Anyone who can
-observe the network can read the pages and replay the session cookie while it is valid (to
-read; the shared pages cannot write). The
-screen says to use it only on a trusted network and to turn it off after. HTTPS would need a
+observe the network can read the pages and replay the session cookie while it is valid. With Read
+only that is a read. With Can edit it is a write, from the address that signed in, which pinning
+the session to that address does not stop against someone who can spoof it on the same network; the
+write is limited to the editor's routes, is journalled and can be undone, and ends with the share or
+after 30 idle minutes. The screen says to use it only on a trusted network and to turn it off after. HTTPS would need a
 certificate the other device trusts, which a phone on a home network cannot obtain without
 the user installing one; that is not built.
 

@@ -26,7 +26,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.pintofi.beanbook.app.BeancountApplication
+import io.github.pintofi.beanbook.app.sharing.ShareAccess
 import io.github.pintofi.beanbook.app.sharing.SharingStatus
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.RadioButton
+import androidx.compose.ui.semantics.Role
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
@@ -59,13 +65,19 @@ fun SharingScreen(modifier: Modifier = Modifier) {
     var username by remember { mutableStateOf(savedName.orEmpty()) }
     var password by remember { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
+    // Read only at every Start: the choice is not remembered, so editing is something the person
+    // chooses and confirms each time.
+    var access by remember { mutableStateOf(ShareAccess.READ_ONLY) }
+    var confirmEdit by remember { mutableStateOf(false) }
+    val editEnded by sharing.editEnded.collectAsStateWithLifecycle()
+    val start = { if (access == ShareAccess.CAN_EDIT) confirmEdit = true else sharing.start() }
 
     Column(modifier = modifier.verticalScroll(rememberScrollState())) {
     FolioPage(modifier = Modifier.readableMeasureCentred()) {
         Text(
             "Open your Reports in a browser on another device on the same Wi-Fi, such as a " +
-                "laptop. It shows the same pages as the Reports tab, to read and search. Changes " +
-                "are made in the app, not on the shared page.",
+                "laptop. It shows the same pages as the Reports tab, to read and search. It is read " +
+                "only unless you choose Can edit below.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = Measure.tight),
@@ -79,6 +91,25 @@ fun SharingScreen(modifier: Modifier = Modifier) {
                     "on a network you trust, such as your home Wi-Fi, and turn it off after.",
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+
+        if (editEnded) {
+            Notice(NoticeTone.ATTENTION) {
+                Text(
+                    "Reports restarted, so the share is read only again. Stop and start sharing to " +
+                        "allow editing.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        if ((status as? SharingStatus.On)?.access == ShareAccess.CAN_EDIT) {
+            Notice(NoticeTone.ATTENTION) {
+                Text(
+                    "Editing is on. Changes from the other device are saved to this ledger. Editing " +
+                        "ends when you stop sharing.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
 
         // While sharing, the address is the subject of the page: large, selectable, first.
@@ -159,6 +190,29 @@ fun SharingScreen(modifier: Modifier = Modifier) {
             }
         }
 
+        if (status is SharingStatus.Off || status is SharingStatus.Failed) {
+            FolioHeading("Access")
+            FolioGroup {
+                item {
+                    AccessChoice(
+                        selected = access == ShareAccess.READ_ONLY,
+                        title = "Read only",
+                        detail = "The other device can look and search. Nothing can be changed from it.",
+                        onSelect = { access = ShareAccess.READ_ONLY },
+                    )
+                }
+                item {
+                    AccessChoice(
+                        selected = access == ShareAccess.CAN_EDIT,
+                        title = "Can edit",
+                        detail = "The other device can also change your ledger in Fava's editor. " +
+                            "Each change is saved the way the app saves, with Undo.",
+                        onSelect = { access = ShareAccess.CAN_EDIT },
+                    )
+                }
+            }
+        }
+
         when (val current = status) {
             is SharingStatus.On -> OutlinedButton(
                 onClick = { sharing.stop() },
@@ -169,18 +223,59 @@ fun SharingScreen(modifier: Modifier = Modifier) {
             is SharingStatus.Failed -> {
                 Notice(NoticeTone.PROBLEM) { Text(current.reason, style = MaterialTheme.typography.bodyMedium) }
                 Button(
-                    onClick = { sharing.start() },
+                    onClick = { start() },
                     enabled = !editing,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 ) { Text("Try again") }
             }
             SharingStatus.Off -> Button(
-                onClick = { sharing.start() },
+                onClick = { start() },
                 enabled = !editing,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(top = 4.dp),
             ) { Text("Start sharing") }
         }
     }
+    }
+    if (confirmEdit) {
+        AlertDialog(
+            onDismissRequest = { confirmEdit = false },
+            title = { Text("Allow editing from another device?") },
+            text = {
+                Text(
+                    "Anyone signed in on the other device can change your ledger until you stop " +
+                        "sharing. The connection is not encrypted, so someone watching this Wi-Fi " +
+                        "could take over the signed-in browser and change your ledger, not only " +
+                        "read it. Use this only on a network you trust, and stop sharing when you're done.",
+                )
+            },
+            confirmButton = {
+                Button(onClick = { confirmEdit = false; sharing.start(ShareAccess.CAN_EDIT) }) {
+                    Text("Allow editing")
+                }
+            },
+            dismissButton = { OutlinedButton(onClick = { confirmEdit = false }) { Text("Cancel") } },
+        )
+    }
+}
+
+@Composable
+private fun AccessChoice(selected: Boolean, title: String, detail: String, onSelect: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
+            .padding(horizontal = Measure.tight, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Column {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
