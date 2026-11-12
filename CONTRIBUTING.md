@@ -109,8 +109,8 @@ python3 tools/check-versions.py --require-badges
 ```
 
 The numbers in the README's "Testing and reliability" section are counted from the source by
-`tools/check-test-counts.py`: test functions, Python test methods, fixture cases, corpus ledgers,
-screenshots and verify jobs. CI fails when one is out of date. After adding or removing tests, run
+`tools/check-test-counts.py`: test functions, Python test methods, fixture cases, corpus ledgers
+and verify jobs. CI fails when one is out of date. After adding or removing tests, run
 `python3 tools/check-test-counts.py --write` and commit the README with your change. A test counts
 if it is a `@Test` function or a `test*` method in a `unittest.TestCase`; commented-out and
 `@Ignore`d ones do not. A new test source set must be added to the table at the top of the script,
