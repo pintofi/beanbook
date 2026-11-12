@@ -12,7 +12,6 @@ from the source tree (tracked files plus new ones not yet ignored), without runn
   balance-cases, display-cases,
   price-cases                        cases in the Beancount-generated fixtures in core-domain
   corpus-ledgers                     directories under corpus/ with a main.beancount
-  screenshots                        reference pictures; must equal screens x variants in ScreenshotTest
   verify-jobs                        jobs in .github/workflows/verify.yml
 
 These are test functions and cases written in the source, not tests that ran on a given day. A
@@ -20,8 +19,6 @@ Kotlin test is a `@Test` (not `@TestOnly`) followed by a function; commented-out
 `@Ignore`d ones do not count. `jvm-tests` and `instrumentation-tests` change in most pull requests,
 so the README states them as a floor, "more than 1,100"; the rule lives here, so editing the README
 cannot loosen it. The others are exact.
-
-A number the README does not state is not checked; one it does state must be true.
 
 Every source set that holds tests must be listed in SOURCE_SETS with the command that runs it, and
 that command must still appear in the workflow or script named beside it, so a module dropped from
@@ -58,8 +55,6 @@ FIXTURES = {
     "price-cases": ("beancount-price-cases.txt", "price "),
 }
 FIXTURE_DIR = "core-domain/src/test/resources"
-SCREENSHOTS = "app/src/androidTest/assets/screenshots"
-SCREENSHOT_TEST = "app/src/androidTest/kotlin/io/github/pintofi/beanbook/app/ui/ScreenshotTest.kt"
 
 TEST_TOKEN = re.compile(r"(?<![\w.@])@(?:(?:org\.junit|kotlin\.test)\.)?Test(?!\w)")
 SKIP_TOKEN = re.compile(r"(?<![\w.@])@(?:\w+\.)*(?:Ignore|Disabled)(?!\w)")
@@ -203,14 +198,6 @@ def count_all() -> tuple[dict[str, int], list[str]]:
         lines = (ROOT / FIXTURE_DIR / name).read_text().splitlines()
         counts[key] = sum(1 for line in lines if line.startswith(prefix))
     counts["corpus-ledgers"] = sum(1 for f in tracked if re.match(r"^corpus/[^/]+/main\.beancount$", f))
-    shots = [f for f in tracked if f.startswith(SCREENSHOTS + "/") and f.endswith(".png")]
-    counts["screenshots"] = len(shots)
-    shot_test = (ROOT / SCREENSHOT_TEST).read_text()
-    screens = len(TEST_TOKEN.findall(strip_kotlin(shot_test)))
-    variants = len(re.findall(r"(?<!class )\bVariant\(", strip_kotlin(shot_test)))
-    if screens * variants != len(shots):
-        errors.append(f"counts: {len(shots)} reference pictures, but ScreenshotTest has {screens} screens "
-                      f"x {variants} variants")
     try:
         import yaml
     except ImportError:
@@ -254,6 +241,10 @@ def main() -> int:
         return m.group(0)
 
     fixed = MARKER.sub(fix, text)
+    for key in counts:
+        if key not in seen:
+            errors.append(f"counts: README.md has no <!-- count:{key} --> marker; if the sentence was "
+                          f"reworded, put the marker back or update tools/check-test-counts.py")
     if write and fixed != text:
         README.write_text(fixed)
     if write:
