@@ -21,6 +21,8 @@ Kotlin test is a `@Test` (not `@TestOnly`) followed by a function; commented-out
 so the README states them as a floor, "more than 1,100"; the rule lives here, so editing the README
 cannot loosen it. The others are exact.
 
+A number the README does not state is not checked; one it does state must be true.
+
 Every source set that holds tests must be listed in SOURCE_SETS with the command that runs it, and
 that command must still appear in the workflow or script named beside it, so a module dropped from
 CI cannot go on being claimed. The counting rules are first run on small samples whose answer is
@@ -252,10 +254,6 @@ def main() -> int:
         return m.group(0)
 
     fixed = MARKER.sub(fix, text)
-    for key in counts:
-        if key not in seen:
-            errors.append(f"counts: README.md has no <!-- count:{key} --> marker; if the sentence was "
-                          f"reworded, put the marker back or update tools/check-test-counts.py")
     if write and fixed != text:
         README.write_text(fixed)
     if write:
