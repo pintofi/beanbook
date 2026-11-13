@@ -28,12 +28,22 @@ data class PluginCatalogue(val entries: List<Entry>) {
         val isExtension: Boolean get() = kind == "fava-extension"
 
         /**
-         * Whether the catalogue this app carries pins a different version from the one installed.
-         * Compared as written: a version is a tag or a commit, and nothing says which is newer, so it
-         * is "different", and the app shipped with the version it offers.
+         * Whether the catalogue this app carries pins a newer version than the one installed.
+         *
+         * Two versions that are PEP 440 versions are ordered, so an installed version that is ahead of
+         * the one the app carries (after an update from upstream) is not offered back as an update.
+         * A commit or a tag is not a version and nothing says which is newer, so there the answer is
+         * "different", as it always was.
          */
-        fun updatesFrom(installedVersion: String): Boolean =
-            install?.version?.isNotEmpty() == true && install.version != installedVersion
+        fun updatesFrom(installedVersion: String): Boolean {
+            val pinned = install?.version?.takeIf { it.isNotEmpty() } ?: return false
+            val have = Pep440.parseOrNull(installedVersion)
+            val offered = Pep440.parseOrNull(pinned)
+            return if (have != null && offered != null) offered > have else pinned != installedVersion
+        }
+
+        /** Where the newest version of this entry is asked for, or null when its source cannot be. */
+        val upstream: UpstreamRef? get() = install?.let(UpstreamRef::of)
     }
 
     data class Install(
