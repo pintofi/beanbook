@@ -696,6 +696,8 @@ class AccessibilityTest {
                     io.github.pintofi.beanbook.app.plugins.PluginRow(
                         plugin,
                         io.github.pintofi.beanbook.core.data.PluginIntegrity.Unchanged,
+                        // An earlier copy to go back to, so both replace controls render here.
+                        previous = plugin,
                     ),
                 ),
                 safeMode = false,
@@ -731,6 +733,8 @@ class AccessibilityTest {
             "Safe mode: hold every plugin back",
             "Load tag_large.py",
             "Remove tag_large.py",
+            "Replace tag_large.py with a file",
+            "Go back to the earlier copy of tag_large.py",
         ) + packagesControls).forEach { label ->
             compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
         }

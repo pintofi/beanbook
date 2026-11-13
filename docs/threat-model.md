@@ -54,7 +54,11 @@ Android offers no mechanism that both isolates it and keeps Fava's integration.
 We therefore do not claim safety. We provide:
 
 - A warning above the list of plugins: this is executable code you are trusting.
-- Per-project enable/disable, off by default.
+- Per-project enable/disable, off by default. A plugin replaced with a newer file starts off
+  again: approving a file is not approving what the new one runs. The copy it replaced is kept
+  outside the project (so backups and mirrors do not carry it), is hashed before it is brought
+  back, and is the only one kept; that hash catches accidents, not anything that can rewrite the
+  app's own storage.
 - Provenance display: source path, import date, SHA-256, and a change alert when the file
   changes.
 - Execution logs with timestamps, arguments, working directory, exit status, and captured
