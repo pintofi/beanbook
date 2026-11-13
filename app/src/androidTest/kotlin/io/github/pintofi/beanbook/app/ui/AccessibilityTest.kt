@@ -736,6 +736,7 @@ class AccessibilityTest {
             "Check the fetched packages for updates",
             "Update the fetched packages",
             "Go back to the earlier packages",
+            "Set where tag_large.py comes from",
         ).takeIf { io.github.pintofi.beanbook.app.currentPluginPolicy().allowsPackageDownload }.orEmpty()
 
         (listOf(

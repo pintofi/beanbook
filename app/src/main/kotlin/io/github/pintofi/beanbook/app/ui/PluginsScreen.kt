@@ -20,6 +20,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,6 +77,10 @@ fun PluginsScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val app = context.applicationContext as? io.github.pintofi.beanbook.app.BeancountApplication
     var replacingId by remember { mutableStateOf<String?>(null) }
+    val found by (app?.pluginsState?.found ?: kotlinx.coroutines.flow.MutableStateFlow(emptyMap()))
+        .collectAsStateWithLifecycle()
+    val working by (app?.pluginsState?.working ?: kotlinx.coroutines.flow.MutableStateFlow(null))
+        .collectAsStateWithLifecycle()
     val picker = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -122,6 +127,17 @@ fun PluginsScreen(
                             onRemove = onRemove,
                             onReplace = { id -> replacingId = id; picker.launch(arrayOf("*/*")) },
                             onGoBack = { id -> app?.pluginsState?.goBack(id) },
+                            source = app?.pluginsState?.let { state ->
+                                PluginSourceControls(
+                                    available = state.canCheckSources,
+                                    found = found[row.plugin.id]?.version,
+                                    working = working == row.plugin.id,
+                                    onAttach = { project -> state.attachSource(row.plugin.id, project) },
+                                    onForget = { state.forgetSource(row.plugin.id) },
+                                    onCheck = { state.checkSource(row.plugin.id) },
+                                    onReplace = { state.replaceFromSource(row.plugin.id) },
+                                )
+                            },
                             status = status(row.plugin.id),
                         )
                     }
@@ -221,6 +237,7 @@ private fun PluginCard(
     onRemove: (String) -> Unit,
     onReplace: (String) -> Unit,
     onGoBack: (String) -> Unit,
+    source: PluginSourceControls? = null,
     status: PluginStatus = PluginStatus.Unknown,
 ) {
     var confirming by remember(row.plugin.id) { mutableStateOf(false) }
@@ -285,6 +302,7 @@ private fun PluginCard(
                         modifier = Modifier.semantics { contentDescription = "Remove ${plugin.name}" },
                     ) { Text("Remove") }
                 }
+                if (source?.available == true) PluginSource(plugin, source)
                 if (row.previous != null) {
                     OutlinedButton(
                         onClick = { onGoBack(plugin.id) },
@@ -679,6 +697,77 @@ private fun CatalogueRow(
             ) { Text("Install") }
             else -> Unit
         }
+    }
+}
+
+/** What the card of a plugin added from a file can do about where its newer versions come from. */
+internal class PluginSourceControls(
+    val available: Boolean,
+    /** The newer version the last check found. */
+    val found: String?,
+    val working: Boolean,
+    val onAttach: (String) -> Unit,
+    val onForget: () -> Unit,
+    val onCheck: () -> Unit,
+    val onReplace: () -> Unit,
+)
+
+/**
+ * A source for a plugin added from a file: the name of a project on PyPI, which a check asks for its
+ * newest version. Expert only. Nothing is asked until the person taps Check, and what it finds was not
+ * tested with this app, which the card says; replacing keeps the copy that is there.
+ */
+@Composable
+private fun PluginSource(plugin: io.github.pintofi.beanbook.core.data.InstalledPlugin, source: PluginSourceControls) {
+    var editing by remember(plugin.id) { mutableStateOf(false) }
+    var project by remember(plugin.id) { mutableStateOf("") }
+    if (editing) {
+        OutlinedTextField(
+            value = project,
+            onValueChange = { project = it },
+            label = { Text("Name of the project on PyPI") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = { editing = false; source.onAttach(project) },
+                enabled = project.isNotBlank(),
+                modifier = Modifier.semantics { contentDescription = "Save the source of ${plugin.name}" },
+            ) { Text("Save") }
+            OutlinedButton(onClick = { editing = false }) { Text("Cancel") }
+        }
+        return
+    }
+    val upstream = plugin.upstream
+    if (upstream == null) {
+        OutlinedButton(
+            onClick = { editing = true },
+            modifier = Modifier.semantics { contentDescription = "Set where ${plugin.name} comes from" },
+        ) { Text("Set where it comes from") }
+        return
+    }
+    Text(
+        "Source: $upstream on PyPI. Newer versions are not tested with this app.",
+        style = MaterialTheme.typography.bodySmall,
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(
+            onClick = source.onCheck,
+            enabled = !source.working,
+            modifier = Modifier.semantics { contentDescription = "Check ${plugin.name} for a newer version" },
+        ) { Text(if (source.working) "Checking…" else "Check for a newer version") }
+        OutlinedButton(
+            onClick = source.onForget,
+            modifier = Modifier.semantics { contentDescription = "Forget the source of ${plugin.name}" },
+        ) { Text("Forget source") }
+    }
+    source.found?.let { version ->
+        Button(
+            onClick = source.onReplace,
+            enabled = !source.working,
+            modifier = Modifier.semantics { contentDescription = "Replace ${plugin.name} with version $version" },
+        ) { Text("Replace with $version") }
     }
 }
 

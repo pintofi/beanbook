@@ -205,6 +205,50 @@ class PluginStoreReplaceTest {
         assertTrue(running(first.id).contains("VERSION = 1"))
     }
 
+    @Test
+    fun `a source can be attached, survives a replace, and is forgotten on request`() {
+        val first = added(1)
+        store.setUpstream(first.id, "tidy-plugin", "1.0")
+
+        store.replace(first.id, py("tidy.py", 2), policy, "tidy.py")
+
+        val kept = store.list().single()
+        assertEquals("tidy-plugin", kept.upstream)
+        assertEquals("1.0", kept.upstreamVersion)
+
+        store.setUpstream(first.id, null)
+        assertNull(store.list().single().upstream)
+        assertNull(store.list().single().upstreamVersion)
+    }
+
+    @Test
+    fun `an index written before sources existed still reads`() {
+        val first = added(1)
+        val index = File(project, "plugins/installed.json")
+        index.writeText(index.readText().replace(Regex(",?\\s*\"upstream[a-z_]*\": null"), ""))
+
+        assertEquals(first.id, store.list().single().id)
+        assertNull(store.list().single().upstream)
+    }
+
+    @Test
+    fun `a pure wheel from PyPI replaces a single file plugin and starts off`() {
+        val first = added(1)
+        store.setEnabled(first.id, true)
+        val wheel = File(incoming, "tidy-2.0-py3-none-any.whl").apply {
+            java.util.zip.ZipOutputStream(outputStream()).use { out ->
+                out.putNextEntry(java.util.zip.ZipEntry("tidy/__init__.py"))
+                out.write("__plugins__ = []\n".toByteArray()); out.closeEntry()
+            }
+        }
+
+        val result = store.replace(first.id, wheel, policy, "pypi: tidy 2.0")
+
+        assertFalse(assertIs<ReplaceResult.Replaced>(result).plugin.enabled)
+        assertTrue(File(project, "plugins/${first.id}/tidy/__init__.py").isFile)
+        assertNotNull(store.previous(first.id))
+    }
+
     private object Play : PluginPolicy {
         override val allowsUserCode = true
         override val allowsNativeCode = false
