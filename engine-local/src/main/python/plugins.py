@@ -360,6 +360,37 @@ def load_plugins(
     }
 
 
+def probe_plugins(plugin_dir: str, modules, allow_bridge: bool) -> dict:
+    """Tries to import [modules] from [plugin_dir] as a fresh copy, and leaves the process as it was.
+
+    What an update needs to know before it is kept: does the new version import at all. The running
+    process may already hold the old version's modules, so they are set aside first (every module of
+    the same top-level names, submodules included, or an old submodule would answer for a new
+    package), the import is made, and everything the import added is dropped and what was set aside
+    is put back. The answer is the same shape as ``load_plugins``.
+    """
+    root = Path(plugin_dir).resolve()
+    tops = {
+        entry.name.split(".")[0]
+        for entry in root.iterdir()
+        if not entry.name.endswith((".dist-info", ".egg-info", ".data")) and not entry.name.startswith("__")
+    } if root.is_dir() else set()
+
+    def ours(name: str) -> bool:
+        return name.split(".")[0] in tops
+
+    saved = {name: module for name, module in sys.modules.items() if ours(name)}
+    for name in saved:
+        del sys.modules[name]
+    try:
+        return load_plugins(str(root), modules, allow_bridge)
+    finally:
+        for name in [name for name in sys.modules if ours(name)]:
+            del sys.modules[name]
+        sys.modules.update(saved)
+        importlib.invalidate_caches()
+
+
 def probe_bridge(allow_bridge: bool) -> dict:
     """Tries to import the bridge exactly as a plugin would, and reports what happened.
 

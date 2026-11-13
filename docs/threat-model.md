@@ -212,7 +212,17 @@ no success is reported before a durable, re-parsed write.
 - Local mode makes **zero** network requests. Verifiable by the user with airplane mode.
 - No analytics, telemetry, crash reporting, ad SDKs, or attribution SDKs in any edition.
 - Nothing is sold, so there is no licence check of any kind.
-- Neither edition checks for updates or installs packages.
+- Neither edition checks for updates in the background or on its own. In the Expert edition,
+  **Check for updates** on the Plugins page asks `pypi.org` and `api.github.com` (over HTTPS, no
+  redirects, nothing else) where each installed catalogue plugin came from, only when it is tapped,
+  and the page says so before and shows when it last ran. What it sends is a project name or a
+  repository name and a version; no account, device or ledger data. The Play edition does not check.
+  An update is downloaded only from `files.pythonhosted.org` and `codeload.github.com`; a file PyPI
+  published a SHA-256 for must match it before anything is unpacked, and a GitHub archive publishes
+  none, so only HTTPS stands behind it and the install record says "checked only by HTTPS". An update
+  is kept only if the new version imports in the engine (a probe that leaves the running interpreter
+  as it was); otherwise the earlier version goes back by itself. That proves it loads, not that it is
+  right, and the plugin card says it was not tested with this app.
 - The diagnostics report is built only when the user asks, redacts credentials, tokens and
   cookies, and is shown on screen before it can be shared. It is a log of what the app did,
   so it can still contain file names and messages from the engine; read it before sending.

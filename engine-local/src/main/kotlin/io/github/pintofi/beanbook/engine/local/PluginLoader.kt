@@ -34,6 +34,13 @@ class PluginLoader(
         it.loadPlugins(pluginDir, modules, allowBridge, journalPath, journalLabel)
     }
 
+    /**
+     * Imports [modules] from [pluginDir] as a fresh copy and leaves the engine as it was, so an
+     * updated plugin can be proved to import before the update is kept. Same answer as [load].
+     */
+    suspend fun probe(pluginDir: String, modules: String, allowBridge: Boolean): Result<String> =
+        connection.withEngine { it.probePlugins(pluginDir, modules, allowBridge) }
+
     /** Runs one script with a deadline. [handle] is what [cancel] cancels. */
     suspend fun runScript(
         scriptPath: String,

@@ -511,6 +511,7 @@ internal fun CatalogueSection(
     val installed = catalogue.entries.filter { it.id in catalogue.installed }
     if (installed.isNotEmpty()) {
         FolioHeading("Installed plugins")
+        if (catalogue.canCheck) CheckForUpdates(catalogue)
         FolioGroup {
             installed.forEach { entry -> item { CatalogueRow(entry, catalogue, status(entry.id)) } }
         }
@@ -601,7 +602,9 @@ private fun CatalogueRow(
 ) {
     val installed = entry.id in catalogue.installed
     val installedVersion = catalogue.installed[entry.id].orEmpty()
-    val updatable = installed && entry.updatesFrom(installedVersion)
+    val upstreamVersion = catalogue.updates[entry.id]
+    val updatable = installed && (upstreamVersion != null || entry.updatesFrom(installedVersion))
+    val updateTo = upstreamVersion ?: entry.install?.version
     val working = catalogue.status
     FolioBody {
         Row(verticalAlignment = Alignment.Top) {
@@ -632,7 +635,7 @@ private fun CatalogueRow(
                 if (installed) PluginStatusLine(status)
                 if (updatable) {
                     Text(
-                        "Update available: $installedVersion → ${entry.install?.version}",
+                        "Update available: $installedVersion → $updateTo",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -674,6 +677,32 @@ private fun CatalogueRow(
             ) { Text("Install") }
             else -> Unit
         }
+    }
+}
+
+/**
+ * Asks where each installed plugin came from whether there is a newer version. Only on a tap, and it
+ * says which hosts it will ask; nothing checks on its own.
+ */
+@Composable
+private fun CheckForUpdates(catalogue: io.github.pintofi.beanbook.app.plugins.CatalogueUi) {
+    val last = catalogue.lastChecked?.let {
+        java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT)
+            .format(java.util.Date(it))
+    }
+    FolioBody {
+        OutlinedButton(
+            onClick = catalogue.onCheck,
+            enabled = !catalogue.checking &&
+                catalogue.status is io.github.pintofi.beanbook.app.plugins.CatalogueStatus.Idle,
+            modifier = Modifier.semantics { contentDescription = "Check installed plugins for updates" },
+        ) { Text(if (catalogue.checking) "Checking…" else "Check for updates") }
+        Text(
+            "Asks pypi.org and github.com, where the plugins came from. " +
+                (last?.let { "Last checked $it." } ?: "Not checked yet."),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
