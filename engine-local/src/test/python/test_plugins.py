@@ -642,6 +642,59 @@ class CompanionLibraryTest(unittest.TestCase):
         self.assertEqual([], plugins.preload_companion_libraries(tempfile.gettempdir()))
 
 
+class ProbePluginsTest(unittest.TestCase):
+    """An update is proved to import as a fresh copy, and the running process is left as it was."""
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.root = Path(self.dir.name)
+        self.addCleanup(lambda: [sys.modules.pop(n, None) for n in list(sys.modules) if n.split(".")[0] == "probepkg"])
+
+    def package(self, name, files):
+        base = self.root / name
+        for relative, text in files.items():
+            target = base / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text)
+        return str(base)
+
+    def test_a_new_version_that_imports_passes_and_a_broken_one_fails(self):
+        good = self.package("good", {"probepkg/__init__.py": "VERSION = 2\n", "probepkg/mod.py": "X = 1\n"})
+        bad = self.package("bad", {"probepkg/__init__.py": "import module_that_is_not_there\n"})
+
+        ok = plugins.probe_plugins(good, "probepkg.mod", True)
+        broken = plugins.probe_plugins(bad, "probepkg", True)
+
+        self.assertEqual((1, 0), (ok["loaded"], ok["failed"]))
+        self.assertEqual((0, 1), (broken["loaded"], broken["failed"]))
+        self.assertIn("module_that_is_not_there", broken["runs"][0]["error"])
+
+    def test_the_running_copy_is_not_answering_for_the_new_one(self):
+        old = self.package("old", {"probepkg/__init__.py": "VERSION = 1\n", "probepkg/mod.py": "X = 1\n"})
+        sys.path.insert(0, old)
+        self.addCleanup(sys.path.remove, old)
+        running = importlib.import_module("probepkg.mod")
+        # The new version dropped probepkg.mod; the old module still sitting in sys.modules must not
+        # make that import look like it works.
+        new = self.package("new", {"probepkg/__init__.py": "VERSION = 2\n"})
+
+        result = plugins.probe_plugins(new, "probepkg.mod", True)
+
+        self.assertEqual(1, result["failed"])
+        self.assertIs(running, sys.modules["probepkg.mod"])
+        self.assertEqual(1, sys.modules["probepkg"].VERSION)
+
+    def test_nothing_the_probe_imported_is_left_behind(self):
+        new = self.package("new", {"probepkg/__init__.py": "", "probepkg/mod.py": ""})
+
+        plugins.probe_plugins(new, "probepkg.mod", True)
+
+        self.assertNotIn("probepkg", sys.modules)
+        self.assertNotIn("probepkg.mod", sys.modules)
+        self.assertNotIn(str((self.root / "new").resolve()), sys.path)
+
+
 if __name__ == "__main__":
     unittest.main()
 

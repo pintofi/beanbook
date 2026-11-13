@@ -5,9 +5,13 @@ import io.github.pintofi.beanbook.app.diagnostics.Diagnostics
 import io.github.pintofi.beanbook.app.packages.ArchiveFetcher
 import io.github.pintofi.beanbook.app.packages.FetchResult
 import io.github.pintofi.beanbook.app.packages.Resolution
+import io.github.pintofi.beanbook.app.packages.UpdateChecker
 import io.github.pintofi.beanbook.app.packages.WheelFetcher
 import io.github.pintofi.beanbook.core.data.CatalogueInstaller
 import io.github.pintofi.beanbook.core.data.PluginCatalogue
+import io.github.pintofi.beanbook.core.data.UpstreamRelease
+import io.github.pintofi.beanbook.core.data.UpstreamReleases
+import io.github.pintofi.beanbook.engine.local.PluginLoader
 import io.github.pintofi.beanbook.core.domain.PluginPolicy
 import java.io.File
 import androidx.compose.runtime.getValue
@@ -62,6 +66,24 @@ class CatalogueState(
     private fun previousVersions(): Map<String, String> =
         installer.installed().keys.mapNotNull { id -> installer.previousVersion(id)?.let { id to it } }.toMap()
 
+    private val checker = UpdateChecker()
+    private val loader by lazy { PluginLoader(context) }
+
+    /** Newer versions found upstream by the last check, by plugin id. Empty until the person checks. */
+    private val _updates = MutableStateFlow<Map<String, UpstreamRelease>>(emptyMap())
+    val updates: StateFlow<Map<String, UpstreamRelease>> = _updates.asStateFlow()
+
+    private val _checking = MutableStateFlow(false)
+    val checking: StateFlow<Boolean> = _checking.asStateFlow()
+
+    private val lastCheckedFile = File(root, ".last-checked")
+    private val _lastChecked = MutableStateFlow(
+        lastCheckedFile.takeIf { it.isFile }?.readText()?.trim()?.toLongOrNull(),
+    )
+
+    /** When the person last checked and got an answer, in epoch milliseconds. */
+    val lastChecked: StateFlow<Long?> = _lastChecked.asStateFlow()
+
     private val _status = MutableStateFlow<CatalogueStatus>(CatalogueStatus.Idle)
     val status: StateFlow<CatalogueStatus> = _status.asStateFlow()
 
@@ -109,8 +131,79 @@ class CatalogueState(
         assets = context.assets,
     )
 
-    /** Replaces the installed [id] with the version this app carries, keeping the installed one to go back to. */
+    /**
+     * Replaces the installed [id] with the newer version the last check found upstream, or else with
+     * the version this app carries, keeping the installed one to go back to.
+     */
     fun update(id: String) = request(id, upgrade = true)
+
+    /**
+     * Asks each installed plugin's source whether a newer version exists. Only when the person taps:
+     * nothing checks in the background, and a plugin whose source the app does not know is left out
+     * and said so. The answer is kept until the next check; an update uses the version it found.
+     */
+    fun checkForUpdates() {
+        if (!canInstall || !UpdateChecker.AVAILABLE) return
+        if (_checking.value || _status.value is CatalogueStatus.Installing) return
+        _checking.value = true
+        _message.value = null
+        scope.launch {
+            val answer = withContext(Dispatchers.IO) { runChecks() }
+            _updates.value = answer.found
+            if (answer.asked > 0) {
+                val now = System.currentTimeMillis()
+                runCatching { lastCheckedFile.writeText(now.toString()) }
+                _lastChecked.value = now
+            }
+            _message.value = answer.summary()
+            _checking.value = false
+            Diagnostics.i(TAG, "update check: ${answer.found.size} newer, ${answer.failed.size} failed")
+        }
+    }
+
+    private class CheckAnswer(
+        val found: Map<String, UpstreamRelease>,
+        val names: Map<String, String>,
+        val failed: List<String>,
+        val unchecked: Int,
+        val asked: Int,
+    ) {
+        fun summary(): String {
+            val parts = mutableListOf<String>()
+            if (found.isNotEmpty()) {
+                parts += "Updates available for " + found.keys.joinToString { names[it] ?: it } + "."
+            } else if (failed.isEmpty()) {
+                parts += "Everything checked is up to date."
+            }
+            if (failed.isNotEmpty()) parts += "Couldn't check ${failed.joinToString()}."
+            if (unchecked > 0) {
+                parts += "$unchecked ${if (unchecked == 1) "plugin" else "plugins"} " +
+                    "can't be checked: the app doesn't know where they came from."
+            }
+            return parts.joinToString(" ")
+        }
+    }
+
+    private fun runChecks(): CheckAnswer {
+        val found = LinkedHashMap<String, UpstreamRelease>()
+        val names = HashMap<String, String>()
+        val failed = mutableListOf<String>()
+        var unchecked = 0
+        var asked = 0
+        installer.installed().forEach { (id, version) ->
+            val entry = catalogue.entries.firstOrNull { it.id == id }
+            val record = installer.record(id, entry)
+            if (entry == null || record?.upstream == null) {
+                unchecked++
+                return@forEach
+            }
+            names[id] = entry.name
+            checker.check(record, version)
+                .onSuccess { release -> asked++; release?.let { found[id] = it } }
+                .onFailure { failed += "${entry.name} (${it.message ?: "no answer"})" }
+        }
+        return CheckAnswer(found, names, failed, unchecked, asked)
+    }
 
     /** Works out what installing [id] needs, and shows it. Downloads no plugin code. */
     fun request(id: String) = request(id, upgrade = false)
@@ -146,8 +239,13 @@ class CatalogueState(
                     _message.value = io.github.pintofi.beanbook.app.work.KeepWorking.KEEP_OPEN
                 },
             ) {
-                val resolution = withContext(Dispatchers.IO) { resolve(entry) }
-                install(entry, resolution, upgrade)
+                val release = if (upgrade) _updates.value[id] else null
+                if (release == null) {
+                    val resolution = withContext(Dispatchers.IO) { resolve(entry) }
+                    install(entry, resolution, upgrade)
+                } else {
+                    updateFromUpstream(entry, release)
+                }
             }
         }
     }
@@ -176,15 +274,64 @@ class CatalogueState(
         return Resolution(wheels.values.toList(), unavailable.distinct().sorted())
     }
 
+    /**
+     * Fetches what upstream published for [entry], checks it is the file the source named, and
+     * installs it as an update that is only kept if it loads.
+     */
+    private suspend fun updateFromUpstream(entry: PluginCatalogue.Entry, release: UpstreamRelease) {
+        val prepared = withContext(Dispatchers.IO) {
+            runCatching {
+                val bytes = ArchiveFetcher().fetch(release.archive).getOrThrow()
+                UpstreamReleases.entryFor(entry, release, bytes) to bytes
+            }
+        }
+        prepared
+            .onSuccess { (updated, bytes) ->
+                val resolution = withContext(Dispatchers.IO) { resolve(updated) }
+                install(updated, resolution, upgrade = true, prefetched = bytes, trial = true)
+            }
+            .onFailure {
+                _status.value = CatalogueStatus.Idle
+                _message.value = "Couldn't update ${entry.name}: ${it.message ?: "the download failed"}. " +
+                    "It is as it was."
+            }
+    }
+
+    /** The update did not load, so it is not kept. */
+    private class TrialFailed(val reason: String) : IllegalStateException(reason)
+
+    /**
+     * Imports the updated plugin's modules as a fresh copy in the engine. An update that does not
+     * import is not kept: the version it replaced goes back, and the person is told why.
+     */
+    private suspend fun proveItLoads(entry: PluginCatalogue.Entry) {
+        val modules = entry.install?.modules.orEmpty()
+        if (modules.isEmpty()) return
+        val answer = loader.probe(
+            installer.siteFor(entry.id).absolutePath, modules.joinToString(","), policy.allowsAndroidBridge,
+        ).getOrElse { throw TrialFailed("it could not be tried") }
+        if (!Regex("'failed': 0\\b").containsMatchIn(answer)) {
+            val reason = Regex("'error': ['\"](.{1,200}?)['\"],").find(answer)?.groupValues?.get(1)
+            throw TrialFailed(reason ?: "it did not import")
+        }
+    }
+
     /** Downloads, verifies and installs [entry] and what it needs. */
-    private suspend fun install(entry: PluginCatalogue.Entry, resolution: Resolution, upgrade: Boolean) {
+    private suspend fun install(
+        entry: PluginCatalogue.Entry,
+        resolution: Resolution,
+        upgrade: Boolean,
+        prefetched: ByteArray? = null,
+        trial: Boolean = false,
+    ) {
+        val was = installer.installed()[entry.id].orEmpty()
         // The installed version is only touched once the new one has passed its checks, and only then is
         // there anything to go back to: a failure before that must leave the installed plugin alone.
         var swapped = false
         val outcome = withContext(Dispatchers.IO) {
             runCatching {
                 val install = checkNotNull(entry.install)
-                val archive = ArchiveFetcher().fetch(install.archive).getOrThrow()
+                val archive = prefetched ?: ArchiveFetcher().fetch(install.archive).getOrThrow()
                 val site = if (upgrade) {
                     installer.upgradeCode(entry, archive).getOrThrow().also { swapped = true }
                 } else {
@@ -199,6 +346,7 @@ class CatalogueState(
                     }
                 }
                 installer.markInstalled(entry)
+                if (trial) proveItLoads(entry)
             }.onFailure {
                 when {
                     !upgrade -> installer.remove(entry.id)
@@ -211,6 +359,7 @@ class CatalogueState(
         outcome
             .onSuccess {
                 onEngineStale()
+                _updates.value = _updates.value - entry.id
                 val done = if (upgrade) "Updated" else "Installed"
                 _message.value = if (resolution.unavailable.isEmpty()) {
                     "$done ${entry.name}."
@@ -219,9 +368,14 @@ class CatalogueState(
                         "won't work, because those aren't available for Android."
                 }
             }
-            .onFailure {
+            .onFailure { failure ->
+                if (failure is TrialFailed) {
+                    _message.value = "${entry.name} ${entry.install?.version.orEmpty()} didn't load " +
+                        "(${failure.reason}), so ${was.ifEmpty { "the earlier version" }} is back in use."
+                    return@onFailure
+                }
                 val what = if (upgrade) "update" else "install"
-                _message.value = "Couldn't $what ${entry.name}: ${it.message ?: "the download failed"}. " +
+                _message.value = "Couldn't $what ${entry.name}: ${failure.message ?: "the download failed"}. " +
                     if (upgrade) "It is as it was. Check your connection and try again." else
                         "Check your connection and try again."
             }
@@ -266,7 +420,15 @@ class CatalogueState(
         status: CatalogueStatus,
         message: String?,
         previous: Map<String, String> = emptyMap(),
+        updates: Map<String, String> = emptyMap(),
+        checking: Boolean = false,
+        lastChecked: Long? = null,
     ) = CatalogueUi(
+        updates = updates,
+        checking = checking,
+        lastChecked = lastChecked,
+        canCheck = canInstall && UpdateChecker.AVAILABLE,
+        onCheck = ::checkForUpdates,
         entries = catalogue.entries,
         installed = installed,
         previous = previous,
@@ -294,7 +456,13 @@ fun CatalogueState.collectUi(): CatalogueUi {
     val statusNow by status.collectAsStateWithLifecycle()
     val messageNow by message.collectAsStateWithLifecycle()
     val previousNow by previous.collectAsStateWithLifecycle()
-    return ui(installedNow, statusNow, messageNow, previousNow)
+    val updatesNow by updates.collectAsStateWithLifecycle()
+    val checkingNow by checking.collectAsStateWithLifecycle()
+    val lastCheckedNow by lastChecked.collectAsStateWithLifecycle()
+    return ui(
+        installedNow, statusNow, messageNow, previousNow,
+        updatesNow.mapValues { it.value.version }, checkingNow, lastCheckedNow,
+    )
 }
 
 sealed interface CatalogueStatus {
@@ -314,6 +482,12 @@ data class CatalogueUi(
     val onRemove: (String) -> Unit,
     val onUpdate: (String) -> Unit,
     val onRollback: (String) -> Unit,
+    /** The newer version the last check found upstream, by plugin id. */
+    val updates: Map<String, String> = emptyMap(),
+    val checking: Boolean = false,
+    val lastChecked: Long? = null,
+    val canCheck: Boolean = false,
+    val onCheck: () -> Unit = {},
 ) {
     companion object {
         val EMPTY = CatalogueUi(

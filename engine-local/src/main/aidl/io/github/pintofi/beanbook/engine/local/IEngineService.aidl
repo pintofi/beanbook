@@ -93,6 +93,12 @@ interface IEngineService {
     String loadPlugins(String pluginDir, String modules, boolean allowBridge,
                        String journalPath, String journalLabel);
 
+    /**
+     * Imports [modules] from [pluginDir] as a fresh copy and leaves the process as it was: what an
+     * update is checked with before it is kept. Same answer as loadPlugins.
+     */
+    String probePlugins(String pluginDir, String modules, boolean allowBridge);
+
     /** Runs one user script with a deadline. [handle] is what cancelScript cancels. */
     /**
      * @param pluginDirs the same directories a ledger load gets: the plugins the user turned

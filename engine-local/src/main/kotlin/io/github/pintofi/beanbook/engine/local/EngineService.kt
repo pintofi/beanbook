@@ -139,6 +139,10 @@ class EngineService : Service() {
             ).toString()
         }
 
+        override fun probePlugins(pluginDir: String, modules: String, allowBridge: Boolean): String = guarded {
+            python().getModule("plugins").callAttr("probe_plugins", pluginDir, modules, allowBridge).toString()
+        }
+
         override fun runScript(
             scriptPath: String,
             ledgerPath: String,
