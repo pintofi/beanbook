@@ -34,6 +34,13 @@ data class InstalledPlugin(
     val installedUnderPolicy: String,
     val enabled: Boolean,
     val modules: List<String>,
+    /**
+     * Where a newer version of a plugin added from a file can be found, as the person said: a PyPI
+     * project name. Null for the usual plugin, which has no source the app knows.
+     */
+    val upstream: String? = null,
+    /** The version of [upstream] this plugin was replaced with, so a later check can tell what is newer. */
+    val upstreamVersion: String? = null,
 ) {
     internal fun toJson(): Json.Obj = Json.Obj(
         mapOf(
@@ -48,6 +55,8 @@ data class InstalledPlugin(
             "policy" to Json.Str(installedUnderPolicy),
             "enabled" to Json.Bool(enabled),
             "modules" to Json.Arr(modules.map { Json.Str(it) }),
+            "upstream" to (upstream?.let { Json.Str(it) } ?: Json.Null),
+            "upstream_version" to (upstreamVersion?.let { Json.Str(it) } ?: Json.Null),
         ),
     )
 
@@ -67,6 +76,8 @@ data class InstalledPlugin(
                 installedUnderPolicy = obj.string("policy") ?: return null,
                 enabled = (obj["enabled"] as? Json.Bool)?.value ?: false,
                 modules = obj.array("modules").orEmpty().mapNotNull { (it as? Json.Str)?.value },
+                upstream = obj.string("upstream"),
+                upstreamVersion = obj.string("upstream_version"),
             )
         }
     }
@@ -241,6 +252,22 @@ class PluginStore(private val projectRoot: File, private val keepRoot: File? = n
         )
         write(before.filterNot { it.id == id } + plugin)
         return InstallResult.Installed(plugin)
+    }
+
+    /**
+     * Records where a newer version of [id] is looked for, or forgets it ([upstream] null), and the
+     * version of it that is installed when that is known.
+     */
+    fun setUpstream(id: String, upstream: String?, version: String? = null) {
+        write(
+            indexForChange().map {
+                if (it.id != id) {
+                    it
+                } else {
+                    it.copy(upstream = upstream, upstreamVersion = version.takeIf { upstream != null })
+                }
+            },
+        )
     }
 
     fun setEnabled(id: String, enabled: Boolean) {

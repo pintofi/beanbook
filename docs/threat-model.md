@@ -223,6 +223,11 @@ no success is reported before a durable, re-parsed write.
   is kept only if the new version imports in the engine (a probe that leaves the running interpreter
   as it was); otherwise the earlier version goes back by itself. That proves it loads, not that it is
   right, and the plugin card says it was not tested with this app.
+  A plugin added from a file can be given a PyPI project as its source (Expert only); **Check for a newer
+  version** asks `pypi.org`, and replacing downloads from `files.pythonhosted.org`, checks PyPI's published
+  SHA-256, and goes through the same read, policy check and kept earlier copy as any replacement, starting
+  off. The version recorded for it is the one that was replaced with, so a later check compares like with
+  like; with none recorded the latest is shown for the person to decide.
   **Check for package updates** does the same for fetched Python packages against `pypi.org` and
   `chaquo.com`: PyPI's published SHA-256 must match before a wheel is unpacked, Chaquopy publishes none, the
   update is built beside the folder in use and kept only if it imports in a fresh engine, and the earlier

@@ -3,7 +3,13 @@ package io.github.pintofi.beanbook.app.plugins
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import io.github.pintofi.beanbook.app.packages.ArchiveFetcher
+import io.github.pintofi.beanbook.app.packages.UpdateChecker
+import io.github.pintofi.beanbook.core.data.InstallRecord
 import io.github.pintofi.beanbook.core.data.InstallResult
+import io.github.pintofi.beanbook.core.data.UpstreamRef
+import io.github.pintofi.beanbook.core.data.UpstreamRelease
+import io.github.pintofi.beanbook.core.data.UpstreamReleases
 import io.github.pintofi.beanbook.core.data.InstalledPlugin
 import io.github.pintofi.beanbook.core.data.PluginIntegrity
 import io.github.pintofi.beanbook.core.data.PluginSafeMode
@@ -253,6 +259,129 @@ class PluginsState(
             }
             Diagnostics.i(TAG, "plugin $id replace -> ${result?.javaClass?.simpleName}")
             if (result is ReplaceResult.Replaced) onEngineStale()
+            refresh()
+        }
+    }
+
+    // -- a source for a plugin added from a file ----------------------------------------------
+
+    /** Whether this edition can look anything up for a plugin added from a file. */
+    val canCheckSources: Boolean get() = UpdateChecker.AVAILABLE && ArchiveFetcher.AVAILABLE
+
+    private val checker = UpdateChecker()
+
+    /** Newer versions found for plugins added from a file, by plugin id, from the last check. */
+    private val _found = MutableStateFlow<Map<String, UpstreamRelease>>(emptyMap())
+    val found: StateFlow<Map<String, UpstreamRelease>> = _found.asStateFlow()
+
+    /** The plugin a check or a replace from its source is running for. */
+    private val _working = MutableStateFlow<String?>(null)
+    val working: StateFlow<String?> = _working.asStateFlow()
+
+    /**
+     * Says where newer versions of [id] are looked for: a project on PyPI. Nothing is fetched until the
+     * person checks, and nothing about the plugin was tested with this app.
+     */
+    fun attachSource(id: String, project: String) {
+        val name = project.trim()
+        if (!canCheckSources) return
+        if (!Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,99}").matches(name)) {
+            _message.value = "That is not a PyPI project name."
+            return
+        }
+        scope.launch {
+            withContext(Dispatchers.IO) { runCatching { store()?.setUpstream(id, UpstreamRef.normalise(name)) } }
+            _found.value = _found.value - id
+            _message.value = "Newer versions of this plugin will be looked for on PyPI as $name."
+            refresh()
+        }
+    }
+
+    fun forgetSource(id: String) {
+        scope.launch {
+            withContext(Dispatchers.IO) { runCatching { store()?.setUpstream(id, null) } }
+            _found.value = _found.value - id
+            refresh()
+        }
+    }
+
+    /** Asks PyPI for the newest version of [id]'s project. Only when the person taps. */
+    fun checkSource(id: String) {
+        val plugin = rows.value.firstOrNull { it.plugin.id == id }?.plugin ?: return
+        val project = plugin.upstream ?: return
+        if (!canCheckSources || _working.value != null) return
+        _working.value = id
+        _message.value = null
+        scope.launch {
+            val record = InstallRecord(
+                name = plugin.name, version = plugin.upstreamVersion.orEmpty(), source = "pypi", upstream = project,
+                archive = "", sha256 = "", verified = "not-recorded", installedAtEpochMs = plugin.installedAtEpochMs,
+            )
+            // With no version on record every release is newer: the person is shown the latest and
+            // decides, rather than the app guessing what a hand-added file is.
+            val outcome = withContext(Dispatchers.IO) { checker.check(record, plugin.upstreamVersion ?: "0") }
+            outcome
+                .onSuccess { release ->
+                    _found.value = if (release == null) _found.value - id else _found.value + (id to release)
+                    _message.value = when {
+                        release == null -> "${plugin.name} is up to date with $project on PyPI."
+                        plugin.upstreamVersion == null ->
+                            "The latest $project on PyPI is ${release.version}. It was not tested with this app."
+                        else -> "$project ${release.version} is available (you have ${plugin.upstreamVersion}). " +
+                            "It was not tested with this app."
+                    }
+                }
+                .onFailure { _message.value = "Couldn't check $project: ${it.message ?: "no answer"}." }
+            _working.value = null
+        }
+    }
+
+    /**
+     * Replaces [id] with the version [checkSource] found: downloaded from PyPI's file host, its published
+     * SHA-256 checked, then through the same read, policy check and kept earlier copy as any other replace.
+     */
+    fun replaceFromSource(id: String) {
+        val release = _found.value[id] ?: return
+        val plugin = rows.value.firstOrNull { it.plugin.id == id }?.plugin ?: return
+        if (!canCheckSources || _working.value != null) return
+        _working.value = id
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val store = store() ?: error("Open a project first")
+                    val bytes = ArchiveFetcher().fetch(release.archive).getOrThrow()
+                    val digest = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+                        .joinToString("") { "%02x".format(it) }
+                    check(release.sha256 == null || release.sha256 == digest) {
+                        "the download is not the file PyPI published"
+                    }
+                    val scratch = File(context.cacheDir, "plugin-source-${System.nanoTime()}").apply { mkdirs() }
+                    try {
+                        val wheel = File(scratch, release.archive.substringAfterLast('/')).apply { writeBytes(bytes) }
+                        store.replace(id, wheel, policy, sourceLabel = "pypi: ${plugin.upstream} ${release.version}")
+                    } finally {
+                        scratch.deleteRecursively()
+                    }
+                }
+            }
+            result
+                .onSuccess { replaced ->
+                    if (replaced is ReplaceResult.Replaced) {
+                        withContext(Dispatchers.IO) { store()?.setUpstream(id, plugin.upstream, release.version) }
+                        _found.value = _found.value - id
+                        onEngineStale()
+                        _message.value = "Replaced ${plugin.name} with ${plugin.upstream} ${release.version}. " +
+                            "It is off until you turn it on, and the copy you had is kept."
+                    } else {
+                        _message.value = "Nothing changed: " + when (replaced) {
+                            is ReplaceResult.Failed -> replaced.reason
+                            is ReplaceResult.Refused -> refusal(replaced.verdict)
+                            else -> "that is the file already added"
+                        } + "."
+                    }
+                }
+                .onFailure { _message.value = "Nothing changed: ${it.message ?: "the download failed"}." }
+            _working.value = null
             refresh()
         }
     }
