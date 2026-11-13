@@ -343,6 +343,8 @@ private fun PackagesSection(
 
     var wanted by remember { mutableStateOf("") }
 
+    if (installed.isNotEmpty() || packages.canGoBack) PackageUpdates(packages)
+
     FolioGroup {
         item {
             FolioBody {
@@ -676,6 +678,69 @@ private fun CatalogueRow(
                 modifier = Modifier.semantics { contentDescription = "Install ${entry.name}" },
             ) { Text("Install") }
             else -> Unit
+        }
+    }
+}
+
+/**
+ * Whether the packages that were fetched have newer versions, asked of PyPI and Chaquopy's index when
+ * the person taps; the update, with the earlier packages kept; and the way back.
+ */
+@Composable
+private fun PackageUpdates(packages: PackagesUi) {
+    val idle = packages.status is PackagesStatus.Idle
+    val last = packages.lastChecked?.let {
+        java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT)
+            .format(java.util.Date(it))
+    }
+    FolioBody {
+        if (packages.canCheck && packages.installed.isNotEmpty()) {
+            OutlinedButton(
+                onClick = packages.onCheck,
+                enabled = idle && !packages.checking,
+                modifier = Modifier.semantics { contentDescription = "Check the fetched packages for updates" },
+            ) { Text(if (packages.checking) "Checking…" else "Check for package updates") }
+            Text(
+                "Asks pypi.org and chaquo.com, where they were fetched from. " +
+                    (last?.let { "Last checked $it." } ?: "Not checked yet."),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (packages.updates.isNotEmpty()) {
+            Notice(
+                NoticeTone.ATTENTION,
+                modifier = Modifier.semantics { contentDescription = "Package updates available" },
+            ) {
+                Text(
+                    packages.updates.joinToString("\n") {
+                        if (it.from == null) "${it.name} ${it.to} (new, needed by the update)"
+                        else "${it.name} ${it.from} → ${it.to}"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    "The versions you have now are kept so you can go back. Plugins and scripts that use " +
+                        "these packages may behave differently. If the new ones don't load, the earlier " +
+                        "ones come back by themselves.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = packages.onUpdate,
+                    enabled = idle,
+                    modifier = Modifier.semantics { contentDescription = "Update the fetched packages" },
+                ) { Text("Update packages") }
+                OutlinedButton(onClick = packages.onDismissUpdates) { Text("Not now") }
+            }
+        }
+        if (packages.canGoBack) {
+            OutlinedButton(
+                onClick = packages.onGoBack,
+                enabled = idle,
+                modifier = Modifier.semantics { contentDescription = "Go back to the earlier packages" },
+            ) { Text("Go back to the earlier packages") }
         }
     }
 }

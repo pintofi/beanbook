@@ -309,11 +309,8 @@ class CatalogueState(
         if (modules.isEmpty()) return
         val answer = loader.probe(
             installer.siteFor(entry.id).absolutePath, modules.joinToString(","), policy.allowsAndroidBridge,
-        ).getOrElse { throw TrialFailed("it could not be tried") }
-        if (!Regex("'failed': 0\\b").containsMatchIn(answer)) {
-            val reason = Regex("'error': ['\"](.{1,200}?)['\"],").find(answer)?.groupValues?.get(1)
-            throw TrialFailed(reason ?: "it did not import")
-        }
+        ).getOrNull()
+        probeFailure(answer)?.let { throw TrialFailed(it) }
     }
 
     /** Downloads, verifies and installs [entry] and what it needs. */

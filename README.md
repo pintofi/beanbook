@@ -452,7 +452,7 @@ that need an emulator run once a week instead, and their failures do not block a
 
 | Check | How much | What it protects | When |
 |---|---|---|---|
-| Kotlin unit tests | more than <!-- count:jvm-tests -->1,100<!-- /count --> test functions | Amounts, balancing, the save path, backups, import, the remote client | Every change |
+| Kotlin unit tests | more than <!-- count:jvm-tests -->1,200<!-- /count --> test functions | Amounts, balancing, the save path, backups, import, the remote client | Every change |
 | Python engine tests | <!-- count:python-tests -->205<!-- /count --> test methods | What the on-device engine writes to a ledger, plugins, Share on Wi-Fi | Every change |
 | Balancing, against Beancount 3.2.3 | <!-- count:balance-cases -->900<!-- /count --> generated entries | An entry balances, and a blank posting gets its figure, as Beancount decides | Every change |
 | Display, against Beancount | <!-- count:display-cases -->600<!-- /count --> figures | Decimal places and thousands separators as Beancount prints them | Every change |

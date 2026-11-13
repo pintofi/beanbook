@@ -714,6 +714,14 @@ class AccessibilityTest {
                     status = io.github.pintofi.beanbook.app.packages.PackagesStatus.Idle,
                     message = null,
                     onRequest = {}, onConfirm = {}, onCancel = {}, onRemoveAll = {},
+                    canCheck = true,
+                    canGoBack = true,
+                    updates = listOf(
+                        io.github.pintofi.beanbook.app.packages.PackageUpdate(
+                            "numpy", "2.1.3", "2.2.0",
+                            io.github.pintofi.beanbook.app.packages.Wheel("numpy", "2.2.0", "https://x/n.whl", "a", false),
+                        ),
+                    ),
                 ),
             )
         }
@@ -725,6 +733,9 @@ class AccessibilityTest {
             "Name of a package to fetch",
             "See what this would download",
             "Remove every fetched package",
+            "Check the fetched packages for updates",
+            "Update the fetched packages",
+            "Go back to the earlier packages",
         ).takeIf { io.github.pintofi.beanbook.app.currentPluginPolicy().allowsPackageDownload }.orEmpty()
 
         (listOf(

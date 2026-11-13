@@ -118,6 +118,7 @@ class PluginsState(
         // and the same `ModuleNotFoundError` came back -- so the install looked like it had
         // failed. Safe mode still withholds it, along with everything else.
         val packages = io.github.pintofi.beanbook.app.packages.OnDemandPackages.root(context)
+            .also { io.github.pintofi.beanbook.app.packages.OnDemandPackages.recoverOnce(it) }
             .takeIf {
                 !PluginSafeMode(root).isSafeMode &&
                     it.isDirectory &&

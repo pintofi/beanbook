@@ -29,6 +29,9 @@ private val PACKAGE_NAME = Regex("[a-z0-9]([a-z0-9._-]*[a-z0-9])?")
 internal fun isPackageName(name: String): Boolean = PACKAGE_NAME.matches(name)
 
 /** What happened, in terms the screen can show without inventing wording. */
+/** A package that a check found newer upstream, or that a newer one now needs. [from] is null for a new one. */
+data class PackageUpdate(val name: String, val from: String?, val to: String, val wheel: Wheel)
+
 sealed interface FetchResult {
     data class Installed(val wheels: List<Wheel>, val bytes: Long) : FetchResult
     data class Refused(val reason: String) : FetchResult
@@ -94,6 +97,19 @@ object OnDemandPackages {
      */
     fun isIncomplete(root: java.io.File): Boolean = marker(root).isFile
 
+    private val recovered: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+    /**
+     * Finishes or undoes an update a killed process left, once per process, before anything is handed
+     * to the engine: an update that was never proved is not what the engine imports after a restart.
+     */
+    fun recoverOnce(root: java.io.File): String? =
+        if (recovered.add(root.absolutePath)) {
+            io.github.pintofi.beanbook.core.data.PackageSwap(root).recover()
+        } else {
+            null
+        }
+
     /**
      * Throws away a root left half-merged, and returns what was being merged when it stopped.
      *
@@ -144,4 +160,14 @@ data class PackagesUi(
     /** The curated plugin catalogue, which installs through the same fetcher. */
     val catalogue: io.github.pintofi.beanbook.app.plugins.CatalogueUi =
         io.github.pintofi.beanbook.app.plugins.CatalogueUi.EMPTY,
+    /** Newer packages the last check found, and the controls for it. Empty until the person checks. */
+    val updates: List<PackageUpdate> = emptyList(),
+    val checking: Boolean = false,
+    val canCheck: Boolean = false,
+    val canGoBack: Boolean = false,
+    val lastChecked: Long? = null,
+    val onCheck: () -> Unit = {},
+    val onUpdate: () -> Unit = {},
+    val onDismissUpdates: () -> Unit = {},
+    val onGoBack: () -> Unit = {},
 )

@@ -251,6 +251,12 @@ class BeancountApplication : Application() {
             currentPluginPolicy(),
             appScope,
             onEngineStale = engineRestart::markNeeded,
+            restartEngine = { engine.restartProcess() },
+            probe = { dir, modules ->
+                io.github.pintofi.beanbook.engine.local.PluginLoader(this)
+                    .probe(dir.absolutePath, modules.joinToString(","), currentPluginPolicy().allowsAndroidBridge)
+                    .getOrNull()
+            },
         )
     }
 
