@@ -194,13 +194,49 @@ class CatalogueInstaller(private val root: File) {
     }
 
     /** Records that [entry] is fully installed, after its packages are in as well. */
-    fun markInstalled(entry: PluginCatalogue.Entry) {
+    fun markInstalled(entry: PluginCatalogue.Entry, now: Long = System.currentTimeMillis()) {
+        InstallRecord.forCatalogue(entry, now)?.let { record ->
+            val recordFile = File(folderFor(entry.id), RECORD_FILE)
+            val recordTemp = File(recordFile.parentFile, "$RECORD_FILE.tmp")
+            recordTemp.writeText(record.toJson().write() + "\n")
+            check(recordTemp.renameTo(recordFile)) { "could not record where ${entry.name} came from" }
+        }
         // Written beside and renamed over, so a kill never leaves an empty version file that
         // reads as an installed plugin of no version.
         val target = File(folderFor(entry.id), VERSION_FILE)
         val temporary = File(target.parentFile, "$VERSION_FILE.tmp")
         temporary.writeText(entry.install?.version.orEmpty())
         check(temporary.renameTo(target)) { "could not record that ${entry.name} is installed" }
+    }
+
+    /**
+     * What the app knows about the installed [id]: its record if it was written, otherwise one
+     * rebuilt from the version file and, when that version is the one [entry] pins, from [entry].
+     * An install from before records, at a version the catalogue no longer pins, has a version and
+     * nothing else: its source is unknown and it cannot be checked.
+     */
+    fun record(id: String, entry: PluginCatalogue.Entry?): InstallRecord? {
+        val folder = folderFor(id)
+        File(folder, RECORD_FILE).takeIf { it.isFile }?.let { file ->
+            val parsed = runCatching { InstallRecord.fromJson(Json.parse(file.readText()) as Json.Obj) }
+            parsed.getOrNull()?.let { return it }
+        }
+        val version = File(folder, VERSION_FILE).takeIf { it.isFile }?.readText()?.trim() ?: return null
+        val pinned = entry?.install
+        if (entry != null && pinned != null && pinned.version == version) {
+            return InstallRecord.forCatalogue(entry, 0L)?.copy(verified = "catalogue-pin")
+        }
+        return InstallRecord(
+            name = entry?.name ?: id, version = version, source = pinned?.source.orEmpty(),
+            upstream = entry?.upstream?.let { ref ->
+                when (ref) {
+                    is UpstreamRef.PyPI -> ref.project
+                    is UpstreamRef.GitHub -> ref.repo
+                    is UpstreamRef.Chaquopy -> ref.name
+                }
+            },
+            archive = "", sha256 = "", verified = "not-recorded", installedAtEpochMs = 0L,
+        )
     }
 
     /** Deletes [id], everything it brought, and the version kept to go back to. Returns the bytes freed. */
@@ -230,6 +266,7 @@ class CatalogueInstaller(private val root: File) {
     private companion object {
         val ID = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,80}")
         const val VERSION_FILE = "installed-version"
+        const val RECORD_FILE = "install.json"
 
         /** Folders [recover] has already run for in this process. */
         val recoveredRoots: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
