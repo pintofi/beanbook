@@ -225,4 +225,95 @@ class CatalogueInstallerTest {
             }
         }
     }
+
+    private fun folderWith(name: String, version: String?) {
+        File(root, "$name/site").mkdirs()
+        File(root, "$name/site/code.py").writeText(name)
+        if (version != null) File(root, "$name/installed-version").writeText(version)
+    }
+
+    @Test
+    fun `an update killed before it was recorded puts the working version back`() {
+        // upgradeCode ran (new folder in place, no version file yet), then the process died.
+        folderWith(".lazy-previous", "v1")
+        folderWith("lazy", null)
+
+        assertEquals(listOf("lazy"), installer.recover())
+
+        assertEquals(mapOf("lazy" to "v1"), installer.installed())
+        assertFalse(File(root, ".lazy-previous").exists())
+    }
+
+    @Test
+    fun `an update killed between the two moves puts the working version back`() {
+        // The installed folder was set aside and the new one was not yet moved in.
+        folderWith(".lazy-previous", "v1")
+
+        assertEquals(listOf("lazy"), installer.recover())
+
+        assertEquals(mapOf("lazy" to "v1"), installer.installed())
+    }
+
+    @Test
+    fun `a rollback killed between its moves ends on the earlier version`() {
+        // The current folder was set aside as failed; the earlier one was not yet moved in.
+        folderWith(".lazy-failed", "v2")
+        folderWith(".lazy-previous", "v1")
+
+        installer.recover()
+
+        assertEquals(mapOf("lazy" to "v1"), installer.installed())
+        assertFalse(File(root, ".lazy-failed").exists())
+    }
+
+    @Test
+    fun `a finished update keeps its earlier version to go back to`() {
+        folderWith("lazy", "v2")
+        folderWith(".lazy-previous", "v1")
+
+        assertEquals(emptyList(), installer.recover())
+
+        assertEquals(mapOf("lazy" to "v2"), installer.installed())
+        assertEquals("v1", installer.previousVersion("lazy"))
+    }
+
+    @Test
+    fun `an earlier version without a version file is not put back over nothing`() {
+        folderWith(".lazy-previous", null)
+
+        assertEquals(emptyList(), installer.recover())
+
+        assertEquals(emptyMap(), installer.installed())
+    }
+
+    @Test
+    fun `staging leftovers are deleted and a half installed plugin is not listed`() {
+        folderWith(".lazy-staging", null)
+        folderWith("fresh", null)
+
+        installer.recover()
+
+        assertFalse(File(root, ".lazy-staging").exists())
+        assertEquals(emptyMap(), installer.installed())
+    }
+
+    @Test
+    fun `the first look at the installed plugins in a process recovers them`() {
+        folderWith(".lazy-previous", "v1")
+        folderWith("lazy", null)
+
+        assertEquals(mapOf("lazy" to "v1"), CatalogueInstaller(root).installed())
+    }
+
+    @Test
+    fun `marking a plugin installed leaves no temporary file`() {
+        val archive = zip("src/lazy/__init__.py" to "")
+        val lazy = entry("lazy.valuation", archive, listOf("src/lazy"))
+        installer.installCode(lazy, archive).getOrThrow()
+
+        installer.markInstalled(lazy)
+
+        assertEquals(mapOf("lazy.valuation" to "abc123"), installer.installed())
+        assertFalse(File(root, "lazy.valuation/installed-version.tmp").exists())
+    }
 }

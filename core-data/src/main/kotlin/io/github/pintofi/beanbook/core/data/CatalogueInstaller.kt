@@ -26,8 +26,18 @@ class CatalogueInstaller(private val root: File) {
         return File(root, id)
     }
 
-    /** Installed entries and the version each was installed at. Half-finished installs are not. */
-    fun installed(): Map<String, String> =
+    /**
+     * Installed entries and the version each was installed at. Half-finished installs are not.
+     *
+     * The first call for a folder in this process first runs [recover], before anything here can be
+     * in the middle of an update.
+     */
+    fun installed(): Map<String, String> {
+        recoverOnce()
+        return listInstalled()
+    }
+
+    private fun listInstalled(): Map<String, String> =
         root.listFiles().orEmpty()
             .filter { it.isDirectory && ID.matches(it.name) }
             .mapNotNull { folder ->
@@ -35,6 +45,49 @@ class CatalogueInstaller(private val root: File) {
                 version?.let { folder.name to it }
             }
             .toMap()
+
+    /**
+     * Puts back what a killed update or rollback left half done.
+     *
+     * An update moves the installed folder to `.<id>-previous`, moves the new one in, and only then
+     * (after the plugin's packages are fetched) writes the version file that makes it count as
+     * installed; a rollback moves the current folder to `.<id>-failed` and the earlier one in. A
+     * process killed in between used to leave a plugin that was in neither list, so it vanished from
+     * the screen and was never handed to the engine, with its working version sitting in a hidden
+     * folder. Now, for each id:
+     *
+     *  - there is an earlier version and the current folder is missing or never got its version
+     *    file: the update did not finish, so the earlier version is put back and the unfinished one
+     *    is deleted;
+     *  - staging and failed folders belong to no finished step and are deleted.
+     *
+     * A finished update (both folders have a version file) is left as it is: that is a version to go
+     * back to. Returns the ids it put back.
+     */
+    fun recover(): List<String> {
+        val restored = mutableListOf<String>()
+        root.listFiles().orEmpty().filter { it.isDirectory && it.name.startsWith(".") }.forEach { hidden ->
+            if (!hidden.name.endsWith("-previous")) return@forEach
+            val id = hidden.name.removePrefix(".").removeSuffix("-previous")
+            if (!ID.matches(id)) return@forEach
+            val folder = File(root, id)
+            val versionFile = File(folder, VERSION_FILE)
+            val unfinished = !folder.exists() || (folder.isDirectory && !versionFile.isFile)
+            if (unfinished && File(hidden, VERSION_FILE).isFile) {
+                folder.deleteRecursively()
+                if (hidden.renameTo(folder)) restored += id
+            }
+        }
+        root.listFiles().orEmpty()
+            .filter { it.isDirectory && it.name.startsWith(".") }
+            .filter { it.name.endsWith("-staging") || it.name.endsWith("-failed") }
+            .forEach { it.deleteRecursively() }
+        return restored
+    }
+
+    private fun recoverOnce() {
+        if (recoveredRoots.add(root.absolutePath)) recover()
+    }
 
     /**
      * Puts [entry]'s code from [archive] into its site folder.
@@ -142,7 +195,12 @@ class CatalogueInstaller(private val root: File) {
 
     /** Records that [entry] is fully installed, after its packages are in as well. */
     fun markInstalled(entry: PluginCatalogue.Entry) {
-        File(folderFor(entry.id), VERSION_FILE).writeText(entry.install?.version.orEmpty())
+        // Written beside and renamed over, so a kill never leaves an empty version file that
+        // reads as an installed plugin of no version.
+        val target = File(folderFor(entry.id), VERSION_FILE)
+        val temporary = File(target.parentFile, "$VERSION_FILE.tmp")
+        temporary.writeText(entry.install?.version.orEmpty())
+        check(temporary.renameTo(target)) { "could not record that ${entry.name} is installed" }
     }
 
     /** Deletes [id], everything it brought, and the version kept to go back to. Returns the bytes freed. */
@@ -172,5 +230,8 @@ class CatalogueInstaller(private val root: File) {
     private companion object {
         val ID = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,80}")
         const val VERSION_FILE = "installed-version"
+
+        /** Folders [recover] has already run for in this process. */
+        val recoveredRoots: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
     }
 }
