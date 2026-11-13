@@ -77,6 +77,19 @@ sealed interface InstallResult {
     data class Installed(val plugin: InstalledPlugin) : InstallResult
     data class Refused(val verdict: PluginVerdict.Rejected, val scan: PluginScan) : InstallResult
     data class Failed(val reason: String) : InstallResult
+
+    /** A plugin by that name is already added, and the caller asked for nothing to be overwritten. */
+    data class Exists(val plugin: InstalledPlugin) : InstallResult
+}
+
+/** The outcome of replacing an added plugin with a newer file. */
+sealed interface ReplaceResult {
+    data class Replaced(val plugin: InstalledPlugin) : ReplaceResult
+    data class Refused(val verdict: PluginVerdict.Rejected, val scan: PluginScan) : ReplaceResult
+
+    /** The file is the one already added, so nothing was changed. */
+    data object Same : ReplaceResult
+    data class Failed(val reason: String) : ReplaceResult
 }
 
 /** Whether what is on disk is still what the user approved. */
@@ -100,7 +113,12 @@ sealed interface PluginIntegrity {
 /** The list of installed plugins exists but cannot be read; [message] says what to do, in words for the person. */
 class PluginIndexDamaged(message: String) : IllegalStateException(message)
 
-class PluginStore(private val projectRoot: File) {
+/**
+ * @param keepRoot where the copy a replace set aside is kept, outside the project: the project's
+ *   plugins folder is mirrored and backed up, and an earlier copy to go back to is not part of the
+ *   project. Without it a plugin cannot be replaced.
+ */
+class PluginStore(private val projectRoot: File, private val keepRoot: File? = null) {
 
     private val pluginsDir = File(projectRoot, "plugins")
     private val indexFile = File(pluginsDir, "installed.json")
@@ -164,6 +182,7 @@ class PluginStore(private val projectRoot: File) {
         policy: PluginPolicy,
         sourceLabel: String,
         now: Long = System.currentTimeMillis(),
+        overwrite: Boolean = true,
     ): InstallResult {
         if (!candidate.exists()) return InstallResult.Failed("that file is no longer there")
         // Before anything is copied: a plugin folder with no line in the index is a plugin
@@ -183,19 +202,14 @@ class PluginStore(private val projectRoot: File) {
         }
 
         val id = identifierFor(scan.name)
+        if (!overwrite) before.firstOrNull { it.id == id }?.let { return InstallResult.Exists(it) }
         val target = File(pluginsDir, id)
         // Staging then renaming: a copy interrupted halfway must not become a plugin.
         val staging = File(pluginsDir, "$id.installing")
         staging.deleteRecursively()
         staging.mkdirs()
 
-        val copied = runCatching {
-            when (scan.kind) {
-                PluginKind.SOURCE_FILE -> candidate.copyTo(File(staging, candidate.name))
-                PluginKind.DIRECTORY -> candidate.copyRecursively(File(staging, candidate.name))
-                PluginKind.ARCHIVE -> extract(candidate, staging)
-            }
-        }
+        val copied = runCatching { copyInto(scan.kind, candidate, staging) }
         if (copied.isFailure) {
             staging.deleteRecursively()
             return InstallResult.Failed(copied.exceptionOrNull()?.message ?: "could not be copied")
@@ -237,6 +251,184 @@ class PluginStore(private val projectRoot: File) {
         val remaining = indexForChange().filterNot { it.id == id }
         File(pluginsDir, id).deleteRecursively()
         write(remaining)
+        keepDir(id)?.deleteRecursively()
+    }
+
+    // -- replacing, and going back ---------------------------------------------------------
+
+    private fun keepDir(id: String): File? = keepRoot?.let { File(it, id) }
+
+    /** The plugin a replace set aside, as it was added, or null when there is none to go back to. */
+    fun previous(id: String): InstalledPlugin? {
+        val dir = keepDir(id) ?: return null
+        if (File(dir, PENDING).exists() || File(dir, SWAP).exists() || !File(dir, FILES).exists()) return null
+        return readRecord(File(dir, PREVIOUS))
+    }
+
+    private fun readRecord(file: File): InstalledPlugin? =
+        runCatching { InstalledPlugin.fromJson(Json.parse(file.readText()) as Json.Obj) }.getOrNull()
+
+    /**
+     * Replaces the added plugin [id] with [candidate], keeping what it replaces to go back to.
+     *
+     * Everything [install] checks is checked here, and nothing is touched until it passes. The
+     * order after that: a note of the old record is written (so a killed process knows what to
+     * undo), the old files are moved to the kept folder, the new ones are moved in, and the index
+     * with the new record is written, which is the commit. [recover] finishes or undoes whichever
+     * step a kill landed in. The replacement starts off, like any new plugin: approving a file is
+     * not approving what it now runs. One earlier copy is kept; the one before it is deleted.
+     */
+    fun replace(
+        id: String,
+        candidate: File,
+        policy: PluginPolicy,
+        sourceLabel: String,
+        now: Long = System.currentTimeMillis(),
+    ): ReplaceResult {
+        val keep = keepDir(id) ?: return ReplaceResult.Failed("there is nowhere to keep the earlier copy")
+        if (!candidate.exists()) return ReplaceResult.Failed("that file is no longer there")
+        val before = try {
+            indexForChange()
+        } catch (damaged: PluginIndexDamaged) {
+            return ReplaceResult.Failed(damaged.message.orEmpty())
+        }
+        val old = before.firstOrNull { it.id == id } ?: return ReplaceResult.Failed("that plugin is not added")
+        val scan = runCatching { PluginPreflight.scan(candidate) }
+            .getOrElse { return ReplaceResult.Failed(it.message ?: "could not be read") }
+        when (val verdict = policy.judge(scan)) {
+            is PluginVerdict.Rejected -> return ReplaceResult.Refused(verdict, scan)
+            PluginVerdict.Allowed -> Unit
+        }
+        if (scan.sha256 == old.sourceSha256) return ReplaceResult.Same
+
+        val target = File(pluginsDir, id)
+        val staging = File(pluginsDir, "$id.installing")
+        staging.deleteRecursively()
+        staging.mkdirs()
+        val copied = runCatching { copyInto(scan.kind, candidate, staging) }
+        if (copied.isFailure) {
+            staging.deleteRecursively()
+            return ReplaceResult.Failed(copied.exceptionOrNull()?.message ?: "could not be copied")
+        }
+        val newSha = runCatching { PluginPreflight.scan(staging).sha256 }.getOrNull()
+        // Judged on the folder as staged, which is what will run, so that what is hashed below is
+        // what verify() will hash later: a plugin is hashed where it sits, not where it came from.
+        if (newSha == null) {
+            staging.deleteRecursively()
+            return ReplaceResult.Failed("the copy could not be read back")
+        }
+
+        keep.deleteRecursively()
+        keep.mkdirs()
+        File(keep, PENDING).writeText(old.toJson().write())
+        if (target.exists() && !target.renameTo(File(keep, FILES))) {
+            keep.deleteRecursively()
+            staging.deleteRecursively()
+            return ReplaceResult.Failed("could not set the plugin aside, so it is as it was")
+        }
+        if (!staging.renameTo(target)) {
+            File(keep, FILES).renameTo(target)
+            keep.deleteRecursively()
+            staging.deleteRecursively()
+            return ReplaceResult.Failed("could not move the new file into place, so the plugin is as it was")
+        }
+        val installedSha = runCatching { PluginPreflight.scan(target).sha256 }.getOrDefault(newSha)
+        val plugin = old.copy(
+            name = scan.name,
+            kind = scan.kind,
+            sourceSha256 = scan.sha256,
+            installedSha256 = installedSha,
+            sizeBytes = scan.sizeBytes,
+            installedAtEpochMs = now,
+            sourceLabel = sourceLabel,
+            installedUnderPolicy = policy.name,
+            enabled = false,
+            modules = scan.pythonModules,
+        )
+        write(before.map { if (it.id == id) plugin else it })
+        File(keep, PREVIOUS).writeText(old.toJson().write())
+        File(keep, PENDING).delete()
+        return ReplaceResult.Replaced(plugin)
+    }
+
+    /**
+     * Brings back the copy [replace] set aside, and drops the one that replaced it.
+     *
+     * The kept files are hashed first and must be what was approved; a copy that is not is refused.
+     * The folders are exchanged, and a kill part-way is undone by [recover].
+     */
+    fun goBack(id: String): ReplaceResult {
+        val keep = keepDir(id) ?: return ReplaceResult.Failed("there is nowhere the earlier copy is kept")
+        val old = previous(id) ?: return ReplaceResult.Failed("there is no earlier copy to go back to")
+        val before = try {
+            indexForChange()
+        } catch (damaged: PluginIndexDamaged) {
+            return ReplaceResult.Failed(damaged.message.orEmpty())
+        }
+        val kept = File(keep, FILES)
+        val keptSha = runCatching { PluginPreflight.scan(kept).sha256 }.getOrNull()
+        if (keptSha != old.installedSha256) {
+            return ReplaceResult.Failed("the earlier copy has changed since it was set aside, so it is not used")
+        }
+        val target = File(pluginsDir, id)
+        val swap = File(keep, SWAP)
+        File(keep, SWAP_NOTE).writeText("1")
+        if (target.exists() && !target.renameTo(swap)) {
+            File(keep, SWAP_NOTE).delete()
+            return ReplaceResult.Failed("could not set the current plugin aside, so it is as it was")
+        }
+        if (!kept.renameTo(target)) {
+            swap.renameTo(target)
+            File(keep, SWAP_NOTE).delete()
+            return ReplaceResult.Failed("could not bring the earlier copy back, so the plugin is as it was")
+        }
+        write(before.map { if (it.id == id) old else it })
+        keep.deleteRecursively()
+        return ReplaceResult.Replaced(old)
+    }
+
+    /**
+     * Finishes or undoes a replace or a go-back that a killed process left half done. Run when a
+     * project opens, before anything is handed to the engine.
+     *
+     * The index is what decides: if it already holds the new record the step is finished, and if
+     * it still holds the old one the step is undone and the plugin is as it was.
+     */
+    fun recover() {
+        val root = keepRoot ?: return
+        root.listFiles().orEmpty().filter { it.isDirectory }.forEach { keep ->
+            val id = keep.name
+            val target = File(pluginsDir, id)
+            val index = readIndex() ?: return
+            val current = index.firstOrNull { it.id == id }
+            File(pluginsDir, "$id.installing").deleteRecursively()
+            val pending = File(keep, PENDING)
+            if (pending.exists()) {
+                val old = readRecord(pending)
+                if (old != null && current != null && current.installedSha256 == old.installedSha256) {
+                    // The index never moved: undo, so the plugin is the one that was added.
+                    target.deleteRecursively()
+                    File(keep, FILES).renameTo(target)
+                    keep.deleteRecursively()
+                } else {
+                    pending.copyTo(File(keep, PREVIOUS), overwrite = true)
+                    pending.delete()
+                }
+            } else if (File(keep, SWAP_NOTE).exists()) {
+                val old = readRecord(File(keep, PREVIOUS))
+                if (old != null && current != null && current.installedSha256 == old.installedSha256) {
+                    keep.deleteRecursively() // the go-back had committed
+                } else {
+                    // Undo: the kept copy goes back to the kept folder, the current plugin to its place.
+                    val kept = File(keep, FILES)
+                    if (!kept.exists() && target.exists()) target.renameTo(kept)
+                    val swap = File(keep, SWAP)
+                    if (swap.exists() && !target.exists()) swap.renameTo(target)
+                    swap.deleteRecursively()
+                    File(keep, SWAP_NOTE).delete()
+                }
+            }
+        }
     }
 
     /**
@@ -267,10 +459,23 @@ class PluginStore(private val projectRoot: File) {
             ),
         )
         val tmp = File(pluginsDir, "installed.json.tmp")
-        tmp.writeText(json.write() + "\n")
+        // Synced before the rename: the index is the commit point of a replace, and a name that
+        // points at bytes that never reached the disk is a plugin that is gone after a power cut.
+        java.io.FileOutputStream(tmp).use { out ->
+            out.write((json.write() + "\n").toByteArray())
+            out.fd.sync()
+        }
         if (!tmp.renameTo(indexFile)) {
             tmp.copyTo(indexFile, overwrite = true)
             tmp.delete()
+        }
+    }
+
+    private fun copyInto(kind: PluginKind, candidate: File, staging: File) {
+        when (kind) {
+            PluginKind.SOURCE_FILE -> candidate.copyTo(File(staging, candidate.name))
+            PluginKind.DIRECTORY -> candidate.copyRecursively(File(staging, candidate.name))
+            PluginKind.ARCHIVE -> extract(candidate, staging)
         }
     }
 
@@ -292,6 +497,14 @@ class PluginStore(private val projectRoot: File) {
                 }
             }
         }
+    }
+
+    private companion object {
+        const val FILES = "files"
+        const val PREVIOUS = "previous.json"
+        const val PENDING = "pending.json"
+        const val SWAP = "swap"
+        const val SWAP_NOTE = "swap.note"
     }
 
     /** A folder name derived from the plugin, safe on every filesystem the app touches. */

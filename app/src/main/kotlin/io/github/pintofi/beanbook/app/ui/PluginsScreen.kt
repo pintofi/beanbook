@@ -71,6 +71,18 @@ fun PluginsScreen(
      */
     status: (String) -> PluginStatus = { PluginStatus.Unknown },
 ) {
+    // Replacing an added plugin picks its own file, so the card needs no wiring through the
+    // activity: the state is the application's, like the other self-contained screens.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val app = context.applicationContext as? io.github.pintofi.beanbook.app.BeancountApplication
+    var replacingId by remember { mutableStateOf<String?>(null) }
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        val id = replacingId
+        replacingId = null
+        if (uri != null && id != null) app?.pluginsState?.replaceFrom(id, uri, displayNameOf(context, uri))
+    }
     Column(modifier = modifier.verticalScroll(rememberScrollState())) {
     FolioPage(modifier = Modifier.readableMeasureCentred()) {
 
@@ -108,6 +120,8 @@ fun PluginsScreen(
                             dimmed = safeMode,
                             onSetEnabled = onSetEnabled,
                             onRemove = onRemove,
+                            onReplace = { id -> replacingId = id; picker.launch(arrayOf("*/*")) },
+                            onGoBack = { id -> app?.pluginsState?.goBack(id) },
                             status = status(row.plugin.id),
                         )
                     }
@@ -205,9 +219,12 @@ private fun PluginCard(
     dimmed: Boolean,
     onSetEnabled: (String, Boolean) -> Unit,
     onRemove: (String) -> Unit,
+    onReplace: (String) -> Unit,
+    onGoBack: (String) -> Unit,
     status: PluginStatus = PluginStatus.Unknown,
 ) {
     var confirming by remember(row.plugin.id) { mutableStateOf(false) }
+    var replacing by remember(row.plugin.id) { mutableStateOf(false) }
     val plugin = row.plugin
 
     Column {
@@ -242,11 +259,40 @@ private fun PluginCard(
                     ) { Text("Remove") }
                     OutlinedButton(onClick = { confirming = false }) { Text("Cancel") }
                 }
+            } else if (replacing) {
+                Text(
+                    "Replace ${plugin.name} with a newer file? The new one stays off until you turn it " +
+                        "on, and the copy you have now is kept so you can go back.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { replacing = false; onReplace(plugin.id) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Choose the file to replace ${plugin.name}"
+                        },
+                    ) { Text("Choose file") }
+                    OutlinedButton(onClick = { replacing = false }) { Text("Cancel") }
+                }
             } else {
-                OutlinedButton(
-                    onClick = { confirming = true },
-                    modifier = Modifier.semantics { contentDescription = "Remove ${plugin.name}" },
-                ) { Text("Remove") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { replacing = true },
+                        modifier = Modifier.semantics { contentDescription = "Replace ${plugin.name} with a file" },
+                    ) { Text("Replace with a file") }
+                    OutlinedButton(
+                        onClick = { confirming = true },
+                        modifier = Modifier.semantics { contentDescription = "Remove ${plugin.name}" },
+                    ) { Text("Remove") }
+                }
+                if (row.previous != null) {
+                    OutlinedButton(
+                        onClick = { onGoBack(plugin.id) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Go back to the earlier copy of ${plugin.name}"
+                        },
+                    ) { Text("Go back to the earlier copy") }
+                }
             }
         }
     }
@@ -630,3 +676,10 @@ private fun CatalogueRow(
         }
     }
 }
+
+/** The name the provider gives a picked document, for the label shown against the plugin. */
+private fun displayNameOf(context: android.content.Context, uri: android.net.Uri): String =
+    context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+        val column = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+        if (column >= 0 && cursor.moveToFirst()) cursor.getString(column) else null
+    } ?: uri.lastPathSegment?.substringAfterLast('/').orEmpty()

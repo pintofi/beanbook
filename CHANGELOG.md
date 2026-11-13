@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- A plugin you added from a file can be replaced with a newer file, with **Replace with a file** on its card. The new one starts off, the copy you had is kept, and **Go back to the earlier copy** brings it back after checking it has not changed. Adding a file whose name is already added no longer overwrites the plugin silently; it says so and points to Replace. ([#343])
 - Share on Wi-Fi can allow editing. Start asks for Read only (the default, chosen again every time) or Can edit, which asks for a confirmation that says the connection is not encrypted. With Can edit, a browser on the network can save in Fava's file editor, edit or delete one entry, and add entries with the add form, and each change goes through the same write protocol as the app's own: snapshot, re-parse, Undo. It ends when you stop sharing, when Reports restart and when the network changes, and it cannot add or change `include`, `plugin`, `option`, `document` or Fava settings lines. Before, the shared page could only read. ([#388])
 - A plugin installed from the catalogue (Expert edition) can be updated to the version the app carries, and the version it replaces is kept to go back to. The Plugins page says "Update available" with both versions, and an update that fails any check, or whose packages cannot be fetched, leaves the installed plugin as it was. Packages and plugin files you add yourself come next. ([#343])
 

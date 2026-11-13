@@ -9,6 +9,7 @@ import io.github.pintofi.beanbook.core.data.PluginIntegrity
 import io.github.pintofi.beanbook.core.data.PluginSafeMode
 import io.github.pintofi.beanbook.core.data.PluginIndexDamaged
 import io.github.pintofi.beanbook.core.data.PluginStore
+import io.github.pintofi.beanbook.core.data.ReplaceResult
 import io.github.pintofi.beanbook.core.domain.PluginPolicy
 import io.github.pintofi.beanbook.core.domain.PluginVerdict
 import java.io.File
@@ -25,6 +26,8 @@ import kotlinx.coroutines.withContext
 data class PluginRow(
     val plugin: InstalledPlugin,
     val integrity: PluginIntegrity,
+    /** The copy a replace set aside, which "Go back" restores; null when there is none. */
+    val previous: InstalledPlugin? = null,
 )
 
 /**
@@ -59,10 +62,15 @@ class PluginsState(
 
     fun openProject(root: File) {
         projectRoot = root
-        refresh()
+        // Before anything is handed to the engine: a replace a killed process left half done is
+        // finished or undone, so the plugin that loads is one that was approved.
+        scope.launch { withContext(Dispatchers.IO) { store()?.recover() }; refresh() }
     }
 
-    private fun store(): PluginStore? = projectRoot?.let { PluginStore(it) }
+    /** Where the copy a replace sets aside is kept: outside the project, so backups and mirrors skip it. */
+    private fun keepRoot(root: File): File = File(context.filesDir, "plugin-keep/${root.name}")
+
+    private fun store(): PluginStore? = projectRoot?.let { PluginStore(it, keepRoot(it)) }
 
     private fun safe(): PluginSafeMode? = projectRoot?.let { PluginSafeMode(it) }
 
@@ -71,7 +79,7 @@ class PluginsState(
             withContext(Dispatchers.IO) {
                 val store = store() ?: return@withContext
                 _safeMode.value = safe()?.isSafeMode == true
-                _rows.value = store.list().map { PluginRow(it, store.verify(it)) }
+                _rows.value = store.list().map { PluginRow(it, store.verify(it), store.previous(it.id)) }
                 // A list that cannot be read looks like "no plugins", which it is not.
                 store.indexProblem()?.let { _message.value = it }
             }
@@ -194,7 +202,9 @@ class PluginsState(
                         target.outputStream().use { output -> input.copyTo(output) }
                     } ?: return@withContext InstallResult.Failed("that file could not be opened")
 
-                    store.install(target, policy, sourceLabel = name)
+                    // Not overwriting: a file with the name of one already added is a newer version of
+                    // it, and that has a button which keeps the copy being replaced.
+                    store.install(target, policy, sourceLabel = name, overwrite = false)
                 } catch (denied: SecurityException) {
                     Log.w(TAG, "no permission for the picked document", denied)
                     InstallResult.Failed("this app was not given permission to read that file")
@@ -209,11 +219,67 @@ class PluginsState(
         }
     }
 
+    /**
+     * Replaces the added plugin [id] with the file the user picked, keeping the copy it replaces.
+     * The same copy-to-scratch and the same checks as [installFrom]; the new one starts off.
+     */
+    fun replaceFrom(id: String, uri: Uri, displayName: String) {
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                val store = store() ?: return@withContext null
+                val scratch = File(context.cacheDir, "plugin-replace-${System.nanoTime()}").apply { mkdirs() }
+                try {
+                    val name = io.github.pintofi.beanbook.app.storage.safeDisplayName(displayName, "plugin.py")
+                    val target = File(scratch, name)
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        target.outputStream().use { output -> input.copyTo(output) }
+                    } ?: return@withContext ReplaceResult.Failed("that file could not be opened")
+                    store.replace(id, target, policy, sourceLabel = name)
+                } catch (denied: SecurityException) {
+                    Log.w(TAG, "no permission for the picked document", denied)
+                    ReplaceResult.Failed("this app was not given permission to read that file")
+                } finally {
+                    scratch.deleteRecursively()
+                }
+            }
+            _message.value = when (result) {
+                null -> "Open a project first."
+                is ReplaceResult.Replaced ->
+                    "Replaced \"${result.plugin.name}\". It is off until you turn it on, and the copy you had is kept."
+                ReplaceResult.Same -> "That is the file already added, so nothing changed."
+                is ReplaceResult.Failed -> "Nothing changed: ${result.reason}."
+                is ReplaceResult.Refused -> "Nothing changed.\n\n" + refusal(result.verdict)
+            }
+            Diagnostics.i(TAG, "plugin $id replace -> ${result?.javaClass?.simpleName}")
+            if (result is ReplaceResult.Replaced) onEngineStale()
+            refresh()
+        }
+    }
+
+    /** Brings back the copy the last replace of [id] set aside. */
+    fun goBack(id: String) {
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { store()?.goBack(id) }
+            _message.value = when (result) {
+                null -> "Open a project first."
+                is ReplaceResult.Replaced -> "Went back to the earlier copy of \"${result.plugin.name}\"."
+                is ReplaceResult.Failed -> "Nothing changed: ${result.reason}."
+                else -> "Nothing changed."
+            }
+            Diagnostics.i(TAG, "plugin $id go back -> ${result?.javaClass?.simpleName}")
+            if (result is ReplaceResult.Replaced) onEngineStale()
+            refresh()
+        }
+    }
+
     private fun describe(result: InstallResult?): String = when (result) {
         null -> "Open a project first."
         is InstallResult.Installed ->
             "Installed \"${result.plugin.name}\". It is off until you turn it on."
         is InstallResult.Failed -> "That could not be installed: ${result.reason}."
+        is InstallResult.Exists ->
+            "\"${result.plugin.name}\" is already added. To use a newer file, tap Replace with a file on its card; " +
+                "the copy you have now is kept."
         is InstallResult.Refused -> refusal(result.verdict)
     }
 
