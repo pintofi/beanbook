@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.pintofi.beanbook.app.engine.LedgerState
+import io.github.pintofi.beanbook.app.packages.collectUi as collectPackagesUi
 import io.github.pintofi.beanbook.app.plugins.collectUi
 import io.github.pintofi.beanbook.app.engine.RecoveryOnStart
 import io.github.pintofi.beanbook.app.ui.ScheduleEncryption
@@ -492,12 +493,7 @@ class MainActivity : ComponentActivity() {
                     // is the record of what it loads, and an edit in the raw editor has to
                     // show here too.
                     val catalogue = app.catalogueState.collectUi()
-                    val packagesInstalled by app.packagesState.installed.collectAsStateWithLifecycle()
-                    val packagesStatus by app.packagesState.status.collectAsStateWithLifecycle()
-                    val packagesMessage by app.packagesState.message.collectAsStateWithLifecycle()
-                    val packages = app.packagesState
-                        .ui(packagesInstalled, packagesStatus, packagesMessage)
-                        .copy(catalogue = catalogue)
+                    val packages = app.packagesState.collectPackagesUi().copy(catalogue = catalogue)
                     val dateRange by app.ledgerState.dateRange.collectAsStateWithLifecycle()
                     val restartNeeded by app.engineRestart.needed.collectAsStateWithLifecycle()
                     // Whatever changed under the running engine -- a plugin or package installed

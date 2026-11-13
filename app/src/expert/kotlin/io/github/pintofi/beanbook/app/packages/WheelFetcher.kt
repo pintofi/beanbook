@@ -7,6 +7,10 @@ import java.net.URL
 import java.security.MessageDigest
 import java.util.zip.ZipInputStream
 import org.json.JSONObject
+import io.github.pintofi.beanbook.core.data.PackageRecord
+import io.github.pintofi.beanbook.core.data.PackageRecords
+import io.github.pintofi.beanbook.core.data.PackageSwap
+import io.github.pintofi.beanbook.core.data.Pep440
 
 /**
  * Fetches a Python package on the user's request — expert edition only.
@@ -121,7 +125,7 @@ class WheelFetcher(
     }
 
     /** Fetches and unpacks [wheels], verifying each digest before it is opened. */
-    fun install(wheels: List<Wheel>): FetchResult {
+    fun install(wheels: List<Wheel>, asked: List<String> = emptyList()): FetchResult {
         if (!allowed) {
             return FetchResult.Refused("this edition does not download packages")
         }
@@ -199,7 +203,130 @@ class WheelFetcher(
         marker.delete()
         staging.deleteRecursively()
         spool.deleteRecursively()
+        runCatching { recordInstall(wheels, asked.map(::normalise).toSet()) }
+            .onFailure { Log.w(TAG, "could not record the installed packages", it) }
         return FetchResult.Installed(wheels, total)
+    }
+
+    // -- records, updates, and going back --------------------------------------------------
+
+    private fun records() = PackageRecords(root, File(root, ".records.json"))
+
+    private fun sourceOf(wheel: Wheel) = if (wheel.url.startsWith(chaquopyIndex)) "chaquopy" else "pypi"
+
+    private fun recordFor(wheel: Wheel, asked: Boolean) = PackageRecord(
+        name = wheel.name,
+        version = wheel.version,
+        source = sourceOf(wheel),
+        sha256 = wheel.sha256,
+        // PyPI publishes the digest; Chaquopy's index publishes none, so its hash is what arrived.
+        verified = if (sourceOf(wheel) == "pypi") "published-digest" else "received-only",
+        asked = asked,
+    )
+
+    /** Writes the records for what is in [root] now: what was known, with [wheels] as just installed. */
+    private fun recordInstall(wheels: List<Wheel>, asked: Set<String>, into: File = root) {
+        val known = PackageRecords(into, File(into, ".records.json")).current().associateBy { it.name }
+        val fresh = wheels.associate { it.name to recordFor(it, it.name in asked || known[it.name]?.asked == true) }
+        PackageRecords(into, File(into, ".records.json")).write((known + fresh).values.toList())
+    }
+
+    /**
+     * What is newer upstream than what is installed, for the packages the person asked for and what
+     * they need. Asks PyPI and Chaquopy's index (the same sources an install uses, in the same order),
+     * and only the packages this app fetched: a package of the bundled set is never offered.
+     * Needs the network, so it is only called when the person taps Check for updates.
+     */
+    fun checkUpdates(): Result<List<PackageUpdate>> = runCatching {
+        check(allowed) { "this edition does not download packages" }
+        val installed = records().current().associateBy { it.name }
+        val asked = installed.values.filter { it.asked }.map { it.name }
+        if (asked.isEmpty()) return@runCatching emptyList()
+        resolve(asked).getOrThrow().wheels.mapNotNull { wheel ->
+            val have = installed[wheel.name]?.version
+            val newer = when {
+                have == null -> true
+                else -> {
+                    val offered = Pep440.parseOrNull(wheel.version)
+                    val current = Pep440.parseOrNull(have)
+                    if (offered != null && current != null) offered > current else wheel.version != have
+                }
+            }
+            if (newer) PackageUpdate(wheel.name, have, wheel.version, wheel) else null
+        }
+    }
+
+    /**
+     * Builds the update in a copy of the packages, verifies every download before it is unpacked, and
+     * only then switches to the copy, keeping the folder it replaced. The folder in use is not touched
+     * until the switch, so a failure at any step leaves the packages exactly as they were. The switch
+     * is on trial until the caller proves the new packages import ([PackageSwap.proven]).
+     */
+    fun applyUpdates(updates: List<PackageUpdate>): FetchResult {
+        if (!allowed) return FetchResult.Refused("this edition does not download packages")
+        val swap = PackageSwap(root)
+        val next = swap.stageCopy()
+        fun abandon(reason: String): FetchResult {
+            next.deleteRecursively()
+            spool.deleteRecursively()
+            return FetchResult.Failed(reason)
+        }
+        var total = 0L
+        updates.forEach { update ->
+            val wheel = update.wheel
+            val bytes = try {
+                spooledAt(wheel.url).takeIf { it.isFile }?.readBytes() ?: download(wheel.url)
+            } catch (problem: java.io.IOException) {
+                Log.w(TAG, "could not fetch ${wheel.name}", problem)
+                return abandon("${wheel.name} could not be downloaded")
+            }
+            val digest = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+            if (digest != wheel.sha256) return abandon("${wheel.name} did not match the digest its index published")
+            if (update.from != null) removePackage(next, wheel.name)
+            runCatching { unpack(bytes, next) }.onFailure { return abandon("${wheel.name} could not be unpacked") }
+            overlay(wheel, next)
+            total += bytes.size
+        }
+        runCatching { recordInstall(updates.map { it.wheel }, emptySet(), into = next) }
+            .onFailure { return abandon("the new packages could not be recorded") }
+        swap.commit().onFailure { return abandon(it.message ?: "the new packages could not be switched to") }
+        spool.deleteRecursively()
+        return FetchResult.Installed(updates.map { it.wheel }, total)
+    }
+
+    /** Deletes the files an installed package's own RECORD lists, then its metadata folder. */
+    private fun removePackage(into: File, name: String) {
+        into.listFiles().orEmpty()
+            .filter { it.isDirectory && it.name.endsWith(".dist-info") }
+            .filter { normalise(it.name.removeSuffix(".dist-info").substringBeforeLast('-')) == name }
+            .forEach { dist ->
+                runCatching { File(dist, "RECORD").readLines() }.getOrDefault(emptyList())
+                    .map { it.substringBefore(',') }
+                    .filter { it.isNotEmpty() && !it.startsWith("/") && ".." !in it.split('/') }
+                    .forEach { relative ->
+                        val file = File(into, relative)
+                        file.delete()
+                        var parent = file.parentFile
+                        while (parent != null && parent != into && parent.list()?.isEmpty() == true) {
+                            parent.delete()
+                            parent = parent.parentFile
+                        }
+                    }
+                dist.deleteRecursively()
+            }
+    }
+
+    /** The names `import` uses for [wheels], read from the installed packages' own `top_level.txt`. */
+    fun importNames(wheels: List<Wheel>): List<String> {
+        val wanted = wheels.map { it.name }.toSet()
+        return root.listFiles().orEmpty()
+            .filter { it.isDirectory && it.name.endsWith(".dist-info") }
+            .filter { normalise(it.name.removeSuffix(".dist-info").substringBeforeLast('-')) in wanted }
+            .flatMap { dist ->
+                runCatching { File(dist, "top_level.txt").readLines() }.getOrDefault(emptyList())
+                    .map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("_") }
+            }
+            .distinct()
     }
 
     /**
@@ -529,7 +656,18 @@ class WheelFetcher(
     }
 
     /** Already in the APK, so never fetched. */
-    private fun isBundled(name: String): Boolean = name in BUNDLED
+    /**
+     * Never fetched and never updated: what the APK carries. The short list is the one this class always
+     * had; the file is generated from the locks that pin the whole bundled set (tools/bundled-packages.py).
+     */
+    private val shipped: Set<String> by lazy {
+        runCatching {
+            assets?.open("packages/bundled.txt")?.bufferedReader()?.use { it.readLines() }
+                ?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet()
+        }.getOrNull().orEmpty()
+    }
+
+    private fun isBundled(name: String): Boolean = name in BUNDLED || name in shipped
 
     private fun normalise(name: String) = name.lowercase().replace('_', '-').trim()
 

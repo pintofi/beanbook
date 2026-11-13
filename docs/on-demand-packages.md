@@ -107,6 +107,38 @@ fetched is shown, and anything that does reach for it fails at import with its n
 - **It is not a security boundary.** Installed code runs with the app's privileges, exactly
   like a plugin the user supplies as a file. The app says so.
 
+## Updating and going back
+
+**Check for package updates** (Expert only, under Extra Python packages) asks PyPI and Chaquopy's index,
+the two places a package is fetched from, whether the packages you asked for have newer versions, and what
+they now need. It runs only when you tap it, and the page says which hosts it asks and when it last ran.
+
+- **What is checked.** The packages this app fetched, each against the source it came from, never across
+  sources: PyPI's numpy is newer than Chaquopy's but has no Android build. Packages the APK carries
+  (Beancount, Fava and what they need; the list is `app/src/expert/assets/packages/bundled.txt`, generated
+  by `tools/bundled-packages.py` from the two lock files and checked in CI) are never fetched or updated.
+  A package a newer one now needs is shown as new.
+- **What the app records.** For an install made from now on, each package's version, source, the hash that
+  arrived and how it was checked (`published-digest` for PyPI's SHA-256, `received-only` for Chaquopy,
+  which publishes none), and whether you asked for it or it came as a dependency, in
+  `ondemand/.records.json`. Installs from before are read from the packages' own `dist-info` folders:
+  the version, the source (an Android build tag means Chaquopy) and whether anything else needs it; their
+  hash shows as not recorded.
+- **How an update is applied.** It is built in a copy of the packages beside the folder in use. Every wheel's
+  digest is checked before it is unpacked, the old files of a replaced package are removed from the copy by
+  its `RECORD`, and only then does the copy take the folder's place, with the folder it replaced kept as
+  `ondemand-previous`. The folder in use is not touched until that switch.
+- **Proved before it is kept.** The engine restarts, and the changed packages' top-level modules are imported
+  in the new process (`probePlugins`). If they import, the update is kept. If they do not, or the app is
+  stopped before the answer, the earlier packages come back by themselves.
+- **Going back** swaps the two folders and downloads nothing. One earlier copy is kept, which costs the
+  space of the packages that changed; Remove every fetched package removes both.
+
+What this cannot tell you: where a Chaquopy wheel actually came from (only HTTPS stands behind it), whether
+a plugin of yours still works with a newer package (the probe proves the package imports, not that your code
+is happy), and whether the earlier copy has been altered by something that can write to the app's storage.
+Going back can restore a version with known vulnerabilities; that is your choice.
+
 ## Overlays
 
 `assets/overlays/<package>-<version>/` holds files that replace a fetched package's own,

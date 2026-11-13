@@ -30,9 +30,19 @@ class WheelFetcher(
     fun resolve(names: List<String>): Result<Resolution> =
         Result.failure(UnsupportedOperationException(REASON))
 
-    fun install(wheels: List<Wheel>): FetchResult = FetchResult.Refused(REASON)
+    fun install(
+        wheels: List<Wheel>,
+        @Suppress("UNUSED_PARAMETER") asked: List<String> = emptyList(),
+    ): FetchResult = FetchResult.Refused(REASON)
 
     fun installed(): Set<String> = emptySet()
+
+    fun checkUpdates(): Result<List<PackageUpdate>> = Result.failure(UnsupportedOperationException(REASON))
+
+    fun applyUpdates(@Suppress("UNUSED_PARAMETER") updates: List<PackageUpdate>): FetchResult =
+        FetchResult.Refused(REASON)
+
+    fun importNames(@Suppress("UNUSED_PARAMETER") wheels: List<Wheel>): List<String> = emptyList()
 
     fun preloadNativeLibraries(): List<String> = emptyList()
 

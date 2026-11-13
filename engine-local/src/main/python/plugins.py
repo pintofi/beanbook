@@ -383,6 +383,9 @@ def probe_plugins(plugin_dir: str, modules, allow_bridge: bool) -> dict:
     for name in saved:
         del sys.modules[name]
     try:
+        # A native package links against libraries that arrive beside it; the engine loads them at
+        # start for the folders it serves, and a folder being tried has not been served yet.
+        preload_companion_libraries(str(root))
         return load_plugins(str(root), modules, allow_bridge)
     finally:
         for name in [name for name in sys.modules if ours(name)]:
