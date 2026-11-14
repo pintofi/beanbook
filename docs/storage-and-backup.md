@@ -74,6 +74,18 @@ structure from the root file's `include` graph.
 Preserved on every write: user file layout, comments, whitespace outside the edited
 region, include structure, and relative paths.
 
+**The main file.** A new project's main file is `main.beancount`. A project imported from a file
+with another name or place keeps that name and place, and says so in a record kept **outside the
+project**, in `<app files>/roots/<id>`: one line, the main file's path relative to the project
+folder, written durably before anything depends on it. The project folder holds the person's files
+and nothing of the app's, so an export and the mirror carry no record. No record means
+`main.beancount`, so projects made before records existed need no migration, and a record that says
+something unusable (a path that leaves the project) is read as `main.beancount`. The record follows
+the project to the trash (`<folder>.root` beside the trashed folder), back out of it under whatever id
+it gets, and is deleted with it. `ProjectWorkspace.mainFile(id)` is the only way to get the file, and
+a test fails if any other code spells its name. A documents folder written above a main file that sits
+in a subfolder (`../documents`) is judged against the whole project, not the main file's folder.
+
 ---
 
 ## 3. Atomic write protocol

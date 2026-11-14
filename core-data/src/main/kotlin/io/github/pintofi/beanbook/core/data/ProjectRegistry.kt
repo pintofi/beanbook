@@ -127,6 +127,13 @@ class ProjectRegistry(
             source.copyRecursively(target, overwrite = true)
             source.deleteRecursively()
         }
+        // The record of a main file that is not main.beancount goes with the project, beside it.
+        workspace.rootRecord(projectId).takeIf { it.isFile }?.let { record ->
+            if (!record.renameTo(rootBeside(target))) {
+                record.copyTo(rootBeside(target), overwrite = true)
+                record.delete()
+            }
+        }
         // Deleting the project that is open leaves another one open, the most recently changed, when
         // there is one: the person is not sent to the first-run screen with projects still there.
         // Deleting any other project leaves the open one alone.
@@ -151,6 +158,15 @@ class ProjectRegistry(
         val target = workspace.projectDir(projectId)
         require(!target.exists()) { "a project with that id already exists: $projectId" }
         check(trashed.renameTo(target)) { "could not restore ${trashed.name}" }
+        // The record follows the project to whatever id it comes back under.
+        rootBeside(trashed).takeIf { it.isFile }?.let { record ->
+            workspace.rootsDir.mkdirs()
+            val destination = workspace.rootRecord(projectId)
+            if (!record.renameTo(destination)) {
+                record.copyTo(destination, overwrite = true)
+                record.delete()
+            }
+        }
         return projectId
     }
 
@@ -160,7 +176,8 @@ class ProjectRegistry(
         TrashedProject(
             folder = folder.name,
             projectId = folder.name.substringBeforeLast('-'),
-            title = readTitle(File(folder, ProjectWorkspace.MAIN_FILE)) ?: folder.name.substringBeforeLast('-'),
+            title = readTitle(File(folder, ProjectWorkspace.readRoot(rootBeside(folder))))
+                ?: folder.name.substringBeforeLast('-'),
             fileCount = files.size,
             totalBytes = files.sumOf { it.length() },
             trashedAt = folder.name.substringAfterLast('-').toLongOrNull() ?: folder.lastModified(),
@@ -171,10 +188,20 @@ class ProjectRegistry(
     fun restoreFromTrash(folderName: String): String = restoreFromTrash(trashFolder(folderName))
 
     /** Deletes one trashed project for good. Returns whether it was there. */
-    fun deleteFromTrash(folderName: String): Boolean = trashFolder(folderName).deleteRecursively()
+    fun deleteFromTrash(folderName: String): Boolean {
+        val folder = trashFolder(folderName)
+        rootBeside(folder).delete()
+        return folder.deleteRecursively()
+    }
 
     /** Deletes everything in the trash for good. Returns how many projects went. */
-    fun emptyTrash(): Int = trashed().count { it.deleteRecursively() }
+    fun emptyTrash(): Int = trashed().count {
+        rootBeside(it).delete()
+        it.deleteRecursively()
+    }
+
+    /** The record of a trashed project's main file: `<folder>.root`, a file beside the trashed folder. */
+    private fun rootBeside(folder: File) = File(folder.parentFile, folder.name + ".root")
 
     /** [name] as a folder directly inside the trash, and nothing else: a name cannot reach out of it. */
     private fun trashFolder(name: String): File {

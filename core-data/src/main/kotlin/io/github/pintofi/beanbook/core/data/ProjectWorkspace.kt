@@ -46,7 +46,49 @@ class ProjectWorkspace(private val root: File) {
     fun projectDir(id: String): File = projectsDir.resolve(requireValidId(id))
 
     /** The root ledger file Fava is pointed at. */
-    fun mainFile(id: String): File = projectDir(id).resolve(MAIN_FILE)
+    /**
+     * The main ledger file of project [id]: the file the engine is pointed at and every write goes through.
+     *
+     * Usually `main.beancount`. A project imported from a file with another name or place keeps that name
+     * and place, and says so in a record kept **outside the project** ([rootsDir]): the project folder
+     * holds the person's files and nothing of the app's, or an export and the mirror would carry it. No
+     * record means `main.beancount`, so projects made before records existed need no migration. This is
+     * the only way to get the main file; nothing else may spell its name.
+     */
+    fun mainFile(id: String): File = projectDir(id).resolve(rootPath(id))
+
+    /** Where the records of each project's main file are kept, one small file per project id. */
+    val rootsDir: File get() = root.resolve("roots")
+
+    /** The project-relative path of [id]'s main file, as recorded, or [MAIN_FILE] when nothing is. */
+    fun rootPath(id: String): String = readRoot(rootRecord(id))
+
+    /** The record file of [id]; it may not exist. */
+    fun rootRecord(id: String): File = rootsDir.resolve(requireValidId(id))
+
+    /**
+     * Records that the main file of [id] is at [relative] inside the project, durably, before anything
+     * depends on it. Refuses a path that is empty, absolute, holds `..` or NUL, or names no file.
+     */
+    fun setRoot(id: String, relative: String) {
+        val clean = validRoot(relative) ?: throw IllegalArgumentException("not a path inside the project: $relative")
+        require(projectDir(id).resolve(clean).isFile) { "the main file $clean is not in project $id" }
+        if (clean == MAIN_FILE) {
+            clearRoot(id)
+            return
+        }
+        rootsDir.mkdirs()
+        val record = rootRecord(id)
+        val temporary = File(rootsDir, "${record.name}.tmp")
+        Durable.writeText(temporary, clean)
+        check(temporary.renameTo(record)) { "could not record the main file of $id" }
+        Durable.syncDirectory(rootsDir)
+    }
+
+    /** Forgets a recorded root, so the main file is `main.beancount` again. */
+    fun clearRoot(id: String) {
+        rootRecord(id).delete()
+    }
 
     fun listProjects(): List<String> =
         projectsDir.listFiles()
@@ -54,7 +96,7 @@ class ProjectWorkspace(private val root: File) {
             // and a project being created leave beside a project (`<id>.previous-<time>`,
             // `<id>.restoring`, `<id>.importing`, `.creating-<id>`), each with a ledger inside,
             // and none of them is a project the picker may offer or open.
-            ?.filter { it.isDirectory && isValidId(it.name) && it.resolve(MAIN_FILE).isFile }
+            ?.filter { it.isDirectory && isValidId(it.name) && mainFile(it.name).isFile }
             ?.map { it.name }
             ?.sorted()
             .orEmpty()
@@ -231,7 +273,22 @@ class ProjectWorkspace(private val root: File) {
     """.trimIndent() + "\n"
 
     companion object {
+        /** The main file's name when nothing says otherwise. Spelled here and in the new-ledger blueprint only. */
         const val MAIN_FILE = "main.beancount"
+
+        /** The recorded root in [record], or [MAIN_FILE] when the file is missing or says something unusable. */
+        fun readRoot(record: File): String =
+            record.takeIf { it.isFile }?.let { runCatching { it.readText().trim() }.getOrNull() }
+                ?.let(::validRoot) ?: MAIN_FILE
+
+        /** [relative] as a normalised project-relative path, or null when it could leave the project. */
+        fun validRoot(relative: String): String? {
+            if (relative.isBlank() || '\u0000' in relative || '\\' in relative || relative.startsWith("/")) return null
+            val parts = relative.split('/').filter { it.isNotEmpty() && it != "." }
+            if (parts.isEmpty() || parts.any { it == ".." }) return null
+            return parts.joinToString("/")
+        }
+
         private const val MAX_ID_LENGTH = 64
         private const val BUILDING_PREFIX = ".creating-"
         private const val STALE_STAGING_MILLIS = 60L * 60 * 1000
