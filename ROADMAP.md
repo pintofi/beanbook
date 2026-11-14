@@ -35,7 +35,8 @@ What is left from 1.0.4:
 | User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21), [#76](https://github.com/pintofi/beanbook/issues/76)) | accepted, with no visible change | Groundwork for translations |
 | Hand-passed parameters grouped into state holders ([#67](https://github.com/pintofi/beanbook/issues/67)) | accepted | Every new screen needs a parameter threaded through three files |
 | A click-through walkthrough of the app on the site ([#160](https://github.com/pintofi/beanbook/issues/160)) | accepted | Show the app before someone installs it |
-| A way to update and go back for plugins and packages ([#343](https://github.com/pintofi/beanbook/issues/343)) | in progress: catalogue plugins first | Nothing in the app updates an installed plugin yet |
+| A way to update and go back for plugins and packages ([#343](https://github.com/pintofi/beanbook/issues/343)) | merged, ships in 1.0.5 | Check upstream when you tap, keep an update only if it loads, and go back |
+| Share on Wi-Fi can allow editing, and Fava's editor saves through the write protocol ([#387](https://github.com/pintofi/beanbook/issues/387), [#388](https://github.com/pintofi/beanbook/issues/388)) | merged, ships in 1.0.5 | A shared page was read only, and the editor on Reports skipped the snapshot and Undo |
 | A project can be renamed ([#368](https://github.com/pintofi/beanbook/issues/368)) | accepted | A project imported from a ledger with no title keeps a name made of its folder path |
 | Measured speed figures for the README ([#363](https://github.com/pintofi/beanbook/issues/363)) | accepted | A one-off benchmark on a phone and the emulator |
 | Reports fail on a ledger whose included file sets display_precision ([#349](https://github.com/pintofi/beanbook/issues/349)) | cause not confirmed | A report from one ledger, not seen again |
