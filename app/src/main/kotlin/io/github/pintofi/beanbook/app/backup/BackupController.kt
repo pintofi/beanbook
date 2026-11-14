@@ -237,7 +237,7 @@ class BackupController(
         _message.value = "Restoring…"
         scope.launch {
             val result = withContext(Dispatchers.IO) {
-                runCatching { restores.activate(projectId, staged.staging) }
+                runCatching { restores.activate(projectId, staged.staging, manifest = staged.manifest) }
             }
             _message.value = result.fold(
                 onSuccess = { kept ->

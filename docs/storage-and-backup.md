@@ -203,6 +203,15 @@ project/…          the portable project tree
 
 Excluded by default: caches, indexes, logs, runtime binaries, mirror state, credentials.
 
+**The main file.** A project whose main file is not `main.beancount` (see §2) is written with a
+`root_file` in the manifest, the main file's path inside `project/`, and as `schema_version` 2. An
+ordinary project is still written as 1, with no `root_file`, so its archive is unchanged and an older
+app restores it. An older app reads a 2 as "written by a newer version" and refuses it, rather than
+restoring a project whose main file it cannot find. A manifest whose `root_file` leaves the project, or
+names a file the archive does not hold, is refused. Restoring sets the project's recorded main file to
+the backup's (and forgets one the backup does not have), whether it restores over a project or as a
+new one.
+
 **Encryption:** optional, off by default. Plain archives are interoperable and
 recoverable without this app, which is the right default for a plain-text-accounting product.
 When enabled: AES-256-GCM with a key derived by Argon2id from the user's passphrase. The

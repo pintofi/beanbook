@@ -43,7 +43,8 @@ class BackupArchiveTest {
         val archive = writeArchive()
 
         val manifest = assertNotNull(archives.peek(archive))
-        assertEquals(BackupManifest.SCHEMA_VERSION, manifest.schemaVersion)
+        // An ordinary project is still written as format 1; only a main file with another name needs 2.
+        assertEquals(BackupManifest.schemaFor(null), manifest.schemaVersion)
         assertEquals("p", manifest.projectId)
         assertEquals("Backed Up", manifest.projectTitle)
         assertEquals(now, manifest.createdAt)

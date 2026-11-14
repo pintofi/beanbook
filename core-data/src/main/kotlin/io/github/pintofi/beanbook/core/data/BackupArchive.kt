@@ -26,6 +26,13 @@ data class BackupManifest(
     val projectTitle: String,
     val files: List<Entry>,
     val encryption: ArchiveEncryption = ArchiveEncryption.None,
+    /**
+     * The main file's path inside the project when it is not `main.beancount` (a project imported from a
+     * file with another name or place), else null. Only a backup that has one is written as schema 2, so an
+     * older app refuses it with its ordinary "newer version" message instead of restoring a project whose
+     * main file it cannot find.
+     */
+    val rootFile: String? = null,
 ) {
     data class Entry(val path: String, val size: Long, val sha256: String)
 
@@ -39,6 +46,7 @@ data class BackupManifest(
         "project_id" to Json.of(projectId),
         "project_title" to Json.of(projectTitle),
         "encryption" to encryption.toJson(),
+        *listOfNotNull(rootFile?.let { "root_file" to Json.of(it) }).toTypedArray(),
         "files" to Json.arr(
             files.map {
                 Json.obj(
@@ -51,7 +59,11 @@ data class BackupManifest(
     )
 
     companion object {
-        const val SCHEMA_VERSION = 1
+        /** The newest format this app reads. 2 adds `root_file`; a backup without one is still written as 1. */
+        const val SCHEMA_VERSION = 2
+
+        /** The format a backup is written in: 2 only when it needs `root_file`. */
+        fun schemaFor(rootFile: String?): Int = if (rootFile == null) 1 else 2
         const val MANIFEST_NAME = "manifest.json"
         const val PROJECT_PREFIX = "project/"
 
@@ -82,6 +94,8 @@ data class BackupManifest(
                 projectTitle = root.string("project_title") ?: return null,
                 files = files,
                 encryption = ArchiveEncryption.fromJson(root["encryption"]) ?: return null,
+                rootFile = root.string("root_file")
+                    ?.let { ProjectWorkspace.validRoot(it) ?: return null },
             )
         }
     }
@@ -232,8 +246,11 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         betweenHashingAndCopying?.invoke()
         val expected = entries.associateBy { it.path }
 
+        val rootFile = workspace.rootPath(projectId).takeIf { !ProjectWorkspace.isDefaultRoot(it) }
+
         fun manifestWith(encryption: ArchiveEncryption) = BackupManifest(
-            schemaVersion = BackupManifest.SCHEMA_VERSION,
+            schemaVersion = BackupManifest.schemaFor(rootFile),
+            rootFile = rootFile,
             appVersion = appVersion,
             engineVersions = engineVersions,
             createdAt = now,
@@ -409,6 +426,10 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
 
                 if (manifest.schemaVersion > BackupManifest.SCHEMA_VERSION) {
                     return listOf(ArchiveProblem.UnsupportedSchema(manifest.schemaVersion))
+                }
+                // A main file the backup does not hold is a backup that cannot be opened.
+                if (manifest.rootFile != null && manifest.files.none { it.path == manifest.rootFile }) {
+                    return listOf(ArchiveProblem.Unreadable("its main file ${manifest.rootFile} is not in the backup"))
                 }
 
                 when (val encryption = manifest.encryption) {
