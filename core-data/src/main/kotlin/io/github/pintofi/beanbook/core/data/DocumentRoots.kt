@@ -19,8 +19,22 @@ import java.io.File
  */
 object DocumentRoots {
 
+    /**
+     * The project a main file belongs to: the folder directly under `projects/` that holds it, so a main
+     * file in a subfolder (a project imported from `books/hmw`) still counts the whole project as inside,
+     * and `../documents` is a folder of the project and not outside it. A file elsewhere is its own folder's.
+     */
+    fun projectOf(mainFile: File): File {
+        var folder = mainFile.absoluteFile.parentFile ?: return mainFile
+        while (folder.parentFile != null) {
+            if (folder.parentFile.name == "projects") return folder
+            folder = folder.parentFile
+        }
+        return mainFile.absoluteFile.parentFile ?: mainFile
+    }
+
     /** The folders this call created, relative to [projectDir]. Empty when none were missing. */
-    fun ensure(mainFile: File, projectDir: File = mainFile.parentFile ?: mainFile): List<String> {
+    fun ensure(mainFile: File, projectDir: File = projectOf(mainFile)): List<String> {
         val source = runCatching { mainFile.readText() }.getOrNull() ?: return emptyList()
         val base = mainFile.absoluteFile.parentFile ?: return emptyList()
         val project = projectDir.canonicalFile
