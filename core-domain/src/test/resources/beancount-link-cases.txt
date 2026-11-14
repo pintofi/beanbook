@@ -1,0 +1,61 @@
+# Written by tools/gen-link-cases.py from Python's glob and Beancount's find_documents.
+file main.bean
+file a.bean
+file B.bean
+file .hidden.bean
+file notes.txt
+file 2024/jan.bean
+file 2024/feb.bean
+file 2024/.dot.bean
+file 2024/q1/mar.bean
+file 2024/q1/deep/x.bean
+file 2025/jan.bean
+file shared/accounts.bean
+file shared/.git/config
+file .git/HEAD
+file data[1]/x.bean
+file v1.bean
+file v2.bean
+file v10.bean
+file vA.bean
+file docs/Assets/Bank/2024-01-05.receipt.pdf
+file docs/Assets/Bank/2024-01-06 statement.pdf
+file docs/Assets/Bank/notes.pdf
+file docs/Assets/Bank/2024-01-05
+file docs/Assets/Bank/2024-01-07x.txt
+file docs/Assets/Bank/Savings/2024-02-01.slip.pdf
+file docs/Expenses/Food/2024-03-01.menu.jpg
+file docs/Expenses/2024-03-02.loose.pdf
+file docs/Assets/2024-03-03.top.pdf
+file docs/lowercase/Bank/2024-03-04.bad.pdf
+file docs/Assets/Bank/.hidden/2024-04-01.h.pdf
+file docs/Liabilities/Card/2024-05-01.a.pdf
+glob *.bean => B.bean,a.bean,main.bean,v1.bean,v10.bean,v2.bean,vA.bean
+glob 2024/*.bean => 2024/feb.bean,2024/jan.bean
+glob 2024/**/*.bean => 2024/feb.bean,2024/jan.bean,2024/q1/deep/x.bean,2024/q1/mar.bean
+glob **/*.bean => 2024/feb.bean,2024/jan.bean,2024/q1/deep/x.bean,2024/q1/mar.bean,2025/jan.bean,B.bean,a.bean,data[1]/x.bean,main.bean,shared/accounts.bean,v1.bean,v10.bean,v2.bean,vA.bean
+glob ** => 2024/feb.bean,2024/jan.bean,2024/q1/deep/x.bean,2024/q1/mar.bean,2025/jan.bean,B.bean,a.bean,data[1]/x.bean,docs/Assets/2024-03-03.top.pdf,docs/Assets/Bank/2024-01-05,docs/Assets/Bank/2024-01-05.receipt.pdf,docs/Assets/Bank/2024-01-06 statement.pdf,docs/Assets/Bank/2024-01-07x.txt,docs/Assets/Bank/Savings/2024-02-01.slip.pdf,docs/Assets/Bank/notes.pdf,docs/Expenses/2024-03-02.loose.pdf,docs/Expenses/Food/2024-03-01.menu.jpg,docs/Liabilities/Card/2024-05-01.a.pdf,docs/lowercase/Bank/2024-03-04.bad.pdf,main.bean,notes.txt,shared/accounts.bean,v1.bean,v10.bean,v2.bean,vA.bean
+glob 2024/** => 2024/feb.bean,2024/jan.bean,2024/q1/deep/x.bean,2024/q1/mar.bean
+glob */*.bean => 2024/feb.bean,2024/jan.bean,2025/jan.bean,data[1]/x.bean,shared/accounts.bean
+glob v?.bean => v1.bean,v2.bean,vA.bean
+glob v[0-9].bean => v1.bean,v2.bean
+glob v[!0-9].bean => vA.bean
+glob v*.bean => v1.bean,v10.bean,v2.bean,vA.bean
+glob [ab].bean => a.bean
+glob [aB].bean => B.bean,a.bean
+glob data[[]1]/*.bean => data[1]/x.bean
+glob .*.bean => .hidden.bean
+glob */.dot.bean => 2024/.dot.bean
+glob 2024/q1/**/x.bean => 2024/q1/deep/x.bean
+glob nothing/*.bean => 
+glob *.pdf => 
+glob docs/**/*.pdf => docs/Assets/2024-03-03.top.pdf,docs/Assets/Bank/2024-01-05.receipt.pdf,docs/Assets/Bank/2024-01-06 statement.pdf,docs/Assets/Bank/Savings/2024-02-01.slip.pdf,docs/Assets/Bank/notes.pdf,docs/Expenses/2024-03-02.loose.pdf,docs/Liabilities/Card/2024-05-01.a.pdf,docs/lowercase/Bank/2024-03-04.bad.pdf
+glob shared/* => shared/accounts.bean
+glob ./a.bean => a.bean
+glob 2024/../a.bean => a.bean
+glob 2024/q1/../*.bean => 2024/feb.bean,2024/jan.bean
+glob **/q1/*.bean => 2024/q1/mar.bean
+documents docs => docs/Assets/Bank/2024-01-05.receipt.pdf,docs/Assets/Bank/2024-01-06 statement.pdf,docs/Assets/Bank/2024-01-07x.txt,docs/Assets/Bank/Savings/2024-02-01.slip.pdf,docs/Expenses/Food/2024-03-01.menu.jpg,docs/Liabilities/Card/2024-05-01.a.pdf
+documents docs/Assets => docs/Assets/Bank/Savings/2024-02-01.slip.pdf
+documents docs/Expenses => 
+documents nothing => 

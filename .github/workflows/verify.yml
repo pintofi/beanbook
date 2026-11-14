@@ -93,6 +93,9 @@ jobs:
         run: |
           pip install --quiet "beancount==3.2.3" "fava==1.30.15"
           python -m unittest discover -s engine-local/src/test/python
+          # The import follows include globs and documents folders without running Beancount; the
+          # fixture the Kotlin tests check those rules against is what real Python and Beancount say.
+          python tools/gen-link-cases.py --check
 
   workflows:
     name: Workflows are valid
