@@ -258,6 +258,7 @@ or attempt two-way sync.
 #### Share on Wi-Fi
 Open your Reports from another device on the same private network, in a browser. Off until you
 turn it on, behind a username and password you set, with a notification for as long as it runs.
+Read only unless you choose Can edit when you start it.
 
 </td>
 </tr>
@@ -374,7 +375,11 @@ The app reaches out to the network only in cases you start:
 **Share on Wi-Fi** is the one way in. It is off until you turn it on, listens only on the phone's
 private network address, shows nothing until someone signs in with the username and password you
 set, locks out repeated wrong passwords, and keeps a notification up for as long as it runs. The
-connection is plain `http://`, so use it only on a network you trust.
+connection is plain `http://`, so use it only on a network you trust. It is read only unless you
+choose Can edit each time you start it, which lets a signed-in browser save in Fava's editor, edit or
+delete an entry and add entries, and which ends when you stop sharing; without encryption, someone
+watching the network could take over a signed-in browser, so leave it read only on a network you do not
+trust.
 
 If you type an `https://` address, certificate errors are fatal and cannot be overridden in
 any build. If you type an `http://` address, that traffic is unencrypted and can be read or
@@ -491,7 +496,8 @@ and the status of every item.
   - [ ] User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21), [#76](https://github.com/pintofi/beanbook/issues/76))
   - [ ] Hand-passed parameters grouped into state holders ([#67](https://github.com/pintofi/beanbook/issues/67))
   - [ ] A click-through walkthrough of the app on the site ([#160](https://github.com/pintofi/beanbook/issues/160))
-  - [ ] Updating and going back for plugins and packages ([#343](https://github.com/pintofi/beanbook/issues/343))
+  - [x] Updating and going back for plugins and packages: check upstream, update, keep it only if it loads, go back ([#343](https://github.com/pintofi/beanbook/issues/343)), merged for 1.0.5
+  - [x] Share on Wi-Fi opens by a private network name and can allow editing, and Fava's own editor saves through the write protocol ([#387](https://github.com/pintofi/beanbook/issues/387), [#388](https://github.com/pintofi/beanbook/issues/388)), merged for 1.0.5
   - [ ] Renaming a project ([#368](https://github.com/pintofi/beanbook/issues/368))
 - [ ] **1.1.0 Capture**: add an entry from shared text, photos and PDFs ([#23](https://github.com/pintofi/beanbook/issues/23)); a Quick Settings tile and shortcut ([#24](https://github.com/pintofi/beanbook/issues/24)); templates and recurring reminders ([#25](https://github.com/pintofi/beanbook/issues/25)); rules that suggest the account for a shared message ([#283](https://github.com/pintofi/beanbook/issues/283)); settling an entry with a linked refund or pay-back ([#242](https://github.com/pintofi/beanbook/issues/242))
 - [ ] **1.2.0 Reconcile and import**: a reconcile screen ([#26](https://github.com/pintofi/beanbook/issues/26)); bank statements on the phone ([#27](https://github.com/pintofi/beanbook/issues/27)); Syncthing conflict files ([#28](https://github.com/pintofi/beanbook/issues/28))
