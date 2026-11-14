@@ -105,7 +105,7 @@ class RestorePlan(private val workspace: ProjectWorkspace) {
         return when (val staged = stage(id, archive, passphrase, derivation)) {
             is RestoreStaged.Refused -> RestoredNew.Refused(staged.problems)
             is RestoreStaged.Ready -> {
-                activate(id, staged.staging)
+                activate(id, staged.staging, manifest = manifest)
                 RestoredNew.Restored(id, manifest)
             }
         }
@@ -142,7 +142,13 @@ class RestorePlan(private val workspace: ProjectWorkspace) {
      *
      * @return the directory holding the previous version.
      */
-    fun activate(projectId: String, staging: File, now: Instant = Instant.now()): File {
+    fun activate(
+        projectId: String,
+        staging: File,
+        now: Instant = Instant.now(),
+        /** The backup the files came from: its main file becomes the project's, whatever the project had. */
+        manifest: BackupManifest? = null,
+    ): File {
         require(staging.isDirectory) { "nothing staged to activate" }
         val live = workspace.projectDir(projectId)
         val keptAside = workspace.projectsDir.resolve(
@@ -161,6 +167,11 @@ class RestorePlan(private val workspace: ProjectWorkspace) {
         // put an older copy back over them, so the history belongs to the project that was
         // set aside, and the restored one starts with none.
         WriteJournal(workspace).forget(projectId)
+        if (manifest != null) {
+            // Set only once the files are in place: a record for a file that is not there is refused.
+            val root = manifest.rootFile
+            if (root != null) workspace.setRoot(projectId, root) else workspace.clearRoot(projectId)
+        }
         return keptAside
     }
 

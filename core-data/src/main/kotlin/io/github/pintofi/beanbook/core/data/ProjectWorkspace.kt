@@ -276,6 +276,9 @@ class ProjectWorkspace(private val root: File) {
         /** The main file's name when nothing says otherwise. Spelled here and in the new-ledger blueprint only. */
         const val MAIN_FILE = "main.beancount"
 
+        /** Whether [relative] is the main file's default, which needs no record. */
+        fun isDefaultRoot(relative: String): Boolean = relative == MAIN_FILE
+
         /** The recorded root in [record], or [MAIN_FILE] when the file is missing or says something unusable. */
         fun readRoot(record: File): String =
             record.takeIf { it.isFile }?.let { runCatching { it.readText().trim() }.getOrNull() }
