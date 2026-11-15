@@ -174,6 +174,25 @@ object MirrorPlan {
         local.keys + lastSynced.keys
 
     /**
+     * What to tell the person when the chosen folder is the one that holds the project's main file rather than
+     * the one the project's paths start from, or null when the folder is fine.
+     *
+     * A project imported from a file in a subfolder keeps that folder in its paths (`books/main.beancount`).
+     * If the folder chosen for the mirror is `books` itself, none of the project's paths exist there, so a
+     * pass would send every file again under a second `books` and leave two copies of the ledger. That is
+     * recognised by the main file's name sitting at the folder's top while the recorded path is absent. An
+     * empty folder, or one where the recorded path exists, is fine.
+     */
+    fun misplacedRoot(mainPath: String, atRecordedPath: Boolean, atTop: Boolean): String? {
+        if ('/' !in mainPath || atRecordedPath || !atTop) return null
+        val folder = mainPath.substringBeforeLast('/')
+        val name = mainPath.substringAfterLast('/')
+        return "your main file is $mainPath in the project, but this folder has $name at its top. " +
+            "Choose the folder that contains \"${folder.substringBefore('/')}\", so the files line up. " +
+            "Nothing was copied"
+    }
+
+    /**
      * Whether the links in the folder's ledger files may have changed since the last pass, so that the walk
      * that follows them is worth its reads: on the first pass, or when any known file differs from what was
      * last synced. A new link can only come from a ledger file that changed, and every pass walks nothing

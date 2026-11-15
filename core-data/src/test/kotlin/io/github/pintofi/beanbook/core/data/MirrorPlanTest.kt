@@ -293,4 +293,18 @@ class MirrorLookupTest {
         assertEquals(false, MirrorPlan.linksMayHaveChanged(mapOf("main" to "h1", "a.bean" to "h2"), synced))
         assertEquals(false, MirrorPlan.linksMayHaveChanged(mapOf("main" to "h1"), synced))
     }
+
+    @Test
+    fun `a folder that is the root file's own folder is refused before anything is copied`() {
+        val message = MirrorPlan.misplacedRoot("books/main.beancount", atRecordedPath = false, atTop = true)
+        assertTrue(message!!.contains("books/main.beancount"), message)
+        assertTrue(message.contains("Choose the folder that contains \"books\""), message)
+    }
+
+    @Test
+    fun `an empty folder, the right folder and a root at the top are all fine`() {
+        assertEquals(null, MirrorPlan.misplacedRoot("books/main.beancount", atRecordedPath = false, atTop = false))
+        assertEquals(null, MirrorPlan.misplacedRoot("books/main.beancount", atRecordedPath = true, atTop = true))
+        assertEquals(null, MirrorPlan.misplacedRoot("main.beancount", atRecordedPath = false, atTop = true))
+    }
 }

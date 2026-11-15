@@ -216,6 +216,15 @@ class MirrorController(
             ?: error("that folder is no longer reachable")
         val projectDir = workspace.projectDir(projectId)
 
+        // Before anything is read or written: a folder that is the main file's own folder would get the
+        // whole project again under a second copy of its subfolder.
+        val mainPath = workspace.rootPath(projectId)
+        if ('/' in mainPath) {
+            val atRecordedPath = externals.findOne(root, mainPath) != null
+            val atTop = !atRecordedPath && externals.findOne(root, mainPath.substringAfterLast('/')) != null
+            MirrorPlan.misplacedRoot(mainPath, atRecordedPath, atTop)?.let { error(it) }
+        }
+
         val cache = hashCaches.getOrPut(projectId) { FileHashCache() }
         val local = hashLocal(projectDir, cache)
         val lastSynced = state.read(projectId)

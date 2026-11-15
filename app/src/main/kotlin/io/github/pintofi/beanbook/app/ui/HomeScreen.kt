@@ -472,12 +472,13 @@ private fun SpendingCard(
         if (report.ignoredCurrencies.isNotEmpty()) {
             // Named rather than folded in: converting them would be the app inventing a
             // rate, and dropping them silently would make the total quietly wrong.
-            Text(
-                "Not counted: spending in ${report.ignoredCurrencies.joinToString(", ")}.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = Measure.snug),
-            )
+            // A caveat on the total, so it is a box of its own and not a line of small grey text.
+            Notice(NoticeTone.QUIET, modifier = Modifier.padding(top = Measure.snug)) {
+                Text(
+                    "Not counted: spending in ${report.ignoredCurrencies.joinToString(", ")}.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
 
         OutlinedButton(
