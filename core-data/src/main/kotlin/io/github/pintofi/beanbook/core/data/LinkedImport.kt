@@ -65,5 +65,5 @@ fun ProjectImporter.importLinked(
     projectId: String,
 ): ImportResult {
     val adapter = LinkedImportSource(source, ledger, mainFolders)
-    return import(adapter, projectId, preferredMain = adapter.mainPath, keepMain = true)
+    return import(adapter, projectId, adapter.mainPath)
 }

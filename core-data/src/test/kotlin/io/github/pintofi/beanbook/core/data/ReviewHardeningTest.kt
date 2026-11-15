@@ -158,20 +158,6 @@ class ReviewHardeningTest {
         src.deleteRecursively()
     }
 
-    @Test
-    fun `a project whose root is not main-beancount but which has a main-beancount is refused clearly`() {
-        val src = Files.createTempDirectory("clash").toFile()
-        src.resolve("root.beancount").writeText("include \"main.beancount\"\n")
-        src.resolve("main.beancount").writeText("; included, not the root\n")
-
-        val result = ProjectImporter(workspace).import(DirectoryImportSource(src), "clash")
-
-        val rejected = assertIs<ImportResult.Rejected>(result)
-        assertIs<ImportProblem.MainFileTaken>(rejected.problems.single())
-        assertFalse(workspace.projectDir("clash").exists(), "nothing half-imported is left")
-        src.deleteRecursively()
-    }
-
     // --- drafts, templates, widgets ----------------------------------------------------
 
     @Test

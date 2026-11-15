@@ -12,13 +12,10 @@ import kotlin.test.assertEquals
 class MainFileNameGuardTest {
 
     /**
-     * Spelled there on purpose. ImportExport and the import messages in ProjectsState describe the importer's
-     * rename to main.beancount, which goes when it stops renaming (#369). NewLedgerSetup describes a new
-     * ledger, which the blueprint always writes as main.beancount.
+     * Spelled there on purpose: the workspace owns the default, the blueprint writes a new ledger's
+     * main file, and the new-ledger summary describes it.
      */
-    private val allowed = setOf(
-        "ProjectWorkspace.kt", "LedgerBlueprint.kt", "ImportExport.kt", "ProjectsState.kt", "NewLedgerSetup.kt",
-    )
+    private val allowed = setOf("ProjectWorkspace.kt", "LedgerBlueprint.kt", "NewLedgerSetup.kt")
 
     private val spelled = Regex("""main\.beancount|\bMAIN_FILE\b""")
 

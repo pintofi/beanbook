@@ -296,21 +296,14 @@ class ProjectsState(
                                 refresh()
                                 if (!firstRun) open(id)
                                 onOpened(id)
-                                "Imported ${result.fileCount} file(s)." + when {
-                                    result.rootName == null -> ""
-                                    result.rootMoved ->
-                                        " Your main ledger, ${result.rootName}, is now called main.beancount."
-                                    else ->
-                                        " main.beancount includes your main ledger, ${result.rootName}, " +
-                                            "which stays where it was."
-                                }
+                                "Imported ${result.fileCount} ${if (result.fileCount == 1) "file" else "files"}."
                             }
                             is ImportResult.Rejected ->
                                 "Not imported. " + result.problems.take(3)
                                     .joinToString("; ") { it.describe() } +
                                     if (result.problems.size > 3) " (and ${result.problems.size - 3} more)" else ""
                             is ImportResult.NoLedgerFound ->
-                                "No .beancount file found in that ${result.checked} file(s)."
+                                "Nothing was imported: the Beancount file you selected could not be read."
                         }
                     },
                     onFailure = { error ->
