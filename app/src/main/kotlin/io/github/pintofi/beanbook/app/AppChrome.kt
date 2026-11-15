@@ -430,6 +430,7 @@ internal fun MoreMenu(
     if (confirmingRestart) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { confirmingRestart = false },
+            icon = { androidx.compose.material3.Icon(Icons.Filled.RestartAlt, contentDescription = null) },
             title = { Text("Restart the app?") },
             text = {
                 Text(
