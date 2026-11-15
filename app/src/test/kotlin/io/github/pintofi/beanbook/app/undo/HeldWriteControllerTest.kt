@@ -16,6 +16,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -48,6 +49,8 @@ class HeldWriteControllerTest {
         checkNotNull((result as WriteResult.RolledBack).held)
     }
 
+    private fun <T> awaited(call: CompletableDeferred<T>): T = runBlocking { withTimeout(10_000) { call.await() } }
+
     private fun settled() = runBlocking {
         withTimeout(10_000) { controller.offer.first { it == null || it.problem != null } }
     }
@@ -55,16 +58,19 @@ class HeldWriteControllerTest {
     @Test
     fun `asking holds the change and shows the question, and saving anyway makes it and tells the screen`() {
         val change = held()
-        var told: WriteResult.Committed? = null
+        // The offer is cleared just before the screen is told, so waiting for the offer alone can
+        // read `told` a moment too early. Wait for the call itself.
+        val toldAbout = CompletableDeferred<WriteResult.Committed>()
 
-        controller.ask(change) { told = it }
+        controller.ask(change) { toldAbout.complete(it) }
         assertEquals("transactions.beancount", controller.offer.value!!.what.substringAfter("to "))
         assertNotNull(store.get(projectId))
         controller.keep()
         settled()
+        val told = awaited(toldAbout)
 
         assertNull(controller.offer.value)
-        assertEquals(1, told!!.warnings.size)
+        assertEquals(1, told.warnings.size)
         assertTrue(file().readText().contains("BAD"))
         assertNull(store.get(projectId))
     }
@@ -114,15 +120,15 @@ class HeldWriteControllerTest {
     fun `a question that was open when the app stopped comes back, and saving anyway still works`() {
         val change = held()
         store.put(change)
-        var restored: String? = null
-        controller.afterRestored = { id, _ -> restored = id }
+        val restored = CompletableDeferred<String>()
+        controller.afterRestored = { id, _ -> restored.complete(id) }
 
         controller.restore(projectId)
         assertNotNull(controller.offer.value)
         controller.keep()
         settled()
 
-        assertEquals(projectId, restored)
+        assertEquals(projectId, awaited(restored))
         assertTrue(file().readText().contains("BAD"))
     }
 
