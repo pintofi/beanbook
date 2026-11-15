@@ -137,12 +137,17 @@ class HeldWriteControllerTest {
 
     @Test
     fun `only changes the person wrote directly may ask`() {
-        listOf("quick-add", "add-directive", "edit-entry").forEach {
+        listOf(
+            "quick-add", "add-directive", "edit-entry", "open-account", "edit-account-details", "delete-entry",
+            "refile-document",
+        ).forEach {
             assertTrue(it, HeldWriteController.overridable(it))
         }
         listOf(
             "mirror-pull-in", "shared:editor-save", "shared:entry-edit", "include-documents", "include-accounts",
             "editor-save", "add-entries", "entry-delete", "undo", "with-errors:quick-add", "import",
+            // Several writes in one go: one held change cannot stand for the rest.
+            "unlink-document", "delete-entries", "attach-document", "file-document",
         ).forEach { assertFalse(it, HeldWriteController.overridable(it)) }
     }
 }

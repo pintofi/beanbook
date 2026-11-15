@@ -32,14 +32,19 @@ internal fun MainActivity.askToKeepWithErrors(
     app: BeancountApplication,
     projectId: String,
     result: io.github.pintofi.beanbook.core.data.WriteResult,
-    fromForm: Boolean,
+    fromForm: Boolean = false,
+    /** For the Undo bar once it is made, after "You ". */
+    what: String = "saved the entry with errors",
+    /** Anything the screen does after a change lands, such as reading a list again. */
+    after: () -> Unit = {},
 ) {
     val held = (result as? io.github.pintofi.beanbook.core.data.WriteResult.RolledBack)
         ?.takeIf { it.cause == io.github.pintofi.beanbook.core.data.RollbackCause.NEW_ERRORS }?.held ?: return
     app.heldWrites.ask(held) { kept ->
         saveMessage = "Saved with ${kept.warnings.size} ${if (kept.warnings.size == 1) "error" else "errors"} " +
             "to review."
-        app.undo.offerFor(projectId, kept, "saved the entry with errors")
+        app.undo.offerFor(projectId, kept, what)
+        after()
         if (fromForm) entryCommits++
         lifecycleScope.launch { app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath) }
     }
