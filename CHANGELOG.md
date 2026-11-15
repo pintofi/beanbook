@@ -16,10 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A plugin installed from the catalogue (Expert edition) can be updated to the version the app carries, and the version it replaces is kept to go back to. The Plugins page says "Update available" with both versions, and an update that fails any check, or whose packages cannot be fetched, leaves the installed plugin as it was. Packages and plugin files you add yourself come next. ([#343])
 
 ### Changed
+- Importing a ledger asks you to select your Beancount file, whatever it is called, and brings exactly the files it links to (includes, documents and the like), with their names and folders, after a preview that lists them with Import or Cancel. The main file keeps its own name and place instead of being renamed to main.beancount, and nothing else in the folder is read, listed or changed. If the file links to others, Android asks you to allow the folder that holds it. ([#369])
 - A change you type that would add an error to your ledger, in the entry form, when editing or deleting an entry, when opening an account or changing its details, or when refiling a document, no longer just says Not saved. A dialog lists the new errors and says nothing has been saved; Don't save keeps the ledger as it was, and Save anyway makes the same change with the errors kept, which Undo can take back. The mirror, writes from another device and changes the app makes itself still refuse. ([#411])
 - The Accounts page starts with the form to open an account, then the search, then the accounts by kind; Assets, Liabilities, Equity, Income, Expenses and Closed accounts each open and close with a tap on their heading, which also shows how many accounts they hold. ([#410])
 - Saving an entry shows one working animation, the banner above the Save button, and the button itself no longer has a second spinner. ([#382])
 - Use last on the entry form fills the form as the last entry's text writes it: every amount the text writes, none it leaves out, each posting's commodity and lot, the description, the flag, and the tags and links. Before, only the first posting kept an amount. ([#383])
+
+### Removed
+- Importing a ledger from a .zip or from a whole folder. Restoring a Beanbook backup (.bcaz) is unchanged. ([#369])
 
 ### Fixed
 - A catalogue plugin no longer disappears if the app is stopped while it is being updated or rolled back: on the next start the working version is put back, where before the plugin was missing from the list and from Reports until it was installed again. ([#343])
@@ -361,6 +365,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#357]: https://github.com/pintofi/beanbook/issues/357
 [#358]: https://github.com/pintofi/beanbook/issues/358
 [#361]: https://github.com/pintofi/beanbook/issues/361
+[#369]: https://github.com/pintofi/beanbook/issues/369
 [#379]: https://github.com/pintofi/beanbook/issues/379
 [#381]: https://github.com/pintofi/beanbook/issues/381
 [#382]: https://github.com/pintofi/beanbook/issues/382

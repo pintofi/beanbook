@@ -134,12 +134,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    internal val folderPicker = treePicker(
-        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
-    ) { app, uri ->
-        app.projectsState.importFolder(contentResolver, uri) { id -> afterImport(app, id) }
-    }
-
     private val exportPicker = treePicker(
         android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
     ) { app, uri ->
@@ -749,8 +743,8 @@ class MainActivity : ComponentActivity() {
                         onOpenProject = { id -> openProject(app, id) },
                         onCreateProject = { title -> startNewLedger(app, title) },
                         onExportProject = { exportPicker.launch(null) },
-                        onImportFolder = { folderPicker.launch(null) },
-                        onImportArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
+                        onImportFolder = { app.importController.chooseFile() },
+                        onImportArchive = { archivePicker.launch(arrayOf("*/*")) },
                         onDeleteProject = { id -> app.projectsState.delete(id) { openProject(app, it) } },
                         projectTrash = app.projectsState.trashUi(trashedProjects),
                         editorState = editorState,
@@ -785,6 +779,7 @@ class MainActivity : ComponentActivity() {
 
                     LedgerEditDialog()
                     KeepWithErrorsHost(app, activeId)
+                    io.github.pintofi.beanbook.app.importing.ImportHost(app.importController) { afterImport(app, it) }
                     ExternalLinkDialog()
                     BackupPassphraseDialog()
                 }

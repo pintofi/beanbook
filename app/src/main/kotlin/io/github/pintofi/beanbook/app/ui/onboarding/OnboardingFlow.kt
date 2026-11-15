@@ -262,8 +262,8 @@ private fun WaysInPage(
                 FolioGroup {
                     item {
                         FolioRow(
-                            title = "Choose folder",
-                            detail = "A folder of Beancount files, on this device or in cloud storage",
+                            title = "Select your Beancount file",
+                            detail = "Any file name. The files it links to come with it, in the same folders",
                             icon = androidx.compose.material.icons.Icons.Outlined.DriveFolderUpload,
                             onClick = actions.onOpenFolder,
                             opens = true,
@@ -271,8 +271,8 @@ private fun WaysInPage(
                     }
                     item {
                         FolioRow(
-                            title = "Choose .zip or backup",
-                            detail = "A Beanbook backup (.bcaz), an exported project, or any archive of a ledger",
+                            title = "Restore a backup (.bcaz)",
+                            detail = "A Beanbook backup you made earlier",
                             icon = androidx.compose.material.icons.Icons.Outlined.FolderZip,
                             onClick = actions.onOpenArchive,
                             opens = true,

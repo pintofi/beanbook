@@ -13,7 +13,7 @@ begin, which accounts you want, and a few preferences (opening balances, appeara
 keep a copy in). **Create with defaults** skips the questions. After the app writes the ledger it
 has Beancount read it, so what you start with is known to be valid.
 
-Later, open **Projects** to create another ledger, import a folder, or import an archive.
+Later, open **Projects** to create another ledger, select your Beancount file to import one, or restore a backup.
 
 A new project is a main file plus files for commodities, accounts, transactions and prices.
 Nothing about that layout is required, and an imported project keeps whatever structure it
@@ -24,16 +24,21 @@ not opened has an *Open* button beside the message about it.
 
 ## Importing an existing ledger
 
-Import the **whole folder tree**, or an archive of it, rather than a single `.beancount` file.
-A lone root file leaves its `include` directives pointing at files that were never copied, and
-any linked documents behind.
+Choose **Select your Beancount file** and pick your ledger's main file. Its name does not matter
+(`main.beancount`, `hmw.bean`, or just `hmw`); it only has to be text. The app follows what that file
+links to (its `include` lines, `document` links and `option "documents"` folder, and the like) and
+brings exactly those files, with their names and folders as they are. It shows you the list of files
+first, with **Import** and **Cancel**; nothing is copied until you tap Import, and nothing else in your
+folder is read, listed or changed. Your main file keeps its own name and place.
 
-The import walks the tree and picks the root by following the include graph, which is more
-reliable than guessing from filenames. Everything else in the folder still comes across, so a
-file that is not included yet, or a document referenced by a `document` directive, is not lost.
+Android gives the app access to the one file you picked. If that file links to others, it asks you to
+allow the folder that holds it, for this import only. If you would rather not, the file can come in on
+its own, and the links it could not follow are listed. A ledger directly in the `Download` folder can
+only come in on its own, because Android does not let an app be given that folder; move it into a
+subfolder first.
 
-Before writing anything, the import refuses path traversal, absolute paths, symlinks inside
-archives, zip bombs, case collisions, and duplicate names. It always creates a new project
+Before writing anything, the import refuses path traversal, absolute paths, symlinks, case
+collisions, and duplicate names, and a project over the size limit. It always creates a new project
 rather than overwriting one you already have.
 
 An import finishes even when Beancount reports errors, so you can fix them in the raw editor
