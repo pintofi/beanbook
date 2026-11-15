@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.DriveFolderUpload
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -152,6 +153,7 @@ private fun PreviewDialog(state: ImportState.Preview, onImport: () -> Unit, onCa
     AlertDialog(
         onDismissRequest = onCancel,
         modifier = Modifier.semantics { paneTitle = title },
+        icon = { Icon(Icons.Outlined.DriveFolderUpload, contentDescription = null) },
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

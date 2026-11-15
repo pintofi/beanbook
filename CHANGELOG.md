@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A plugin installed from the catalogue (Expert edition) can be updated to the version the app carries, and the version it replaces is kept to go back to. The Plugins page says "Update available" with both versions, and an update that fails any check, or whose packages cannot be fetched, leaves the installed plugin as it was. Packages and plugin files you add yourself come next. ([#343])
 
 ### Changed
+- Small visual touches: each heading has a short tick in the page's rule colour before it, the project, rename, restart and import dialogs carry an icon, and a new message fades in over the last one (not when motion is off). ([#428])
 - Messages are in a box of their own, never a bare line of text: an error is red with a warning mark, a result that went well is green with a tick, anything else is neutral with an information mark. This covers the line that says a change was not saved, the form problems, plugin and template errors and the import dialogs. The import preview lists folders and files with icons and marks your Beancount file, and the dialog that reads it says only what it is reading. Renaming a project now restarts the app, so the new name shows everywhere. ([#424])
 - The mirror covers exactly the files of the project, in the same folders, and nothing else in your folder: it looks them up by path instead of listing the folder, and brings in a new file only when a ledger file there now links to it. Before, it walked the whole folder, so a repository or other files beside your ledger were hashed and offered. ([#369])
 - Importing a ledger asks you to select your Beancount file, whatever it is called, and brings exactly the files it links to (includes, documents and the like), with their names and folders, after a preview that lists them with Import or Cancel. The main file keeps its own name and place instead of being renamed to main.beancount, and nothing else in the folder is read, listed or changed. If the file links to others, Android asks you to allow the folder that holds it. ([#369])
@@ -385,3 +386,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#424]: https://github.com/pintofi/beanbook/issues/424
 [#426]: https://github.com/pintofi/beanbook/issues/426
 [#427]: https://github.com/pintofi/beanbook/issues/427
+[#428]: https://github.com/pintofi/beanbook/issues/428

@@ -40,8 +40,15 @@ fun StatusLine(
         WorkingBanner(text, modifier)
         return
     }
-    // A box of its own, in the colours of what it says, never a bare line of text.
-    MessageBox(text, modifier = modifier)
+    // A box of its own, in the colours of what it says, never a bare line of text. A new message
+    // fades in over the last, unless the reader has motion off.
+    androidx.compose.animation.Crossfade(
+        targetState = text,
+        animationSpec = androidx.compose.animation.core.tween(
+            if (io.github.pintofi.beanbook.app.ui.theme.LocalMotionEnabled.current) FADE_MS else 0,
+        ),
+        label = "statusLine",
+    ) { shown -> MessageBox(shown, modifier = modifier) }
 }
 
 /**
@@ -74,6 +81,8 @@ private fun WorkingBanner(text: String, modifier: Modifier) {
         }
     }
 }
+
+private const val FADE_MS = 180
 
 /** Whether [text] describes work still under way: the app writes those ending in "…". */
 fun isWorking(text: String): Boolean = text.trimEnd().endsWith("…")

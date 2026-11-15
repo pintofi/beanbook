@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
+import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
@@ -71,6 +73,13 @@ fun FolioHeading(
             .semantics { heading() },
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // A short tick in the ledger's rule colour before the title, the margin rule of a page.
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier
+                .padding(end = Measure.snug)
+                .size(width = 3.dp, height = 16.dp)
+                .background(BeancountTheme.ledger.rule, androidx.compose.foundation.shape.RoundedCornerShape(2.dp)),
+        )
         Text(
             text,
             style = MaterialTheme.typography.titleSmallEmphasized,

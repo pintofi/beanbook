@@ -244,6 +244,9 @@ fun ProjectPickerScreen(
     pendingDelete?.let { project ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
+            icon = {
+                Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+            },
             title = { Text("Delete \"${project.title}\"?") },
             text = {
                 Text(
@@ -278,6 +281,7 @@ private fun RenameDialog(project: ProjectSummary, onRename: (String) -> Unit, on
     val problem = ProjectRename.problemWith(title)
     AlertDialog(
         onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
         title = { Text("Rename \"${project.title}\"") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Measure.gap)) {
