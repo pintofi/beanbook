@@ -108,3 +108,14 @@ private fun failureWords(failure: Throwable): String = when (failure) {
     is io.github.pintofi.beanbook.core.data.BlueprintRejected -> SetupFailure.explain(failure.errors)
     else -> failure.message ?: "The ledger could not be created."
 }
+
+/**
+ * The steps that start on the first-run screen: choosing a Beancount file opens a picker from the import host,
+ * and an encrypted backup asks for its passphrase in its dialog. Drawn here as well as over the open project,
+ * or they did nothing until a project existed.
+ */
+@androidx.compose.runtime.Composable
+internal fun MainActivity.OnboardingHosts(app: BeancountApplication) {
+    io.github.pintofi.beanbook.app.importing.ImportHost(app.importController) { afterImport(app, it) }
+    BackupPassphraseDialog()
+}
