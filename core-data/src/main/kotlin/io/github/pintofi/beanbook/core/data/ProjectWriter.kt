@@ -56,12 +56,63 @@ enum class ErrorPolicy {
     KEEP_AND_REPORT,
 }
 
+/** The prefix of the journal operation of a change kept with the errors it adds. */
+private const val WITH_ERRORS = "with-errors:"
+
+/** Why a write was undone. */
+enum class RollbackCause {
+    /** The change adds errors the ledger did not have. */
+    NEW_ERRORS,
+
+    /** The engine could not check the change, so it was undone. */
+    UNCHECKED,
+
+    /** Beancount could not read the ledger with the change. */
+    UNREADABLE,
+
+    /** The file could not be written. */
+    IO,
+
+    OTHER,
+}
+
+/**
+ * A change that was undone because it adds errors, kept exactly as it was made so it can be made again if
+ * the person decides the errors are acceptable. [content] is the whole new text of the file (null for a
+ * delete), not a recipe: an append is held as the text it produced, so making it again cannot add the
+ * entry twice. [expectedSha] is the hash of the file before the change; if the file is different when the
+ * change is made again, it is refused as stale (invariant 6).
+ */
+class HeldWrite(
+    val projectId: String,
+    /** The file's path inside the project, with `/`. */
+    val relativePath: String,
+    val expectedSha: String,
+    val content: ByteArray?,
+    val operation: String,
+    /** What the change added, as `file:line: message`. */
+    val newErrors: List<String>,
+)
+
 /** What the caller asked for, and what actually happened. */
 sealed interface WriteResult {
     data class Committed(val txnId: String, val warnings: List<String>) : WriteResult
 
-    /** The write was undone. The project is exactly as it was before. */
-    data class RolledBack(val reason: String, val errors: List<String>) : WriteResult
+    /**
+     * The write was undone. The project is exactly as it was before.
+     *
+     * [cause] says why, because only one of the reasons is the person's to overrule: a change that adds
+     * errors to the ledger is rolled back with [RollbackCause.NEW_ERRORS], and then [held] carries the
+     * exact change that was undone so it can be made again, with the errors kept, if the person asks
+     * ([ProjectWriter.keepWithErrors]). Every other cause has no [held]: there is no list of errors
+     * to accept, or the ledger was never checked.
+     */
+    data class RolledBack(
+        val reason: String,
+        val errors: List<String>,
+        val cause: RollbackCause = RollbackCause.OTHER,
+        val held: HeldWrite? = null,
+    ) : WriteResult
 
     /** Refused before anything was written. */
     data class Refused(val reason: String) : WriteResult
@@ -187,6 +238,22 @@ class ProjectWriter(
     }
 
     /**
+     * Makes a change again that was undone for adding errors, this time keeping them.
+     *
+     * Only for a change the person wrote and has seen the errors of. It is the same write the first time
+     * tried, from the bytes that were undone, under [ErrorPolicy.KEEP_AND_REPORT], and journalled as
+     * `with-errors:` and the original operation so the log and Undo show what it was. The file is checked
+     * against what it was before the first attempt, so a second tap, or an outside change in between, is
+     * refused as stale and nothing is written twice.
+     */
+    suspend fun keepWithErrors(held: HeldWrite): WriteResult {
+        val file = File(workspace.projectDir(held.projectId), held.relativePath)
+        val operation = WITH_ERRORS + held.operation
+        return write(held.projectId, file, held.content, held.expectedSha, operation, ErrorPolicy.KEEP_AND_REPORT)
+            .also { report(operation, file, it) }
+    }
+
+    /**
      * Tells the observer what a write did, in one line and without the ledger's content
      *.
      *
@@ -289,7 +356,7 @@ class ProjectWriter(
         // not leave a changed file behind with nothing deciding what becomes of it, so nothing
         // after the intent is recorded can be cancelled.
         return withContext(NonCancellable) {
-            complete(record, file, newContent, policy, baseline, baselineMessages)
+            complete(record, file, newContent, policy, baseline, baselineMessages, expectedSha, operation)
         }
     }
 
@@ -300,6 +367,8 @@ class ProjectWriter(
         policy: ErrorPolicy,
         baseline: Int,
         baselineMessages: List<String>,
+        expectedSha: String,
+        operation: String,
     ): WriteResult {
         val projectId = record.projectId
         return try {
@@ -329,6 +398,7 @@ class ProjectWriter(
                         WriteResult.RolledBack(
                             reason = "Beanbook could not check the change, so it was undone",
                             errors = listOfNotNull(failure.message),
+                            cause = RollbackCause.UNCHECKED,
                         )
                     }
                 }
@@ -337,10 +407,12 @@ class ProjectWriter(
                 return WriteResult.RolledBack(
                     reason = "Beancount could not read the ledger with this change",
                     errors = listOfNotNull(failure.message),
+                    cause = RollbackCause.UNREADABLE,
                 )
             }
 
             if (policy == ErrorPolicy.ROLLBACK_ON_NEW_ERRORS && errors.size > baseline) {
+                val added = newErrors(errors, baselineMessages, errors.size - baseline)
                 journal.restoreSnapshot(record)
                 journal.markRolledBack(record)
                 return WriteResult.RolledBack(
@@ -349,7 +421,16 @@ class ProjectWriter(
                     },
                     // What this write added, not the whole list: a ledger that already had
                     // errors would otherwise name them as though the new entry caused them.
-                    errors = newErrors(errors, baselineMessages, errors.size - baseline),
+                    errors = added,
+                    cause = RollbackCause.NEW_ERRORS,
+                    held = HeldWrite(
+                        projectId = projectId,
+                        relativePath = file.relativeTo(workspace.projectDir(projectId)).path.replace('\\', '/'),
+                        expectedSha = expectedSha,
+                        content = newContent,
+                        operation = operation,
+                        newErrors = added,
+                    ),
                 )
             }
 
@@ -360,7 +441,9 @@ class ProjectWriter(
         } catch (io: IOException) {
             journal.restoreSnapshot(record)
             journal.markRolledBack(record)
-            WriteResult.RolledBack("the file could not be written (${io.message})", emptyList())
+            WriteResult.RolledBack(
+                "the file could not be written (${io.message})", emptyList(), cause = RollbackCause.IO,
+            )
         }
     }
 
