@@ -7,7 +7,6 @@ import androidx.documentfile.provider.DocumentFile
 import io.github.pintofi.beanbook.core.data.BackupArchive
 import io.github.pintofi.beanbook.core.data.MirrorAction
 import io.github.pintofi.beanbook.core.data.MirrorChoice
-import io.github.pintofi.beanbook.core.domain.PluginPreflight
 import io.github.pintofi.beanbook.core.data.MirrorPlan
 import io.github.pintofi.beanbook.core.data.MirrorPlanResult
 import io.github.pintofi.beanbook.core.data.MirrorResolution
@@ -219,8 +218,20 @@ class MirrorController(
 
         val cache = hashCaches.getOrPut(projectId) { FileHashCache() }
         val local = hashLocal(projectDir, cache)
-        val externalFiles = enumerate(root)
-        val external = externalFiles.mapValues { (path, document) -> hash(path, document, cache) }
+        val lastSynced = state.read(projectId)
+        // The project's files and the ones recorded as synced (a file deleted here is still in the folder), looked
+        // up by path. The folder's links are walked only when something known there changed: that is the only
+        // way a new link appears, and the walk reads every ledger file over the provider.
+        val externalFiles = externals.known(root, MirrorPlan.knownPaths(local, lastSynced))
+        val external = externalFiles.mapValues { (path, document) -> hash(path, document, cache) }.toMutableMap()
+        if (MirrorPlan.linksMayHaveChanged(external, lastSynced)) {
+            for ((path, document) in externals.linked(root, workspace.rootPath(projectId))) {
+                if (path !in externalFiles) {
+                    externalFiles[path] = document
+                    external[path] = hash(path, document, cache)
+                }
+            }
+        }
         cache.retain(local.keys.map { "$LOCAL$it" }.toSet() + externalFiles.keys.map { "$EXTERNAL$it" })
         val plan = MirrorPlan.plan(local, external, state.read(projectId))
 
@@ -405,7 +416,7 @@ class MirrorController(
     ) {
         val projectDir = workspace.projectDir(projectId)
         val mine = File(projectDir, path)
-        val theirs = enumerate(root)[path]
+        val theirs = externals.findOne(root, path)
         val here = mine.takeIf { it.isFile }?.let { BackupArchive.sha256(it) }
         val there = theirs?.let { hash(it) }
         when (MirrorPlan.resolve(here, there, state.read(projectId)[path], seen, choice)) {
@@ -444,6 +455,9 @@ class MirrorController(
     /** A file's hash is read again only when its size or modified time changed (#66); one cache per project. */
     private val hashCaches = HashMap<String, FileHashCache>()
 
+    /** Which files of the folder belong to a project: looked up, never listed. */
+    private val externals = ExternalFiles(context.contentResolver)
+
     private fun hashLocal(projectDir: File, cache: FileHashCache): Map<String, String> =
         if (!projectDir.isDirectory) {
             emptyMap()
@@ -458,28 +472,6 @@ class MirrorController(
                     cache.hashOf("$LOCAL$path", file.length(), file.lastModified()) { BackupArchive.sha256(file) }
                 }
         }
-
-    private fun enumerate(root: DocumentFile): Map<String, DocumentFile> {
-        val found = mutableMapOf<String, DocumentFile>()
-        fun walk(directory: DocumentFile, prefix: String) {
-            directory.listFiles().forEach { child ->
-                val name = child.name ?: return@forEach
-                val path = if (prefix.isEmpty()) name else "$prefix/$name"
-                if (child.isDirectory) walk(child, path) else found[path] = child
-            }
-        }
-        walk(root, "")
-        return found.filterNot { (path, _) ->
-            BackupArchive.isExcluded(path) || path.contains(".conflict-") ||
-                // These names come from a DocumentsProvider's display-name column, which this
-                // app does not control, and they are joined straight into a path under the
-                // project directory. Every other place untrusted names reach the filesystem
-                // checks this -- ProjectImporter, BackupArchive.extract, ProjectWriter.write
-                // -- and the mirror did not. A name containing ".." would have written
-                // outside the project on the way in.
-                PluginPreflight.escapesRoot(path)
-        }
-    }
 
     /** Streamed, so a large PDF is hashed without being held in memory whole. */
     private fun hash(path: String, document: DocumentFile, cache: FileHashCache): String =
