@@ -202,8 +202,12 @@ done later under More, Remote.
 
 ### Accounts
 
-More, then Accounts, lists open accounts by tree with their balance and any currency restriction,
-lists closed accounts under their own heading, and opens a new account. A new account can carry
+More, then Accounts, opens with the form for a new account at the top, then a search box, then the
+open accounts by kind (Assets, Liabilities, Equity, Income, Expenses) with their balance and any
+currency restriction, then the closed accounts. Each of those groups opens and closes with a tap on its
+heading, which says how many accounts it holds and whether it is open; they start open, the choice is kept
+for the project while the app runs (not as a setting), and a search shows every group that has a match
+without forgetting which the person closed. A new account can carry
 any number of details (name and value pairs, written as metadata under the `open` line; a value
 that starts with a zero stays text, so an account number is not changed). An empty account can be
 closed, on a date the person picks, after a confirmation. Both write to `files/accounts.beancount`

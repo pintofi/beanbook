@@ -109,7 +109,7 @@ class AccountDetailsTest {
                 )
             }
         }
-        compose.onNodeWithContentDescription("Assets:Bank:Checking. Edit its details").performClick()
+        compose.onNodeWithContentDescription("Assets:Bank:Checking. Edit its details").performScrollTo().performClick()
         compose.onNodeWithText("Corner Bank").assertExists()
 
         compose.onNodeWithContentDescription("Detail value 1").performTextClearance()
@@ -144,7 +144,7 @@ class AccountDetailsTest {
                 )
             }
         }
-        compose.onNodeWithContentDescription("Assets:Cash. Edit its details").performClick()
+        compose.onNodeWithContentDescription("Assets:Cash. Edit its details").performScrollTo().performClick()
     }
 
     @Test fun theCurrenciesAnAccountAllowsAreShownAndCanBeChanged() {
@@ -208,7 +208,7 @@ class AccountDetailsTest {
                 )
             }
         }
-        compose.onNodeWithContentDescription("Close the account Assets:Old").performClick()
+        compose.onNodeWithContentDescription("Close the account Assets:Old").performScrollTo().performClick()
         compose.onNodeWithText("Close it").assertIsEnabled().performClick()
         assertEquals(listOf<DirectiveDraft>(DirectiveDraft.Close("2026-09-01", "Assets:Old")), saved)
     }

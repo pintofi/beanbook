@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.draw.rotate
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +25,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +38,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.pintofi.beanbook.app.ui.theme.LocalMotionEnabled
 import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 
@@ -73,6 +78,58 @@ fun FolioHeading(
             modifier = Modifier.weight(1f),
         )
         trailing?.invoke()
+    }
+}
+
+/**
+ * A heading that opens and closes the group under it: the whole row is the control, it says whether the
+ * group is open, and it is never shorter than a touch target. [count] sits beside the title so a closed
+ * group still says how much is in it. The arrow turns, instantly when the system has motion off.
+ */
+@Composable
+fun FolioToggleHeading(
+    text: String,
+    count: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val turn by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(if (LocalMotionEnabled.current) 200 else 0),
+        label = "group arrow",
+    )
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(onClickLabel = if (expanded) "Collapse $text" else "Expand $text", role = Role.Button) {
+                onToggle()
+            }
+            .padding(start = Measure.indent, end = Measure.indent, top = Measure.gap, bottom = Measure.snug)
+            .semantics {
+                heading()
+                stateDescription = if (expanded) "Expanded" else "Collapsed"
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.titleSmallEmphasized,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            count,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(end = Measure.snug),
+        )
+        androidx.compose.material3.Icon(
+            Icons.Filled.KeyboardArrowDown,
+            contentDescription = null,
+            modifier = Modifier.rotate(turn),
+        )
     }
 }
 

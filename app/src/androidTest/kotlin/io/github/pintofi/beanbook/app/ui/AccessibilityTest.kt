@@ -675,6 +675,37 @@ class AccessibilityTest {
         ).performScrollTo().assertExists()
     }
 
+    @Test fun accountsScreenIsLabelledAndFitsAtDoubleFontScale() {
+        val accounts = listOf(
+            io.github.pintofi.beanbook.core.domain.AccountBalance("Assets:Cash", emptyList(), opened = "2026-01-01"),
+            io.github.pintofi.beanbook.core.domain.AccountBalance("Expenses:Rent", emptyList(), opened = "2026-01-01"),
+            io.github.pintofi.beanbook.core.domain.AccountBalance(
+                "Assets:Old", emptyList(), opened = "2026-01-01", closed = "2026-03-01",
+            ),
+        )
+
+        render(widthDp = 320, fontScale = 2f) {
+            AccountsScreen(
+                accounts, io.github.pintofi.beanbook.core.domain.AccountNames.DEFAULT,
+                onSave = {}, message = null, projectKey = "a",
+            )
+        }
+
+        listOf("Search accounts by name", "Close the account Assets:Cash").forEach { label ->
+            compose.onNodeWithContentDescription(label).performScrollTo().assertExists()
+        }
+        // The groups open and close, and say which they are doing.
+        listOf("Assets", "Expenses", "Closed accounts").forEach { group ->
+            compose.onNode(
+                androidx.compose.ui.test.hasText(group) and
+                    androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(
+                        androidx.compose.ui.semantics.SemanticsProperties.StateDescription,
+                    ),
+            ).performScrollTo().assertExists()
+        }
+        assertAccessible()
+    }
+
     @Test fun pluginsScreenIsLabelledAndFitsAtDoubleFontScale() {
         val plugin = io.github.pintofi.beanbook.core.data.InstalledPlugin(
             id = "tag-large",

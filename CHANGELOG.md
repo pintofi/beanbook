@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A plugin installed from the catalogue (Expert edition) can be updated to the version the app carries, and the version it replaces is kept to go back to. The Plugins page says "Update available" with both versions, and an update that fails any check, or whose packages cannot be fetched, leaves the installed plugin as it was. Packages and plugin files you add yourself come next. ([#343])
 
 ### Changed
+- The Accounts page starts with the form to open an account, then the search, then the accounts by kind; Assets, Liabilities, Equity, Income, Expenses and Closed accounts each open and close with a tap on their heading, which also shows how many accounts they hold. ([#410])
 - Saving an entry shows one working animation, the banner above the Save button, and the button itself no longer has a second spinner. ([#382])
 - Use last on the entry form fills the form as the last entry's text writes it: every amount the text writes, none it leaves out, each posting's commodity and lot, the description, the flag, and the tags and links. Before, only the first posting kept an amount. ([#383])
 
@@ -365,3 +366,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#383]: https://github.com/pintofi/beanbook/issues/383
 [#387]: https://github.com/pintofi/beanbook/issues/387
 [#388]: https://github.com/pintofi/beanbook/issues/388
+[#410]: https://github.com/pintofi/beanbook/issues/410
