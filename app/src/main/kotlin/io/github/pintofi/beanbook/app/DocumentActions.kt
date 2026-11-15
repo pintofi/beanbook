@@ -376,6 +376,10 @@ internal fun MainActivity.refileDocument(
                 "Not refiled: ${result.reason}. Your ledger is unchanged."
             is io.github.pintofi.beanbook.core.data.WriteResult.Refused -> "Not refiled: ${result.reason}"
         }
+        askToKeepWithErrors(
+            app, projectId, result, what = "filed $path under $newAccount, with errors",
+            after = { refreshDocuments(app, projectId) },
+        )
         app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
         refreshDocuments(app, projectId)
     }
@@ -619,6 +623,7 @@ internal fun MainActivity.deleteEntry(
         } else {
             saveMessage?.let(app.undo::tell)
         }
+        askToKeepWithErrors(app, projectId, result, what = "deleted 1 entry, with errors")
         app.ledgerState.load(mainFile)
     }
 }

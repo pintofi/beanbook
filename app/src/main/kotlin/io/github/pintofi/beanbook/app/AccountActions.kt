@@ -83,6 +83,7 @@ internal fun MainActivity.saveAccountDetails(
         if (result is io.github.pintofi.beanbook.core.data.WriteResult.Committed) {
             app.undo.offerFor(projectId, result, "changed the details of ${account.name}")
         }
+        askToKeepWithErrors(app, projectId, result, what = "changed the details of ${account.name}, with errors")
         app.ledgerState.load(mainFile)
     }
 }

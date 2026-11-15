@@ -98,8 +98,8 @@ handling, and drafts persisted on `onStop`.
 
 Save is refused when the on-disk hash changed since open, with a diff-based conflict UI.
 Save is also refused when the result does not parse; the error appears at the exact
-location, and the buffer is kept. A guided change (the entry form, editing an entry, a directive from
-the Add form) that would add errors to the ledger raises a dialog that says how many, lists the first few
+location, and the buffer is kept. A guided change (the entry form, editing or deleting an entry, a directive from
+the Add form, opening an account or changing its details, refiling a document) that would add errors to the ledger raises a dialog that says how many, lists the first few
 as the ledger reports them, and says nothing has been saved: **Don't save** (the first button, and what
 Back does) leaves the ledger as it was and the form as typed; **Save anyway** makes the change with the
 errors kept, and Undo can take it back.

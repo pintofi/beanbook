@@ -114,7 +114,10 @@ class HeldWriteController(
          * The writes the person made directly, in this app, on this phone: the only ones that may ask. Kept as
          * a list so adding one is a decision with a test, and not a side effect of a new caller.
          */
-        val overridable: Set<String> = setOf("quick-add", "add-directive", "edit-entry")
+        val overridable: Set<String> = setOf(
+            "quick-add", "add-directive", "edit-entry", "open-account", "edit-account-details", "delete-entry",
+            "refile-document",
+        )
 
         fun overridable(operation: String): Boolean = operation in overridable
     }
