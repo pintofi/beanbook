@@ -10,6 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.pintofi.beanbook.app.ui.theme.AccentPalette
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -83,6 +88,8 @@ fun AppearanceScreen(
             }
         }
 
+        AccentSection()
+
         FolioHeading("Colour")
         FolioGroup {
             item {
@@ -139,6 +146,109 @@ fun AppearanceScreen(
                 "fixed-width face so decimal points line up down a column.",
         )
     }
+    }
+}
+
+/** What the accent pickers read and change, handed down once rather than through every screen. */
+class AppearanceControls(
+    val settings: io.github.pintofi.beanbook.app.ui.theme.ThemeSettings,
+    val projectId: String?,
+    val projectTitle: String?,
+    val onChanged: () -> Unit,
+)
+
+val LocalAppearanceControls = androidx.compose.runtime.staticCompositionLocalOf<AppearanceControls?> { null }
+
+/** The accent for the whole app, and, when a project is open, one for that project alone. */
+@Composable
+private fun AccentSection() {
+    val controls = LocalAppearanceControls.current ?: return
+    val accent by controls.settings.accent.collectAsStateWithLifecycle()
+    val projectAccents by controls.settings.projectAccents.collectAsStateWithLifecycle()
+    val dynamic by controls.settings.dynamicColour.collectAsStateWithLifecycle()
+    FolioHeading("Accent")
+    FolioGroup {
+        item {
+            FolioBody {
+                Text("The app", style = MaterialTheme.typography.titleSmall)
+                AccentChoices(selected = accent, none = null) {
+                    controls.settings.setAccent(it ?: AccentPalette.TEAL)
+                    controls.onChanged()
+                }
+            }
+        }
+        val projectId = controls.projectId
+        if (projectId != null) {
+            item {
+                FolioBody {
+                    Text(
+                        "For ${controls.projectTitle ?: "this project"}",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    AccentChoices(selected = projectAccents[projectId], none = "Same as the app") {
+                        controls.settings.setProjectAccent(projectId, it)
+                        controls.onChanged()
+                    }
+                }
+            }
+        }
+    }
+    FolioNote(
+        (if (dynamic) "While dynamic colour is on, your wallpaper sets the app's accent. " else "") +
+            "A project's own accent always shows while it is open, " +
+            "so several ledgers can be told apart at a glance. " +
+            "Paper, ink and rules stay the same.",
+    )
+}
+
+/** A row of accent swatches, with an optional "none" choice, which reports null. */
+@Composable
+private fun AccentChoices(selected: AccentPalette?, none: String?, onSelect: (AccentPalette?) -> Unit) {
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    if (none != null) {
+        androidx.compose.material3.FilterChip(
+            selected = selected == null,
+            onClick = { onSelect(null) },
+            label = { Text(none) },
+        )
+    }
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(Measure.snug),
+        verticalArrangement = Arrangement.spacedBy(Measure.snug),
+        modifier = Modifier.selectableGroup(),
+    ) {
+        AccentPalette.entries.forEach { palette ->
+            val picked = selected == palette
+            Column(
+                modifier = Modifier
+                    .selectable(selected = picked, onClick = { onSelect(palette) }, role = Role.RadioButton)
+                    .semantics { contentDescription = "Accent: ${palette.label}" }
+                    .heightIn(min = 48.dp)
+                    .widthIn(min = 56.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Surface(
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    color = palette.swatch(dark),
+                    border = BorderStroke(
+                        if (picked) 3.dp else 1.dp,
+                        if (picked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant,
+                    ),
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    if (picked) {
+                        Icon(
+                            Icons.Filled.CheckCircle,
+                            contentDescription = null,
+                            tint = if (dark) Color.Black else Color.White,
+                            modifier = Modifier.padding(4.dp),
+                        )
+                    }
+                }
+                Text(palette.label, style = MaterialTheme.typography.labelSmall)
+            }
+        }
     }
 }
 

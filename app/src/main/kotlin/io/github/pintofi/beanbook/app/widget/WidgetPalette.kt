@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
 import io.github.pintofi.beanbook.app.ui.theme.ThemeChoice
+import androidx.compose.ui.graphics.toArgb
+import io.github.pintofi.beanbook.app.ui.theme.AccentPalette
 import io.github.pintofi.beanbook.app.ui.theme.ThemeSettings
 
 /**
@@ -43,8 +45,9 @@ internal data class WidgetPalette(
             val choice = settings.choice.value
             val dynamic = settings.dynamicColour.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
             val source: ((Int) -> Int)? = if (dynamic) { id -> context.getColor(id) } else null
-            val day = build(dark = false, black = false, dynamic = source)
-            val night = build(dark = true, black = choice == ThemeChoice.BLACK, dynamic = source)
+            val accent = settings.accent.value
+            val day = build(dark = false, black = false, dynamic = source, accent = accent)
+            val night = build(dark = true, black = choice == ThemeChoice.BLACK, dynamic = source, accent = accent)
             return when (choice) {
                 // The launcher chooses, where it can; before Android 14 the system's setting now is used.
                 ThemeChoice.SYSTEM -> when {
@@ -62,19 +65,22 @@ internal data class WidgetPalette(
          * on when dynamic colour is on) they are the ones the app's own dynamic scheme takes from the
          * wallpaper: surface, text, the raised segment and its chosen state, and the accent.
          */
-        internal fun build(dark: Boolean, black: Boolean, dynamic: ((Int) -> Int)?): WidgetPalette {
-            val accent = if (dynamic != null) {
+        internal fun build(
+            dark: Boolean,
+            black: Boolean,
+            dynamic: ((Int) -> Int)?,
+            accent: AccentPalette = AccentPalette.TEAL,
+        ): WidgetPalette {
+            val rule = if (dynamic != null) {
                 dynamic(if (dark) android.R.color.system_accent1_200 else android.R.color.system_accent1_600)
-            } else if (dark) {
-                DARK_TEAL
             } else {
-                LIGHT_TEAL
+                accent.swatch(dark).toArgb()
             }
             val base = if (dark) {
                 WidgetPalette(
                     // AMOLED is black paper in the app, and the widget follows it.
                     paper = if (black) BLACK else DARK_PAPER,
-                    rule = accent,
+                    rule = rule,
                     label = 0xFFAFBDB8.toInt(),
                     value = 0xFFE4EAE7.toInt(),
                     footnote = 0xFF8A9A94.toInt(),
@@ -85,7 +91,7 @@ internal data class WidgetPalette(
             } else {
                 WidgetPalette(
                     paper = LIGHT_PAPER,
-                    rule = accent,
+                    rule = rule,
                     label = 0xFF4A5754.toInt(),
                     value = 0xFF16201E.toInt(),
                     footnote = 0xFF5E6B66.toInt(), // 4.9:1 on the paper; #6B7873 was 4.2 (WCAG 1.4.3 asks 4.5)
@@ -116,7 +122,5 @@ internal data class WidgetPalette(
         private const val LIGHT_PAPER = 0xFFF3F5F2.toInt()
         private const val DARK_PAPER = 0xFF141A19.toInt()
         private const val BLACK = 0xFF000000.toInt()
-        private const val LIGHT_TEAL = 0xFF0B5F5B.toInt()
-        private const val DARK_TEAL = 0xFF6FD3CA.toInt()
     }
 }

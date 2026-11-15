@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Appearance has an **Accent** choice: Teal, Indigo, Plum, Ochre or Slate. It is used when dynamic colour is off, and in the widgets. A project can also have an accent of its own, shown whenever it is open, so several ledgers can be told apart at a glance. Paper, ink and rules stay the same, and every accent is checked for contrast in light and dark. ([#426])
 - A project can be renamed, with the pencil on its row on the Projects page. The name is written as `option "title"` in the project's main file, wherever that file is, through the same checked write as any edit, so **Undo** brings the old name back. Every title line in that file is replaced and a comment after it stays; a ledger with no title gets one at the top. The folder and the project do not change, so the mirror, backups and widgets are unaffected. A name can be up to 100 characters, and a main file that is not UTF-8 text is refused. ([#368])
 - Expert edition: a plugin you added from a file can be given a source, the name of a project on PyPI, with **Set where it comes from**. **Check for a newer version** then asks PyPI, and **Replace with** that version downloads it, checks the SHA-256 PyPI published, and replaces the plugin the way any replacement works: it starts off and the copy you had is kept to go back to. The card says a newer version was not tested with this app. GitHub sources are not offered for these, because a repository's zip is not laid out as a plugin. ([#343])
 - Expert edition: **Check for package updates**, under Extra Python packages, asks PyPI and Chaquopy's index whether the packages you fetched have newer versions, and offers **Update packages** only when they do. The new packages are built beside the ones in use, every download is checked before it is unpacked, and they are kept only if they import in a fresh engine; otherwise, or if the app is stopped first, the earlier packages are back. **Go back to the earlier packages** restores them without downloading. Packages the app ships are never touched. ([#343])
@@ -381,3 +382,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#411]: https://github.com/pintofi/beanbook/issues/411
 [#421]: https://github.com/pintofi/beanbook/issues/421
 [#424]: https://github.com/pintofi/beanbook/issues/424
+[#426]: https://github.com/pintofi/beanbook/issues/426

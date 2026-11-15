@@ -75,6 +75,10 @@ object BeancountTheme {
 fun BeancountTheme(
     choice: ThemeChoice = ThemeChoice.SYSTEM,
     dynamicColour: Boolean = true,
+    /** The accent when the wallpaper is not supplying one. */
+    accent: AccentPalette = AccentPalette.TEAL,
+    /** An accent the open project chose for itself; it wins over the wallpaper and [accent]. */
+    projectAccent: AccentPalette? = null,
     content: @Composable () -> Unit,
 ) {
     val dark = choice.isDark()
@@ -82,11 +86,13 @@ fun BeancountTheme(
     val own = if (dark) DarkColours else LightColours
 
     val base: ColorScheme = when {
+        projectAccent != null -> own.withAccent(projectAccent, dark)
         dynamicColour && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val wallpaper =
                 if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             own.withAccentsFrom(wallpaper)
         }
+        accent != AccentPalette.TEAL -> own.withAccent(accent, dark)
         else -> own
     }
     // Applied over whichever dark scheme won above, so pure black composes with the wallpaper
