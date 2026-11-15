@@ -536,6 +536,7 @@ class MainActivity : ComponentActivity() {
                             remoteNote = remoteNote(app, remoteStatus, remoteMessage),
                             trash = app.projectsState.trashUi(trashedProjects) { openProject(app, it) },
                         )
+                        OnboardingHosts(app)
                         return@Surface
                     }
 

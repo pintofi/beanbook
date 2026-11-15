@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Importing a ledger from a .zip or from a whole folder. Restoring a Beanbook backup (.bcaz) is unchanged. ([#369])
 
 ### Fixed
+- Setup: **Select your Beancount file** on the first screen opens the file picker straight away. It waited until a project existed, so it only appeared after you had made a default ledger. Restoring an encrypted backup from the first screen now asks for its passphrase there too. ([#436])
 - Mirror: if your main file is in a subfolder and you choose that subfolder itself as the mirror folder, the pass now stops before copying anything and says which folder to choose instead of making a second copy of the subfolder. On Home, the note that spending in other currencies is not counted is in a box of its own. ([#434])
 - A catalogue plugin no longer disappears if the app is stopped while it is being updated or rolled back: on the next start the working version is put back, where before the plugin was missing from the list and from Reports until it was installed again. ([#343])
 - Saving in Fava's file editor (Reports) goes through the same write protocol as every other save: the change is snapshotted, journalled and re-parsed, Undo puts the file back, and a file changed since the editor read it is refused instead of overwritten. Editing or deleting one entry and the add-entry form do too, and so does attaching a document to an entry. Before, Fava wrote the file itself. ([#388])
@@ -389,3 +390,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#427]: https://github.com/pintofi/beanbook/issues/427
 [#428]: https://github.com/pintofi/beanbook/issues/428
 [#434]: https://github.com/pintofi/beanbook/issues/434
+[#436]: https://github.com/pintofi/beanbook/issues/436
