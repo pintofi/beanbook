@@ -86,9 +86,10 @@ class WidgetThemeTest {
     }
 
     private fun appearance(dynamic: Boolean, choice: ThemeChoice = ThemeChoice.SYSTEM) {
-        val settings = ThemeSettings(stateDir)
-        settings.setChoice(choice)
-        settings.setDynamicColour(dynamic)
+        // The colour belongs to a project; what a project with no choice of its own gets is the file's
+        // "dynamic" line, which is what these tests set.
+        stateDir.mkdirs()
+        java.io.File(stateDir, "appearance").writeText("theme=${choice.name}\ndynamic=$dynamic\n")
     }
 
     @Test fun theLauncherPicksLightOrDarkWithoutARedraw() {

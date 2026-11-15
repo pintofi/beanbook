@@ -36,7 +36,9 @@ import io.github.pintofi.beanbook.app.ui.trashUi
 import io.github.pintofi.beanbook.app.ui.onboarding.OnboardingFlow
 import io.github.pintofi.beanbook.app.ui.onboarding.SetupActions
 import io.github.pintofi.beanbook.app.backup.ScheduledBackupWorker
+import io.github.pintofi.beanbook.app.ui.theme.AccentPalette
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
+import io.github.pintofi.beanbook.app.ui.theme.ProjectColour
 import io.github.pintofi.beanbook.app.ui.DocumentCaptureHandle
 import io.github.pintofi.beanbook.core.domain.DocumentIndex
 import io.github.pintofi.beanbook.app.web.AllowlistWebViewClient
@@ -414,17 +416,17 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeChoice by app.themeSettings.choice.collectAsStateWithLifecycle()
-            val dynamicColour by app.themeSettings.dynamicColour.collectAsStateWithLifecycle()
-            val accent by app.themeSettings.accent.collectAsStateWithLifecycle()
-            val projectAccents by app.themeSettings.projectAccents.collectAsStateWithLifecycle()
+            val projectColours by app.themeSettings.projectColours.collectAsStateWithLifecycle()
             val comfort by app.themeSettings.comfort.collectAsStateWithLifecycle()
             val themeProjectId by app.projectsState.activeId.collectAsStateWithLifecycle()
             val themeProjects by app.projectsState.projects.collectAsStateWithLifecycle()
+            // The colour belongs to the open project; reading the map is what makes a change redraw.
+            val colour = projectColours[themeProjectId] ?: app.themeSettings.colourOf(themeProjectId)
+            val dynamicColour = colour is ProjectColour.Dynamic
             BeancountTheme(
                 choice = themeChoice,
                 dynamicColour = dynamicColour,
-                accent = accent,
-                projectAccent = themeProjectId?.let(projectAccents::get),
+                accent = (colour as? ProjectColour.Palette)?.palette ?: AccentPalette.TEAL,
                 comfort = comfort,
             ) {
             androidx.compose.runtime.CompositionLocalProvider(
@@ -660,11 +662,7 @@ class MainActivity : ComponentActivity() {
                             io.github.pintofi.beanbook.app.widget.WidgetRefresh
                                 .refreshAll(this@MainActivity)
                         },
-                        onDynamicColour = {
-                            app.themeSettings.setDynamicColour(it)
-                            io.github.pintofi.beanbook.app.widget.WidgetRefresh
-                                .refreshAll(this@MainActivity)
-                        },
+                        onDynamicColour = { on -> setDynamicColour(app, themeProjectId, on) },
                         hideWidgetAmounts = hideWidgetAmounts,
                         onHideWidgetAmounts = { hide ->
                             io.github.pintofi.beanbook.app.widget.WidgetPreferences(this@MainActivity)
