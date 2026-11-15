@@ -92,7 +92,7 @@ object Motion {
 @Composable
 @ReadOnlyComposable
 fun animationsEnabled(): Boolean {
-    if (LocalInspectionMode.current) return false
+    if (LocalInspectionMode.current || LocalComfort.current.reduceMotion) return false
     val context = LocalContext.current
     return Settings.Global.getFloat(
         context.contentResolver,

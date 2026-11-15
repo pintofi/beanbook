@@ -1,5 +1,7 @@
 package io.github.pintofi.beanbook.app.ui.theme
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -42,10 +44,14 @@ object Measure {
     val chapter: Dp = 32.dp
 
     /** The vertical padding of a data row: tight enough to scan, tall enough to tap. */
-    val rowPadding: Dp = 12.dp
+    private val rowPaddingBase: Dp = 12.dp
+    val rowPadding: Dp
+        @Composable @ReadOnlyComposable get() = if (LocalComfort.current.compactRows) 8.dp else rowPaddingBase
 
     /** The smallest a row may be, so a whole row is always a 48dp target. */
-    val rowMinHeight: Dp = 56.dp
+    private val rowMinHeightBase: Dp = 56.dp
+    val rowMinHeight: Dp
+        @Composable @ReadOnlyComposable get() = if (LocalComfort.current.compactRows) 48.dp else rowMinHeightBase
 
     /** The width of the column rule that runs down a financial list. */
     val rule: Dp = 2.dp

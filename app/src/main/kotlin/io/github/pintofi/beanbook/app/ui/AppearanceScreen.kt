@@ -21,7 +21,12 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.Contrast
+import androidx.compose.material.icons.outlined.FormatSize
+import androidx.compose.material.icons.outlined.MotionPhotosOff
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.ViewList
+import io.github.pintofi.beanbook.app.ui.theme.ChangeMarks
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -89,6 +94,7 @@ fun AppearanceScreen(
         }
 
         AccentSection()
+        ReadingSection()
 
         FolioHeading("Colour")
         FolioGroup {
@@ -199,6 +205,83 @@ private fun AccentSection() {
             "so several ledgers can be told apart at a glance. " +
             "Paper, ink and rules stay the same.",
     )
+}
+
+/** Contrast, figure size, row density, motion, and how a change from the last period is marked. */
+@Composable
+private fun ReadingSection() {
+    val controls = LocalAppearanceControls.current ?: return
+    val comfort by controls.settings.comfort.collectAsStateWithLifecycle()
+    fun change(next: io.github.pintofi.beanbook.app.ui.theme.Comfort) {
+        controls.settings.setComfort(next)
+        controls.onChanged()
+    }
+    FolioHeading("Reading")
+    FolioGroup {
+        item {
+            FolioSwitchRow(
+                title = "Higher contrast",
+                detail = "Stronger text and rules than the app's own.",
+                checked = comfort.highContrast,
+                onCheckedChange = { change(comfort.copy(highContrast = it)) },
+                icon = Icons.Outlined.Contrast,
+                describe = "Higher contrast",
+            )
+        }
+        item {
+            FolioSwitchRow(
+                title = "Larger figures",
+                detail = "Amounts a size larger than the system text size gives them.",
+                checked = comfort.largeFigures,
+                onCheckedChange = { change(comfort.copy(largeFigures = it)) },
+                icon = Icons.Outlined.FormatSize,
+                describe = "Larger figures",
+            )
+        }
+        item {
+            FolioSwitchRow(
+                title = "Compact rows",
+                detail = "Shorter rows, so more fit on a screen. Taps stay at least 48dp tall.",
+                checked = comfort.compactRows,
+                onCheckedChange = { change(comfort.copy(compactRows = it)) },
+                icon = Icons.Outlined.ViewList,
+                describe = "Compact rows",
+            )
+        }
+        item {
+            FolioSwitchRow(
+                title = "Reduce motion",
+                detail = "No animation in the app, whatever the system's animation setting is.",
+                checked = comfort.reduceMotion,
+                onCheckedChange = { change(comfort.copy(reduceMotion = it)) },
+                icon = Icons.Outlined.MotionPhotosOff,
+                describe = "Reduce motion",
+            )
+        }
+        item {
+            FolioBody {
+                Text("Marking changes", style = MaterialTheme.typography.titleSmall)
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Measure.snug),
+                    modifier = Modifier.selectableGroup(),
+                ) {
+                    ChangeMarks.entries.forEach { marks ->
+                        androidx.compose.material3.FilterChip(
+                            selected = comfort.changeMarks == marks,
+                            onClick = { change(comfort.copy(changeMarks = marks)) },
+                            label = { Text(marks.label) },
+                            modifier = Modifier.semantics { contentDescription = "Marking changes: ${marks.label}" },
+                        )
+                    }
+                }
+                Text(
+                    comfort.changeMarks.detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
 }
 
 /** A row of accent swatches, with an optional "none" choice, which reports null. */

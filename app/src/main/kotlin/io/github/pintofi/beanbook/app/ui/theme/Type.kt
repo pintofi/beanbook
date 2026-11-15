@@ -1,6 +1,8 @@
 package io.github.pintofi.beanbook.app.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -159,7 +161,7 @@ private fun TextStyle.emphasized(): TextStyle = copy(
 object LedgerType {
 
     /** The figure a screen is about: one per surface, never two. */
-    val display: TextStyle = TextStyle(
+    private val displayBase = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontSize = 34.sp,
         lineHeight = 38.sp,
@@ -169,7 +171,7 @@ object LedgerType {
     )
 
     /** A figure that heads a group: a section total, a card's own number. */
-    val figure: TextStyle = TextStyle(
+    private val figureBase = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontSize = 20.sp,
         lineHeight = 26.sp,
@@ -179,7 +181,7 @@ object LedgerType {
     )
 
     /** A figure in a list, beside its account. The most common one in the app. */
-    val row: TextStyle = TextStyle(
+    private val rowBase = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontSize = 15.sp,
         lineHeight = 20.sp,
@@ -188,13 +190,18 @@ object LedgerType {
     )
 
     /** Secondary figures: a date in a column, a lot, a file position. */
-    val small: TextStyle = TextStyle(
+    private val smallBase = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontSize = 13.sp,
         lineHeight = 18.sp,
         letterSpacing = 0.sp,
         textAlign = TextAlign.Start,
     )
+
+    val display: TextStyle @Composable @ReadOnlyComposable get() = scaled(displayBase)
+    val figure: TextStyle @Composable @ReadOnlyComposable get() = scaled(figureBase)
+    val row: TextStyle @Composable @ReadOnlyComposable get() = scaled(rowBase)
+    val small: TextStyle @Composable @ReadOnlyComposable get() = scaled(smallBase)
 
     /** Beancount source, where the file's own spacing is the meaning. */
     val source: TextStyle = TextStyle(
@@ -203,6 +210,16 @@ object LedgerType {
         lineHeight = 20.sp,
         textAlign = TextAlign.Start,
     )
+
+    /** [base], a size larger when the reader asked for larger figures. */
+    @Composable
+    @ReadOnlyComposable
+    private fun scaled(base: TextStyle): TextStyle =
+        if (LocalComfort.current.largeFigures) {
+            base.copy(fontSize = base.fontSize * LARGE_FIGURE_SCALE, lineHeight = base.lineHeight * LARGE_FIGURE_SCALE)
+        } else {
+            base
+        }
 }
 
 /**

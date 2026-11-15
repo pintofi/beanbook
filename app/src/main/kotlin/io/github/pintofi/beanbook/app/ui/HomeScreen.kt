@@ -52,6 +52,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
+import io.github.pintofi.beanbook.app.ui.theme.ChangeMarks
+import io.github.pintofi.beanbook.app.ui.theme.LocalComfort
 import io.github.pintofi.beanbook.app.ui.theme.LedgerType
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.readableMeasure
@@ -541,12 +543,14 @@ private fun CategoryRow(
         if (compare) {
             spend.change?.takeIf { it.number.signum() != 0 }?.let { change ->
                 val up = change.number.signum() > 0
+                val marks = LocalComfort.current.changeMarks
+                val arrow = if (marks == ChangeMarks.CLEAR) (if (up) "\u25B2 " else "\u25BC ") else ""
                 Text(
-                    (if (up) "+" else "") + money(change, format, hideAmounts) + " against last period",
+                    arrow + (if (up) "+" else "") + money(change, format, hideAmounts) + " against last period",
                     style = MaterialTheme.typography.labelSmall,
                     // Spending more than last period is not an error, so it is not error red:
                     // it is the ledger's own negative colour, and the sign says which way.
-                    color = if (up) {
+                    color = if (up && marks != ChangeMarks.OFF) {
                         BeancountTheme.ledger.negative
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant

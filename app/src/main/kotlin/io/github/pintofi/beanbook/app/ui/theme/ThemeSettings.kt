@@ -38,6 +38,11 @@ class ThemeSettings(stateDir: File) {
     /** An accent a project has chosen for itself, by project id. It wins over the wallpaper and the app's. */
     val projectAccents: StateFlow<Map<String, AccentPalette>> = _projectAccents.asStateFlow()
 
+    private val _comfort = MutableStateFlow(Comfort())
+
+    /** The reading-comfort options: contrast, figure size, row density, motion, and how changes are marked. */
+    val comfort: StateFlow<Comfort> = _comfort.asStateFlow()
+
     init {
         // An unreadable or hand-edited file falls back to the defaults rather than failing
         // to start: nothing here is worth refusing to launch over.
@@ -62,6 +67,12 @@ class ThemeSettings(stateDir: File) {
             when {
                 key == "theme" -> _choice.value = choiceNamed(value) ?: ThemeChoice.SYSTEM
                 key == "dynamic" -> _dynamicColour.value = value.toBooleanStrictOrNull() ?: true
+                key == "contrast" -> _comfort.value = _comfort.value.copy(highContrast = value == "high")
+                key == "figures" -> _comfort.value = _comfort.value.copy(largeFigures = value == "large")
+                key == "rows" -> _comfort.value = _comfort.value.copy(compactRows = value == "compact")
+                key == "motion" -> _comfort.value = _comfort.value.copy(reduceMotion = value == "reduced")
+                key == "changes" ->
+                    _comfort.value = _comfort.value.copy(changeMarks = ChangeMarks.named(value) ?: ChangeMarks.SUBTLE)
                 key == "accent" -> _accent.value = AccentPalette.named(value) ?: AccentPalette.TEAL
                 key.startsWith(PROJECT_PREFIX) ->
                     AccentPalette.named(value)?.let { projects[key.removePrefix(PROJECT_PREFIX)] = it }
@@ -87,6 +98,11 @@ class ThemeSettings(stateDir: File) {
         write()
     }
 
+    fun setComfort(comfort: Comfort) {
+        _comfort.value = comfort
+        write()
+    }
+
     /** Gives [projectId] its own accent, or takes it back to the app's when [palette] is null. */
     fun setProjectAccent(projectId: String, palette: AccentPalette?) {
         _projectAccents.value = _projectAccents.value.toMutableMap().apply {
@@ -102,6 +118,12 @@ class ThemeSettings(stateDir: File) {
                 appendLine("theme=${_choice.value.name}")
                 appendLine("dynamic=${_dynamicColour.value}")
                 appendLine("accent=${_accent.value.name}")
+                val comfort = _comfort.value
+                appendLine("contrast=${if (comfort.highContrast) "high" else "normal"}")
+                appendLine("figures=${if (comfort.largeFigures) "large" else "normal"}")
+                appendLine("rows=${if (comfort.compactRows) "compact" else "comfortable"}")
+                appendLine("motion=${if (comfort.reduceMotion) "reduced" else "system"}")
+                appendLine("changes=${comfort.changeMarks.name}")
                 _projectAccents.value.toSortedMap().forEach { (id, palette) ->
                     appendLine("$PROJECT_PREFIX$id=${palette.name}")
                 }
