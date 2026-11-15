@@ -30,7 +30,12 @@ internal fun MainActivity.renameProject(app: BeancountApplication, projectId: St
             operation = "rename-project",
         )
         when (result) {
-            is WriteResult.Committed -> app.undo.offerFor(projectId, result, "renamed the project")
+            is WriteResult.Committed -> {
+                // The app reads everything from disk again, so the new name shows everywhere.
+                app.projectsState.refresh()
+                restartApp()
+                return@launch
+            }
             is WriteResult.RolledBack -> app.undo.tell("Not renamed: ${result.reason}. Your ledger is unchanged.")
             is WriteResult.Refused -> app.undo.tell("Not renamed: ${result.reason}")
         }

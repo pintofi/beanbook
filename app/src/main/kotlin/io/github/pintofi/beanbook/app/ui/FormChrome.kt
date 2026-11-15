@@ -58,47 +58,18 @@ fun FormSaveBar(
                 LedgerReveal(visible = problems.isNotEmpty(), label = "formProblems") {
                     // Held while it collapses, so the words do not vanish a frame before the room.
                     val shown = remember(problems) { problems }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-                        verticalAlignment = Alignment.Top,
-                    ) {
-                        StampMark(LedgerMark.ATTENTION, modifier = Modifier.padding(top = 1.dp, end = Measure.snug))
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            shown.take(MAX_SHOWN).forEach {
-                                // As a sentence: the checks are written for logs ("a transaction
-                                // needs at least two postings"), the bar is read by a person.
-                                Text(
-                                    it.replaceFirstChar { c -> c.uppercase() },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            }
-                            if (shown.size > MAX_SHOWN) {
-                                Text(
-                                    "and ${shown.size - MAX_SHOWN} more",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            }
-                        }
-                    }
+                    // As sentences: the checks are written for logs ("a transaction needs at
+                    // least two postings"), the bar is read by a person. In the error box.
+                    MessageBox(
+                        shown.take(MAX_SHOWN).joinToString("\n") { it.replaceFirstChar { c -> c.uppercase() } } +
+                            if (shown.size > MAX_SHOWN) "\nand ${shown.size - MAX_SHOWN} more" else "",
+                        kind = NoticeKind.ERROR,
+                    )
                 }
                 if (problems.isNotEmpty()) problemActions()
                 LedgerReveal(visible = message != null && problems.isEmpty(), label = "formMessage") {
                     val shown = remember(message) { message }.orEmpty()
-                    val refused = !shown.startsWith("Saved") && !isWorking(shown)
-                    StatusLine(
-                        shown,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = if (refused) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                        ),
-                    )
+                    StatusLine(shown)
                 }
                 Column(modifier = Modifier.heightIn(min = 52.dp), content = button)
             }

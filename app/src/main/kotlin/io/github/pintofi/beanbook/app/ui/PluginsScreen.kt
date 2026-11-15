@@ -108,7 +108,7 @@ fun PluginsScreen(
 
         message?.let {
             Notice(NoticeTone.QUIET) {
-                StatusLine(it, style = MaterialTheme.typography.bodyMedium)
+                StatusLine(it)
             }
         }
 
@@ -218,14 +218,7 @@ internal fun PluginStatusLine(status: PluginStatus) {
                 color = BeancountTheme.ledger.rule,
             )
         }
-        is PluginStatus.Failed -> Row(verticalAlignment = Alignment.Top) {
-            StampMark(LedgerMark.ATTENTION, decorative = true, modifier = Modifier.padding(end = Measure.snug))
-            Text(
-                "Did not load: ${status.reason}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
+        is PluginStatus.Failed -> MessageBox("Did not load: ${status.reason}", kind = NoticeKind.ERROR)
     }
 }
 

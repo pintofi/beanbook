@@ -15,13 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 
 /**
- * A line saying what the app is doing. While the work is still going it becomes a banner with a
+ * A message saying what the app is doing or what became of it. While the work is still going it becomes a banner with a
  * loading indicator and a moving bar.
  *
  * The app's status lines are written as the work goes -- "Downloading beangrow…", "Backing
@@ -35,18 +34,14 @@ import io.github.pintofi.beanbook.app.ui.theme.BeancountTheme
 fun StatusLine(
     text: String,
     modifier: Modifier = Modifier,
-    style: TextStyle = MaterialTheme.typography.bodySmall,
     working: Boolean = isWorking(text),
 ) {
     if (working) {
         WorkingBanner(text, modifier)
         return
     }
-    Text(
-        text,
-        style = style,
-        modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
-    )
+    // A box of its own, in the colours of what it says, never a bare line of text.
+    MessageBox(text, modifier = modifier)
 }
 
 /**

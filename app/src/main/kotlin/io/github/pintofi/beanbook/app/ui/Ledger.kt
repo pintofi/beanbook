@@ -283,7 +283,7 @@ fun KeyFigure(
 }
 
 /** How loudly a notice speaks. */
-enum class NoticeTone { QUIET, ATTENTION, PROBLEM }
+enum class NoticeTone { QUIET, ATTENTION, PROBLEM, SUCCESS }
 
 /**
  * The app interrupting the page.
@@ -309,10 +309,14 @@ fun Notice(
         NoticeTone.ATTENTION -> scheme.tertiary.copy(alpha = ATTENTION_TINT)
             .compositeOver(scheme.surfaceContainerLow)
         NoticeTone.PROBLEM -> scheme.errorContainer
+        // A tint of the ledger's own "good" green over the band, like attention's tint of the accent.
+        NoticeTone.SUCCESS -> BeancountTheme.ledger.positive.copy(alpha = ATTENTION_TINT)
+            .compositeOver(scheme.surfaceContainerLow)
     }
     val onContainer = when (tone) {
         NoticeTone.QUIET -> scheme.onSurface
         NoticeTone.ATTENTION -> scheme.onSurface
+        NoticeTone.SUCCESS -> scheme.onSurface
         NoticeTone.PROBLEM -> scheme.onErrorContainer
     }
     Surface(
