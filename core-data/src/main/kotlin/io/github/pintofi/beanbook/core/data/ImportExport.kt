@@ -133,7 +133,7 @@ class ProjectImporter(
     private val limits: ImportLimits = ImportLimits(),
 ) {
 
-    fun plan(source: ImportSource): ImportPlan {
+    fun plan(source: ImportSource, stripWrapper: Boolean = true): ImportPlan {
         val problems = mutableListOf<ImportProblem>()
         val accepted = mutableListOf<SourceEntry>()
         val seen = mutableMapOf<String, String>() // lowercase path -> first path seen
@@ -201,7 +201,9 @@ class ProjectImporter(
         // main.beancount, leaving the project holding the same ledger twice — and edits to
         // the nested copy silently do nothing. Stripping a shared wrapper is uniform, so
         // relative includes and document links keep resolving.
-        val unwrapped = stripSharedWrapper(accepted)
+        // Not when the files are exactly the ones a ledger links to, laid out as the person has them: a
+        // shared top folder there is part of the layout, and stripping it would change what includes mean.
+        val unwrapped = if (stripWrapper) stripSharedWrapper(accepted) else accepted
 
         return ImportPlan(
             files = unwrapped,
@@ -228,10 +230,20 @@ class ProjectImporter(
         source: ImportSource,
         projectId: String,
         preferredMain: String? = null,
+        /**
+         * The files are exactly the ones a ledger links to ([importLinked]) and [preferredMain] is the main
+         * file, which keeps its own name and place: nothing is renamed, no wrapper is written, a shared top
+         * folder is kept, and the project records where the main file is.
+         */
+        keepMain: Boolean = false,
     ): ImportResult {
-        val plan = plan(source)
+        val plan = plan(source, stripWrapper = !keepMain)
         if (plan.problems.isNotEmpty()) return ImportResult.Rejected(plan.problems)
-        if (plan.ledgerCandidates.isEmpty()) return ImportResult.NoLedgerFound(plan.files.size)
+        if (keepMain) {
+            if (plan.files.none { it.path == preferredMain }) return ImportResult.NoLedgerFound(plan.files.size)
+        } else if (plan.ledgerCandidates.isEmpty()) {
+            return ImportResult.NoLedgerFound(plan.files.size)
+        }
 
         val target = workspace.projectDir(projectId)
         require(!target.exists()) { "project already exists: $projectId" }
@@ -273,11 +285,13 @@ class ProjectImporter(
             // ledger pulls in. Whole tree still imported: a `document` directive's target and
             // a file not yet included are part of the project and would be lost by taking
             // only what the root reaches.
-            val main = preferredMain ?: chooseRoot(staging, plan.ledgerCandidates)
+            val main = if (keepMain) checkNotNull(preferredMain) else {
+                preferredMain ?: chooseRoot(staging, plan.ledgerCandidates)
+            }
 
             // The imported project keeps its own shape; only the root file is normalised,
             // because Fava must be pointed at one file.
-            if (main != ProjectWorkspace.MAIN_FILE) {
+            if (!keepMain && main != ProjectWorkspace.MAIN_FILE) {
                 if (File(staging, ProjectWorkspace.MAIN_FILE).exists()) {
                     staging.deleteRecursively()
                     return ImportResult.Rejected(
@@ -304,6 +318,16 @@ class ProjectImporter(
             if (!staging.renameTo(target)) {
                 staging.copyRecursively(target, overwrite = false)
                 staging.deleteRecursively()
+            }
+            if (keepMain) {
+                // Recorded once the files are in place: a record for a file that is not there is refused, and
+                // a project that cannot say where its main file is must not be left behind.
+                try {
+                    workspace.setRoot(projectId, main)
+                } catch (error: Throwable) {
+                    target.deleteRecursively()
+                    throw error
+                }
             }
         } catch (overrun: ArchiveOverrun) {
             // The archive lied about its own size. Refused rather than thrown, so the user
