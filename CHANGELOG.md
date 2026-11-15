@@ -368,7 +368,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#358]: https://github.com/pintofi/beanbook/issues/358
 [#361]: https://github.com/pintofi/beanbook/issues/361
 [#369]: https://github.com/pintofi/beanbook/issues/369
-[#421]: https://github.com/pintofi/beanbook/issues/421
 [#379]: https://github.com/pintofi/beanbook/issues/379
 [#381]: https://github.com/pintofi/beanbook/issues/381
 [#382]: https://github.com/pintofi/beanbook/issues/382
@@ -377,3 +376,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#388]: https://github.com/pintofi/beanbook/issues/388
 [#410]: https://github.com/pintofi/beanbook/issues/410
 [#411]: https://github.com/pintofi/beanbook/issues/411
+[#421]: https://github.com/pintofi/beanbook/issues/421
