@@ -344,11 +344,10 @@ private fun RestorePreview(
 
             // The list that matters most: files that exist now and are not in the backup.
             if (staged.diff.removed.isNotEmpty()) {
-                Text(
+                MessageBox(
                     "These files are in your project but not in this backup, and restoring " +
                         "would leave them behind:",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    kind = NoticeKind.ERROR,
                 )
                 staged.diff.removed.take(REMOVED_SHOWN).forEach {
                     Text("· $it", style = MaterialTheme.typography.bodySmall)

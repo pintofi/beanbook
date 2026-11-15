@@ -1285,11 +1285,7 @@ private fun TemplateDialog(
                 // Shown while typing rather than on save: a template that could never
                 // produce a valid entry is refused now, not on the day it is used.
                 problems.filterNot { it is DraftProblem.MissingText }.forEach { problem ->
-                    Text(
-                        problem.describe(),
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    MessageBox(problem.describe(), kind = NoticeKind.ERROR)
                 }
                 if (existing.isNotEmpty()) {
                     HorizontalDivider()

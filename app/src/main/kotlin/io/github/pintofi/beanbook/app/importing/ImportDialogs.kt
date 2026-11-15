@@ -6,6 +6,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import io.github.pintofi.beanbook.app.ui.MessageBox
+import io.github.pintofi.beanbook.app.ui.NoticeKind
+import io.github.pintofi.beanbook.core.data.PreviewLine
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -73,7 +85,6 @@ fun ImportDialogs(
         is ImportState.Reading -> AlertDialog(
             onDismissRequest = {},
             title = { Text("Reading ${state.name}…") },
-            text = { Text("Looking at the files it links to. Nothing is imported yet.") },
             confirmButton = {},
         )
         is ImportState.NeedsFolder -> NeedsFolderDialog(state, onChooseFolder, onImportAlone, onCancel)
@@ -81,7 +92,7 @@ fun ImportDialogs(
         is ImportState.Failed -> AlertDialog(
             onDismissRequest = onCancel,
             title = { Text("Not imported") },
-            text = { Text(state.message) },
+            text = { MessageBox(state.message, kind = NoticeKind.ERROR) },
             confirmButton = { Button(onClick = onCancel) { Text("Close") } },
         )
         else -> Unit
@@ -116,7 +127,7 @@ private fun NeedsFolderDialog(
                             "so choose the folder that many levels up.",
                     )
                 }
-                state.problem?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                state.problem?.let { MessageBox(it, kind = NoticeKind.ERROR) }
             }
         },
         confirmButton = {
@@ -143,31 +154,28 @@ private fun PreviewDialog(state: ImportState.Preview, onImport: () -> Unit, onCa
         modifier = Modifier.semantics { paneTitle = title },
         title = { Text(title) },
         text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     "${state.fileCount} ${if (state.fileCount == 1) "file" else "files"}, ${size(state.totalBytes)}. " +
                         "These are the only files that will be imported, in these folders.",
                 )
-                state.lines.forEach { line ->
-                    Text(
-                        (if (line.isFolder) "${line.name}/" else line.name) +
-                            (if (line.isMain) "  (your Beancount file)" else ""),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = (line.depth * 16).dp),
-                    )
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                ) {
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()).padding(vertical = 6.dp),
+                    ) { state.lines.forEach { PreviewRow(it) } }
                 }
                 if (state.unresolved.isNotEmpty()) {
-                    Text("Not reachable", style = MaterialTheme.typography.titleSmall)
-                    state.unresolved.take(UNRESOLVED_SHOWN).forEach {
-                        Text(describe(it), style = MaterialTheme.typography.bodySmall)
-                    }
-                    if (state.unresolved.size > UNRESOLVED_SHOWN) {
-                        val more = state.unresolved.size - UNRESOLVED_SHOWN
-                        Text("and $more more", style = MaterialTheme.typography.bodySmall)
-                    }
+                    val shown = state.unresolved.take(UNRESOLVED_SHOWN).map(::describe)
+                    val more = state.unresolved.size - UNRESOLVED_SHOWN
+                    MessageBox(
+                        "Not reachable, so not imported: " + shown.joinToString("; ") +
+                            if (more > 0) "; and $more more" else "",
+                        kind = NoticeKind.ERROR,
+                    )
                 }
             }
         },
@@ -178,6 +186,42 @@ private fun PreviewDialog(state: ImportState.Preview, onImport: () -> Unit, onCa
         },
         dismissButton = { OutlinedButton(onClick = onCancel) { Text("Cancel") } },
     )
+}
+
+/** One line of the list: a folder in the heading weight, a file indented under it, the main file marked. */
+@Composable
+private fun PreviewRow(line: PreviewLine) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = (12 + line.depth * 16).dp, end = 12.dp, top = 3.dp, bottom = 3.dp),
+    ) {
+        Icon(
+            if (line.isFolder) Icons.Outlined.Folder else Icons.Outlined.Description,
+            contentDescription = null,
+            tint = if (line.isFolder || line.isMain) scheme.primary else scheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            line.name,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (line.isFolder || line.isMain) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        if (line.isMain) {
+            Surface(shape = MaterialTheme.shapes.small, color = scheme.primaryContainer) {
+                Text(
+                    "Your file",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onPrimaryContainer,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+            }
+        }
+    }
 }
 
 private const val UNRESOLVED_SHOWN = 5
