@@ -93,6 +93,29 @@ internal fun MainActivity.saveText(
             entryCommits += 1
             app.undo.offerFor(projectId, result, "saved the entry")
         }
+        // A change the person wrote that adds errors is not only refused: they are asked, and may save it
+        // anyway. The form keeps what was typed until they answer.
+        val held = (result as? io.github.pintofi.beanbook.core.data.WriteResult.RolledBack)
+            ?.takeIf {
+                it.cause == io.github.pintofi.beanbook.core.data.RollbackCause.NEW_ERRORS &&
+                    io.github.pintofi.beanbook.app.undo.HeldWriteController.overridable(operation)
+            }?.held
+        if (held != null) {
+            app.heldWrites.ask(held) { kept ->
+                if (operation in ENTRY_OPERATIONS) {
+                    entryCommits += 1
+                    app.undo.offerFor(projectId, kept, "saved the entry with errors")
+                }
+                onResult(
+                    "Saved with ${kept.warnings.size} ${if (kept.warnings.size == 1) "error" else "errors"} " +
+                        "to review.",
+                )
+                app.workScope.launch {
+                    if (reload) app.ledgerState.load(ledgerPath)
+                    app.mirror.syncAfterCommit(projectId)
+                }
+            }
+        }
         onResult(
             when (result) {
                 is io.github.pintofi.beanbook.core.data.WriteResult.Committed ->

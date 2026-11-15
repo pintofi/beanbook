@@ -29,6 +29,7 @@ import io.github.pintofi.beanbook.engine.local.BeancountValidator
 import io.github.pintofi.beanbook.engine.local.LedgerReader
 import io.github.pintofi.beanbook.engine.local.LocalEngineClient
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharingStarted
@@ -122,6 +123,22 @@ class BeancountApplication : Application() {
     /** Offers to take back the last save, delete or file edit. */
     val undo: io.github.pintofi.beanbook.app.undo.UndoController by lazy {
         io.github.pintofi.beanbook.app.undo.UndoController(writer, workScope)
+    }
+
+    /** A change undone for adding errors, held until the person chooses Save anyway or Don't save. */
+    val heldWrites: io.github.pintofi.beanbook.app.undo.HeldWriteController by lazy {
+        io.github.pintofi.beanbook.app.undo.HeldWriteController(
+            writer, io.github.pintofi.beanbook.core.data.HeldWrites(workspace), workScope,
+        ).also { controller ->
+            // A change made after the app was stopped has no screen waiting for it: read the ledger again.
+            controller.afterRestored = { projectId, committed ->
+                undo.offerFor(projectId, committed, "saved the change with errors")
+                workScope.launch {
+                    ledgerState.load(workspace.mainFile(projectId).absolutePath)
+                    mirror.syncAfterCommit(projectId)
+                }
+            }
+        }
     }
 
     /** Entry templates for the open project; app state, never part of the ledger. */

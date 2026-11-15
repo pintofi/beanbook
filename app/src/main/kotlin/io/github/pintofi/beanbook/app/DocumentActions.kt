@@ -723,6 +723,7 @@ internal fun MainActivity.saveEntryEdit(
             // What the form's save sweep and close are keyed on, as for a new entry.
             entryCommits++
         }
+        askToKeepWithErrors(app, projectId, result, fromForm)
         app.ledgerState.load(app.workspace.mainFile(projectId).absolutePath)
     }
 }

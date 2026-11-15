@@ -784,6 +784,7 @@ class MainActivity : ComponentActivity() {
                     EntryEditor(app, activeId)
 
                     LedgerEditDialog()
+                    KeepWithErrorsHost(app, activeId)
                     ExternalLinkDialog()
                     BackupPassphraseDialog()
                 }

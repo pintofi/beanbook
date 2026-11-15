@@ -286,9 +286,12 @@ colour.
 Every change, from the entry form, the file editor or a delete, takes the same path. Success is
 reported only at the end, after Beancount has read the ledger back.
 
-The one exception is the editor inside Fava's own pages in Reports: Fava saves those itself, with
-its own check that the file has not changed underneath it, and the app re-reads the ledger
-afterwards. Those saves get no snapshot or Undo.
+The editor inside Fava's own pages in Reports takes the same path: Fava builds the change, and the
+app writes it through this protocol, so it is snapshotted and can be undone.
+
+A change you typed that would add an error to the ledger is not simply refused. It is undone, and
+you are asked: **Don't save** leaves the ledger as it was, and **Save anyway** makes the same change
+with the error kept, which Undo can take back.
 
 ```mermaid
 flowchart TD
@@ -305,6 +308,9 @@ flowchart TD
     F -- "reads cleanly" --> G(["Saved."])
     F -- "fails" --> H["Put the copy back"]
     H --> I(["Not saved: the previous<br/>ledger stands"])
+    F -- "adds errors to a change<br/>you typed" --> J["Put the copy back,<br/>and ask you"]
+    J -- "Don't save" --> I
+    J -- "Save anyway" --> K(["Saved with the errors,<br/>Undo available"])
 ```
 
 <picture>

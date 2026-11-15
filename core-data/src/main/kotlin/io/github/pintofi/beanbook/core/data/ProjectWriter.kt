@@ -45,6 +45,10 @@ enum class ErrorPolicy {
     /**
      * Roll back if the write introduces errors. For generated writes — guided entry,
      * imports, scripts — where broken output is our bug, not the user's intent.
+     *
+     * For a change the person wrote directly the rollback is not the last word: the result carries
+     * the change ([HeldWrite]) and the app asks, and [ProjectWriter.keepWithErrors] makes it again
+     * with the errors kept if they say so. Everything else stays rolled back.
      */
     ROLLBACK_ON_NEW_ERRORS,
 
