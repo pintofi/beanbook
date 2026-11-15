@@ -62,7 +62,7 @@ class ImportRoundTripTest {
     @Test
     fun a_multi_file_project_imports_and_its_includes_still_resolve() {
         val source = File(corpus, "multi-file")
-        val result = importer.import(DirectoryImportSource(source), "multi")
+        val result = importer.import(DirectoryImportSource(source), "multi", "main.beancount")
         val imported = result as ImportResult.Imported
 
         val snapshot = readLedger(imported.mainFile).getOrThrow()
@@ -80,13 +80,13 @@ class ImportRoundTripTest {
     @Test
     fun a_project_with_documents_keeps_its_links_after_export_and_reimport() {
         val source = File(corpus, "documents")
-        val first = importer.import(DirectoryImportSource(source), "docs") as ImportResult.Imported
+        val first = importer.import(DirectoryImportSource(source), "docs", "main.beancount") as ImportResult.Imported
         val before = readLedger(first.mainFile).getOrThrow()
 
         // Export to a plain folder, then import that back as a new project.
         val exportDir = File(context.cacheDir, "rt-export-${System.nanoTime()}").apply { mkdirs() }
         val exported = ProjectExporter(workspace).exportFolder("docs", DirectoryExportTarget(exportDir))
-        val second = importer.import(DirectoryImportSource(exportDir), "docs2") as ImportResult.Imported
+        val second = importer.import(DirectoryImportSource(exportDir), "docs2", "main.beancount") as ImportResult.Imported
         val after = readLedger(second.mainFile).getOrThrow()
 
         assertEquals("export lost files", exported, second.fileCount)
@@ -120,7 +120,7 @@ class ImportRoundTripTest {
         val source = File(corpus, "custom-directives")
         val original = File(source, "main.beancount").readText()
 
-        val imported = importer.import(DirectoryImportSource(source), "custom") as ImportResult.Imported
+        val imported = importer.import(DirectoryImportSource(source), "custom", "main.beancount") as ImportResult.Imported
 
         // Invariant 4: nothing is normalised on the way in.
         assertEquals(original, imported.mainFile.readText())

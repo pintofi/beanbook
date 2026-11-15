@@ -32,7 +32,7 @@ class ImportOverrunTest {
         private val actual: Long,
     ) : ImportSource {
         override fun entries() = listOf(
-            SourceEntry(path = "main.beancount", size = declared, compressedSize = declared),
+            SourceEntry(path = "main.beancount", size = declared),
         )
 
         override fun open(entry: SourceEntry): InputStream = object : InputStream() {
@@ -52,7 +52,7 @@ class ImportOverrunTest {
     fun `an entry that streams more than it declared is refused`() = runBlocking {
         // Declares 1 KB, delivers 8 MB.
         val importer = ProjectImporter(workspace, ImportLimits(maxTotalBytes = 4L * 1024 * 1024))
-        val result = importer.import(LyingSource(declared = 1024, actual = 8L * 1024 * 1024), "liar")
+        val result = importer.import(LyingSource(declared = 1024, actual = 8L * 1024 * 1024), "liar", "main.beancount")
 
         assertTrue(
             result is ImportResult.Rejected,
@@ -63,7 +63,7 @@ class ImportOverrunTest {
     @Test
     fun `nothing is left behind when an entry overruns`() = runBlocking {
         val importer = ProjectImporter(workspace, ImportLimits(maxTotalBytes = 4L * 1024 * 1024))
-        importer.import(LyingSource(declared = 1024, actual = 8L * 1024 * 1024), "liar")
+        importer.import(LyingSource(declared = 1024, actual = 8L * 1024 * 1024), "liar", "main.beancount")
 
         val staging = File(workspace.projectDir("liar").parentFile, "liar.importing")
         assertTrue(!staging.exists(), "the staging directory survived the refusal")
@@ -75,7 +75,7 @@ class ImportOverrunTest {
         val importer = ProjectImporter(workspace, ImportLimits(maxTotalBytes = 4L * 1024 * 1024))
         val honest = LyingSource(declared = 2048, actual = 2048)
 
-        val result = importer.import(honest, "honest")
+        val result = importer.import(honest, "honest", "main.beancount")
 
         assertTrue(result is ImportResult.Imported, "an honest archive was refused: $result")
     }

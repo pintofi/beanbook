@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use last on the entry form fills the form as the last entry's text writes it: every amount the text writes, none it leaves out, each posting's commodity and lot, the description, the flag, and the tags and links. Before, only the first posting kept an amount. ([#383])
 
 ### Removed
+- Importing a ledger from a .zip file is gone, along with the code that renamed a ledger to `main.beancount` on the way in. Importing is done by selecting your Beancount file. ([#421])
 - Importing a ledger from a .zip or from a whole folder. Restoring a Beanbook backup (.bcaz) is unchanged. ([#369])
 
 ### Fixed
@@ -367,6 +368,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#358]: https://github.com/pintofi/beanbook/issues/358
 [#361]: https://github.com/pintofi/beanbook/issues/361
 [#369]: https://github.com/pintofi/beanbook/issues/369
+[#421]: https://github.com/pintofi/beanbook/issues/421
 [#379]: https://github.com/pintofi/beanbook/issues/379
 [#381]: https://github.com/pintofi/beanbook/issues/381
 [#382]: https://github.com/pintofi/beanbook/issues/382

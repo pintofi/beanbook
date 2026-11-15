@@ -5,7 +5,6 @@ import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.Locale
-import java.util.zip.ZipFile
 
 /**
  * A project arriving from outside the app: a SAF folder tree, a zip archive, a plain
@@ -27,8 +26,6 @@ data class SourceEntry(
      */
     val path: String,
     val size: Long,
-    /** Compressed size where the container reports one; used for zip-bomb detection. */
-    val compressedSize: Long = size,
     val isSymlink: Boolean = false,
     val isDirectory: Boolean = false,
     /** The name this entry has inside the archive or folder. */
@@ -49,7 +46,6 @@ interface ExportTarget {
 data class ImportLimits(
     val maxTotalBytes: Long = 512L * 1024 * 1024,
     val maxEntries: Int = 20_000,
-    val maxCompressionRatio: Int = 100,
     val maxPathSegments: Int = 16,
     val maxNameLength: Int = 255,
 )
@@ -67,15 +63,7 @@ sealed interface ImportProblem {
     data class NameTooLong(override val path: String) : ImportProblem
     data class TooLarge(override val path: String, val totalBytes: Long) : ImportProblem
     data class TooManyEntries(override val path: String, val count: Int) : ImportProblem
-    data class SuspiciousCompression(override val path: String, val ratio: Long) : ImportProblem
     data class ReservedName(override val path: String) : ImportProblem
-
-    /**
-     * The project's root ledger has another name, and a different file is already called
-     * `main.beancount`. The importer points the app at `main.beancount`, so it cannot make a
-     * copy of the real root there without replacing that file.
-     */
-    data class MainFileTaken(override val path: String) : ImportProblem
 
     /** Describes the problem in the words the user sees. */
     fun describe(): String = when (this) {
@@ -87,35 +75,23 @@ sealed interface ImportProblem {
         is TooDeep -> "\"$path\" is nested $segments levels deep"
         is NameTooLong -> "the name in \"$path\" is too long"
         is TooLarge -> "the project is larger than the import limit ($totalBytes bytes)"
-        is TooManyEntries -> "the archive contains $count files"
-        is SuspiciousCompression -> "\"$path\" expands ${ratio}x, which looks like a zip bomb"
+        is TooManyEntries -> "the ledger links to $count files"
         is ReservedName -> "\"$path\" is a reserved name"
-        is MainFileTaken ->
-            "\"$path\" is already in this project, and it is not the root ledger. Rename it " +
-                "and import again"
     }
 }
 
 data class ImportPlan(
     val files: List<SourceEntry>,
     val problems: List<ImportProblem>,
-    val ledgerCandidates: List<String>,
 ) {
-    val isAcceptable: Boolean get() = problems.isEmpty() && ledgerCandidates.isNotEmpty()
+    val isAcceptable: Boolean get() = problems.isEmpty()
 }
 
 sealed interface ImportResult {
-    /**
-     * @param rootName the file the archive's root ledger was called, when that was not
-     *   `main.beancount`: it is now `main.beancount` itself ([rootMoved]), or `main.beancount`
-     *   is a one-line file that includes it and it stays where it was.
-     */
     data class Imported(
         val projectId: String,
         val mainFile: File,
         val fileCount: Int,
-        val rootName: String? = null,
-        val rootMoved: Boolean = false,
     ) : ImportResult
     data class Rejected(val problems: List<ImportProblem>) : ImportResult
     data class NoLedgerFound(val checked: Int) : ImportResult
@@ -133,7 +109,12 @@ class ProjectImporter(
     private val limits: ImportLimits = ImportLimits(),
 ) {
 
-    fun plan(source: ImportSource, stripWrapper: Boolean = true): ImportPlan {
+    /**
+     * Judges every file [source] offers before anything is written: the names, the sizes and the count.
+     * The paths are kept as they are, folders and all, because they are the layout the person has and
+     * what their includes mean.
+     */
+    fun plan(source: ImportSource): ImportPlan {
         val problems = mutableListOf<ImportProblem>()
         val accepted = mutableListOf<SourceEntry>()
         val seen = mutableMapOf<String, String>() // lowercase path -> first path seen
@@ -142,11 +123,10 @@ class ProjectImporter(
         val entries = source.entries().filterNot { it.isDirectory }
         if (entries.size > limits.maxEntries) {
             // Refused as a whole, without going through every entry: the cost of saying no to a
-            // hostile archive must not grow with the archive.
+            // hostile source must not grow with the source.
             return ImportPlan(
                 files = emptyList(),
-                problems = listOf(ImportProblem.TooManyEntries("<archive>", entries.size)),
-                ledgerCandidates = emptyList(),
+                problems = listOf(ImportProblem.TooManyEntries("<ledger>", entries.size)),
             )
         }
 
@@ -155,8 +135,7 @@ class ProjectImporter(
 
             unsafeName(entry, given)?.let { problems += it; continue }
             // Dots and empty parts collapsed, so what is judged, kept and written is the path the file
-            // will really have: "files/../notes.beancount" is "notes.beancount". Left as written, a shared
-            // wrapper folder stripped later could leave ".." in front of it.
+            // will really have: "files/../notes.beancount" is "notes.beancount".
             val path = collapsed(given)
             val segments = path.split('/').filter { it.isNotEmpty() }
             if (segments.size > limits.maxPathSegments) {
@@ -183,11 +162,6 @@ class ProjectImporter(
             }
             seen[key] = path
 
-            if (entry.compressedSize > 0 && entry.size / entry.compressedSize > limits.maxCompressionRatio) {
-                problems += ImportProblem.SuspiciousCompression(path, entry.size / entry.compressedSize)
-                continue
-            }
-
             totalBytes += entry.size
             if (totalBytes > limits.maxTotalBytes) {
                 problems += ImportProblem.TooLarge(path, totalBytes); break
@@ -196,54 +170,30 @@ class ProjectImporter(
             accepted += entry.copy(path = path, sourcePath = entry.path)
         }
 
-        // Archives are usually made by zipping a folder, so everything sits under one
-        // directory. Keeping that wrapper means the root ledger has to be *copied* to
-        // main.beancount, leaving the project holding the same ledger twice — and edits to
-        // the nested copy silently do nothing. Stripping a shared wrapper is uniform, so
-        // relative includes and document links keep resolving.
-        // Not when the files are exactly the ones a ledger links to, laid out as the person has them: a
-        // shared top folder there is part of the layout, and stripping it would change what includes mean.
-        val unwrapped = if (stripWrapper) stripSharedWrapper(accepted) else accepted
-
-        return ImportPlan(
-            files = unwrapped,
-            problems = problems,
-            ledgerCandidates = findLedgerCandidates(unwrapped.map { it.path }),
-        )
+        return ImportPlan(files = accepted, problems = problems)
     }
 
-    private fun stripSharedWrapper(entries: List<SourceEntry>): List<SourceEntry> {
-        if (entries.isEmpty()) return entries
-        val wrapper = entries.first().path.substringBefore('/', missingDelimiterValue = "")
-        if (wrapper.isEmpty()) return entries
-        val prefix = "$wrapper/"
-        if (!entries.all { it.path.startsWith(prefix) }) return entries
-        return entries.map { it.copy(path = it.path.removePrefix(prefix), sourcePath = it.sourcePath) }
-    }
+    /** An entry delivered more bytes than the source said it would. */
+    private class ArchiveOverrun(val path: String, val bytes: Long) : java.io.IOException(
+        "\"$path\" delivered more than the $bytes bytes it declared"
+    )
 
     /**
      * Imports into a **new** project id. Never overwrites, never merges.
      *
-     * @param preferredMain the ledger to treat as the root; defaults to the best candidate.
+     * Exactly the files [source] offers come in, each at its own path, and the project records [main] as
+     * its main file, which keeps its own name and place: nothing is renamed, wrapped, flattened or stripped.
+     *
+     * @param main the main file's path in the project.
      */
     fun import(
         source: ImportSource,
         projectId: String,
-        preferredMain: String? = null,
-        /**
-         * The files are exactly the ones a ledger links to ([importLinked]) and [preferredMain] is the main
-         * file, which keeps its own name and place: nothing is renamed, no wrapper is written, a shared top
-         * folder is kept, and the project records where the main file is.
-         */
-        keepMain: Boolean = false,
+        main: String,
     ): ImportResult {
-        val plan = plan(source, stripWrapper = !keepMain)
+        val plan = plan(source)
         if (plan.problems.isNotEmpty()) return ImportResult.Rejected(plan.problems)
-        if (keepMain) {
-            if (plan.files.none { it.path == preferredMain }) return ImportResult.NoLedgerFound(plan.files.size)
-        } else if (plan.ledgerCandidates.isEmpty()) {
-            return ImportResult.NoLedgerFound(plan.files.size)
-        }
+        if (plan.files.none { it.path == main }) return ImportResult.NoLedgerFound(plan.files.size)
 
         val target = workspace.projectDir(projectId)
         require(!target.exists()) { "project already exists: $projectId" }
@@ -256,8 +206,6 @@ class ProjectImporter(
         }
 
         var extracted = 0L
-        var rootName: String? = null
-        var rootMoved = false
         try {
             plan.files.forEach { entry ->
                 val destination = File(staging, entry.path)
@@ -280,57 +228,20 @@ class ProjectImporter(
                 }
             }
 
-            // Now that the files are on disk -- and past every size check -- the include
-            // graph can be read, which is the only way to tell a root from a file some other
-            // ledger pulls in. Whole tree still imported: a `document` directive's target and
-            // a file not yet included are part of the project and would be lost by taking
-            // only what the root reaches.
-            val main = if (keepMain) checkNotNull(preferredMain) else {
-                preferredMain ?: chooseRoot(staging, plan.ledgerCandidates)
-            }
-
-            // The imported project keeps its own shape; only the root file is normalised,
-            // because Fava must be pointed at one file.
-            if (!keepMain && main != ProjectWorkspace.MAIN_FILE) {
-                if (File(staging, ProjectWorkspace.MAIN_FILE).exists()) {
-                    staging.deleteRecursively()
-                    return ImportResult.Rejected(
-                        listOf(ImportProblem.MainFileTaken(ProjectWorkspace.MAIN_FILE)),
-                    )
-                }
-                // One file is the root, not two. The root is *renamed* to main.beancount when
-                // nothing else includes it and it sits at the top, where its own relative
-                // includes and document folders mean the same thing; a copy left the project
-                // holding the ledger twice, so edits to the original were never seen and an
-                // export wrote both. A root in a folder, or one another ledger includes, stays
-                // where it is and main.beancount includes it, which keeps what it resolves.
-                rootMoved = '/' !in main && !includedByAnother(staging, plan.ledgerCandidates, main)
-                if (rootMoved) {
-                    File(staging, main).renameTo(File(staging, ProjectWorkspace.MAIN_FILE)) ||
-                        error("could not rename $main to ${ProjectWorkspace.MAIN_FILE}")
-                } else {
-                    File(staging, ProjectWorkspace.MAIN_FILE)
-                        .writeText("include ${BeancountText.quote(main)}\n")
-                }
-                rootName = main
-            }
-
             if (!staging.renameTo(target)) {
                 staging.copyRecursively(target, overwrite = false)
                 staging.deleteRecursively()
             }
-            if (keepMain) {
-                // Recorded once the files are in place: a record for a file that is not there is refused, and
-                // a project that cannot say where its main file is must not be left behind.
-                try {
-                    workspace.setRoot(projectId, main)
-                } catch (error: Throwable) {
-                    target.deleteRecursively()
-                    throw error
-                }
+            // Recorded once the files are in place: a record for a file that is not there is refused, and a
+            // project that cannot say where its main file is must not be left behind.
+            try {
+                workspace.setRoot(projectId, main)
+            } catch (error: Throwable) {
+                target.deleteRecursively()
+                throw error
             }
         } catch (overrun: ArchiveOverrun) {
-            // The archive lied about its own size. Refused rather than thrown, so the user
+            // The source lied about its own size. Refused rather than thrown, so the user
             // gets the same message as any other rejected import.
             staging.deleteRecursively()
             return ImportResult.Rejected(listOf(ImportProblem.TooLarge(overrun.path, overrun.bytes)))
@@ -339,83 +250,9 @@ class ProjectImporter(
             throw error
         }
 
-        return ImportResult.Imported(
-            projectId, workspace.mainFile(projectId), plan.files.size, rootName, rootMoved,
-        )
+        return ImportResult.Imported(projectId, workspace.mainFile(projectId), plan.files.size)
     }
 
-    /**
-     * Every `.beancount`/`.bean` file, best guess first, for offering the user a choice.
-     *
-     * This is a *name* heuristic and nothing more: main.beancount, then shallower paths,
-     * then alphabetical. It cannot tell a root from an included file, because planning
-     * happens before extraction and reading archive entries here would decompress content
-     * before the size checks that make decompressing it safe.
-     *
-     * The actual root is chosen after extraction by [chooseRoot], which can read the files.
-     * An earlier version of this docstring claimed the include rule was implemented here.
-     * It never was: no file was read.
-     */
-    private fun findLedgerCandidates(paths: List<String>): List<String> {
-        val ledgers = paths.filter { it.endsWith(".beancount") || it.endsWith(".bean") }
-        if (ledgers.isEmpty()) return emptyList()
-        return ledgers.sortedWith(
-            compareBy(
-                { if (it == ProjectWorkspace.MAIN_FILE) 0 else 1 },
-                { it.count { char -> char == '/' } },
-                { it },
-            )
-        )
-    }
-
-    /**
-     * The root ledger: the candidate no other ledger in the project includes.
-     *
-     * Falls back to the name heuristic's first choice when the include graph does not
-     * settle it -- a project of several independent ledgers has no single root, and one
-     * whose ledgers all include each other has no un-included file. Guessing consistently
-     * is better than refusing an import that is otherwise fine.
-     */
-    private fun chooseRoot(staging: File, candidates: List<String>): String {
-        val included = buildSet {
-            candidates.forEach { candidate ->
-                val file = File(staging, candidate)
-                if (!file.isFile) return@forEach
-                val text = runCatching { file.readText() }.getOrNull() ?: return@forEach
-                BeancountText.includedPaths(text).forEach { path ->
-                    add(BeancountText.resolveInclude(from = candidate, include = path))
-                }
-            }
-        }
-        return candidates.firstOrNull { it !in included } ?: candidates.first()
-    }
-
-    /** Whether any other ledger in the project has an `include` that resolves to [path]. */
-    private fun includedByAnother(staging: File, candidates: List<String>, path: String): Boolean =
-        candidates.any { candidate ->
-            if (candidate == path) return@any false
-            val text = runCatching { File(staging, candidate).readText() }.getOrNull() ?: return@any false
-            BeancountText.includedPaths(text).any {
-                BeancountText.resolveInclude(from = candidate, include = it) == path
-            }
-        }
-
-    /** An entry delivered more bytes than the container said it would. */
-    private class ArchiveOverrun(val path: String, val bytes: Long) : java.io.IOException(
-        "\"$path\" delivered more than the $bytes bytes it declared"
-    )
-
-    /**
-     * Copies [input] to [output], refusing to go past what the entry declared.
-     *
-     * Every size check in [plan] reads the container's own metadata, which the archive
-     * supplies and an attacker therefore chooses. Those figures decide whether an import is
-     * allowed; this is what makes them true. Without it an archive could declare a kilobyte
-     * per entry, pass every check, and inflate to whatever it liked while extracting.
-     *
-     * Bounded twice: by what this entry claimed, and by what is left of the whole-archive
-     * budget, so many small honest-looking entries cannot add up past the limit either.
-     */
     private fun copyBounded(
         input: InputStream,
         output: OutputStream,
@@ -481,41 +318,6 @@ class ProjectImporter(
             "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
         )
     }
-}
-
-/**
- * Reads a zip archive as an [ImportSource], without extracting it.
- *
- * Uses [ZipFile] rather than `ZipInputStream` deliberately: a streamed read takes sizes
- * from the local headers, which are frequently absent (`-1`) for deflated entries, and
- * that silently disables the zip-bomb and total-size checks. [ZipFile] reads the central
- * directory, where the real sizes are.
- *
- * A SAF archive therefore has to be copied into app storage before validation, because
- * [ZipFile] needs random access. That is the right order anyway: nothing is extracted
- * until the whole archive has been judged.
- */
-class ZipImportSource(private val archive: File) : ImportSource, AutoCloseable {
-
-    private val zip = ZipFile(archive)
-
-    override fun entries(): List<SourceEntry> =
-        zip.entries().asSequence().map { entry ->
-            SourceEntry(
-                path = entry.name,
-                size = if (entry.size >= 0) entry.size else 0,
-                compressedSize = if (entry.compressedSize > 0) entry.compressedSize else 1,
-                isDirectory = entry.isDirectory,
-            )
-        }.toList()
-
-    override fun open(entry: SourceEntry): InputStream {
-        val found = zip.getEntry(entry.sourcePath)
-            ?: error("entry disappeared from the archive: ${entry.sourcePath}")
-        return zip.getInputStream(found)
-    }
-
-    override fun close() = zip.close()
 }
 
 /** Reads a plain directory as an [ImportSource]. */

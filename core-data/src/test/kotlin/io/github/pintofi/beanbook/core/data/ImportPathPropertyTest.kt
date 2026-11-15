@@ -102,7 +102,7 @@ class ImportPathPropertyTest {
     @Test
     fun `a name holding a NUL byte stops the import and leaves nothing behind`() {
         val source = Listed(listOf("main.beancount", "documents/a\u0000b.pdf"))
-        val outcome = runCatching { ProjectImporter(workspace).import(source, "nul-test") }
+        val outcome = runCatching { ProjectImporter(workspace).import(source, "nul-test", "main.beancount") }
 
         assertTrue(
             outcome.isFailure || outcome.getOrNull() is ImportResult.Rejected,
@@ -126,7 +126,8 @@ class ImportPathPropertyTest {
 
     @Test
     fun `importing it puts the file in the project and nothing above it`() {
-        val outcome = ProjectImporter(workspace).import(Listed(listOf("a/../main.beancount")), "wrapper-test")
+        val source = Listed(listOf("a/../main.beancount"))
+        val outcome = ProjectImporter(workspace).import(source, "wrapper-test", "main.beancount")
 
         assertTrue(outcome is ImportResult.Imported, "got $outcome")
         assertTrue(File(workspace.projectDir("wrapper-test"), "main.beancount").isFile)

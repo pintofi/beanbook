@@ -4,8 +4,6 @@ import io.github.pintofi.beanbook.core.domain.BeancountText
 import java.io.File
 import java.io.OutputStream
 import java.nio.file.Files
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,23 +28,19 @@ class ImportExportTest {
         root.deleteRecursively()
     }
 
-    private fun zipOf(vararg entries: Pair<String, String>): File =
-        zipWith { zip ->
-            entries.forEach { (name, content) ->
-                zip.putNextEntry(ZipEntry(name))
-                zip.write(content.toByteArray())
-                zip.closeEntry()
-            }
-        }
+    private fun zipOf(vararg entries: Pair<String, String>): ImportSource = filesOf(*entries)
 
-    private fun zipWith(build: (ZipOutputStream) -> Unit): File {
-        val file = File(scratch, "archive-${System.nanoTime()}.zip")
-        ZipOutputStream(file.outputStream()).use(build)
-        return file
+    private fun filesOf(vararg entries: Pair<String, String>): ImportSource {
+        val contents = entries.toMap()
+        return object : ImportSource {
+            override fun entries() =
+                entries.map { (name, content) -> SourceEntry(name, content.toByteArray().size.toLong()) }
+
+            override fun open(entry: SourceEntry) = contents.getValue(entry.sourcePath).byteInputStream()
+        }
     }
 
-    private fun problemsOf(archive: File): List<ImportProblem> =
-        importer.plan(ZipImportSource(archive)).problems
+    private fun problemsOf(source: ImportSource): List<ImportProblem> = importer.plan(source).problems
 
     // --- hostile archives -------------------------------------------------------------
 
@@ -91,51 +85,18 @@ class ImportExportTest {
     }
 
     @Test
-    fun `a zip bomb is refused by its compression ratio`() {
-        val bomb = zipWith { zip ->
-            zip.putNextEntry(ZipEntry("main.beancount"))
-            zip.write("option \"title\" \"x\"\n".toByteArray())
-            zip.closeEntry()
-            zip.putNextEntry(ZipEntry("bomb.bin"))
-            // 20 MB of zeros compresses to almost nothing.
-            val chunk = ByteArray(1024 * 1024)
-            repeat(20) { zip.write(chunk) }
-            zip.closeEntry()
-        }
-        assertTrue(
-            problemsOf(bomb).any { it is ImportProblem.SuspiciousCompression },
-            "got ${problemsOf(bomb)}",
-        )
-    }
-
-    @Test
     fun `an archive with too many entries is refused`() {
         val importer = ProjectImporter(workspace, ImportLimits(maxEntries = 10))
-        val many = zipWith { zip ->
-            repeat(50) { index ->
-                zip.putNextEntry(ZipEntry("file$index.beancount"))
-                zip.write("x".toByteArray())
-                zip.closeEntry()
-            }
-        }
-        val problems = importer.plan(ZipImportSource(many)).problems
+        val many = filesOf(*Array(50) { "file$it.beancount" to "x" })
+        val problems = importer.plan(many).problems
         assertTrue(problems.any { it is ImportProblem.TooManyEntries }, "got $problems")
     }
 
     @Test
     fun `a project larger than the limit is refused`() {
         val importer = ProjectImporter(workspace, ImportLimits(maxTotalBytes = 1024))
-        // Incompressible content, so the *size* limit is what fires: a run of identical
-        // bytes would trip the zip-bomb ratio check first.
-        val random = java.util.Random(1)
-        val big = zipWith { zip ->
-            zip.putNextEntry(ZipEntry("main.beancount"))
-            zip.write(ByteArray(8192).also { random.nextBytes(it) })
-            zip.closeEntry()
-        }
-        assertTrue(
-            importer.plan(ZipImportSource(big)).problems.any { it is ImportProblem.TooLarge },
-        )
+        val big = filesOf("main.beancount" to "x".repeat(8192))
+        assertTrue(importer.plan(big).problems.any { it is ImportProblem.TooLarge })
     }
 
     @Test
@@ -197,7 +158,7 @@ class ImportExportTest {
     fun `nothing is written when an import is refused`() {
         val hostile = zipOf("main.beancount" to "x", "../escape" to "x")
 
-        val result = importer.import(ZipImportSource(hostile), "hostile")
+        val result = importer.import(hostile, "hostile", "main.beancount")
 
         assertIs<ImportResult.Rejected>(result)
         assertFalse(workspace.projectDir("hostile").exists(), "no project may be created")
@@ -206,7 +167,7 @@ class ImportExportTest {
 
     @Test
     fun `an archive with no ledger is reported, not imported`() {
-        val result = importer.import(ZipImportSource(zipOf("notes.txt" to "hello")), "empty")
+        val result = importer.import(zipOf("notes.txt" to "hello"), "empty", "main.beancount")
         assertIs<ImportResult.NoLedgerFound>(result)
     }
 
@@ -220,7 +181,7 @@ class ImportExportTest {
             "documents/receipt.pdf" to "%PDF-1.4\n",
         )
 
-        val result = importer.import(ZipImportSource(archive), "imported")
+        val result = importer.import(archive, "imported", "main.beancount")
 
         val imported = assertIs<ImportResult.Imported>(result)
         assertEquals(3, imported.fileCount)
@@ -228,70 +189,6 @@ class ImportExportTest {
         assertTrue(workspace.projectDir("imported").resolve("files/accounts.beancount").isFile)
         assertTrue(workspace.projectDir("imported").resolve("documents/receipt.pdf").isFile)
     }
-
-    @Test
-    fun `a ledger that is not called main is adopted as the root`() {
-        val archive = zipOf(
-            "ledger.beancount" to "option \"title\" \"Odd name\"\n",
-            "files/accounts.beancount" to "2024-01-01 open Assets:Cash USD\n",
-        )
-
-        val result = importer.import(ZipImportSource(archive), "odd")
-
-        val imported = assertIs<ImportResult.Imported>(result)
-        assertTrue(imported.mainFile.isFile, "a main.beancount must exist for the engine")
-        assertEquals("option \"title\" \"Odd name\"\n", imported.mainFile.readText())
-        assertEquals("ledger.beancount", imported.rootName)
-        assertTrue(imported.rootMoved)
-    }
-
-    // The root used to be copied to main.beancount and left where it was, so the project held the
-    // same ledger twice: edits to the original were never seen, and an export wrote both.
-    @Test
-    fun `the root is one file, not a copy beside the original`() {
-        val archive = zipOf(
-            "household.beancount" to "option \"title\" \"H\"\ninclude \"files/accounts.beancount\"\n",
-            "files/accounts.beancount" to "2024-01-01 open Assets:Cash USD\n",
-        )
-
-        assertIs<ImportResult.Imported>(importer.import(ZipImportSource(archive), "h"))
-
-        val ledgers = workspace.projectDir("h").walkTopDown().filter { it.name.endsWith(".beancount") }
-            .map { it.relativeTo(workspace.projectDir("h")).path }.sorted().toList()
-        assertEquals(listOf("files/accounts.beancount", "main.beancount"), ledgers)
-    }
-
-    @Test
-    fun `a root inside a folder stays there and main includes it, so its includes still resolve`() {
-        val archive = zipOf(
-            "books/ledger.beancount" to "include \"2026.beancount\"\n",
-            "books/2026.beancount" to "2026-01-01 open Assets:Bank\n",
-            "notes.txt" to "not under the folder\n",
-        )
-
-        val imported = assertIs<ImportResult.Imported>(importer.import(ZipImportSource(archive), "nested"))
-
-        assertEquals("include \"books/ledger.beancount\"\n", imported.mainFile.readText())
-        assertEquals("books/ledger.beancount", imported.rootName)
-        assertFalse(imported.rootMoved)
-        assertTrue(workspace.projectDir("nested").resolve("books/ledger.beancount").isFile)
-    }
-
-    @Test
-    fun `a root another ledger includes is not moved out from under that include`() {
-        val archive = zipOf(
-            "a.beancount" to "include \"b.beancount\"\n",
-            "b.beancount" to "include \"a.beancount\"\n",
-        )
-
-        val imported = assertIs<ImportResult.Imported>(importer.import(ZipImportSource(archive), "loop"))
-
-        assertFalse(imported.rootMoved)
-        assertTrue(workspace.projectDir("loop").resolve(imported.rootName!!).isFile)
-        assertEquals("include ${BeancountText.quote(imported.rootName!!)}\n", imported.mainFile.readText())
-    }
-
-    // --- invariant 5: includes and document links survive a round trip -----------------
 
     @Test
     fun `export then import keeps every byte, include and document link`() {
@@ -313,7 +210,7 @@ class ImportExportTest {
         val exported = ProjectExporter(workspace).exportFolder(original, DirectoryExportTarget(exportDir))
         assertTrue(exported >= 5, "expected the whole tree, exported $exported files")
 
-        val result = importer.import(DirectoryImportSource(exportDir), "reimported")
+        val result = importer.import(DirectoryImportSource(exportDir), "reimported", ProjectWorkspace.MAIN_FILE)
         val imported = assertIs<ImportResult.Imported>(result)
 
         // Every file identical, byte for byte.
@@ -347,44 +244,6 @@ class ImportExportTest {
             workspace.projectDir("reimported").resolve(documentLink).isFile,
             "document link broken: $documentLink",
         )
-    }
-
-    @Test
-    fun `an archive wrapped in one folder is unwrapped, not duplicated`() {
-        // What `zip -r ledger.zip ledger` produces, and what the emulator import of
-        // zipped-ledger.zip produced before this: main.beancount at the root *and* a second
-        // copy under the wrapper, where editing the copy does nothing.
-        val archive = zipOf(
-            "zipped-ledger/main.beancount" to "include \"transactions.beancount\"\n",
-            "zipped-ledger/transactions.beancount" to "; entries\n",
-        )
-
-        val result = importer.import(ZipImportSource(archive), "unwrapped")
-
-        assertTrue(result is ImportResult.Imported, "import failed: $result")
-        val dir = workspace.projectDir("unwrapped")
-        val files = dir.walkTopDown().filter { it.isFile }.map { it.relativeTo(dir).path }.toSet()
-        assertEquals(setOf("main.beancount", "transactions.beancount"), files)
-        assertTrue(
-            dir.resolve("main.beancount").readText().contains("include"),
-            "the wrapper's ledger must be the project root, not a fresh file",
-        )
-    }
-
-    @Test
-    fun `two top-level folders are kept as they are`() {
-        // Only a *shared* wrapper is stripped: here the layout is the author's own.
-        val archive = zipOf(
-            "personal/main.beancount" to "; personal\n",
-            "business/ledger.beancount" to "; business\n",
-        )
-
-        val result = importer.import(ZipImportSource(archive), "two-roots")
-
-        assertTrue(result is ImportResult.Imported, "import failed: $result")
-        val dir = workspace.projectDir("two-roots")
-        assertTrue(dir.resolve("personal/main.beancount").isFile)
-        assertTrue(dir.resolve("business/ledger.beancount").isFile)
     }
 
     @Test
@@ -425,38 +284,6 @@ class ImportExportTest {
     }
 
     @Test
-    fun `the root is the ledger no other ledger includes, not the first by name`() {
-        // The case the old name heuristic got wrong. "accounts" sorts before "personal", and
-        // both sit at the same depth, so the included file was chosen as the root.
-        val archive = zipOf(
-            "accounts.beancount" to "2026-01-01 open Assets:Bank\n",
-            "personal.beancount" to "include \"accounts.beancount\"\n",
-        )
-
-        val result = importer.import(ZipImportSource(archive), "p1")
-
-        assertTrue(result is ImportResult.Imported, "import failed: $result")
-        assertEquals(
-            "include \"accounts.beancount\"\n",
-            workspace.mainFile("p1").readText(),
-            "main.beancount is not the root ledger",
-        )
-    }
-
-    @Test
-    fun `an include in a subdirectory resolves against its own directory`() {
-        val archive = zipOf(
-            "books/ledger.beancount" to "include \"2026.beancount\"\n",
-            "books/2026.beancount" to "2026-01-01 open Assets:Bank\n",
-        )
-
-        val result = importer.import(ZipImportSource(archive), "p2")
-
-        assertTrue(result is ImportResult.Imported, "import failed: $result")
-        assertEquals("include \"2026.beancount\"\n", workspace.mainFile("p2").readText())
-    }
-
-    @Test
     fun `every file is imported, not only what the root includes`() {
         // taking only what the root reaches would lose a document a `document`
         // directive points at, and any ledger not yet included.
@@ -467,7 +294,7 @@ class ImportExportTest {
             "documents/receipt.pdf" to "%PDF-1.4\n",
         )
 
-        val result = importer.import(ZipImportSource(archive), "p3")
+        val result = importer.import(archive, "p3", "main.beancount")
 
         assertTrue(result is ImportResult.Imported, "import failed: $result")
         val dir = workspace.projectDir("p3")
