@@ -66,6 +66,8 @@ fun AccountsScreen(
     onEditDetails: EditAccountDetails? = null,
     /** How the ledger writes its figures: its places and separators, as on every other screen. */
     format: LedgerFormat = LedgerFormat.PLAIN,
+    /** The open project, so which groups are collapsed is remembered for this one and not for another. */
+    projectKey: String = "",
 ) {
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var editDetails by rememberSaveable { mutableStateOf("") }
@@ -78,10 +80,22 @@ fun AccountsScreen(
     var closing by rememberSaveable { mutableStateOf<String?>(null) }
     var closeDate by rememberSaveable { mutableStateOf(today.toString()) }
     var query by rememberSaveable { mutableStateOf("") }
+    // The groups the person closed, kept for this project while the app runs: it survives a rotation and a
+    // killed process, and is not a preference. One text with a line per group, because a set does not save.
+    var collapsedGroups by rememberSaveable(projectKey) { mutableStateOf("") }
+    val collapsed = collapsedGroups.split('\n').filter { it.isNotEmpty() }.toSet()
     val (closed, open) = accounts.filter { it.matchesQuery(query) }.partition { it.isClosed }
     Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         FolioPage(modifier = Modifier.readableMeasureCentred()) {
             message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.indent)) }
+
+            // Opening an account comes first, then the search, then the accounts by kind.
+            if (onSave != null) {
+                FolioHeading("Open an account")
+                FolioGroup {
+                    item { FolioBody { OpenAccountForm(names, accounts.map { it.name }, today, onSave) } }
+                }
+            }
 
             if (accounts.isNotEmpty()) {
                 FolioGroup {
@@ -96,58 +110,78 @@ fun AccountsScreen(
             if (query.isNotBlank() && open.isEmpty() && closed.isEmpty()) {
                 FolioNote("No account matches \"${query.trim()}\".")
             }
+            val searching = query.isNotBlank()
+            val toggle = { group: String ->
+                collapsedGroups = (if (group in collapsed) collapsed - group else collapsed + group)
+                    .joinToString("\n")
+            }
             names.roots.forEach { root ->
                 val rows = open.filter { it.name.substringBefore(':') == root }
                 if (rows.isEmpty()) return@forEach
-                FolioHeading(root)
-                FolioGroup {
-                    rows.forEach { account ->
-                        item {
-                            AccountRow(
-                                account,
-                                format = format,
-                                canClose = onSave != null,
-                                onClose = {
-                                    closeDate = today.toString()
-                                    closing = account.name
-                                },
-                                onEdit = if (onEditDetails != null && account.canEditDetails) {
-                                    { startEditing(account) }
-                                } else {
-                                    null
-                                },
-                            )
+                val all = accounts.count { !it.isClosed && it.name.substringBefore(':') == root }
+                // A search shows every group that has a match, without changing what was collapsed:
+                // clearing the search brings the person's own choices back.
+                val shown = searching || root !in collapsed
+                FolioToggleHeading(
+                    text = root,
+                    count = if (searching) "${rows.size} of $all" else "$all",
+                    expanded = shown,
+                    onToggle = { toggle(root) },
+                )
+                LedgerReveal(visible = shown, label = "group $root") {
+                    FolioGroup {
+                        rows.forEach { account ->
+                            item {
+                                AccountRow(
+                                    account,
+                                    format = format,
+                                    canClose = onSave != null,
+                                    onClose = {
+                                        closeDate = today.toString()
+                                        closing = account.name
+                                    },
+                                    onEdit = if (onEditDetails != null && account.canEditDetails) {
+                                        { startEditing(account) }
+                                    } else {
+                                        null
+                                    },
+                                )
+                            }
                         }
                     }
-                }
-            }
-
-            if (onSave != null) {
-                FolioHeading("Open an account")
-                FolioGroup {
-                    item { FolioBody { OpenAccountForm(names, accounts.map { it.name }, today, onSave) } }
                 }
             }
 
             if (closed.isNotEmpty()) {
-                FolioHeading("Closed accounts")
-                FolioGroup {
-                    closed.forEach { account ->
-                        item {
-                            FolioRow(
-                                title = account.name,
-                                detail = "Closed on ${account.closed}" + detailsNote(account),
-                                onClick = if (onEditDetails != null && account.canEditDetails) {
-                                    { startEditing(account) }
-                                } else {
-                                    null
-                                },
-                                opens = onEditDetails != null && account.canEditDetails,
-                            )
+                val shown = searching || CLOSED_GROUP !in collapsed
+                val all = accounts.count { it.isClosed }
+                FolioToggleHeading(
+                    text = CLOSED_GROUP,
+                    count = if (searching) "${closed.size} of $all" else "$all",
+                    expanded = shown,
+                    onToggle = { toggle(CLOSED_GROUP) },
+                )
+                LedgerReveal(visible = shown, label = "group closed") {
+                    Column {
+                        FolioGroup {
+                            closed.forEach { account ->
+                                item {
+                                    FolioRow(
+                                        title = account.name,
+                                        detail = "Closed on ${account.closed}" + detailsNote(account),
+                                        onClick = if (onEditDetails != null && account.canEditDetails) {
+                                            { startEditing(account) }
+                                        } else {
+                                            null
+                                        },
+                                        opens = onEditDetails != null && account.canEditDetails,
+                                    )
+                                }
+                            }
                         }
+                        FolioNote("Beancount keeps a closed account, and old entries still point at it.")
                     }
                 }
-                FolioNote("Beancount keeps a closed account, and old entries still point at it.")
             }
         }
     }
@@ -414,3 +448,6 @@ private fun detailsNote(account: AccountBalance): String = when (account.metadat
     1 -> " · 1 detail"
     else -> " · ${account.metadata.size} details"
 }
+
+/** The key of the closed accounts group among the collapsed ones; no account root is called this. */
+private const val CLOSED_GROUP = "Closed accounts"
