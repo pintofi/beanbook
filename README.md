@@ -496,18 +496,19 @@ and the status of every item.
   - [x] Screenshot tests, light and dark, 200% text ([#20](https://github.com/pintofi/beanbook/issues/20))
   - [x] Reproducible wheels and APK checked in CI ([#22](https://github.com/pintofi/beanbook/issues/22))
 - [x] **1.0.4 Trust and polish, continued**: the flag is Cleared, Pending or any other flag, a backup can be restored from the first-run setup, one Journal filter at a time, widgets that follow the system colours, and many fixes
-- [ ] **1.0.5 Trust and polish, continued** (now)
-  - [ ] TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18))
-  - [ ] Instrumentation tests in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19))
-  - [ ] User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21), [#76](https://github.com/pintofi/beanbook/issues/76))
-  - [ ] Hand-passed parameters grouped into state holders ([#67](https://github.com/pintofi/beanbook/issues/67))
-  - [ ] A click-through walkthrough of the app on the site ([#160](https://github.com/pintofi/beanbook/issues/160))
+- [x] **1.0.5 Trust and polish, continued**: plugin and package updates, Share on Wi-Fi editing, importing by selecting your Beancount file, Save anyway, renaming a project, colour for each project, and many fixes
   - [x] Updating and going back for plugins and packages: check upstream, update, keep it only if it loads, go back ([#343](https://github.com/pintofi/beanbook/issues/343)), merged for 1.0.5
   - [x] Share on Wi-Fi opens by a private network name and can allow editing, and Fava's own editor saves through the write protocol ([#387](https://github.com/pintofi/beanbook/issues/387), [#388](https://github.com/pintofi/beanbook/issues/388)), merged for 1.0.5
   - [x] The Accounts page starts with the form to open an account, and its groups open and close ([#410](https://github.com/pintofi/beanbook/issues/410)), merged for 1.0.5
   - [x] Save anyway: a change you typed that adds an error asks instead of only refusing ([#411](https://github.com/pintofi/beanbook/issues/411)), merged for 1.0.5
   - [x] Importing a ledger by selecting its file: any name, the files it links to come with it in the same folders, after a preview; the mirror covers exactly those files ([#369](https://github.com/pintofi/beanbook/issues/369)), merged for 1.0.5
-  - [ ] Renaming a project ([#368](https://github.com/pintofi/beanbook/issues/368))
+  - [x] Renaming a project ([#368](https://github.com/pintofi/beanbook/issues/368)), merged for 1.0.5
+- [ ] **1.0.6 Trust and polish, continued** (now)
+  - [ ] TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18))
+  - [ ] Instrumentation tests in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19))
+  - [ ] User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21), [#76](https://github.com/pintofi/beanbook/issues/76))
+  - [ ] Hand-passed parameters grouped into state holders ([#67](https://github.com/pintofi/beanbook/issues/67))
+  - [ ] A click-through walkthrough of the app on the site ([#160](https://github.com/pintofi/beanbook/issues/160))
 - [ ] **1.1.0 Capture**: add an entry from shared text, photos and PDFs ([#23](https://github.com/pintofi/beanbook/issues/23)); a Quick Settings tile and shortcut ([#24](https://github.com/pintofi/beanbook/issues/24)); templates and recurring reminders ([#25](https://github.com/pintofi/beanbook/issues/25)); rules that suggest the account for a shared message ([#283](https://github.com/pintofi/beanbook/issues/283)); settling an entry with a linked refund or pay-back ([#242](https://github.com/pintofi/beanbook/issues/242))
 - [ ] **1.2.0 Reconcile and import**: a reconcile screen ([#26](https://github.com/pintofi/beanbook/issues/26)); bank statements on the phone ([#27](https://github.com/pintofi/beanbook/issues/27)); Syncthing conflict files ([#28](https://github.com/pintofi/beanbook/issues/28))
 - [ ] **1.3.0 Reach**: a send queue for a remote Fava ([#29](https://github.com/pintofi/beanbook/issues/29)); price updates on request ([#30](https://github.com/pintofi/beanbook/issues/30)); translations ([#31](https://github.com/pintofi/beanbook/issues/31)); Git sync that never merges for you ([#154](https://github.com/pintofi/beanbook/issues/154))

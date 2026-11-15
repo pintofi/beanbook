@@ -1,0 +1,5 @@
+Updates, importing, renaming and colour.
+• Plugins and packages can be checked for updates and rolled back (Expert).
+• Importing starts from the Beancount file you select; a project can be renamed.
+• Each project can have its own accent colour, and Appearance has reading options.
+• A change that adds an error asks before it is refused; Share on Wi-Fi can allow editing.

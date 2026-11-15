@@ -81,10 +81,10 @@ android {
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         // The release number. Each APK adds a one-digit ABI suffix to it (see androidComponents
-        // below), so 5 produces 50 (universal), 51 (arm64-v8a) and 52 (x86_64). Raise this by one for every release, and
+        // below), so 6 produces 60 (universal), 61 (arm64-v8a) and 62 (x86_64). Raise this by one for every release, and
         // versionName with it.
-        versionCode = 5
-        versionName = "1.0.4"
+        versionCode = 6
+        versionName = "1.0.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }

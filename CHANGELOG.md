@@ -7,40 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-11-16
+
 ### Added
-- Appearance has a **Reading** section: **Higher contrast** (stronger text and rules), **Larger figures**, **Compact rows** (taps stay at least 48dp tall), **Reduce motion** (no animation in the app, whatever the system setting is), and how a change from the last period is marked: Off, Subtle, or Clear, which adds an arrow so direction never depends on colour. ([#427])
-- Each project can take its colour from your wallpaper (dynamic colour) or from an accent of its own: Teal, Indigo, Plum, Ochre or Slate. The widgets follow the open project. ([#426], [#438])
-- A project can be renamed, with the pencil on its row on the Projects page. The name is written as `option "title"` in the project's main file, wherever that file is, through the same checked write as any edit, so **Undo** brings the old name back. Every title line in that file is replaced and a comment after it stays; a ledger with no title gets one at the top. The folder and the project do not change, so the mirror, backups and widgets are unaffected. A name can be up to 100 characters, and a main file that is not UTF-8 text is refused. ([#368])
-- Expert edition: a plugin you added from a file can be given a source, the name of a project on PyPI, with **Set where it comes from**. **Check for a newer version** then asks PyPI, and **Replace with** that version downloads it, checks the SHA-256 PyPI published, and replaces the plugin the way any replacement works: it starts off and the copy you had is kept to go back to. The card says a newer version was not tested with this app. GitHub sources are not offered for these, because a repository's zip is not laid out as a plugin. ([#343])
-- Expert edition: **Check for package updates**, under Extra Python packages, asks PyPI and Chaquopy's index whether the packages you fetched have newer versions, and offers **Update packages** only when they do. The new packages are built beside the ones in use, every download is checked before it is unpacked, and they are kept only if they import in a fresh engine; otherwise, or if the app is stopped first, the earlier packages are back. **Go back to the earlier packages** restores them without downloading. Packages the app ships are never touched. ([#343])
-- Expert edition: **Check for updates** on the Plugins page asks PyPI or GitHub, where each catalogue plugin came from, whether a newer version exists, and offers **Update** only when one does. The page says which sites it asks and when it last ran, and nothing checks on its own. An update is kept only if the new version loads; if it does not, the earlier version is back in use and the message says why. Packages and the plugins you added from a file are not covered yet. ([#343])
-- A plugin you added from a file can be replaced with a newer file, with **Replace with a file** on its card. The new one starts off, the copy you had is kept, and **Go back to the earlier copy** brings it back after checking it has not changed. Adding a file whose name is already added no longer overwrites the plugin silently; it says so and points to Replace. ([#343])
-- Share on Wi-Fi can allow editing. Start asks for Read only (the default, chosen again every time) or Can edit, which asks for a confirmation that says the connection is not encrypted. With Can edit, a browser on the network can save in Fava's file editor, edit or delete one entry, and add entries with the add form, and each change goes through the same write protocol as the app's own: snapshot, re-parse, Undo. It ends when you stop sharing, when Reports restart and when the network changes, and it cannot add or change `include`, `plugin`, `option`, `document` or Fava settings lines. Before, the shared page could only read. ([#388])
-- A plugin installed from the catalogue (Expert edition) can be updated to the version the app carries, and the version it replaces is kept to go back to. The Plugins page says "Update available" with both versions, and an update that fails any check, or whose packages cannot be fetched, leaves the installed plugin as it was. Packages and plugin files you add yourself come next. ([#343])
+- Appearance has a **Reading** section: higher contrast, larger figures, compact rows, reduce motion, and how changes are marked. ([#427])
+- Each project can take its colour from your wallpaper or from its own accent: Teal, Indigo, Plum, Ochre or Slate. ([#426], [#438])
+- A project can be renamed from the Projects page; **Undo** brings the old name back, and the app restarts afterwards. ([#368])
+- Expert edition: plugins can be checked for newer versions on PyPI or GitHub, then updated or replaced, with a way back to the earlier copy. ([#343])
+- Expert edition: extra Python packages can be checked for updates, kept only if they load, and rolled back. ([#343])
+- Share on Wi-Fi can allow editing, with a warning that the connection is not encrypted; changes use the app's own checked write. ([#388])
 
 ### Changed
-- Small visual touches: each heading has a short tick in the page's rule colour before it, the project, rename, restart and import dialogs carry an icon, and a new message fades in over the last one (not when motion is off). ([#428])
-- Messages are in a box of their own, never a bare line of text: an error is red with a warning mark, a result that went well is green with a tick, anything else is neutral with an information mark. This covers the line that says a change was not saved, the form problems, plugin and template errors and the import dialogs. The import preview lists folders and files with icons and marks your Beancount file, and the dialog that reads it says only what it is reading. Renaming a project now restarts the app, so the new name shows everywhere. ([#424])
-- The mirror covers exactly the files of the project, in the same folders, and nothing else in your folder: it looks them up by path instead of listing the folder, and brings in a new file only when a ledger file there now links to it. Before, it walked the whole folder, so a repository or other files beside your ledger were hashed and offered. ([#369])
-- Importing a ledger asks you to select your Beancount file, whatever it is called, and brings exactly the files it links to (includes, documents and the like), with their names and folders, after a preview that lists them with Import or Cancel. The main file keeps its own name and place instead of being renamed to main.beancount, and nothing else in the folder is read, listed or changed. If the file links to others, Android asks you to allow the folder that holds it. ([#369])
-- A change you type that would add an error to your ledger, in the entry form, when editing or deleting an entry, when opening an account or changing its details, or when refiling a document, no longer just says Not saved. A dialog lists the new errors and says nothing has been saved; Don't save keeps the ledger as it was, and Save anyway makes the same change with the errors kept, which Undo can take back. The mirror, writes from another device and changes the app makes itself still refuse. ([#411])
-- The Accounts page starts with the form to open an account, then the search, then the accounts by kind; Assets, Liabilities, Equity, Income, Expenses and Closed accounts each open and close with a tap on their heading, which also shows how many accounts they hold. ([#410])
-- Saving an entry shows one working animation, the banner above the Save button, and the button itself no longer has a second spinner. ([#382])
-- Use last on the entry form fills the form as the last entry's text writes it: every amount the text writes, none it leaves out, each posting's commodity and lot, the description, the flag, and the tags and links. Before, only the first posting kept an amount. ([#383])
+- Small visual touches: heading ticks, icons in dialogs, and a fade when a message changes. ([#428])
+- Errors, results and notes are shown in coloured boxes instead of bare text, and the import preview lists files with icons. ([#424])
+- The mirror covers only the files of the project, looked up by path, instead of walking your whole folder. ([#369])
+- Importing starts from the Beancount file you select, whatever it is called, and brings only the files it links to, keeping their names and folders. ([#369])
+- A change that would add an error to your ledger now asks first: **Don't save**, or **Save anyway**, which Undo can take back. ([#411])
+- The Accounts page starts with the form to open an account, then search, then collapsible groups by kind. ([#410])
+- Saving an entry shows one working animation instead of two. ([#382])
+- **Use last** fills in every amount of the last entry, not only the first. ([#383])
 
 ### Removed
-- Importing a ledger from a .zip file is gone, along with the code that renamed a ledger to `main.beancount` on the way in. Importing is done by selecting your Beancount file. ([#421])
-- Importing a ledger from a .zip or from a whole folder. Restoring a Beanbook backup (.bcaz) is unchanged. ([#369])
+- Importing from a .zip file or a whole folder; restoring a Beanbook backup (.bcaz) is unchanged. ([#369], [#421])
 
 ### Fixed
-- Setup: **Select your Beancount file** on the first screen opens the file picker straight away. It waited until a project existed, so it only appeared after you had made a default ledger. Restoring an encrypted backup from the first screen now asks for its passphrase there too. ([#436])
-- Mirror: if your main file is in a subfolder and you choose that subfolder itself as the mirror folder, the pass now stops before copying anything and says which folder to choose instead of making a second copy of the subfolder. On Home, the note that spending in other currencies is not counted is in a box of its own. ([#434])
-- A catalogue plugin no longer disappears if the app is stopped while it is being updated or rolled back: on the next start the working version is put back, where before the plugin was missing from the list and from Reports until it was installed again. ([#343])
-- Saving in Fava's file editor (Reports) goes through the same write protocol as every other save: the change is snapshotted, journalled and re-parsed, Undo puts the file back, and a file changed since the editor read it is refused instead of overwritten. Editing or deleting one entry and the add-entry form do too, and so does attaching a document to an entry. Before, Fava wrote the file itself. ([#388])
-- Share on Wi-Fi opens by the name your network gives the phone (`phone.home.arpa`, `phone.local`, `phone.lan` or a plain `phone`) as well as by its address, where it said "Wrong address." A name on the public internet is still refused, which is what stops DNS rebinding. ([#387])
-- The Share on Wi-Fi screen says the shared page is for reading, as it is, and not that changes made there are saved to the phone; the importers' `/api/extract` is refused on a shared page. ([#387])
-- Reports no longer shows "Web page not available" (ERR_INVALID_RESPONSE) after the engine has restarted: the Reports page followed the engine's old port and refused the new one until the app was closed. ([#381])
-- A script offered while another is starting is refused with "A script is already running." and the message stays, where it could be cleared in the same instant it was shown. ([#379])
+- Setup: **Select your Beancount file** on the first screen opens the picker straight away. ([#436])
+- Mirror: choosing the main file's own subfolder as the mirror folder is refused before anything is copied, and Home boxes its "not counted" note. ([#434])
+- A catalogue plugin is no longer lost if the app stops while it is being updated. ([#343])
+- Saves from Fava's file editor, entry edit and add form use the app's checked write, with Undo. ([#388])
+- Share on Wi-Fi opens by the phone's network name as well as its address, and says the shared page is for reading. ([#387])
+- Reports no longer shows "Web page not available" after the engine restarts. ([#381])
+- A script offered while another is starting is refused with a message that stays on screen. ([#379])
 
 ## [1.0.4] - 2026-11-07
 
@@ -241,7 +238,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A refused save names the errors it would add; accounts the ledger has not opened are refused.
 - Widgets keep each project's figures.
 
-[Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/pintofi/beanbook/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/pintofi/beanbook/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/pintofi/beanbook/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/pintofi/beanbook/compare/v1.0.1...v1.0.2

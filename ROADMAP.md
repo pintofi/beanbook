@@ -12,21 +12,22 @@ Status of an item: **proposed** (an idea, not yet taken), **accepted** (it has a
 milestone), **in progress**, **shipped in x.y.z**.
 
 Versions follow [semantic versioning](https://semver.org/): a new feature goes in a minor release
-(1.1.0, 1.2.0 and so on), and fixes and tidy-ups go in patch releases (1.0.4, 1.0.5). The milestones
+(1.1.0, 1.2.0 and so on), and fixes and tidy-ups go in patch releases (1.0.5, 1.0.6). The milestones
 are named that way.
 
 ## Shipped
 
+- **1.0.5** (2026-11-16): importing starts from the Beancount file you select, a project can be renamed and given its own colour, a change that adds an error asks before it is refused, Share on Wi-Fi can allow editing, plugins and packages can be updated and rolled back (Expert), and Appearance has reading options. See the [changelog](CHANGELOG.md).
 - **1.0.4** (2026-11-07): the entry form's flag is Cleared, Pending or any other flag Beancount allows, a backup (.bcaz) can be restored from the first-run setup, the Journal's filters are one choice, templates can be renamed and deleted, the widgets follow the system colours and the Balances widget shows the basis you tap, Mirror settles a file deleted on one side, and a set of fixes to rounding, suggestions and notifications. See the [changelog](CHANGELOG.md).
 - **1.0.3** (2026-10-30): the scanner's zoom slider, one Filters button for Home, Journal and Balances, the Units, At cost and Market value choice on the Journal and on the widgets, a notice when the phone's WebView is too old for Reports, and a set of fixes to setup, importing, unlinking documents, large text and widget resizing. See the [changelog](CHANGELOG.md).
 - **1.0.2** (2026-10-25): the document scanner reworked (review screen, crop screen with a magnifier, better page detection, flat black-and-white and greyscale styles, A4 or Letter), a guided first run and an Accounts page with account details, encrypted scheduled backups, a trash for deleted documents, a new entry form with standard buttons, and the safety fixes from a second review. See the [changelog](CHANGELOG.md).
 - **1.0.1** (2026-10-18): one APK per processor type for F-Droid, a Trash list for deleted projects, receipt-photo cleanup, a safer document Unlink, a more careful balance check, and many other fixes from the repository review. See the [changelog](CHANGELOG.md).
 - **1.0.0** (2026-10-15): local Beancount and Fava on the phone, entry forms and editors, documents and scanning, backup and restore, mirror, remote Fava, plugins and Fava extensions (Expert), Share on Wi-Fi. See the [changelog](CHANGELOG.md).
 
-## Now: 1.0.5 Trust and polish, continued
+## Now: 1.0.6 Trust and polish, continued
 
-1.0.5 is a patch release: fixes and tidy-ups, with new features in the 1.x.0 releases that follow.
-What is left from 1.0.4:
+1.0.6 is a patch release: fixes and tidy-ups, with new features in the 1.x.0 releases that follow.
+What is left from 1.0.5:
 
 | Item | Status | Why |
 |---|---|---|
@@ -35,14 +36,7 @@ What is left from 1.0.4:
 | User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21), [#76](https://github.com/pintofi/beanbook/issues/76)) | accepted, with no visible change | Groundwork for translations |
 | Hand-passed parameters grouped into state holders ([#67](https://github.com/pintofi/beanbook/issues/67)) | accepted | Every new screen needs a parameter threaded through three files |
 | A click-through walkthrough of the app on the site ([#160](https://github.com/pintofi/beanbook/issues/160)) | accepted | Show the app before someone installs it |
-| A way to update and go back for plugins and packages ([#343](https://github.com/pintofi/beanbook/issues/343)) | merged, ships in 1.0.5 | Check upstream when you tap, keep an update only if it loads, and go back |
-| Share on Wi-Fi can allow editing, and Fava's editor saves through the write protocol ([#387](https://github.com/pintofi/beanbook/issues/387), [#388](https://github.com/pintofi/beanbook/issues/388)) | merged, ships in 1.0.5 | A shared page was read only, and the editor on Reports skipped the snapshot and Undo |
-| The Accounts page starts with the form to open an account, and its groups open and close ([#410](https://github.com/pintofi/beanbook/issues/410)) | merged, ships in 1.0.5 | The list was a long scroll below the search |
-| Save anyway when a change you typed adds an error ([#411](https://github.com/pintofi/beanbook/issues/411)) | merged, ships in 1.0.5 | A refusal lost the person's change; now they are asked, and Undo can take it back |
-| Import by selecting your Beancount file: any name, the files it links to come with it in the same folders, a preview before anything is copied, and a mirror of exactly those files ([#369](https://github.com/pintofi/beanbook/issues/369)) | merged, ships in 1.0.5 | The importer renamed the main file and took the whole folder; the zip and folder imports are gone |
-| A project can be renamed ([#368](https://github.com/pintofi/beanbook/issues/368)) | accepted | A project imported from a ledger with no title keeps a name made of its folder path |
 | Measured speed figures for the README ([#363](https://github.com/pintofi/beanbook/issues/363)) | accepted | A one-off benchmark on a phone and the emulator |
-| Reports fail on a ledger whose included file sets display_precision ([#349](https://github.com/pintofi/beanbook/issues/349)) | cause not confirmed | A report from one ledger, not seen again |
 
 ## Next: 1.1.0 Capture
 
@@ -89,4 +83,4 @@ when a milestone takes it. A bug is not a roadmap item: use the
 [bug form](https://github.com/pintofi/beanbook/issues/new?template=bug_report.yml). Security
 problems go through [SECURITY.md](SECURITY.md).
 
-Last reviewed: 2026-11-07. The README carries a shorter checklist of the same plan; this page is the detail.
+Last reviewed: 2026-11-16. The README carries a shorter checklist of the same plan; this page is the detail.
