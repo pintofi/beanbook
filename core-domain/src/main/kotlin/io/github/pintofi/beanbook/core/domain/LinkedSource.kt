@@ -21,6 +21,12 @@ interface LinkedSource {
     /** The bytes of the file at [path], or null when there is no such file. */
     fun read(path: String): ByteArray?
 
+    /**
+     * The file at [path] as a stream, for copying one that may be large (a scan, a statement), or null
+     * when there is no such file. Defaults to [read]; a source over real storage should stream.
+     */
+    fun open(path: String): java.io.InputStream? = read(path)?.inputStream()
+
     /** What is at [path], or null when nothing is. */
     fun stat(path: String): LinkedStat?
 
