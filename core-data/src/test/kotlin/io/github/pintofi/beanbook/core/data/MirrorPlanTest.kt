@@ -265,3 +265,32 @@ class MirrorStateTest {
         assertEquals(listOf<MirrorAction>(MirrorAction.PullIn("gone")), plan.actions)
     }
 }
+
+/** Which paths the mirror asks the folder about, and when it follows the folder's links. */
+class MirrorLookupTest {
+
+    @Test
+    fun `a file synced earlier and deleted here is still asked about, so deleting it there is offered`() {
+        val local = emptyMap<String, String>()
+        val synced = mapOf("scans/old.pdf" to "h1", "main" to "h2")
+
+        val asked = MirrorPlan.knownPaths(mapOf("main" to "h2"), synced)
+
+        assertEquals(setOf("main", "scans/old.pdf"), asked)
+        // And with the folder's copy found, the plan offers to delete it there, not to bring it back.
+        val plan = MirrorPlan.plan(local, mapOf("scans/old.pdf" to "h1"), synced)
+        val forOld = plan.actions.filter { it.path == "scans/old.pdf" }
+        assertEquals(listOf<MirrorAction>(MirrorAction.DeleteThere("scans/old.pdf")), forOld)
+    }
+
+    @Test
+    fun `the folder's links are followed on the first pass and when something known there changed, not otherwise`() {
+        val synced = mapOf("main" to "h1", "a.bean" to "h2")
+
+        assertTrue(MirrorPlan.linksMayHaveChanged(mapOf("main" to "h1"), emptyMap()))
+        assertTrue(MirrorPlan.linksMayHaveChanged(mapOf("main" to "NEW", "a.bean" to "h2"), synced))
+        assertTrue(MirrorPlan.linksMayHaveChanged(mapOf("main" to "h1", "a.bean" to "h2", "b.bean" to "h3"), synced))
+        assertEquals(false, MirrorPlan.linksMayHaveChanged(mapOf("main" to "h1", "a.bean" to "h2"), synced))
+        assertEquals(false, MirrorPlan.linksMayHaveChanged(mapOf("main" to "h1"), synced))
+    }
+}

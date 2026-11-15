@@ -216,10 +216,13 @@ shown, nothing is done):
 project's base folder, the folder a ledger was imported from when it was imported (§4). The folder side is
 **looked up by path**, not walked: a file the project has is found by its place, a folder's entries are read
 only for the folders that hold a project file, and every other file in the folder (a repository, other
-ledgers, scans, the `.git` folder) is never listed, hashed, offered or deleted, whatever it is. A new file
-reaches the project only when a ledger file in the folder now links to it (a new `include`, a new `document`
-line): the mirror walks the links of the main file as it is in the folder (`LedgerLinks`, §4) and offers the
-files it names as ordinary pull-ins, through the write protocol like any other. A link that goes above the
+ledgers, scans, the `.git` folder) is never listed, hashed, offered or deleted, whatever it is. The paths asked about are
+the project's files and the ones recorded as synced, so a file deleted here is still found there and its
+deletion is offered, never undone. A new file reaches the project only when a ledger file in the folder now
+links to it (a new `include`, a new `document` line): the mirror walks the links of the main file as it is
+in the folder (`LedgerLinks`, §4) and offers the files it names as ordinary pull-ins, through the write
+protocol like any other. The walk reads every ledger file over the provider, so it runs only on the first
+pass and when a file known there differs from what was last synced, never on a pass where nothing changed. A link that goes above the
 folder is not followed. A file the ledger no longer links to stays in the project and is still mirrored;
 nothing is deleted because a link went away. Conflict copies and the app's own state are never mirrored.
 

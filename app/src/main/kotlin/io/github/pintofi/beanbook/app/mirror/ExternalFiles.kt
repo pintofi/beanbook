@@ -22,10 +22,14 @@ class ExternalFiles(private val resolver: ContentResolver) {
 
     /** [known] project paths, and the files the ledger in the folder now links to, by project path. */
     fun find(root: DocumentFile, known: Collection<String>, main: String): Map<String, DocumentFile> {
-        val found = lookUp(root, known.filter { allowed(it) })
+        val found = known(root, known)
         for ((path, document) in linked(root, main)) found.putIfAbsent(path, document)
         return found
     }
+
+    /** Just the [known] paths, looked up; the folder's other files are not asked about. */
+    fun known(root: DocumentFile, known: Collection<String>): MutableMap<String, DocumentFile> =
+        lookUp(root, known.filter { allowed(it) })
 
     /** One file by its project path, or null when it is not there. */
     fun findOne(root: DocumentFile, path: String): DocumentFile? =
@@ -56,7 +60,7 @@ class ExternalFiles(private val resolver: ContentResolver) {
     }
 
     /** What the project's main file, as it is in the folder, links to. Empty when it is not there. */
-    private fun linked(root: DocumentFile, main: String): Map<String, DocumentFile> {
+    fun linked(root: DocumentFile, main: String): Map<String, DocumentFile> {
         val chain = main.split('/').dropLast(1)
         val source = TreeLinkedSource(resolver, root, chain)
         val ledger = LedgerLinks(source, maxUp = chain.size).walk(main.substringAfterLast('/'))

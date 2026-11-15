@@ -218,8 +218,20 @@ class MirrorController(
 
         val cache = hashCaches.getOrPut(projectId) { FileHashCache() }
         val local = hashLocal(projectDir, cache)
-        val externalFiles = externals.find(root, local.keys, workspace.rootPath(projectId))
-        val external = externalFiles.mapValues { (path, document) -> hash(path, document, cache) }
+        val lastSynced = state.read(projectId)
+        // The project's files and the ones recorded as synced (a file deleted here is still in the folder), looked
+        // up by path. The folder's links are walked only when something known there changed: that is the only
+        // way a new link appears, and the walk reads every ledger file over the provider.
+        val externalFiles = externals.known(root, MirrorPlan.knownPaths(local, lastSynced))
+        val external = externalFiles.mapValues { (path, document) -> hash(path, document, cache) }.toMutableMap()
+        if (MirrorPlan.linksMayHaveChanged(external, lastSynced)) {
+            for ((path, document) in externals.linked(root, workspace.rootPath(projectId))) {
+                if (path !in externalFiles) {
+                    externalFiles[path] = document
+                    external[path] = hash(path, document, cache)
+                }
+            }
+        }
         cache.retain(local.keys.map { "$LOCAL$it" }.toSet() + externalFiles.keys.map { "$EXTERNAL$it" })
         val plan = MirrorPlan.plan(local, external, state.read(projectId))
 

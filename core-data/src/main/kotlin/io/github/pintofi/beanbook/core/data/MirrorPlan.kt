@@ -163,6 +163,25 @@ object MirrorPlan {
         return kept
     }
 
+    /**
+     * The paths to look up in the folder: the project's own files **and** those recorded as synced. A file
+     * synced earlier and deleted here is no longer in the project, but it is still in the folder, and the
+     * plan can only offer to delete it there (or notice it changed) if the folder side is asked about it.
+     * Looking up the project's files alone made such a file vanish from the plan, left it in the folder
+     * untracked, and, if a ledger there still named it, brought it back as if it were new.
+     */
+    fun knownPaths(local: Map<String, String>, lastSynced: Map<String, String>): Set<String> =
+        local.keys + lastSynced.keys
+
+    /**
+     * Whether the links in the folder's ledger files may have changed since the last pass, so that the walk
+     * that follows them is worth its reads: on the first pass, or when any known file differs from what was
+     * last synced. A new link can only come from a ledger file that changed, and every pass walks nothing
+     * otherwise.
+     */
+    fun linksMayHaveChanged(external: Map<String, String>, lastSynced: Map<String, String>): Boolean =
+        lastSynced.isEmpty() || external.any { (path, hash) -> lastSynced[path] != hash }
+
     fun plan(
         local: Map<String, String>,
         external: Map<String, String>,
