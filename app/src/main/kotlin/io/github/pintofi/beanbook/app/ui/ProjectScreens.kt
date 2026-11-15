@@ -57,6 +57,8 @@ import io.github.pintofi.beanbook.app.ui.theme.readableMeasureCentred
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import io.github.pintofi.beanbook.core.data.ProjectRename
 import androidx.compose.material.icons.outlined.DriveFolderUpload
 import androidx.compose.material.icons.outlined.FolderZip
 import androidx.compose.material.icons.outlined.Output
@@ -100,10 +102,12 @@ fun ProjectPickerScreen(
     onExport: () -> Unit,
     onDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onRename: (String, String) -> Unit = { _, _ -> },
     busyMessage: String? = null,
     trash: ProjectTrash = ProjectTrash(),
 ) {
     var pendingDelete by remember { mutableStateOf<ProjectSummary?>(null) }
+    var pendingRename by remember { mutableStateOf<ProjectSummary?>(null) }
     var newTitle by remember { mutableStateOf("") }
 
     Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -126,6 +130,18 @@ fun ProjectPickerScreen(
                         ) {
                             // An icon, not a second text button of the same weight as the row's
                             // own action (audit): deleting is the rare choice, and it asks first.
+                            IconButton(
+                                onClick = { pendingRename = project },
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Rename ${project.title}"
+                                },
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Edit,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                             IconButton(
                                 onClick = { pendingDelete = project },
                                 modifier = Modifier.semantics {
@@ -212,6 +228,17 @@ fun ProjectPickerScreen(
     }
 
 
+    pendingRename?.let { project ->
+        RenameDialog(
+            project = project,
+            onRename = { title ->
+                onRename(project.id, title)
+                pendingRename = null
+            },
+            onDismiss = { pendingRename = null },
+        )
+    }
+
     // Invariant 7: a destructive action names its exact scope, and this one is reversible —
     // the files move to the trash rather than being deleted.
     pendingDelete?.let { project ->
@@ -242,6 +269,40 @@ fun ProjectPickerScreen(
             },
         )
     }
+}
+
+/** Asks for a project's new name. The folder, the id and everything keyed by them stay as they are. */
+@Composable
+private fun RenameDialog(project: ProjectSummary, onRename: (String) -> Unit, onDismiss: () -> Unit) {
+    var title by remember(project.id) { mutableStateOf(project.title) }
+    val problem = ProjectRename.problemWith(title)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename \"${project.title}\"") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Measure.gap)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    isError = problem != null && title.isNotEmpty(),
+                    supportingText = { problem?.takeIf { title.isNotEmpty() }?.let { Text(it) } },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "This writes the name as the title option in the project's main file. " +
+                        "Undo is available afterwards. The folder does not change.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onRename(title) }, enabled = problem == null) { Text("Rename") }
+        },
+        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 /**
