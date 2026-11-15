@@ -102,6 +102,17 @@ Every mutation, whether from guided entry or the raw editor:
 7. On parse failure or any exception: restore from the snapshot, mark the journal record
    rolled back, and surface the exact Beancount error with file, line, and column.
 
+**A change that adds errors.** A change the person wrote directly (the entry form, editing an
+entry, a directive from the Add form) that would add errors the ledger did not have is undone as above,
+and the app holds the exact change, the whole new text of the file and not a recipe, outside the project
+and on disk. The person is asked, with the new errors listed: Don't save leaves the ledger as it was;
+Save anyway makes the same change again with the errors kept, journalled as `with-errors:` and the
+original operation so Undo can take it back. It is checked against the file as it was before the first
+attempt, so a second tap or an outside change in between is refused as stale and nothing is written
+twice. A question open when the app is stopped returns when the project is opened again. The mirror, a
+write from another device, a line the app adds itself, a bulk write and Undo never ask: the person did
+not write those, and a broken result there is a bug or a risk, not a choice.
+
 **Recovery on start:** an uncommitted journal record means the process died mid-write.
 If the rename completed and the re-parse succeeds, roll forward and commit; otherwise
 roll back to the snapshot. Recovery is reported to the user, never silent.
