@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- A project can be renamed, with the pencil on its row on the Projects page. The name is written as `option "title"` in the project's main file, wherever that file is, through the same checked write as any edit, so **Undo** brings the old name back. Every title line in that file is replaced and a comment after it stays; a ledger with no title gets one at the top. The folder and the project do not change, so the mirror, backups and widgets are unaffected. A name can be up to 100 characters, and a main file that is not UTF-8 text is refused. ([#368])
 - Expert edition: a plugin you added from a file can be given a source, the name of a project on PyPI, with **Set where it comes from**. **Check for a newer version** then asks PyPI, and **Replace with** that version downloads it, checks the SHA-256 PyPI published, and replaces the plugin the way any replacement works: it starts off and the copy you had is kept to go back to. The card says a newer version was not tested with this app. GitHub sources are not offered for these, because a repository's zip is not laid out as a plugin. ([#343])
 - Expert edition: **Check for package updates**, under Extra Python packages, asks PyPI and Chaquopy's index whether the packages you fetched have newer versions, and offers **Update packages** only when they do. The new packages are built beside the ones in use, every download is checked before it is unpacked, and they are kept only if they import in a fresh engine; otherwise, or if the app is stopped first, the earlier packages are back. **Go back to the earlier packages** restores them without downloading. Packages the app ships are never touched. ([#343])
 - Expert edition: **Check for updates** on the Plugins page asks PyPI or GitHub, where each catalogue plugin came from, whether a newer version exists, and offers **Update** only when one does. The page says which sites it asks and when it last ran, and nothing checks on its own. An update is kept only if the new version loads; if it does not, the earlier version is back in use and the message says why. Packages and the plugins you added from a file are not covered yet. ([#343])
@@ -367,6 +368,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#357]: https://github.com/pintofi/beanbook/issues/357
 [#358]: https://github.com/pintofi/beanbook/issues/358
 [#361]: https://github.com/pintofi/beanbook/issues/361
+[#368]: https://github.com/pintofi/beanbook/issues/368
 [#369]: https://github.com/pintofi/beanbook/issues/369
 [#379]: https://github.com/pintofi/beanbook/issues/379
 [#381]: https://github.com/pintofi/beanbook/issues/381

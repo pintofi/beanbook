@@ -746,6 +746,7 @@ class MainActivity : ComponentActivity() {
                         onImportFolder = { app.importController.chooseFile() },
                         onImportArchive = { archivePicker.launch(arrayOf("*/*")) },
                         onDeleteProject = { id -> app.projectsState.delete(id) { openProject(app, it) } },
+                        onRenameProject = { id, title -> renameProject(app, id, title) },
                         projectTrash = app.projectsState.trashUi(trashedProjects),
                         editorState = editorState,
                         editorMessage = editorMessage,
