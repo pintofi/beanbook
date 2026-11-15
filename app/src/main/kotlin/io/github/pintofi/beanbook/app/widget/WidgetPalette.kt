@@ -6,6 +6,7 @@ import android.os.Build
 import io.github.pintofi.beanbook.app.ui.theme.ThemeChoice
 import androidx.compose.ui.graphics.toArgb
 import io.github.pintofi.beanbook.app.ui.theme.AccentPalette
+import io.github.pintofi.beanbook.app.ui.theme.ProjectColour
 import io.github.pintofi.beanbook.app.ui.theme.ThemeSettings
 
 /**
@@ -43,9 +44,13 @@ internal data class WidgetPalette(
         fun of(context: Context): WidgetPalette {
             val settings = ThemeSettings(context.filesDir.resolve("state"))
             val choice = settings.choice.value
-            val dynamic = settings.dynamicColour.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            // The colour belongs to a project, and the widgets show the open one.
+            val open = context.filesDir.resolve("state/active-project").takeIf { it.isFile }
+                ?.let { runCatching { it.readText().trim() }.getOrNull() }
+            val colour = settings.colourOf(open)
+            val dynamic = colour is ProjectColour.Dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
             val source: ((Int) -> Int)? = if (dynamic) { id -> context.getColor(id) } else null
-            val accent = settings.accent.value
+            val accent = (colour as? ProjectColour.Palette)?.palette ?: AccentPalette.TEAL
             val day = build(dark = false, black = false, dynamic = source, accent = accent)
             val night = build(dark = true, black = choice == ThemeChoice.BLACK, dynamic = source, accent = accent)
             return when (choice) {

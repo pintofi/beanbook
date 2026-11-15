@@ -25,18 +25,16 @@ class ThemeSettings(stateDir: File) {
     private val _choice = MutableStateFlow(ThemeChoice.SYSTEM)
     val choice: StateFlow<ThemeChoice> = _choice.asStateFlow()
 
-    private val _dynamicColour = MutableStateFlow(true)
-    val dynamicColour: StateFlow<Boolean> = _dynamicColour.asStateFlow()
+    /** What a project with no choice of its own gets: dynamic colour, unless an earlier version turned it off. */
+    private var defaultColour: ProjectColour = ProjectColour.Dynamic
 
-    private val _accent = MutableStateFlow(AccentPalette.TEAL)
+    private val _projectColours = MutableStateFlow<Map<String, ProjectColour>>(emptyMap())
 
-    /** The accent used when the wallpaper is not supplying one and a project has none of its own. */
-    val accent: StateFlow<AccentPalette> = _accent.asStateFlow()
+    /** The colour each project chose for itself, by project id. */
+    val projectColours: StateFlow<Map<String, ProjectColour>> = _projectColours.asStateFlow()
 
-    private val _projectAccents = MutableStateFlow<Map<String, AccentPalette>>(emptyMap())
-
-    /** An accent a project has chosen for itself, by project id. It wins over the wallpaper and the app's. */
-    val projectAccents: StateFlow<Map<String, AccentPalette>> = _projectAccents.asStateFlow()
+    /** The colour of [projectId], or the default one when it has not chosen (or there is no project). */
+    fun colourOf(projectId: String?): ProjectColour = projectId?.let { _projectColours.value[it] } ?: defaultColour
 
     private val _comfort = MutableStateFlow(Comfort())
 
@@ -56,30 +54,41 @@ class ThemeSettings(stateDir: File) {
 
     private fun readLegacy(lines: List<String>) {
         _choice.value = lines.getOrNull(0)?.let(::choiceNamed) ?: ThemeChoice.SYSTEM
-        _dynamicColour.value = lines.getOrNull(1)?.toBooleanStrictOrNull() ?: true
+        defaultColour = if (lines.getOrNull(1)?.toBooleanStrictOrNull() == false) {
+            ProjectColour.Palette(AccentPalette.TEAL)
+        } else {
+            ProjectColour.Dynamic
+        }
     }
 
     private fun readKeyed(lines: List<String>) {
-        val projects = mutableMapOf<String, AccentPalette>()
+        val projects = mutableMapOf<String, ProjectColour>()
+        var dynamic = true
+        var accent = AccentPalette.TEAL
         lines.forEach { line ->
             val key = line.substringBefore('=').trim()
             val value = line.substringAfter('=', "").trim()
             when {
                 key == "theme" -> _choice.value = choiceNamed(value) ?: ThemeChoice.SYSTEM
-                key == "dynamic" -> _dynamicColour.value = value.toBooleanStrictOrNull() ?: true
+                key == "dynamic" -> dynamic = value.toBooleanStrictOrNull() ?: true
                 key == "contrast" -> _comfort.value = _comfort.value.copy(highContrast = value == "high")
                 key == "figures" -> _comfort.value = _comfort.value.copy(largeFigures = value == "large")
                 key == "rows" -> _comfort.value = _comfort.value.copy(compactRows = value == "compact")
                 key == "motion" -> _comfort.value = _comfort.value.copy(reduceMotion = value == "reduced")
                 key == "changes" ->
                     _comfort.value = _comfort.value.copy(changeMarks = ChangeMarks.named(value) ?: ChangeMarks.SUBTLE)
-                key == "accent" -> _accent.value = AccentPalette.named(value) ?: AccentPalette.TEAL
+                key == "accent" -> accent = AccentPalette.named(value) ?: AccentPalette.TEAL
                 key.startsWith(PROJECT_PREFIX) ->
-                    AccentPalette.named(value)?.let { projects[key.removePrefix(PROJECT_PREFIX)] = it }
+                    colourNamed(value)?.let { projects[key.removePrefix(PROJECT_PREFIX)] = it }
             }
         }
-        _projectAccents.value = projects
+        // The two app-wide lines an earlier version wrote now only say what a project with no choice gets.
+        defaultColour = if (dynamic) ProjectColour.Dynamic else ProjectColour.Palette(accent)
+        _projectColours.value = projects
     }
+
+    private fun colourNamed(name: String): ProjectColour? =
+        if (name == DYNAMIC) ProjectColour.Dynamic else AccentPalette.named(name)?.let { ProjectColour.Palette(it) }
 
     private fun choiceNamed(name: String) = ThemeChoice.entries.firstOrNull { it.name == name }
 
@@ -88,26 +97,14 @@ class ThemeSettings(stateDir: File) {
         write()
     }
 
-    fun setDynamicColour(enabled: Boolean) {
-        _dynamicColour.value = enabled
-        write()
-    }
-
-    fun setAccent(palette: AccentPalette) {
-        _accent.value = palette
-        write()
-    }
-
     fun setComfort(comfort: Comfort) {
         _comfort.value = comfort
         write()
     }
 
-    /** Gives [projectId] its own accent, or takes it back to the app's when [palette] is null. */
-    fun setProjectAccent(projectId: String, palette: AccentPalette?) {
-        _projectAccents.value = _projectAccents.value.toMutableMap().apply {
-            if (palette == null) remove(projectId) else put(projectId, palette)
-        }
+    /** Gives [projectId] its colour: the wallpaper's, or one of the palettes. */
+    fun setProjectColour(projectId: String, colour: ProjectColour) {
+        _projectColours.value = _projectColours.value + (projectId to colour)
         write()
     }
 
@@ -116,16 +113,19 @@ class ThemeSettings(stateDir: File) {
             file.parentFile?.mkdirs()
             val text = buildString {
                 appendLine("theme=${_choice.value.name}")
-                appendLine("dynamic=${_dynamicColour.value}")
-                appendLine("accent=${_accent.value.name}")
+                // The default for a project with no line of its own, in the two keys earlier versions wrote.
+                val default = defaultColour
+                appendLine("dynamic=${default is ProjectColour.Dynamic}")
+                appendLine("accent=${(default as? ProjectColour.Palette)?.palette?.name ?: AccentPalette.TEAL.name}")
                 val comfort = _comfort.value
                 appendLine("contrast=${if (comfort.highContrast) "high" else "normal"}")
                 appendLine("figures=${if (comfort.largeFigures) "large" else "normal"}")
                 appendLine("rows=${if (comfort.compactRows) "compact" else "comfortable"}")
                 appendLine("motion=${if (comfort.reduceMotion) "reduced" else "system"}")
                 appendLine("changes=${comfort.changeMarks.name}")
-                _projectAccents.value.toSortedMap().forEach { (id, palette) ->
-                    appendLine("$PROJECT_PREFIX$id=${palette.name}")
+                _projectColours.value.toSortedMap().forEach { (id, colour) ->
+                    val name = if (colour is ProjectColour.Palette) colour.palette.name else DYNAMIC
+                    appendLine("$PROJECT_PREFIX$id=$name")
                 }
             }
             file.writeText(text)
@@ -134,5 +134,6 @@ class ThemeSettings(stateDir: File) {
 
     private companion object {
         const val PROJECT_PREFIX = "project."
+        const val DYNAMIC = "DYNAMIC"
     }
 }

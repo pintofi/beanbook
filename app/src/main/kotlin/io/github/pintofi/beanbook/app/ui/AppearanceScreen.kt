@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.pintofi.beanbook.app.ui.theme.AccentPalette
+import io.github.pintofi.beanbook.app.ui.theme.ProjectColour
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -93,29 +94,40 @@ fun AppearanceScreen(
             }
         }
 
-        AccentSection()
-        ReadingSection()
-
-        FolioHeading("Colour")
+        // One place for colour, for the open project: dynamic colour, or a palette when it is off.
+        val projectName = LocalAppearanceControls.current?.projectTitle
+        FolioHeading(if (projectName != null) "Colour for $projectName" else "Colour")
         FolioGroup {
             item {
                 if (dynamicColourSupported) {
                     FolioSwitchRow(
                         title = "Dynamic colour",
-                        detail = "Take accent colours from your wallpaper. Paper, ink and rules stay the app's own.",
+                        detail = "Take this project's accent colours from your wallpaper.",
                         checked = dynamicColour,
                         onCheckedChange = onDynamicColour,
                         icon = Icons.Outlined.Palette,
-                        describe = "Dynamic colour. Take accent colours from your wallpaper",
+                        describe = "Dynamic colour. Take this project's accent colours from your wallpaper",
                     )
                 } else {
                     FolioRow(
                         title = "Dynamic colour",
-                        detail = "Dynamic colour needs Android 12 or newer. This phone uses the app's own colours.",
+                        detail = "Dynamic colour needs Android 12 or newer. Choose an accent below.",
                         icon = Icons.Outlined.Palette,
                     )
                 }
             }
+            if (!dynamicColour || !dynamicColourSupported) {
+                item { PaletteChoices() }
+            }
+        }
+        FolioNote(
+            "Each project has its own colour, so several ledgers can be told apart at a glance.",
+        )
+
+        ReadingSection()
+
+        FolioHeading("Widgets")
+        FolioGroup {
             item {
                 FolioSwitchRow(
                     title = "Hide amounts in widgets",
@@ -165,46 +177,26 @@ class AppearanceControls(
 
 val LocalAppearanceControls = androidx.compose.runtime.staticCompositionLocalOf<AppearanceControls?> { null }
 
-/** The accent for the whole app, and, when a project is open, one for that project alone. */
+/**
+ * The palette choices for the open project, shown under the dynamic colour switch only while dynamic colour is off:
+ * with it on the wallpaper sets the accent and a palette would have no effect.
+ */
 @Composable
-private fun AccentSection() {
+private fun PaletteChoices() {
     val controls = LocalAppearanceControls.current ?: return
-    val accent by controls.settings.accent.collectAsStateWithLifecycle()
-    val projectAccents by controls.settings.projectAccents.collectAsStateWithLifecycle()
-    val dynamic by controls.settings.dynamicColour.collectAsStateWithLifecycle()
-    FolioHeading("Accent")
-    FolioGroup {
-        item {
-            FolioBody {
-                Text("The app", style = MaterialTheme.typography.titleSmall)
-                AccentChoices(selected = accent, none = null) {
-                    controls.settings.setAccent(it ?: AccentPalette.TEAL)
-                    controls.onChanged()
-                }
-            }
-        }
-        val projectId = controls.projectId
-        if (projectId != null) {
-            item {
-                FolioBody {
-                    Text(
-                        "For ${controls.projectTitle ?: "this project"}",
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    AccentChoices(selected = projectAccents[projectId], none = "Same as the app") {
-                        controls.settings.setProjectAccent(projectId, it)
-                        controls.onChanged()
-                    }
-                }
-            }
+    val projectId = controls.projectId ?: return
+    val colours by controls.settings.projectColours.collectAsStateWithLifecycle()
+    val selected = (colours[projectId] ?: controls.settings.colourOf(projectId)) as? ProjectColour.Palette
+    FolioBody {
+        Text(
+            "Accent for ${controls.projectTitle ?: "this project"}",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        AccentChoices(selected = selected?.palette) {
+            controls.settings.setProjectColour(projectId, ProjectColour.Palette(it))
+            controls.onChanged()
         }
     }
-    FolioNote(
-        (if (dynamic) "While dynamic colour is on, your wallpaper sets the app's accent. " else "") +
-            "A project's own accent always shows while it is open, " +
-            "so several ledgers can be told apart at a glance. " +
-            "Paper, ink and rules stay the same.",
-    )
 }
 
 /** Contrast, figure size, row density, motion, and how a change from the last period is marked. */
@@ -284,17 +276,10 @@ private fun ReadingSection() {
     }
 }
 
-/** A row of accent swatches, with an optional "none" choice, which reports null. */
+/** A row of accent swatches. */
 @Composable
-private fun AccentChoices(selected: AccentPalette?, none: String?, onSelect: (AccentPalette?) -> Unit) {
+private fun AccentChoices(selected: AccentPalette?, onSelect: (AccentPalette) -> Unit) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    if (none != null) {
-        androidx.compose.material3.FilterChip(
-            selected = selected == null,
-            onClick = { onSelect(null) },
-            label = { Text(none) },
-        )
-    }
     androidx.compose.foundation.layout.FlowRow(
         horizontalArrangement = Arrangement.spacedBy(Measure.snug),
         verticalArrangement = Arrangement.spacedBy(Measure.snug),

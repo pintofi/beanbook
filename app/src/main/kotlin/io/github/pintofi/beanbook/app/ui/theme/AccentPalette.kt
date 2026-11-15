@@ -51,6 +51,17 @@ enum class AccentPalette(val label: String) {
     }
 }
 
+/**
+ * How one project is coloured: from the wallpaper (dynamic colour), or in one of the [AccentPalette]s.
+ * There is no app-wide choice; the colour belongs to the project that is open.
+ */
+sealed interface ProjectColour {
+    /** Accents from the wallpaper, where the phone supports it. */
+    data object Dynamic : ProjectColour
+
+    data class Palette(val palette: AccentPalette) : ProjectColour
+}
+
 private fun c(argb: Long) = Color(argb)
 
 private fun tones(palette: AccentPalette, dark: Boolean): AccentTones = when (palette) {
