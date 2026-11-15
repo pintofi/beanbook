@@ -417,6 +417,7 @@ class MainActivity : ComponentActivity() {
             val dynamicColour by app.themeSettings.dynamicColour.collectAsStateWithLifecycle()
             val accent by app.themeSettings.accent.collectAsStateWithLifecycle()
             val projectAccents by app.themeSettings.projectAccents.collectAsStateWithLifecycle()
+            val comfort by app.themeSettings.comfort.collectAsStateWithLifecycle()
             val themeProjectId by app.projectsState.activeId.collectAsStateWithLifecycle()
             val themeProjects by app.projectsState.projects.collectAsStateWithLifecycle()
             BeancountTheme(
@@ -424,6 +425,7 @@ class MainActivity : ComponentActivity() {
                 dynamicColour = dynamicColour,
                 accent = accent,
                 projectAccent = themeProjectId?.let(projectAccents::get),
+                comfort = comfort,
             ) {
             androidx.compose.runtime.CompositionLocalProvider(
                 io.github.pintofi.beanbook.app.ui.LocalAppearanceControls provides

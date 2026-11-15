@@ -79,6 +79,7 @@ fun BeancountTheme(
     accent: AccentPalette = AccentPalette.TEAL,
     /** An accent the open project chose for itself; it wins over the wallpaper and [accent]. */
     projectAccent: AccentPalette? = null,
+    comfort: Comfort = Comfort(),
     content: @Composable () -> Unit,
 ) {
     val dark = choice.isDark()
@@ -97,7 +98,8 @@ fun BeancountTheme(
     }
     // Applied over whichever dark scheme won above, so pure black composes with the wallpaper
     // accents instead of cancelling them.
-    val colours = if (choice == ThemeChoice.BLACK) base.onBlack() else base
+    val blacked = if (choice == ThemeChoice.BLACK) base.onBlack() else base
+    val colours = if (comfort.highContrast) blacked.withHigherContrast(dark) else blacked
 
     // The rules follow the accent, so a wallpaper palette moves the whole page together
     // instead of leaving teal rules under a lilac button. Without dynamic colour this is the
@@ -108,7 +110,7 @@ fun BeancountTheme(
     // Read once, here, rather than per composable: the animator duration scale is a
     // content-provider lookup, and a screen of animated rows asking individually is a screen
     // making one lookup per row.
-    val motion = animationsEnabled()
+    val motion = animationsEnabled() && !comfort.reduceMotion
 
     // The system bar icons follow the app's theme, not the phone's. `enableEdgeToEdge`
     // picks their colour from the system setting, so a person who chose "Dark" on a
@@ -146,6 +148,7 @@ fun BeancountTheme(
     CompositionLocalProvider(
         LocalLedgerColours provides ledger,
         LocalMotionEnabled provides motion,
+        LocalComfort provides comfort,
     ) {
         MaterialExpressiveTheme(
             colorScheme = colours,
