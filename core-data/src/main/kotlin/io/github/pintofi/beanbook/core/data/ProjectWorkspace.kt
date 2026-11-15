@@ -28,6 +28,9 @@ class ProjectWorkspace(private val root: File) {
     val journalDir: File get() = root.resolve("journal")
     val draftsDir: File get() = root.resolve("drafts")
 
+    /** Changes that were undone for adding errors and are waiting for the person's answer; see [HeldWrites]. */
+    val heldDir: File get() = root.resolve("held")
+
     /**
      * Entry templates. App state rather than ledger data: they are prefill for the entry
      * form, not directives, so they stay out of the portable tree and out of exports. A
