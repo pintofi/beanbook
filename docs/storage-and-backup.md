@@ -212,6 +212,17 @@ shown, nothing is done):
 | Deleted in the folder, unchanged here, or changed here | The file is deleted here **through the write protocol**: snapshotted, re-parsed, and Undo puts it back. The main ledger file is never deleted, and deleting a file the ledger includes is rolled back because the re-parse finds the broken `include`. | The file is copied back out to the folder. |
 | Deleted here, changed in the folder | The folder's file is brought in. | The folder's copy is deleted. The `<file>.conflict-<timestamp>` copy made when the conflict was found stays here. |
 
+**What is mirrored.** Exactly the project's own files, in the same folders: the mirror folder is the
+project's base folder, the folder a ledger was imported from when it was imported (§4). The folder side is
+**looked up by path**, not walked: a file the project has is found by its place, a folder's entries are read
+only for the folders that hold a project file, and every other file in the folder (a repository, other
+ledgers, scans, the `.git` folder) is never listed, hashed, offered or deleted, whatever it is. A new file
+reaches the project only when a ledger file in the folder now links to it (a new `include`, a new `document`
+line): the mirror walks the links of the main file as it is in the folder (`LedgerLinks`, §4) and offers the
+files it names as ordinary pull-ins, through the write protocol like any other. A link that goes above the
+folder is not followed. A file the ledger no longer links to stays in the project and is still mirrored;
+nothing is deleted because a link went away. Conflict copies and the app's own state are never mirrored.
+
 A sync record for a file that is gone from both sides is dropped, so a file of the same content that
 arrives later is treated as new and is not removed as if it had been deleted.
 

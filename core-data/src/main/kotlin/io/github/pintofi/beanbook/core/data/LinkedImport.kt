@@ -44,11 +44,17 @@ class LinkedImportSource(
         return source.open(own) ?: throw java.io.FileNotFoundException(own)
     }
 
-    private fun rebase(path: String): String {
-        val parts = path.split('/')
-        val up = parts.takeWhile { it == ".." }.size
-        return (chain.take(chain.size - up) + parts.drop(up)).joinToString("/")
-    }
+    private fun rebase(path: String): String = rebaseLinkedPath(path, chain)
+}
+
+/**
+ * [path], in the main file's coordinates (`..` for folders above it), as a path in the project, given the
+ * folder names [chain] from the project's base down to the main file's own folder.
+ */
+fun rebaseLinkedPath(path: String, chain: List<String>): String {
+    val parts = path.split('/')
+    val up = parts.takeWhile { it == ".." }.size
+    return (chain.take((chain.size - up).coerceAtLeast(0)) + parts.drop(up)).joinToString("/")
 }
 
 /** Imports the ledger a [LedgerLinks] walk found, keeping each file's name and place. */
