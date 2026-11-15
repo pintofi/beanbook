@@ -415,8 +415,26 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeChoice by app.themeSettings.choice.collectAsStateWithLifecycle()
             val dynamicColour by app.themeSettings.dynamicColour.collectAsStateWithLifecycle()
-            BeancountTheme(choice = themeChoice, dynamicColour = dynamicColour) {
+            val accent by app.themeSettings.accent.collectAsStateWithLifecycle()
+            val projectAccents by app.themeSettings.projectAccents.collectAsStateWithLifecycle()
+            val themeProjectId by app.projectsState.activeId.collectAsStateWithLifecycle()
+            val themeProjects by app.projectsState.projects.collectAsStateWithLifecycle()
+            BeancountTheme(
+                choice = themeChoice,
+                dynamicColour = dynamicColour,
+                accent = accent,
+                projectAccent = themeProjectId?.let(projectAccents::get),
+            ) {
             androidx.compose.runtime.CompositionLocalProvider(
+                io.github.pintofi.beanbook.app.ui.LocalAppearanceControls provides
+                    io.github.pintofi.beanbook.app.ui.AppearanceControls(
+                        settings = app.themeSettings,
+                        projectId = themeProjectId,
+                        projectTitle = themeProjects.firstOrNull { it.id == themeProjectId }?.title,
+                        onChanged = {
+                            io.github.pintofi.beanbook.app.widget.WidgetRefresh.refreshAll(this@MainActivity)
+                        },
+                    ),
                 io.github.pintofi.beanbook.app.ui.LocalPageRenderer provides { page, _ ->
                     app.documentCapture.preview(page)
                 },
