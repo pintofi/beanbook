@@ -171,7 +171,9 @@ A setup left half done offers to pick up where it was.
 
 **Ways in.** Name the ledger and either **Set it up** (the three steps) or **Create with
 defaults** (the device's currency, a short list of everyday accounts, the usual checks).
-**Choose folder** and **Choose .zip** import a ledger that already exists. The Trash is listed
+**Select your Beancount file** imports a ledger that already exists: any file name, and the files it
+links to come with it in the same folders, after a preview of exactly which files, with Import or Cancel.
+**Restore a backup (.bcaz)** restores one made by the app. The Trash is listed
 here when there are no projects, so deleting the only project is never a one-way door.
 
 **Step 1, basics.** Name, main currency (suggested from the device's region), other currencies,

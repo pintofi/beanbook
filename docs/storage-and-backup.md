@@ -130,7 +130,29 @@ configurable), pruned by count and age, stored outside the project tree.
 
 ## 4. SAF import
 
-Import sources: a folder tree (`ACTION_OPEN_DOCUMENT_TREE`) or an archive.
+**Select your Beancount file.** The person selects one file (`ACTION_OPEN_DOCUMENT`). Its name and
+extension do not matter; it has to be UTF-8 text with no NUL bytes. The app follows what the file links to
+(`LedgerLinks`: `include` lines and globs, `document` directives and metadata, `option "documents"`
+folders, Fava's `default-file` and `import-config`, and plugin or extension modules beside the ledger when
+`insert_pythonpath` is `TRUE`), and **no other file is read, listed, copied or changed**. Before anything is
+copied, a preview shows the tree the project will have, with the main file marked, and the links that could
+not be followed (the file, the line and the text as written), and offers **Import** or **Cancel**. A
+backup (`.bcaz`) is restored through its own row; a `.zip` of a ledger and a whole folder are no longer
+imported.
+
+**Reaching the linked files.** A grant for one file reaches only that file. If the file links to others,
+the person is asked to allow the folder that holds it (`ACTION_OPEN_DOCUMENT_TREE`, opened where the file
+is), and a link that goes up (`../x`) asks for the folder that many levels up. The grant is used for this
+import only; no persistable permission is taken. A file is found by name in its own folder, and a
+folder's entries are read only where a link points into it (a glob, a documents folder) and are not kept.
+If the person declines, or the provider cannot say where the file is, the file can come in alone with every
+link reported as out of reach. Android 11 and later refuse the root of internal storage and the `Download`
+folder itself, so a ledger directly in `Download` comes in alone unless it is moved into a subfolder; some
+cloud providers offer no folder access at all.
+
+**Layout.** Every file keeps its name and its folder below the project's base, which is the highest folder
+any linked file is in. The main file keeps its own name and place and the project records it (§2); nothing
+is renamed, wrapped, flattened or stripped.
 
 Validation applied to **every** entry before anything is written:
 

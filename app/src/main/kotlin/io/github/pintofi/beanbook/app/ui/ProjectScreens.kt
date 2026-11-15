@@ -172,8 +172,8 @@ fun ProjectPickerScreen(
             FolioGroup {
                 item {
                     FolioRow(
-                        title = "Import a folder",
-                        detail = "A folder of Beancount files, on this device or in cloud storage",
+                        title = "Select your Beancount file",
+                        detail = "Any file name. The files it links to come with it, in the same folders",
                         icon = Icons.Outlined.DriveFolderUpload,
                         onClick = onOpenFolder,
                         opens = true,
@@ -181,8 +181,8 @@ fun ProjectPickerScreen(
                 }
                 item {
                     FolioRow(
-                        title = "Import a .zip or backup",
-                        detail = "A Beanbook backup (.bcaz), an exported project, or any archive of a ledger",
+                        title = "Restore a backup (.bcaz)",
+                        detail = "A Beanbook backup you made earlier",
                         icon = Icons.Outlined.FolderZip,
                         onClick = onOpenArchive,
                         opens = true,

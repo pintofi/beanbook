@@ -41,8 +41,8 @@ internal fun MainActivity.setupActions(app: BeancountApplication): SetupActions 
             setup.update { NewLedgerSetup.fresh().copy(name = name, step = SetupStep.FINISH) }
             createLedger(app, setup.draft.value)
         },
-        onOpenFolder = { folderPicker.launch(null) },
-        onOpenArchive = { archivePicker.launch(arrayOf("application/zip", "*/*")) },
+        onOpenFolder = { app.importController.chooseFile() },
+        onOpenArchive = { archivePicker.launch(arrayOf("*/*")) },
         // Only when another project is open to go back to; the first run has nowhere to go back to.
         onCancel = if (app.projectsState.activeId.value != null) {
             { setup.reset(); app.projectsState.endOnboarding() }

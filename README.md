@@ -239,7 +239,7 @@ Documents live inside the portable project tree.
 <td valign="top">
 
 #### Moving data
-Import a folder tree or an archive, export a copy to a folder you choose, write backup archives,
+Import a ledger by selecting its file (the files it links to come with it), export a copy to a folder you choose, write backup archives,
 and optionally mirror to a folder or schedule backups.
 
 </td>
@@ -410,9 +410,9 @@ connection; it happens only when you type `http://` yourself.
 
 Create a ledger or import an existing project, then work on it. The short version:
 
-1. Open Projects and create a new ledger, or import a folder tree or archive.
-2. Import the whole tree rather than a single `.beancount` file, so includes and document
-   links stay valid.
+1. Open Projects and create a new ledger, or select your Beancount file to import one.
+2. The files it links to (includes, documents) come with it, in the same folders; Android may ask you
+   to allow the folder that holds it.
 3. Fix any parse errors in the raw editor, which reports file, line, and column.
 4. Set up an export folder, a backup, or mirroring before you rely on the app.
 

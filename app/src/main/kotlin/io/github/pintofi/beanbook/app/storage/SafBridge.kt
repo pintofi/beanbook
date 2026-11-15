@@ -5,10 +5,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import io.github.pintofi.beanbook.core.data.ExportTarget
-import io.github.pintofi.beanbook.core.data.ImportSource
-import io.github.pintofi.beanbook.core.data.SourceEntry
 import java.io.File
-import java.io.InputStream
 import java.io.OutputStream
 
 /**
@@ -19,44 +16,6 @@ import java.io.OutputStream
  * What is left here is enumeration and stream plumbing — the part that has to be simple
  * enough to be read and believed.
  */
-class SafImportSource(
-    private val resolver: ContentResolver,
-    private val treeUri: Uri,
-) : ImportSource {
-
-    private val uris = mutableMapOf<String, Uri>()
-
-    override fun entries(): List<SourceEntry> {
-        uris.clear()
-        val root = DocumentFile.fromTreeUri(
-            /* context is not needed for enumeration once we hold the tree */
-            ContextHolder.require(),
-            treeUri,
-        ) ?: return emptyList()
-
-        val found = mutableListOf<SourceEntry>()
-        fun walk(directory: DocumentFile, prefix: String) {
-            directory.listFiles().forEach { child ->
-                val name = child.name ?: return@forEach
-                val path = if (prefix.isEmpty()) name else "$prefix/$name"
-                if (child.isDirectory) {
-                    walk(child, path)
-                } else {
-                    uris[path] = child.uri
-                    found += SourceEntry(path = path, size = child.length())
-                }
-            }
-        }
-        walk(root, "")
-        return found
-    }
-
-    override fun open(entry: SourceEntry): InputStream {
-        val uri = uris[entry.path] ?: error("unknown entry: ${entry.path}")
-        return resolver.openInputStream(uri) ?: error("provider refused to open ${entry.path}")
-    }
-}
-
 /**
  * Writes a project into a user-chosen SAF tree.
  *

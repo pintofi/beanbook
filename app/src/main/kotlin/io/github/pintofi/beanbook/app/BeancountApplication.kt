@@ -125,6 +125,11 @@ class BeancountApplication : Application() {
         io.github.pintofi.beanbook.app.undo.UndoController(writer, workScope)
     }
 
+    /** Importing a ledger from the file the person selects, and the files it links to. */
+    val importController: io.github.pintofi.beanbook.app.importing.ImportController by lazy {
+        io.github.pintofi.beanbook.app.importing.ImportController(this, projectsState, workScope)
+    }
+
     /** A change undone for adding errors, held until the person chooses Save anyway or Don't save. */
     val heldWrites: io.github.pintofi.beanbook.app.undo.HeldWriteController by lazy {
         io.github.pintofi.beanbook.app.undo.HeldWriteController(

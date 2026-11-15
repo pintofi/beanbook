@@ -4,15 +4,14 @@ import android.content.ContentResolver
 import android.net.Uri
 import android.util.Log
 import io.github.pintofi.beanbook.app.storage.SafExportTarget
-import io.github.pintofi.beanbook.app.storage.SafImportSource
 import io.github.pintofi.beanbook.core.data.ImportResult
+import io.github.pintofi.beanbook.core.data.importLinked
 import io.github.pintofi.beanbook.core.data.ProjectExporter
 import io.github.pintofi.beanbook.core.data.ProjectImporter
 import io.github.pintofi.beanbook.core.data.ProjectRegistry
 import io.github.pintofi.beanbook.core.data.ProjectSummary
 import io.github.pintofi.beanbook.core.data.ProjectWorkspace
 import io.github.pintofi.beanbook.core.data.TrashedProject
-import io.github.pintofi.beanbook.core.data.ZipImportSource
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -113,14 +112,11 @@ class ProjectsState(
         }.onFailure { Log.w(TAG, "creating a ledger failed", it) }
     }
 
-    /** Imports a SAF folder tree. */
-    fun importFolder(resolver: ContentResolver, tree: Uri, onOpened: (String) -> Unit) =
-        import(onOpened) { SafImportSource(resolver, tree) to tree.lastPathSegment.orEmpty() }
-
     /**
-     * Imports a `.zip`. The archive is copied into app storage first, because validation
-     * uses `ZipFile`, which needs random access — and because nothing should be extracted
-     * until the whole archive has been judged.
+     * Restores a Beanbook backup (`.bcaz`). The archive is copied into app storage first, because
+     * validation uses `ZipFile`, which needs random access, and nothing is extracted until the whole
+     * archive has been judged. Anything that is not a backup is refused: a ledger is imported by selecting
+     * its file, which brings the files it links to.
      */
     fun importArchive(resolver: ContentResolver, archive: Uri, cacheDir: File, onOpened: (String) -> Unit) {
         val local = File(cacheDir, "import-${System.currentTimeMillis()}.zip")
@@ -136,9 +132,8 @@ class ProjectsState(
             restoreHeldBackup(null, onOpened)
             return
         }
-        import(onOpened, cleanup = { local.delete() }) {
-            ZipImportSource(local) to (archive.lastPathSegment ?: "imported")
-        }
+        local.delete()
+        _message.value = "That is not a Beanbook backup. To import a ledger, select its Beancount file instead."
     }
 
     private fun copyChosen(resolver: ContentResolver, from: Uri, to: File): Boolean = runCatching {
@@ -251,10 +246,26 @@ class ProjectsState(
         }
     }
 
-    private fun import(
+    /**
+     * Imports the ledger a walk of its links found, as it is: each file keeps its name and folder, and the
+     * main file keeps its own name and place.
+     */
+    fun importLinked(
+        source: io.github.pintofi.beanbook.core.domain.LinkedSource,
+        ledger: io.github.pintofi.beanbook.core.domain.LinkedLedger,
+        mainFolders: List<String>,
+        name: String,
         onOpened: (String) -> Unit,
-        cleanup: () -> Unit = {},
-        open: () -> Pair<io.github.pintofi.beanbook.core.data.ImportSource, String>,
+    ) = importProject(onOpened, {}) {
+        name to { id: String ->
+            importer.importLinked(source, ledger, mainFolders, id)
+        }
+    }
+
+    private fun importProject(
+        onOpened: (String) -> Unit,
+        cleanup: () -> Unit,
+        prepare: () -> Pair<String, (String) -> ImportResult>,
     ) {
         // From the first-run screen (nothing open yet) the import is not opened for the caller: the
         // setup's last page says what came in and asks what to do next.
@@ -269,9 +280,9 @@ class ProjectsState(
                 val outcome = withContext(Dispatchers.IO) {
                     runCatching {
                         try {
-                            val (source, name) = open()
+                            val (name, run) = prepare()
                             val id = ProjectRegistry.idFor(name, workspace.takenIds())
-                            importer.import(source, id) to id
+                            run(id) to id
                         } finally {
                             cleanup()
                         }
