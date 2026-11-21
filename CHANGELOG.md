@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The filter box in Filters is now Fava's own filter, run by the same code Fava uses: `-#trip` leaves entries out, a comma means or, parentheses group, `any(account:Food)` and the rest of Fava's filter grammar work the same way, and a filter that cannot be read shows Fava's message instead of the whole ledger. It is applied when the sheet is closed. A plain word is now a search of payees and descriptions, as in Fava, rather than a tag, so write `#trip` for a tag. ([#442])
+
 ## [1.0.5] - 2026-11-16
 
 ### Added
@@ -390,3 +393,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#434]: https://github.com/pintofi/beanbook/issues/434
 [#436]: https://github.com/pintofi/beanbook/issues/436
 [#438]: https://github.com/pintofi/beanbook/issues/438
+[#442]: https://github.com/pintofi/beanbook/issues/442

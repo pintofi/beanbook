@@ -1,6 +1,7 @@
 package io.github.pintofi.beanbook.app.engine
 
 import android.util.Log
+import io.github.pintofi.beanbook.core.domain.ExpressionAnswer
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.engine.local.LedgerReader
 import kotlinx.coroutines.CoroutineScope
@@ -88,6 +89,24 @@ class LedgerState(
         if (_dateRange.value == from to to) return
         _dateRange.value = from to to
         lastPath?.let { load(it) }
+    }
+
+    /**
+     * Fava's answer to a filter [expression] for the open ledger, as positions in the journal the
+     * current snapshot holds, or null when no ledger is open. The same plugins, bridge rule and
+     * period as the snapshot, so the positions line up with it; the caller checks the answer's
+     * fingerprint against the snapshot before using it.
+     */
+    suspend fun matching(expression: String): Result<ExpressionAnswer>? {
+        val path = lastPath ?: return null
+        return reader.matching(
+            path,
+            expression,
+            pluginDirs = pluginContext.directories(),
+            allowBridge = allowBridge,
+            dateFrom = _dateRange.value.first,
+            dateTo = _dateRange.value.second,
+        )
     }
 
     fun load(ledgerPath: String) {

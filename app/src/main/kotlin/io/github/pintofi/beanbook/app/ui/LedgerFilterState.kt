@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.core.domain.EntryFilter
+import io.github.pintofi.beanbook.core.domain.ExpressionAnswer
 
 /**
  * The one filter that Home, Journal and Balances share.
@@ -38,12 +39,56 @@ class LedgerFilterState {
         filter = filter.copy(query = query)
     }
 
-    fun setTags(tags: String) {
-        filter = filter.copy(tags = tags)
+    fun setExpression(expression: String) {
+        filter = filter.copy(expression = expression)
     }
 
     fun clear() {
         filter = EntryFilter()
+    }
+
+    /**
+     * Fava's answer to the current expression, or null before there is one. It is only ever read
+     * together with the expression and the ledger it was made for (see `filteredBy`).
+     */
+    var answer by mutableStateOf<ExpressionAnswer?>(null)
+        private set
+
+    /** True while the engine is working out the current expression. */
+    var applying by mutableStateOf(false)
+        private set
+
+    /** Why there is no answer when the engine itself could not be asked, not when Fava refused. */
+    var unavailable by mutableStateOf<String?>(null)
+        private set
+
+    /** Asks the engine for Fava's answer; set by the application, null where there is no engine. */
+    var matcher: (suspend (String) -> Result<ExpressionAnswer>?)? = null
+
+    /**
+     * Works out the current expression. Called again whenever the ledger or the expression changes,
+     * and cancelled by the caller when either does, so a late answer for an old one is never kept.
+     */
+    suspend fun resolve() {
+        val expression = filter.expression
+        unavailable = null
+        if (expression.isBlank()) {
+            answer = null
+            applying = false
+            return
+        }
+        applying = true
+        try {
+            val result = matcher?.invoke(expression)
+            answer = result?.getOrNull()
+            unavailable = when {
+                result == null -> "This ledger has no engine to apply a filter with."
+                result.isFailure -> "The filter could not be applied: ${result.exceptionOrNull()?.message}"
+                else -> null
+            }
+        } finally {
+            applying = false
+        }
     }
 }
 
@@ -82,14 +127,36 @@ fun LedgerFilterBar(modifier: Modifier = Modifier, inset: androidx.compose.ui.un
                 val words = filter.query.trim()
                 FilterChipWithCross("Search: $words", "Remove the search $words") { state.setQuery("") }
             }
-            if (filter.tags.isNotBlank()) {
-                val terms = filter.tags.trim()
-                FilterChipWithCross("Tags: $terms", "Remove the tags and links $terms") { state.setTags("") }
+            if (filter.expression.isNotBlank()) {
+                val terms = filter.expression.trim()
+                FilterChipWithCross(
+                    "Filter: $terms",
+                    "Remove the filter ${terms.replace(Regex("-(?=[#^])"), "without ")}",
+                ) { state.setExpression("") }
             }
             OutlinedButton(
                 onClick = state::clear,
                 modifier = Modifier.semantics { contentDescription = "Remove every filter" },
             ) { Text("Clear all") }
+        }
+        // Why nothing is shown, in Fava's own words when it refused the filter. Never left to look like
+        // an empty ledger.
+        val refusal = (state.answer as? ExpressionAnswer.Rejected)?.takeIf { it.expression == filter.expression }
+        val status = refusal?.message ?: state.unavailable
+        if (filter.expression.isNotBlank() && status != null) {
+            Text(
+                status,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = Measure.snug),
+            )
+        } else if (filter.expression.isNotBlank() && state.applying) {
+            Text(
+                "Applying the filter…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = Measure.snug),
+            )
         }
         Text(
             "Home, Journal and Balances show only the matching entries. Balances are at cost while this is on.",

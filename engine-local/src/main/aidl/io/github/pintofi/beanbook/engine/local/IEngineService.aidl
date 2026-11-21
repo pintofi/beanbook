@@ -85,6 +85,15 @@ interface IEngineService {
                          String pluginDirs, boolean allowBridge,
                          String dateFrom, String dateTo);
 
+    /**
+     * Applies Fava's own filter (`AdvancedFilter`) to the entries a load of this ledger produces,
+     * and writes to outPath which transactions it keeps, as positions in the journal inspectToFile
+     * returns for the same dateFrom and dateTo. Returns "ok" or "error: …"; a filter Fava cannot read
+     * is not an error here, it is an answer in the file.
+     */
+    String filterToFile(String ledgerPath, String outPath, String pluginDirs, boolean allowBridge,
+                        String dateFrom, String dateTo, String filter);
+
     /** Re-parses a project. Returns the validation JSON (bounded: 50 errors max). */
     /**
      * Imports user plugins. Runs here, not in the app process: plugin code is Python, and

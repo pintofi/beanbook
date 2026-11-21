@@ -121,6 +121,31 @@ class EngineService : Service() {
                 "ok"
             }
 
+        override fun filterToFile(
+            ledgerPath: String,
+            outPath: String,
+            pluginDirs: String,
+            allowBridge: Boolean,
+            dateFrom: String?,
+            dateTo: String?,
+            filter: String,
+        ): String =
+            guarded {
+                val json = python().getModule("ledger")
+                    .callAttr(
+                        "matching_transactions",
+                        ledgerPath,
+                        filter,
+                        pluginDirs,
+                        allowBridge,
+                        dateFrom.orEmpty(),
+                        dateTo.orEmpty(),
+                    )
+                    .toString()
+                writeOut(outPath, json)
+                "ok"
+            }
+
         override fun loadPlugins(
             pluginDir: String,
             modules: String,
