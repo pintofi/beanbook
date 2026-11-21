@@ -38,10 +38,12 @@ class MirrorHistory(private val stateDir: File) {
 
     /** Adds [added] (oldest first as they happened) to the front and keeps the newest ten. */
     fun record(added: List<MirrorHistoryEntry>) {
-        // The same thing again is not new activity: a pass that fails the same way on every app
+        // A problem that stays is not new activity: a pass that fails the same way on every app
         // start and every resume listed one problem five times. Compared with the newest few.
+        // A file sent, brought in or removed is always new: the same file goes again on every
+        // edit, and dropping it as a repeat left the list stuck on the first time.
         val recent = _entries.value.take(DUPLICATE_WINDOW).map { it.kind to it.detail }.toSet()
-        val fresh = added.filter { (it.kind to it.detail) !in recent }
+        val fresh = added.filter { it.kind in TRANSFERS || (it.kind to it.detail) !in recent }
         if (fresh.isEmpty()) return
         val all = (fresh.sortedByDescending { it.atEpochMs } + _entries.value).take(LIMIT)
         _entries.value = all
@@ -65,5 +67,10 @@ class MirrorHistory(private val stateDir: File) {
     companion object {
         const val LIMIT = 10
         private const val DUPLICATE_WINDOW = 3
+        private val TRANSFERS = setOf(
+            MirrorHistoryEntry.Kind.SENT,
+            MirrorHistoryEntry.Kind.BROUGHT_IN,
+            MirrorHistoryEntry.Kind.REMOVED,
+        )
     }
 }
