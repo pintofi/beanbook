@@ -120,4 +120,18 @@ class SetupDraftTest {
         assertNull(SetupDraft.fromJson(Json.parse("[1,2]")))
         assertNull(SetupDraft.fromJson(null))
     }
+
+    @Test fun `a financial year end that is not a month and day is reported, not dropped`() {
+        assertTrue(SetupDraft(fiscalYearEnd = "06-30").fiscalYearEndReadable)
+        assertTrue(SetupDraft(fiscalYearEnd = null).fiscalYearEndReadable)
+        for (bad in listOf("31/12", "13-01", "02-30", "June", "6-30")) {
+            assertTrue(bad, !SetupDraft(fiscalYearEnd = bad).fiscalYearEndReadable)
+        }
+    }
+
+    @Test fun `an opening balance that is not a number is reported and does not vanish silently`() {
+        val draft = SetupDraft(mainCurrency = "EUR", name = "Books", opening = mapOf("Assets:Cash" to "12a"))
+        assertEquals(listOf("12a"), draft.unreadableOpening)
+        assertEquals(emptyList<String>(), draft.copy(opening = mapOf("Assets:Cash" to "1,250.50")).unreadableOpening)
+    }
 }
