@@ -858,7 +858,8 @@ def _amount_matcher(basis, low, high, price_map, operating, as_of):
 def view(
     ledger_path: str,
     time: str = "",
-    fava_filter: str = "",
+    text: str = "",
+    tags: str = "",
     amount_min: str = "",
     amount_max: str = "",
     amount_basis: str = "units",
@@ -886,34 +887,40 @@ def view(
     if amount_basis not in ("units", "cost", "market"):
         return _refused("amount", f'"{amount_basis}" is not a basis: use units, cost or market.')
     bounds = []
-    for text in (amount_min, amount_max):
-        text = text.strip()
+    for raw in (amount_min, amount_max):
+        raw = raw.strip()
         try:
-            number = Decimal(text) if text else None
+            number = Decimal(raw) if raw else None
         except InvalidOperation:
-            return _refused("amount", f'"{text}" is not a number.')
+            return _refused("amount", f'"{raw}" is not a number.')
         if number is not None and (not number.is_finite() or number < 0):
-            return _refused("amount", f'"{text}" is not an amount: use a positive number.')
+            return _refused("amount", f'"{raw}" is not an amount: use a positive number.')
         bounds.append(number)
     low, high = bounds
     if low is not None and high is not None and low > high:
         return _refused("amount", "The minimum is more than the maximum.")
 
-    user = fava_filter.strip()
+    # Each part is read on its own first, so a mistake is attributed to the field it was typed in, and
+    # then they are joined as AND terms, each in parentheses: `rent, tea #trip` must not read as
+    # `rent, (tea #trip)`. Fava's own filter bar has one box, so this is how two fields make one filter.
+    parts = []
+    for field, value in (("text", text), ("tags", tags)):
+        value = value.strip()
+        if not value:
+            continue
+        try:
+            AdvancedFilter(value)
+        except FilterError as error:
+            return _refused(field, str(error))
+        parts.append(f"({value})")
+    # On the units basis the amount range joins them as two more terms of the same filter.
+    if amount_basis == "units":
+        parts += [f">={format(n, 'f')}" for n in (low,) if n is not None]
+        parts += [f"<={format(n, 'f')}" for n in (high,) if n is not None]
     try:
-        if user:
-            AdvancedFilter(user)
-        # The user's filter is one term, so a comma in it stays inside its parentheses; on the units basis
-        # the range joins it with AND, as two more terms of the same filter.
-        terms = ([f"({user})"] if user else []) + (
-            [f">={format(n, 'f')}" for n in (low,) if n is not None]
-            + [f"<={format(n, 'f')}" for n in (high,) if n is not None]
-            if amount_basis == "units"
-            else []
-        )
-        advanced = AdvancedFilter(" ".join(terms)) if terms else None
+        advanced = AdvancedFilter(" ".join(parts)) if parts else None
     except FilterError as error:
-        return _refused("filter", str(error))
+        return _refused("tags", str(error))
 
     entries, _errors, options_map, _failure, load_ms, cached = _load_for_filter(
         ledger_path, plugin_dirs, allow_bridge,

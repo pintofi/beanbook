@@ -281,7 +281,7 @@ class ViewTest(unittest.TestCase):
             ("FY2020", ""),
         ]:
             with self.subTest(time=time, filter=expression):
-                answer = self.view(time=time, fava_filter=expression)
+                answer = self.view(time=time, tags=expression)
                 theirs = [e for e in self.fava_filtered(time, expression).entries if isinstance(e, data.Transaction)]
                 # Beancount marks the rows it makes up for a period "S" (summarization) or "C" (conversion).
                 real = [e for e in theirs if e.flag not in ("S", "C")]
@@ -320,7 +320,7 @@ class ViewTest(unittest.TestCase):
     def test_balances_under_a_filter_match_favas_tree(self):
         from decimal import Decimal
 
-        answer = self.view(time="2020-03", fava_filter="#home")
+        answer = self.view(time="2020-03", tags="#home")
         tree = self.fava_filtered("2020-03", "#home").root_tree
         for row in answer["accounts"]:
             held = {}
@@ -334,7 +334,7 @@ class ViewTest(unittest.TestCase):
         for low, high, expression in [("200", "", ">=200"), ("", "20", "<=20"), ("5", "300", ">=5 <=300")]:
             with self.subTest(expression):
                 ours = self.view(amount_min=low, amount_max=high)
-                self.assertEqual(self.narrations(ours), self.narrations(self.view(fava_filter=expression)))
+                self.assertEqual(self.narrations(ours), self.narrations(self.view(tags=expression)))
                 theirs = [
                     e.narration for e in self.fava_filtered("", expression).entries if hasattr(e, "narration")
                 ]
@@ -353,7 +353,8 @@ class ViewTest(unittest.TestCase):
         cases = [
             ({"time": "nonsense"}, "time"),
             ({"time": "2020-02-30"}, "time"),
-            ({"fava_filter": "#trip,"}, "filter"),
+            ({"tags": "#trip,"}, "tags"),
+            ({"text": "(unclosed"}, "text"),
             ({"amount_min": "abc"}, "amount"),
             ({"amount_min": "-5"}, "amount"),
             ({"amount_min": "10", "amount_max": "5"}, "amount"),
