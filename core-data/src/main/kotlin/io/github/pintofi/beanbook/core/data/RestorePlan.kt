@@ -39,6 +39,11 @@ sealed interface RestoreStaged {
         val staging: File,
         val manifest: BackupManifest,
         val diff: RestoreDiff,
+        /**
+         * The backup's app data, extracted and verified in a folder of its own outside the projects, or null
+         * when the backup has none. Nothing in it is applied until the person has said which of it to apply.
+         */
+        val appDataStaging: File? = null,
     ) : RestoreStaged
 
     data class Refused(val problems: List<ArchiveProblem>) : RestoreStaged
@@ -51,6 +56,8 @@ sealed interface RestoredNew {
         val manifest: BackupManifest,
         /** The plugins that came with it, all turned off. */
         val plugins: RestoredPlugins.Held = RestoredPlugins.Held(emptyList(), emptyList()),
+        /** The backup's app data, staged and verified; the caller applies it, or discards it. Null when none. */
+        val appDataStaging: File? = null,
     ) : RestoredNew
 
     data class Refused(val problems: List<ArchiveProblem>) : RestoredNew
@@ -80,6 +87,10 @@ class RestorePlan(
     fun stagingDir(projectId: String): File =
         workspace.projectsDir.resolve("$projectId$STAGING_SUFFIX")
 
+    /** Where a backup's app data is staged: the app's cache, so it is never taken for a project. */
+    fun appDataStagingDir(projectId: String): File =
+        workspace.cacheDir.resolve("restoring-appdata-$projectId")
+
     /**
      * Verifies [archive] and extracts it to a staging directory, then reports what applying
      * it would change. Live data is untouched whatever the outcome.
@@ -92,17 +103,20 @@ class RestorePlan(
     ): RestoreStaged {
         val staging = stagingDir(projectId)
         staging.deleteRecursively()
-
-        val problems = archives.extract(archive, staging, passphrase, derivation)
-        if (problems.isNotEmpty()) {
-            staging.deleteRecursively()
-            return RestoreStaged.Refused(problems)
-        }
+        val appDataDir = appDataStagingDir(projectId)
+        appDataDir.deleteRecursively()
 
         val manifest = archives.peek(archive)
             ?: return RestoreStaged.Refused(listOf(ArchiveProblem.NotAnArchive))
+        val withAppData = manifest.appData.isNotEmpty()
+        val problems = archives.extract(archive, staging, passphrase, derivation, if (withAppData) appDataDir else null)
+        if (problems.isNotEmpty()) {
+            staging.deleteRecursively()
+            appDataDir.deleteRecursively()
+            return RestoreStaged.Refused(problems)
+        }
 
-        return RestoreStaged.Ready(staging, manifest, diff(projectId, staging))
+        return RestoreStaged.Ready(staging, manifest, diff(projectId, staging), appDataDir.takeIf { withAppData })
     }
 
     /**
@@ -121,7 +135,7 @@ class RestorePlan(
             is RestoreStaged.Refused -> RestoredNew.Refused(staged.problems)
             is RestoreStaged.Ready -> {
                 activate(id, staged.staging, manifest = manifest)
-                RestoredNew.Restored(id, manifest, lastHeld)
+                RestoredNew.Restored(id, manifest, lastHeld, staged.appDataStaging)
             }
         }
     }
@@ -201,6 +215,7 @@ class RestorePlan(
 
     fun discardStaging(projectId: String) {
         stagingDir(projectId).deleteRecursively()
+        appDataStagingDir(projectId).deleteRecursively()
     }
 
     private fun relativeFiles(root: File): Map<String, String> =

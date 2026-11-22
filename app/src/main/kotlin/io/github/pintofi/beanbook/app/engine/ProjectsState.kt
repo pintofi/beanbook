@@ -142,6 +142,26 @@ class ProjectsState(
         resolver.openInputStream(from)?.use { input -> to.outputStream().use { input.copyTo(it) } } != null
     }.getOrDefault(false)
 
+    /**
+     * Applies the parts of a restored backup's app data that belong to the new project and cannot clash with
+     * anything: its templates and colour. Scripts, preferences and the server address are left behind here;
+     * they come back through Backup, where each can be chosen.
+     */
+    private fun bringBackAppData(result: io.github.pintofi.beanbook.core.data.RestoredNew.Restored): String {
+        val dir = result.appDataStaging ?: return ""
+        return runCatching {
+            val stateDir = io.github.pintofi.beanbook.app.storage.ContextHolder.require().filesDir.resolve("state")
+            val restorer = io.github.pintofi.beanbook.app.backup.AppDataRestorer(workspace, stateDir)
+            val keys = restorer.preview(dir, result.projectId)
+                .filter { it.group in AUTOMATIC && it.selectable }.map { it.key }.toSet()
+            val clash = io.github.pintofi.beanbook.app.backup.Clash.KEEP_BOTH
+            val applied = restorer.apply(dir, result.projectId, keys, clash)
+            val others = result.manifest.appData.any { it.group !in AUTOMATIC }
+            (applied.describe()?.let { " $it" }.orEmpty()) +
+                if (others) " Scripts, preferences and server details in the backup were not brought back." else ""
+        }.getOrDefault("").also { dir.deleteRecursively() }
+    }
+
     /** Retries the held backup with the passphrase just typed. */
     fun unlockBackup(passphrase: CharArray, onOpened: (String) -> Unit) = restoreHeldBackup(passphrase, onOpened)
 
@@ -176,12 +196,13 @@ class ProjectsState(
                                 heldBackup = null
                                 _backupLocked.value = false
                                 withContext(Dispatchers.IO) { archive.delete() }
+                                val appDataNote = withContext(Dispatchers.IO) { bringBackAppData(result) }
                                 refresh()
                                 if (!firstRun) open(result.projectId)
                                 onOpened(result.projectId)
                                 _message.value = "Restored ${result.manifest.files.size} file(s) as " +
                                     "${result.manifest.projectTitle}." +
-                                    (result.plugins.describe()?.let { " $it" } ?: "")
+                                    (result.plugins.describe()?.let { " $it" } ?: "") + appDataNote
                             }
                             is io.github.pintofi.beanbook.core.data.RestoredNew.Refused -> {
                                 val asks = result.problems.any {
@@ -375,6 +396,11 @@ class ProjectsState(
     }
 
     private companion object {
+        private val AUTOMATIC = setOf(
+            io.github.pintofi.beanbook.core.data.AppDataGroup.TEMPLATES,
+            io.github.pintofi.beanbook.core.data.AppDataGroup.COLOUR,
+        )
+
         const val TAG = "ProjectsState"
     }
 }

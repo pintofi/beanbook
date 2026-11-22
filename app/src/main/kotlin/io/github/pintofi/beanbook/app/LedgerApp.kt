@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.app
 
+import io.github.pintofi.beanbook.app.ui.AppDataUi
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
@@ -217,14 +218,15 @@ internal fun LedgerApp(
     pendingRestore: RestoreStaged.Ready?,
     passphraseNeeded: Boolean,
     onUnlockRestore: (CharArray) -> Unit,
-    onBackUpNowWithPassphrase: (CharArray?) -> Unit,
+    onBackUpNowWithPassphrase: (CharArray?, Set<String>) -> Unit,
     backupMessage: String?,
     scheduleEnabled: Boolean,
     scheduleFolder: String?,
     lastBackupRun: String?,
     rollbackPoints: List<String>,
     onChooseRestoreFile: () -> Unit,
-    onAcceptRestore: () -> Unit,
+    onAcceptRestore: (Set<String>, io.github.pintofi.beanbook.app.backup.Clash) -> Unit,
+    appData: AppDataUi = AppDataUi(),
     onDiscardRestore: () -> Unit,
     onChooseScheduleFolder: () -> Unit,
     onScheduleChanged: (Boolean) -> Unit,
@@ -683,6 +685,7 @@ internal fun LedgerApp(
                 rollbackPoints = rollbackPoints,
                 onChooseRestoreFile = onChooseRestoreFile,
                 onAcceptRestore = onAcceptRestore,
+                appData = appData,
                 onDiscardRestore = onDiscardRestore,
                 onChooseScheduleFolder = onChooseScheduleFolder,
                 onScheduleChanged = onScheduleChanged,

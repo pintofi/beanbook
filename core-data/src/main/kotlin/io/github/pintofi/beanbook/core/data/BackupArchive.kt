@@ -33,6 +33,14 @@ data class BackupManifest(
      * main file it cannot find.
      */
     val rootFile: String? = null,
+    /**
+     * Beanbook's own data that is not part of the ledger, chosen when the backup was made: entry templates,
+     * saved scripts, some preferences. Only a backup that holds some is written as schema 3, so an older app
+     * refuses it with its ordinary "newer version" message instead of failing on files it does not know.
+     * File names are not listed beyond the group and a fixed path, so a readable manifest says nothing about
+     * what the templates or scripts are called.
+     */
+    val appData: List<AppDataEntry> = emptyList(),
 ) {
     data class Entry(val path: String, val size: Long, val sha256: String)
 
@@ -47,6 +55,20 @@ data class BackupManifest(
         "project_title" to Json.of(projectTitle),
         "encryption" to encryption.toJson(),
         *listOfNotNull(rootFile?.let { "root_file" to Json.of(it) }).toTypedArray(),
+        *listOfNotNull(
+            appData.takeIf { it.isNotEmpty() }?.let { entries ->
+                "app_data" to Json.arr(
+                    entries.map {
+                        Json.obj(
+                            "group" to Json.of(it.group.wire),
+                            "path" to Json.of(it.path),
+                            "size" to Json.of(it.size),
+                            "sha256" to Json.of(it.sha256),
+                        )
+                    },
+                )
+            },
+        ).toTypedArray(),
         "files" to Json.arr(
             files.map {
                 Json.obj(
@@ -59,16 +81,33 @@ data class BackupManifest(
     )
 
     companion object {
-        /** The newest format this app reads. 2 adds `root_file`; a backup without one is still written as 1. */
-        const val SCHEMA_VERSION = 2
+        /**
+         * The newest format this app reads. 2 adds `root_file`; 3 adds `app_data` and puts a sealed archive's
+         * project files under `project/`. A backup that needs neither is still written as 1.
+         */
+        const val SCHEMA_VERSION = 3
 
-        /** The format a backup is written in: 2 only when it needs `root_file`. */
-        fun schemaFor(rootFile: String?): Int = if (rootFile == null) 1 else 2
+        /** The format a backup is written in: 3 only when it holds app data, else 2 only when it needs `root_file`. */
+        fun schemaFor(rootFile: String?, hasAppData: Boolean = false): Int =
+            if (hasAppData) 3 else if (rootFile == null) 1 else 2
         const val MANIFEST_NAME = "manifest.json"
         const val PROJECT_PREFIX = "project/"
 
+        /** Where app data sits in a schema 3 archive, beside `project/`. */
+        const val APP_DATA_PREFIX = "appdata/"
+
         /** The single sealed blob that replaces `project/…` when a passphrase is set. */
         const val PAYLOAD_NAME = "project.enc"
+
+        /** The `app_data` list: empty when there is none, null when an entry is not one this app allows. */
+        private fun appDataFrom(root: Json.Obj): List<AppDataEntry>? = root.array("app_data")?.map { item ->
+            val entry = item as? Json.Obj ?: return null
+            val group = AppDataGroup.fromWire(entry.string("group") ?: return null) ?: return null
+            val path = entry.string("path") ?: return null
+            // The group says what the path may look like; anything else is a name made up by the archive.
+            if (!group.accepts(path)) return null
+            AppDataEntry(group, path, entry.long("size") ?: return null, entry.string("sha256") ?: return null)
+        }.orEmpty()
 
         fun fromJson(json: Json?): BackupManifest? {
             val root = json as? Json.Obj ?: return null
@@ -81,8 +120,14 @@ data class BackupManifest(
                 )
             } ?: return null
 
+            val schema = root.long("schema_version")?.toInt() ?: return null
+            val appData = appDataFrom(root) ?: return null
+            // An older format has no such section, so a manifest that claims one is not one of ours.
+            if (appData.isNotEmpty() && schema < 3) return null
+
             return BackupManifest(
-                schemaVersion = root.long("schema_version")?.toInt() ?: return null,
+                schemaVersion = schema,
+                appData = appData,
                 appVersion = root.string("app_version") ?: return null,
                 engineVersions = root.obj("engine_versions")
                     ?.fields
@@ -98,6 +143,55 @@ data class BackupManifest(
                     ?.let { ProjectWorkspace.validRoot(it) ?: return null },
             )
         }
+    }
+}
+
+/**
+ * The kinds of Beanbook's own data a backup can carry beside the ledger, each with the only paths it may use
+ * inside `appdata/`. Closed on purpose: a path in a manifest is input, so it must be one of these shapes.
+ */
+enum class AppDataGroup(val wire: String) {
+    /** Entry templates, kept in the format `TemplateStore` writes, only the ones that were chosen. */
+    TEMPLATES("templates"),
+
+    /** Saved scripts, one `.py` file each. Code: restored as saved, never run. */
+    SCRIPTS("scripts"),
+
+    /** Appearance, Home layout, valuation basis: one small file each. */
+    PREFERENCES("preferences"),
+
+    /** The accent or dynamic colour of this project. */
+    COLOUR("colour"),
+
+    /** The Fava server address and user name. Never the password. */
+    REMOTE("remote");
+
+    /** Whether [path], relative to `appdata/`, is one this group may hold. */
+    fun accepts(path: String): Boolean = when (this) {
+        TEMPLATES -> path == "templates.templates"
+        COLOUR -> path == "colour"
+        REMOTE -> path == "remote.json"
+        PREFERENCES -> path in PREFERENCE_FILES.map { "preferences/$it" }
+        SCRIPTS -> SCRIPT_PATH.matches(path)
+    }
+
+    companion object {
+        /** The preference files that can travel, by the name each has in the archive. */
+        val PREFERENCE_FILES = listOf("appearance", "home-cards", "balances-basis")
+        private val SCRIPT_PATH = Regex("scripts/[A-Za-z0-9][A-Za-z0-9._-]{0,63}\\.py")
+
+        fun fromWire(wire: String): AppDataGroup? = entries.firstOrNull { it.wire == wire }
+    }
+}
+
+/** One app-data file in a manifest: its group, its path under `appdata/`, and what it must hash to. */
+data class AppDataEntry(val group: AppDataGroup, val path: String, val size: Long, val sha256: String)
+
+/** An app-data file to be written into a backup, or read out of one. [path] is relative to `appdata/`. */
+class AppDataPayload(val group: AppDataGroup, val path: String, val bytes: ByteArray) {
+    init {
+        require(group.accepts(path)) { "not a place app data may go: $path" }
+        require(bytes.size <= BackupArchive.MAX_APP_DATA_FILE_BYTES) { "$path is too large to back up" }
     }
 }
 
@@ -178,8 +272,12 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         derivation: KeyDerivation? = null,
         cost: KdfCost = KdfCost(),
         kdf: String = ArchiveEncryption.ARGON2ID,
+        /** Beanbook's own data to carry beside the ledger, already chosen; empty for an ordinary backup. */
+        appData: List<AppDataPayload> = emptyList(),
     ): BackupManifest {
         require(workspace.projectDir(projectId).isDirectory) { "no such project: $projectId" }
+        require(appData.size <= MAX_APP_DATA_FILES) { "too many app-data files" }
+        require(appData.map { it.path }.distinct().size == appData.size) { "the same app-data file twice" }
 
         // The manifest lists every file's size and checksum and comes first in the archive, so
         // it is worked out before the files are copied -- and a file saved in between would then
@@ -195,7 +293,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                 val manifest = staged.outputStream().buffered().use { sink ->
                     writeOnce(
                         projectId, sink, appVersion, engineVersions, projectTitle, now,
-                        passphrase, derivation, cost, kdf,
+                        passphrase, derivation, cost, kdf, appData,
                     )
                 }
                 staged.inputStream().use { it.copyTo(out) }
@@ -228,6 +326,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         derivation: KeyDerivation?,
         cost: KdfCost,
         kdf: String,
+        appData: List<AppDataPayload>,
     ): BackupManifest {
         val root = workspace.projectDir(projectId)
 
@@ -248,8 +347,15 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
 
         val rootFile = workspace.rootPath(projectId).takeIf { !ProjectWorkspace.isDefaultRoot(it) }
 
+        // App data is held in memory (each file is small and capped), so its size and checksum are exact.
+        val appEntries = appData.sortedBy { it.path }.map {
+            AppDataEntry(it.group, it.path, it.bytes.size.toLong(), sha256(it.bytes))
+        }
+        val schema = BackupManifest.schemaFor(rootFile, appData.isNotEmpty())
+
         fun manifestWith(encryption: ArchiveEncryption) = BackupManifest(
-            schemaVersion = BackupManifest.schemaFor(rootFile),
+            schemaVersion = schema,
+            appData = appEntries,
             rootFile = rootFile,
             appVersion = appVersion,
             engineVersions = engineVersions,
@@ -276,6 +382,11 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                     copyChecked(File(root, path), expected.getValue(path), zip)
                     zip.closeEntry()
                 }
+                appData.sortedBy { it.path }.forEach { item ->
+                    zip.putNextEntry(ZipEntry(BackupManifest.APP_DATA_PREFIX + item.path))
+                    zip.write(item.bytes)
+                    zip.closeEntry()
+                }
             }
             return manifest
         }
@@ -296,10 +407,18 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
             // Sealed bytes do not compress, and trying costs time on a large project.
             zip.setLevel(Deflater.NO_COMPRESSION)
             zip.putNextEntry(ZipEntry(BackupManifest.PAYLOAD_NAME))
+            // Schema 3 names what sits where, so app data cannot collide with a project file; earlier ones have
+            // only project files and keep the bare names they were always written with.
+            val prefixed = schema >= 3
             ZipOutputStream(sealer.wrap(zip)).use { inner ->
                 files.forEach { path ->
-                    inner.putNextEntry(ZipEntry(path))
+                    inner.putNextEntry(ZipEntry(if (prefixed) BackupManifest.PROJECT_PREFIX + path else path))
                     copyChecked(File(root, path), expected.getValue(path), inner)
+                    inner.closeEntry()
+                }
+                appData.sortedBy { it.path }.forEach { item ->
+                    inner.putNextEntry(ZipEntry(BackupManifest.APP_DATA_PREFIX + item.path))
+                    inner.write(item.bytes)
                     inner.closeEntry()
                 }
             }
@@ -350,10 +469,35 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
             }
         }
 
+        // App data is held to the same checks: present, the size and checksum the manifest gives, and nothing
+        // unlisted beside it.
+        manifest.appData.forEach { entry ->
+            val stream = payload.openAppData(entry.path)
+            if (stream == null) {
+                problems += ArchiveProblem.MissingFile(BackupManifest.APP_DATA_PREFIX + entry.path)
+                return@forEach
+            }
+            if (entry.size > MAX_APP_DATA_FILE_BYTES) {
+                problems += ArchiveProblem.TooLarge("app data ${entry.path}", MAX_APP_DATA_FILE_BYTES.toLong())
+                stream.close()
+                return@forEach
+            }
+            val (read, sha) = stream.use { hashAtMost(it, entry.size + 1) }
+            if (read != entry.size) {
+                problems += ArchiveProblem.SizeMismatch(BackupManifest.APP_DATA_PREFIX + entry.path, entry.size, read)
+            } else if (sha != entry.sha256) {
+                problems += ArchiveProblem.ChecksumMismatch(BackupManifest.APP_DATA_PREFIX + entry.path)
+            }
+        }
+
         // Anything present that the manifest does not vouch for is refused rather than
         // extracted: an archive is only trustworthy to the extent its manifest covers it.
         payload.names().forEach { name ->
             if (name !in listed) problems += ArchiveProblem.UnexpectedFile(name)
+        }
+        val listedAppData = manifest.appData.map { it.path }.toSet()
+        payload.appDataNames().forEach { name ->
+            if (name !in listedAppData) problems += ArchiveProblem.UnexpectedFile(BackupManifest.APP_DATA_PREFIX + name)
         }
 
         problems
@@ -371,10 +515,13 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         target: File,
         passphrase: CharArray? = null,
         derivation: KeyDerivation? = null,
+        /** Where to put the backup's app data, a folder of its own that must not exist; null leaves it unread. */
+        appDataTarget: File? = null,
     ): List<ArchiveProblem> {
         val problems = verify(archive, passphrase, derivation)
         if (problems.isNotEmpty()) return problems
         require(!target.exists()) { "restore target already exists: $target" }
+        require(appDataTarget == null || !appDataTarget.exists()) { "app-data target already exists: $appDataTarget" }
 
         val outcome = withPayload(archive, passphrase, derivation) { manifest, payload ->
             manifest.files.forEach { entry ->
@@ -392,9 +539,23 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                     }
                 }
             }
+            if (appDataTarget != null) {
+                manifest.appData.forEach { entry ->
+                    val destination = File(appDataTarget, entry.path)
+                    check(
+                        destination.canonicalPath.startsWith(appDataTarget.canonicalFile.path + File.separator),
+                    ) { "refusing to write outside the app-data target: ${entry.path}" }
+                    destination.parentFile?.mkdirs()
+                    val stream = payload.openAppData(entry.path) ?: error("missing appdata/${entry.path}")
+                    destination.outputStream().use { out -> stream.use { it.copyTo(out) } }
+                }
+            }
             emptyList()
         }
-        if (outcome.isNotEmpty()) target.deleteRecursively()
+        if (outcome.isNotEmpty()) {
+            target.deleteRecursively()
+            appDataTarget?.deleteRecursively()
+        }
         return outcome
     }
 
@@ -402,6 +563,12 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
     private interface Payload {
         fun open(path: String): InputStream?
         fun names(): Set<String>
+
+        /** An app-data file, by its path under `appdata/`; null in an archive that has none. */
+        fun openAppData(path: String): InputStream?
+
+        /** The app-data files present, by their path under `appdata/`. */
+        fun appDataNames(): Set<String>
     }
 
     /**
@@ -433,7 +600,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                 }
 
                 when (val encryption = manifest.encryption) {
-                    ArchiveEncryption.None -> block(manifest, plainPayload(zip))
+                    ArchiveEncryption.None -> block(manifest, plainPayload(zip, manifest.schemaVersion >= 3))
 
                     is ArchiveEncryption.Encrypted -> {
                         if (passphrase == null || derivation == null) {
@@ -482,7 +649,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
 
                         ZipFile(temp).use { inner ->
                             checkEntryCount(inner)
-                            block(manifest, innerPayload(inner))
+                            block(manifest, innerPayload(inner, manifest.schemaVersion >= 3))
                         }
                     }
                 }
@@ -498,7 +665,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         }
     }
 
-    private fun plainPayload(zip: ZipFile) = object : Payload {
+    private fun plainPayload(zip: ZipFile, schema3: Boolean) = object : Payload {
         override fun open(path: String): InputStream? =
             zip.getEntry(BackupManifest.PROJECT_PREFIX + path)?.let { zip.getInputStream(it) }
 
@@ -507,16 +674,41 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                 .filterNot { it.isDirectory }
                 .map { it.name }
                 .filterNot { it == BackupManifest.MANIFEST_NAME }
+                // Before schema 3 there was no app data, so a name that looks like it is only an unlisted file.
+                .filterNot { schema3 && it.startsWith(BackupManifest.APP_DATA_PREFIX) }
                 .map { it.removePrefix(BackupManifest.PROJECT_PREFIX) }
+                .toSet()
+
+        override fun openAppData(path: String): InputStream? =
+            if (!schema3) null else zip.getEntry(BackupManifest.APP_DATA_PREFIX + path)?.let { zip.getInputStream(it) }
+
+        override fun appDataNames(): Set<String> =
+            if (!schema3) emptySet() else zip.entries().asSequence()
+                .filterNot { it.isDirectory }
+                .map { it.name }
+                .filter { it.startsWith(BackupManifest.APP_DATA_PREFIX) }
+                .map { it.removePrefix(BackupManifest.APP_DATA_PREFIX) }
                 .toSet()
     }
 
-    private fun innerPayload(zip: ZipFile) = object : Payload {
+    private fun innerPayload(zip: ZipFile, schema3: Boolean) = object : Payload {
         override fun open(path: String): InputStream? =
-            zip.getEntry(path)?.let { zip.getInputStream(it) }
+            zip.getEntry(if (schema3) BackupManifest.PROJECT_PREFIX + path else path)?.let { zip.getInputStream(it) }
 
         override fun names(): Set<String> =
-            zip.entries().asSequence().filterNot { it.isDirectory }.map { it.name }.toSet()
+            zip.entries().asSequence().filterNot { it.isDirectory }.map { it.name }
+                .filterNot { schema3 && it.startsWith(BackupManifest.APP_DATA_PREFIX) }
+                .map { if (schema3) it.removePrefix(BackupManifest.PROJECT_PREFIX) else it }
+                .toSet()
+
+        override fun openAppData(path: String): InputStream? =
+            if (!schema3) null else zip.getEntry(BackupManifest.APP_DATA_PREFIX + path)?.let { zip.getInputStream(it) }
+
+        override fun appDataNames(): Set<String> =
+            if (!schema3) emptySet() else zip.entries().asSequence().filterNot { it.isDirectory }.map { it.name }
+                .filter { it.startsWith(BackupManifest.APP_DATA_PREFIX) }
+                .map { it.removePrefix(BackupManifest.APP_DATA_PREFIX) }
+                .toSet()
     }
 
 
@@ -600,6 +792,12 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         const val MAX_STREAMED_PAYLOAD_BYTES = 8L * 1024 * 1024 * 1024
 
         const val MAX_ENTRIES = 100_000
+
+        /** One app-data file: a template list, a script or a preference is small, so a large one is refused. */
+        const val MAX_APP_DATA_FILE_BYTES = 1024 * 1024
+
+        /** How many app-data files one backup may hold. */
+        const val MAX_APP_DATA_FILES = 256
 
         /** How many times a backup starts again because a file was saved while it was being made. */
         private const val MAX_ATTEMPTS = 3

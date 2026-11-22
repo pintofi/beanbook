@@ -261,6 +261,27 @@ names a file the archive does not hold, is refused. Restoring sets the project's
 the backup's (and forgets one the backup does not have), whether it restores over a project or as a
 new one.
 
+**App data.** A backup can also carry some of Beanbook's own data that is not part of the ledger. The
+person ticks each item on the Backup screen, and none of it is included unless they turn on "Also include
+app data". The items are entry templates (one by one), the project's colour, the theme, Home layout and
+valuation basis (each on its own), saved scripts (one by one, off by default) and the remote server's
+address and user name (off by default). The password, the Share on Wi-Fi sign-in, the scheduled-backup
+passphrase, folder grants, widgets, Mirror state, drafts, held writes, the undo journal, trash and
+diagnostics are never included. Scheduled backups do not include app data.
+
+A backup with app data is `schema_version` 3, with an `app_data` list in the manifest (group, path, size,
+checksum) and the files under `appdata/`. In a sealed archive the project's files move under `project/` as
+well, so a project file can never collide with an app-data file. Each group may only use fixed paths, a
+manifest naming anything else is refused, every file is checked like a project file, and an unlisted
+`appdata/` file is refused. An older app reads a 3 as "written by a newer version" and refuses it. A
+backup without app data is still written as before.
+
+Restoring stages the app data apart from the project, shows each item (new, or already here), and applies
+only what is ticked. A template or script with the name of one already here is kept, replaced, or kept
+alongside, as chosen. Restored scripts are only saved; nothing runs. A restored remote address brings no
+password. Restoring a backup as a new project from the start screen brings back its templates and colour
+only; the rest comes back through Backup.
+
 **Encryption:** optional, off by default. Plain archives are interoperable and
 recoverable without this app, which is the right default for a plain-text-accounting product.
 When enabled: AES-256-GCM with a key derived by Argon2id from the user's passphrase. The

@@ -1,5 +1,15 @@
 package io.github.pintofi.beanbook.app.ui
 
+import io.github.pintofi.beanbook.app.backup.RestoreStatus
+import io.github.pintofi.beanbook.app.backup.RestoreItem
+import io.github.pintofi.beanbook.app.backup.Clash
+import io.github.pintofi.beanbook.app.backup.AppDataItem
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Checkbox
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,17 +67,22 @@ fun BackupScreen(
     scheduleFolder: String?,
     lastRun: String?,
     rollbackPoints: List<String>,
-    onBackUpNow: (CharArray?) -> Unit,
+    onBackUpNow: (CharArray?, Set<String>) -> Unit,
     onUnlockRestore: (CharArray) -> Unit,
     onChooseRestoreFile: () -> Unit,
-    onAcceptRestore: () -> Unit,
+    onAcceptRestore: (Set<String>, Clash) -> Unit,
     onDiscardRestore: () -> Unit,
     onChooseScheduleFolder: () -> Unit,
     onScheduleChanged: (Boolean) -> Unit,
     scheduleEncryption: ScheduleEncryption,
     modifier: Modifier = Modifier,
     message: String? = null,
+    appData: AppDataUi = AppDataUi(),
 ) {
+    var ticked by remember(appData.available) {
+        mutableStateOf(appData.available.filter { it.onByDefault }.map { it.key }.toSet())
+    }
+    var includeAppData by remember { mutableStateOf(false) }
     var askingSchedulePassphrase by remember { mutableStateOf(false) }
     var schedulePassphrase by remember { mutableStateOf("") }
     var scheduleConfirmation by remember { mutableStateOf("") }
@@ -131,13 +146,49 @@ fun BackupScreen(
                 }
             }
         }
+        if (appData.available.isNotEmpty()) {
+            FolioGroup {
+                item {
+                    FolioSwitchRow(
+                        title = "Also include app data",
+                        checked = includeAppData,
+                        onCheckedChange = { includeAppData = it },
+                        icon = Icons.Outlined.Tune,
+                        describe = "Also include app data",
+                    )
+                }
+                if (includeAppData) {
+                    item {
+                        FolioBody {
+                            Text(
+                                "Choose what to put in. Passwords and sign-ins are never included. " +
+                                    "A backup with app data can only be opened by this version or a later one.",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            appData.available.forEach { entry ->
+                                TickRow(
+                                    title = entry.title,
+                                    detail = listOf(entry.detail, formatBytes(entry.bytes))
+                                        .filter { it.isNotEmpty() }.joinToString(" · "),
+                                    checked = entry.key in ticked,
+                                    onChange = { on -> ticked = if (on) ticked + entry.key else ticked - entry.key },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
         FolioNote(
             "One .bcaz file holding the whole project. Without a passphrase it is an ordinary zip, " +
                 "openable without this app.",
         )
         Button(
             onClick = {
-                onBackUpNow(if (encrypt) passphrase.toCharArray() else null)
+                onBackUpNow(
+                    if (encrypt) passphrase.toCharArray() else null,
+                    if (includeAppData) ticked else emptySet(),
+                )
             },
             enabled = !encrypt || passphrasesMatch,
             modifier = Modifier
@@ -184,6 +235,7 @@ fun BackupScreen(
                     FolioBody {
                         RestorePreview(
                             staged = pendingRestore,
+                            items = appData.restoreItems,
                             onAccept = onAcceptRestore,
                             onDiscard = onDiscardRestore,
                         )
@@ -326,9 +378,15 @@ fun BackupScreen(
 @Composable
 private fun RestorePreview(
     staged: RestoreStaged.Ready,
-    onAccept: () -> Unit,
+    items: List<RestoreItem>,
+    onAccept: (Set<String>, Clash) -> Unit,
     onDiscard: () -> Unit,
 ) {
+    // Nothing from the app data is brought back unless it is ticked here; clashing items start unticked.
+    var ticked by remember(items) {
+        mutableStateOf(items.filter { it.selectable && it.status == RestoreStatus.NEW }.map { it.key }.toSet())
+    }
+    var clash by remember { mutableStateOf(Clash.KEEP_MINE) }
     Column(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
         run {
             Text(
@@ -366,6 +424,40 @@ private fun RestorePreview(
                 }
             }
 
+            if (items.isNotEmpty()) {
+                Text("App data in this backup", style = MaterialTheme.typography.titleSmall)
+                items.forEach { item ->
+                    TickRow(
+                        title = item.title,
+                        detail = listOf(
+                            item.detail,
+                            if (item.status == RestoreStatus.CLASH) "Already here" else "",
+                        ).filter { it.isNotEmpty() }.joinToString(" · "),
+                        checked = item.key in ticked,
+                        enabled = item.selectable,
+                        onChange = { on -> ticked = if (on) ticked + item.key else ticked - item.key },
+                    )
+                }
+                if (items.any { it.status == RestoreStatus.CLASH }) {
+                    Text("When one is already here:", style = MaterialTheme.typography.bodySmall)
+                    Clash.entries.forEach { option ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .selectable(selected = clash == option, role = Role.RadioButton) { clash = option },
+                        ) {
+                            RadioButton(selected = clash == option, onClick = null)
+                            Text(option.label, modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+                }
+                Text(
+                    "Scripts come back saved and turned off from running; nothing runs until you run it.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             Text(
                 "Your current project is kept first, so you can go back to it. Nothing is deleted.",
                 style = MaterialTheme.typography.bodySmall,
@@ -373,7 +465,7 @@ private fun RestorePreview(
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                    onClick = onAccept,
+                    onClick = { onAccept(ticked, clash) },
                     modifier = Modifier.semantics {
                         contentDescription = "Restore this backup over the current project"
                     },
@@ -385,3 +477,38 @@ private fun RestorePreview(
 }
 
 private const val REMOVED_SHOWN = 5
+
+/** What the Backup screen needs to offer app data: what can go in, and what a chosen backup holds. */
+data class AppDataUi(
+    val available: List<AppDataItem> = emptyList(),
+    val restoreItems: List<RestoreItem> = emptyList(),
+)
+
+@Composable
+private fun TickRow(
+    title: String,
+    detail: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onChange),
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)
+        Column(modifier = Modifier.padding(start = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            if (detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+private fun formatBytes(bytes: Long): String = when {
+    bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1e6)
+    bytes >= 1_000 -> "${bytes / 1000} KB"
+    else -> "$bytes B"
+}

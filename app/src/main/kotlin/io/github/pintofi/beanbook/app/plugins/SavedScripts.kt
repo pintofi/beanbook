@@ -21,9 +21,9 @@ data class SavedScript(
  * demonstration.
  *
  * App-private storage, outside any project: a script is not the user's ledger data, and it
- * must not travel in an export, a backup or a mirror. It is also **code the user chose to
- * trust**, so each one keeps its name, the day it was saved, and a checksum -- the same three
- * facts the plugin list shows, for the same reason.
+ * travels in a backup only when the person ticks it there, and never in an export or a mirror. It is
+ * also **code the user chose to trust**, so each one keeps its name, the day it was saved, and a
+ * checksum -- the same three facts the plugin list shows, for the same reason.
  */
 class SavedScripts(stateDir: File) {
 

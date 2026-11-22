@@ -44,8 +44,16 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
     fun load(projectId: String): List<EntryTemplate> {
         val file = fileFor(projectId)
         if (!file.isFile) return emptyList()
-        val lines = file.readLines()
-        if (lines.firstOrNull() !in READABLE) return emptyList()
+        return decode(file.readText()) ?: emptyList()
+    }
+
+    /**
+     * The templates in [text], which is what [encode] writes, or null when the first line says a version this
+     * app cannot read. Used by [load] and to read the templates inside a backup.
+     */
+    fun decode(text: String): List<EntryTemplate>? {
+        val lines = text.lines()
+        if (lines.firstOrNull() !in READABLE) return null
 
         val templates = mutableListOf<EntryTemplate>()
         var current: Builder? = null
@@ -91,6 +99,34 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
         write(projectId, load(projectId).filterNot { it.name.equals(name, ignoreCase = true) })
     }
 
+    /** The text a templates file holds for [templates]: a version line, then each template. */
+    fun encode(templates: List<EntryTemplate>): String = buildString {
+        append(VERSION).append('\n')
+        templates.forEach { template ->
+            record("template", template.name)
+            record("meta", template.currency, template.flag, template.payee.orEmpty(), template.narration.orEmpty())
+            if (template.tags.isNotEmpty()) record("tags", *template.tags.toTypedArray())
+            if (template.links.isNotEmpty()) record("links", *template.links.toTypedArray())
+            template.postings.forEach { posting ->
+                record(
+                    "posting",
+                    posting.account,
+                    posting.amount?.toPlainString().orEmpty(),
+                    posting.currency.orEmpty(),
+                    posting.cost?.amount?.number?.toPlainString().orEmpty(),
+                    posting.cost?.amount?.currency.orEmpty(),
+                    posting.cost?.date.orEmpty(),
+                    posting.cost?.label.orEmpty(),
+                    posting.price?.number?.toPlainString().orEmpty(),
+                    posting.price?.currency.orEmpty(),
+                    posting.details.orEmpty(),
+                    posting.comment.orEmpty(),
+                )
+                posting.metadata.forEach { (key, value) -> record("pmeta", key, value) }
+            }
+        }
+    }
+
     private fun write(projectId: String, templates: List<EntryTemplate>) {
         val file = fileFor(projectId)
         check(file.isFile.not() || file.readLines().firstOrNull() in READABLE) {
@@ -98,32 +134,7 @@ class TemplateStore(private val workspace: ProjectWorkspace) {
         }
         file.parentFile?.mkdirs()
 
-        val text = buildString {
-            append(VERSION).append('\n')
-            templates.forEach { template ->
-                record("template", template.name)
-                record("meta", template.currency, template.flag, template.payee.orEmpty(), template.narration.orEmpty())
-                if (template.tags.isNotEmpty()) record("tags", *template.tags.toTypedArray())
-                if (template.links.isNotEmpty()) record("links", *template.links.toTypedArray())
-                template.postings.forEach { posting ->
-                    record(
-                        "posting",
-                        posting.account,
-                        posting.amount?.toPlainString().orEmpty(),
-                        posting.currency.orEmpty(),
-                        posting.cost?.amount?.number?.toPlainString().orEmpty(),
-                        posting.cost?.amount?.currency.orEmpty(),
-                        posting.cost?.date.orEmpty(),
-                        posting.cost?.label.orEmpty(),
-                        posting.price?.number?.toPlainString().orEmpty(),
-                        posting.price?.currency.orEmpty(),
-                        posting.details.orEmpty(),
-                        posting.comment.orEmpty(),
-                    )
-                    posting.metadata.forEach { (key, value) -> record("pmeta", key, value) }
-                }
-            }
-        }
+        val text = encode(templates)
 
         // Written whole and renamed into place: a process death mid-save leaves the previous
         // set intact rather than half a file.
