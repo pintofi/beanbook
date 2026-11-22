@@ -8,10 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- The filter box in Filters runs a filter that works as Fava's does: `-#trip` leaves entries out, a comma means or, parentheses group, `any(account:Food)` works, and a filter that cannot be read shows a message instead of the whole ledger. It is applied when the sheet is closed. A plain word searches payees and descriptions, so write `#trip` for a tag. ([#442])
+- The filter box in Filters accepts `-#trip` to leave entries out, a comma for or, and parentheses, and says when it cannot read what you typed. ([#442])
 
 ### Fixed
-- Accounts with non-ASCII letters, such as `Expenses:Lebensmittel:Käse`, can be used in the entry form and elsewhere. ([#446])
+- Accounts with non-ASCII letters, such as `Expenses:Lebensmittel:Käse`, work in the entry form. ([#446])
 
 ## [1.0.5] - 2026-11-16
 
