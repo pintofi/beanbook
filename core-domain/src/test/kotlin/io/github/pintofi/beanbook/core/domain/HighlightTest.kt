@@ -96,4 +96,10 @@ class HighlightTest {
     fun `an empty file produces nothing rather than failing`() {
         assertEquals(emptyList(), BeancountText.highlight(""))
     }
+
+    @Test
+    fun `an account with non-ASCII letters is one account span, even around a keyword`() {
+        val source = "2026-01-01 open Expenses:Käse\n2026-01-01 open Assets:Bänote\n"
+        assertEquals(listOf("Expenses:Käse", "Assets:Bänote"), spanText(source, BeancountText.TokenKind.ACCOUNT))
+    }
 }
