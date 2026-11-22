@@ -15,6 +15,7 @@ import hashlib
 import json
 import threading
 import time
+import time as time_module
 from pathlib import Path
 from typing import Any
 
@@ -313,29 +314,42 @@ def _date_cut(entries, date_from: str, date_to: str):
     return entries
 
 
-def inspect(
-    ledger_path: str,
-    journal_limit: int = 0,
-    plugin_dirs: str = "",
-    allow_bridge: bool = True,
-    date_from: str = "",
-    date_to: str = "",
-) -> str:
-    """Parse a ledger and return a JSON summary.
+def _market_of(pos, operating, price_map, as_of):
+    """The market value of one position, the way Fava's "Market Value" reads it.
 
-    JSON rather than a Python object because this crosses the Chaquopy boundary and is
-    also written to disk by the differential runner.
+    At the latest price on or before [as_of]; in the operating currency when the ledger declares one,
+    otherwise in whatever the price is quoted in. Where no price connects the position, it is shown
+    **at cost** if it was bought at one, and in its own units if it was not -- so a purchase price is
+    never silently dropped, and a holding nobody priced is never given a value nobody stated.
+    """
+    from beancount.core import convert
+
+    if operating is not None:
+        value = convert.convert_position(pos, operating, price_map, as_of)
+        if value.currency == operating:
+            return value
+    else:
+        value = convert.get_value(pos, price_map, as_of)
+        if value.currency != pos.units.currency:
+            return value
+    if pos.cost is not None:
+        cost = convert.get_cost(pos)
+        if operating is not None and cost.currency != operating:
+            return convert.convert_amount(cost, operating, price_map, as_of)
+        return cost
+    return value
+
+
+def _account_rows(entries, all_entries, options_map, as_of=None):
+    """Every account's balances, as `inspect` reports them, for the [entries] given.
+
+    Prices come from [all_entries] (the whole file) and the valuation date is the last of [entries], so a
+    filtered or clamped set is valued at the end of what it describes. Shared by `inspect` and `view`, so a
+    filtered figure is worked out by exactly the code that works out the unfiltered one.
+
+    Returns (account names, account rows, the latest rate of each priced pair).
     """
     from beancount.core import data, getters
-
-    entries, errors, options_map, plugin_failure, load_ms = _load(ledger_path, plugin_dirs, allow_bridge)
-    all_entries = entries
-    entries = _date_cut(entries, date_from, date_to)
-
-    counts: dict[str, int] = {}
-    for entry in entries:
-        name = type(entry).__name__
-        counts[name] = counts.get(name, 0) + 1
 
     # Account balances, computed the way Beancount does it rather than by hand.
     from beancount.core import convert
@@ -367,7 +381,8 @@ def inspect(
     price_map = prices_lib.build_price_map(_with_posting_prices(all_entries, options_map))
     # The end of the range being shown, not the end of the file: valuing a filtered ledger at
     # today's price would put figures on the screen that the chosen period never held.
-    as_of = max((entry.date for entry in entries), default=None)
+    if as_of is None:
+        as_of = max((entry.date for entry in entries), default=None)
 
     def _amounts(inventory, reducer):
         if inventory is None:
@@ -384,28 +399,7 @@ def inspect(
     operating = (options_map.get("operating_currency") or [None])[0]
 
     def _market(pos):
-        """The market value of one position, the way Fava's "Market Value" reads it.
-
-        At the latest price on or before the end of the range; in the operating currency when
-        the ledger declares one, otherwise in whatever the price is quoted in. Where no price
-        connects the position, it is shown **at cost** if it was bought at one, and in its own
-        units if it was not -- so a purchase price is never silently dropped, and a holding
-        nobody priced is never given a value nobody stated.
-        """
-        if operating is not None:
-            value = convert.convert_position(pos, operating, price_map, as_of)
-            if value.currency == operating:
-                return value
-        else:
-            value = convert.get_value(pos, price_map, as_of)
-            if value.currency != pos.units.currency:
-                return value
-        if pos.cost is not None:
-            cost = convert.get_cost(pos)
-            if operating is not None and cost.currency != operating:
-                return convert.convert_amount(cost, operating, price_map, as_of)
-            return cost
-        return value
+        return _market_of(pos, operating, price_map, as_of)
 
     def _valued(inventory):
         if inventory is None:
@@ -491,6 +485,60 @@ def inspect(
             }
         )
 
+    return accounts, account_rows, _latest_rates()
+
+
+def _journal_row(entry) -> dict[str, Any]:
+    """One transaction as the journal reports it."""
+    return {
+        "date": str(entry.date),
+        "flag": entry.flag,
+        "payee": entry.payee,
+        "narration": entry.narration,
+        "tags": sorted(entry.tags or []),
+        "links": sorted(entry.links or []),
+        "file": entry.meta.get("filename"),
+        "line": entry.meta.get("lineno"),
+        # The user's own keys only. Beancount keeps its bookkeeping in the same dict
+        # -- filename, lineno, and anything it prefixes with two underscores -- and
+        # showing "__automatic__" to somebody as though they had written it would be
+        # wrong. This is also where `fava.plugins.link_documents` records a linked
+        # receipt, which is what makes offering to open one possible at all.
+        "metadata": {
+            key: _meta_str(value)
+            for key, value in (entry.meta or {}).items()
+            if key not in ("filename", "lineno") and not key.startswith("__")
+        },
+        "postings": [_posting_dict(posting) for posting in entry.postings],
+    }
+
+
+def inspect(
+    ledger_path: str,
+    journal_limit: int = 0,
+    plugin_dirs: str = "",
+    allow_bridge: bool = True,
+    date_from: str = "",
+    date_to: str = "",
+) -> str:
+    """Parse a ledger and return a JSON summary.
+
+    JSON rather than a Python object because this crosses the Chaquopy boundary and is
+    also written to disk by the differential runner.
+    """
+    from beancount.core import data, getters
+
+    entries, errors, options_map, plugin_failure, load_ms = _load(ledger_path, plugin_dirs, allow_bridge)
+    all_entries = entries
+    entries = _date_cut(entries, date_from, date_to)
+
+    counts: dict[str, int] = {}
+    for entry in entries:
+        name = type(entry).__name__
+        counts[name] = counts.get(name, 0) + 1
+
+    accounts, account_rows, rates = _account_rows(entries, all_entries, options_map)
+
     # 0 means every transaction. The window used to be 200 so the JSON stayed small and the
     # cold-start budget held, but 200 is also all the Journal screen could ever show,
     # which is not what a ledger is for. Measured on the 25k corpus: the whole journal costs
@@ -501,29 +549,7 @@ def inspect(
     for entry in window:
         if not isinstance(entry, data.Transaction):
             continue
-        journal.append(
-            {
-                "date": str(entry.date),
-                "flag": entry.flag,
-                "payee": entry.payee,
-                "narration": entry.narration,
-                "tags": sorted(entry.tags or []),
-                "links": sorted(entry.links or []),
-                "file": entry.meta.get("filename"),
-                "line": entry.meta.get("lineno"),
-                # The user's own keys only. Beancount keeps its bookkeeping in the same dict
-                # -- filename, lineno, and anything it prefixes with two underscores -- and
-                # showing "__automatic__" to somebody as though they had written it would be
-                # wrong. This is also where `fava.plugins.link_documents` records a linked
-                # receipt, which is what makes offering to open one possible at all.
-                "metadata": {
-                    key: _meta_str(value)
-                    for key, value in (entry.meta or {}).items()
-                    if key not in ("filename", "lineno") and not key.startswith("__")
-                },
-                "postings": [_posting_dict(posting) for posting in entry.postings],
-            }
-        )
+        journal.append(_journal_row(entry))
 
     # The `document` directives, so the app can say what a document is filed under and tell
     # one the ledger knows about from a file merely sitting in the folder. Beancount has
@@ -626,7 +652,7 @@ def inspect(
             {"name": str(entry[0]), "config": None if len(entry) < 2 else entry[1]}
             for entry in (options_map.get("plugin") or [])
         ],
-        "rates": _latest_rates(),
+        "rates": rates,
         "load_ms": round(load_ms, 1),
         "title": options_map.get("title"),
         "operating_currency": list(options_map.get("operating_currency") or []),
@@ -792,4 +818,162 @@ def matching_transactions(
             "cached": cached,
             "filter_ms": round((time.monotonic() - started) * 1000, 1),
         }
+    )
+
+
+def _refused(field: str, message: str) -> str:
+    return json.dumps({"ok": False, "field": field, "message": message}, ensure_ascii=False)
+
+
+def _amount_matcher(basis, low, high, price_map, operating, as_of):
+    """Entries with a posting at least [low] and a posting at most [high] on the chosen basis.
+
+    Each bound is read over any posting, as Fava reads `>=100 <=500`, so the units basis behaves exactly as
+    Fava's own amount filter does. The cost and market bases are the same test on another figure: a
+    posting's units weighed at their cost, or valued at the latest price on or before [as_of], in the
+    operating currency when the ledger has one. A posting nobody priced is compared at cost, then in its own
+    units, as the balances show it.
+    """
+    from beancount.core import convert
+
+    def figure(posting):
+        if posting.units is None:
+            return None
+        if basis == "cost":
+            return abs(convert.get_cost(posting).number)
+        return abs(_market_of(posting, operating, price_map, as_of).number)
+
+    def match(entry) -> bool:
+        postings = getattr(entry, "postings", None)
+        if not postings:
+            return False
+        figures = [value for value in map(figure, postings) if value is not None]
+        return (low is None or any(value >= low for value in figures)) and (
+            high is None or any(value <= high for value in figures)
+        )
+
+    return match
+
+
+def view(
+    ledger_path: str,
+    time: str = "",
+    fava_filter: str = "",
+    amount_min: str = "",
+    amount_max: str = "",
+    amount_basis: str = "units",
+    plugin_dirs: str = "",
+    allow_bridge: bool = True,
+) -> str:
+    """The ledger as Fava shows it through a time period, a filter and an amount range.
+
+    Fava's own classes do the work, in Fava's order: the advanced filter (and the amount range, on the units
+    basis), then the time filter, which carries earlier history into opening balances as Fava does. The
+    balances are worked out by the same code `inspect` uses, over the entries that are left.
+
+    Answers {"ok": true, ...} with the kept transactions as positions in the whole ledger's transactions
+    (oldest first, as `matching_transactions` counts), the rows Fava makes up for a period (opening balances,
+    which have no file or line), every account's balances and the latest rates; or {"ok": false, "field",
+    "message"}, naming the input that cannot be used and saying why in Fava's words where Fava has them.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    from beancount.core import data
+    from beancount.core import prices as prices_lib
+    from fava.core.fava_options import parse_options
+    from fava.core.filters import AdvancedFilter, FilterError, TimeFilter
+
+    if amount_basis not in ("units", "cost", "market"):
+        return _refused("amount", f'"{amount_basis}" is not a basis: use units, cost or market.')
+    bounds = []
+    for text in (amount_min, amount_max):
+        text = text.strip()
+        try:
+            number = Decimal(text) if text else None
+        except InvalidOperation:
+            return _refused("amount", f'"{text}" is not a number.')
+        if number is not None and (not number.is_finite() or number < 0):
+            return _refused("amount", f'"{text}" is not an amount: use a positive number.')
+        bounds.append(number)
+    low, high = bounds
+    if low is not None and high is not None and low > high:
+        return _refused("amount", "The minimum is more than the maximum.")
+
+    user = fava_filter.strip()
+    try:
+        if user:
+            AdvancedFilter(user)
+        # The user's filter is one term, so a comma in it stays inside its parentheses; on the units basis
+        # the range joins it with AND, as two more terms of the same filter.
+        terms = ([f"({user})"] if user else []) + (
+            [f">={format(n, 'f')}" for n in (low,) if n is not None]
+            + [f"<={format(n, 'f')}" for n in (high,) if n is not None]
+            if amount_basis == "units"
+            else []
+        )
+        advanced = AdvancedFilter(" ".join(terms)) if terms else None
+    except FilterError as error:
+        return _refused("filter", str(error))
+
+    entries, _errors, options_map, _failure, load_ms, cached = _load_for_filter(
+        ledger_path, plugin_dirs, allow_bridge,
+    )
+    started = time_module.monotonic()
+    time_text = time.strip()
+    time_filter = None
+    if time_text:
+        custom = [e for e in entries if isinstance(e, data.Custom) and e.type == "fava-option"]
+        fava_options, _ = parse_options(custom)
+        try:
+            time_filter = TimeFilter(options_map, fava_options, time_text)
+        except FilterError as error:
+            return _refused("time", str(error))
+        except (ValueError, OverflowError):
+            # Fava lets an impossible date such as 2020-02-30 escape as an exception; here it is a message.
+            return _refused("time", f"Failed to parse date: {time_text}")
+    end = time_filter.date_range.end_inclusive if time_filter else None
+    as_of = end or max((entry.date for entry in entries), default=None)
+
+    with _FILTER_LOCK:
+        working = list(entries)
+        if advanced is not None:
+            working = list(advanced.apply(working))
+        if amount_basis != "units" and (low is not None or high is not None):
+            price_map = prices_lib.build_price_map(_with_posting_prices(entries, options_map))
+            operating = (options_map.get("operating_currency") or [None])[0]
+            matcher = _amount_matcher(amount_basis, low, high, price_map, operating, as_of)
+            working = [entry for entry in working if matcher(entry)]
+        if time_filter is not None:
+            working = list(time_filter.apply(working))
+    filter_ms = (time_module.monotonic() - started) * 1000
+
+    index = {
+        id(entry): position
+        for position, entry in enumerate(e for e in entries if isinstance(e, data.Transaction))
+    }
+    positions, made_up = [], []
+    for entry in working:
+        if isinstance(entry, data.Transaction):
+            position = index.get(id(entry))
+            if position is None:
+                made_up.append(_journal_row(entry))
+            else:
+                positions.append(position)
+    _accounts, rows, rates = _account_rows(working, entries, options_map, as_of)
+    return json.dumps(
+        {
+            "ok": True,
+            "positions": sorted(positions),
+            "summary_rows": made_up,
+            "transaction_count": len(index),
+            "input_hash": _content_hash(options_map.get("include", [])),
+            "begin": str(time_filter.date_range.begin) if time_filter else None,
+            "end": str(end) if end else None,
+            "accounts": rows,
+            "rates": rates,
+            "cached": cached,
+            "load_ms": 0.0 if cached else round(load_ms, 1),
+            "filter_ms": round(filter_ms, 1),
+        },
+        ensure_ascii=False,
     )
