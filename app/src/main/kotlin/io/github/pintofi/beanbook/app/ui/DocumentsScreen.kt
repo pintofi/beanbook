@@ -258,6 +258,7 @@ fun DocumentsScreen(
                 suggestions = vocabulary.accounts,
                 modifier = Modifier.fillMaxWidth(),
             )
+            accountProblem(account, vocabulary.accounts)?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
             OutlinedTextField(
                 value = label,
@@ -278,7 +279,7 @@ fun DocumentsScreen(
 
             Button(
                 onClick = { onSave(account.trim(), label.trim().ifBlank { null }) },
-                enabled = account.isNotBlank(),
+                enabled = account.isNotBlank() && BeancountText.ACCOUNT.matches(account.trim()),
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(if (capture.pages.isEmpty) "File under this account" else "Save as PDF and file") }
 
@@ -528,6 +529,8 @@ fun DocumentsScreen(
                         suggestions = vocabulary.accounts,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    accountProblem(target, vocabulary.accounts)
+                        ?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             },
             confirmButton = {
@@ -701,5 +704,18 @@ internal fun DocumentTrashSection(trash: DocumentTrash) {
             },
             dismissButton = { OutlinedButton(onClick = { confirmEmpty = false }) { Text("Keep them") } },
         )
+    }
+}
+
+/** What is wrong with an account typed to file a document under, or null when it is fine or empty. */
+internal fun accountProblem(typed: String, open: List<String>): String? {
+    val account = typed.trim()
+    return when {
+        account.isEmpty() -> null
+        !BeancountText.ACCOUNT.matches(account) ->
+            "\"$account\" is not a valid account name; accounts look like Expenses:Food"
+        account !in open ->
+            "\"$account\" is not an account in this ledger yet. Open it first, or pick one from the list."
+        else -> null
     }
 }

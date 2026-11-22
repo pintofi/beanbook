@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Accounts with non-ASCII letters, such as `Expenses:Lebensmittel:Käse`, can be used in the entry form and elsewhere, as in Beancount and Fava. ([#446])
+
 ## [1.0.5] - 2026-11-16
 
 ### Added
@@ -390,3 +393,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#434]: https://github.com/pintofi/beanbook/issues/434
 [#436]: https://github.com/pintofi/beanbook/issues/436
 [#438]: https://github.com/pintofi/beanbook/issues/438
+[#446]: https://github.com/pintofi/beanbook/issues/446

@@ -843,7 +843,9 @@ fun QuickAddScreen(
         // What the write did, arriving beside the button that did it.
         message = saveState,
         problemActions = {
+            // Only a name the app would write: the reader takes more than Beancount's account rule does.
             val unopened = problems.filterIsInstance<DraftProblem.UnknownAccount>().map { it.account }.distinct()
+                .filter { io.github.pintofi.beanbook.core.domain.AccountName.problems(it, names).isEmpty() }
             if (onOpenAccount != null && dirty) {
                 unopened.forEach { account ->
                     androidx.compose.material3.OutlinedButton(

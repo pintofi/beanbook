@@ -243,12 +243,17 @@ sealed interface DirectiveDraft {
     ) : DirectiveDraft {
         override val label get() = "Custom"
 
+        // The reader accepts any non-ASCII text as an account, so a value like "Größe:XL" would be
+        // written bare and read back as a bad account. Beancount's own rule decides what is bare.
+        private fun isAccountValue(value: String) =
+            value.all { it.code < 128 } || AccountName.problems(value).isEmpty()
+
         override fun render(currencyColumn: Int): String = buildString {
             append(date).append(" custom ").append(BeancountText.quote(type))
             values.filter { it.isNotBlank() }.forEach { value ->
                 // Accounts, numbers, dates and currencies are bare; anything else is a
                 // string. Quoting an account would change its meaning.
-                val bare = BeancountText.ACCOUNT.matches(value) ||
+                val bare = (BeancountText.ACCOUNT.matches(value) && isAccountValue(value)) ||
                     BeancountText.DATE.matches(value) ||
                     value.toBigDecimalOrNull() != null ||
                     BeancountText.CURRENCY.matches(value)

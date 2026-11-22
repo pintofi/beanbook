@@ -49,6 +49,8 @@ import io.github.pintofi.beanbook.app.ui.NumberField
 import io.github.pintofi.beanbook.app.ui.StatusLine
 import io.github.pintofi.beanbook.app.ui.SquircleCheckbox
 import io.github.pintofi.beanbook.app.ui.SuggestingField
+import io.github.pintofi.beanbook.app.ui.parseTypedAmount
+import io.github.pintofi.beanbook.app.ui.unreadableAmountMessage
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.app.ui.theme.ThemeChoice
 import io.github.pintofi.beanbook.core.domain.AccountName
@@ -65,6 +67,10 @@ private val currencyCodes: List<String> by lazy {
         .mapNotNull { runCatching { Currency.getInstance(it)?.currencyCode }.getOrNull() }
         .distinct().sorted()
 }
+
+private const val CURRENCY_RULE =
+    "\"%s\" is not a currency code Beancount accepts. Capitals first, then capitals, digits and ' . _ -, " +
+        "ending in a letter or digit, at most 24 characters."
 
 private val PAGES = listOf(
     null to "Fava's own default",
@@ -97,12 +103,16 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
                     label = "Main currency",
                     suggestions = currencyCodes,
                 )
+                val mainBad = draft.mainCurrency.isNotBlank() && !CommodityName.isValid(draft.mainCurrency.trim())
                 Hint(
-                    if (named != null) {
+                    if (mainBad) {
+                        CURRENCY_RULE.format(draft.mainCurrency.trim())
+                    } else if (named != null) {
                         "${named.getDisplayName(locale)}. Every account counts in this unless you say otherwise."
                     } else {
                         "A currency code such as EUR, USD or JPY. Letters and digits, starting with a capital."
                     },
+                    isError = mainBad,
                 )
             }
         }
@@ -114,7 +124,15 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
                     label = "Other currencies",
                     suggestions = currencyCodes - draft.currencies.toSet(),
                 )
-                Hint("Only if you hold or spend in more than one currency. You can add more later.")
+                val extraBad = extra.isNotBlank() && !CommodityName.isValid(extra.trim())
+                Hint(
+                    if (extraBad) {
+                        CURRENCY_RULE.format(extra.trim())
+                    } else {
+                        "Only if you hold or spend in more than one currency. You can add more later."
+                    },
+                    isError = extraBad,
+                )
                 OutlinedButton(
                     onClick = {
                         val code = extra.trim()
@@ -224,7 +242,14 @@ internal fun BasicsStep(draft: SetupDraft, update: Update) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Hint("Leave empty for 31 December.")
+                Hint(
+                    if (draft.fiscalYearEndReadable) {
+                        "Leave empty for 31 December."
+                    } else {
+                        "\"${draft.fiscalYearEnd}\" is not a month and day. Write it as MM-DD, like 06-30 or 03-31."
+                    },
+                    isError = !draft.fiscalYearEndReadable,
+                )
             }
         }
     }
@@ -406,7 +431,7 @@ private fun AddAccount(draft: SetupDraft, update: Update) {
     val full = "$root:$tidy"
     val problems = if (typed.isBlank()) emptyList()
     else AccountName.problems(full, existing = draft.accounts.map { it.name }).map { it.describe() }
-    if (typed.isNotBlank()) Hint(problems.firstOrNull() ?: "Will be added as $full")
+    if (typed.isNotBlank()) Hint(problems.firstOrNull() ?: "Will be added as $full", isError = problems.isNotEmpty())
     OutlinedButton(
         onClick = {
             update { it.copy(accounts = it.accounts + AccountChoice(full, on = true, user = true)) }
@@ -432,12 +457,16 @@ internal fun GetSetStep(
         item {
             FolioBody {
                 balanceable.forEach { choice ->
+                    val typed = draft.opening[choice.name].orEmpty()
                     AmountField(
-                        value = draft.opening[choice.name].orEmpty(),
+                        value = typed,
                         onValueChange = { v -> update { it.copy(opening = it.opening + (choice.name to v)) } },
                         label = choice.name,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (typed.isNotBlank() && parseTypedAmount(typed) == null) {
+                        Hint(unreadableAmountMessage(typed), isError = true)
+                    }
                 }
             }
         }
