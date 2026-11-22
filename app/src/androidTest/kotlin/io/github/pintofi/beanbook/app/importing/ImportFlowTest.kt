@@ -107,8 +107,10 @@ class ImportFlowTest {
 
         compose.onNodeWithText("Import hmw?").assertIsDisplayed()
         compose.onNodeWithText("a.bean").assertIsDisplayed()
-        compose.onNodeWithText("hmw  (your Beancount file)").assertIsDisplayed()
-        compose.onNodeWithText("Not reachable").assertIsDisplayed()
+        // The main file is named, with a "Your file" mark beside it (it was a suffix on the name before #424).
+        compose.onNodeWithText("hmw").assertIsDisplayed()
+        compose.onNodeWithText("Your file").assertIsDisplayed()
+        compose.onNodeWithText("Not reachable", substring = true).assertIsDisplayed()
         assertEquals(emptyList<String>(), clicked)
 
         compose.onNodeWithContentDescription("Import these files").performClick()
