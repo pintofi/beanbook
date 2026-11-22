@@ -614,11 +614,18 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
          */
         private val EXCLUDED_DIRECTORIES = setOf(".journal", ".snapshots", ".drafts", ".cache")
         private val EXCLUDED_NAMES = setOf("mirror-state")
+        private val DEVICE_PLUGIN_STATE = setOf("loading.marker", "safe-mode")
 
         fun isExcluded(relativePath: String): Boolean {
             val segments = relativePath.split('/')
             if (segments.any { it in EXCLUDED_DIRECTORIES }) return true
             if (segments.last() in EXCLUDED_NAMES) return true
+            // The plugin safe-mode flag and crash marker describe the device they were made on.
+            if (segments.size >= 2 && segments[segments.size - 2] == "plugins" &&
+                segments.last() in DEVICE_PLUGIN_STATE
+            ) {
+                return true
+            }
             // Beancount's load cache: rebuilt on every load, so mirroring or backing it up
             // produced a new conflict every time and restored nothing worth having.
             if (segments.last().endsWith(".picklecache")) return true

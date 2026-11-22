@@ -134,6 +134,9 @@ class ProjectRegistry(
                 record.delete()
             }
         }
+        // Its entry templates go with it. Left where they were they outlived the project, and a new project
+        // that took the same id started with somebody else's templates.
+        moveFile(workspace.templatesDir.resolve("$projectId.templates"), templatesBeside(target))
         // Deleting the project that is open leaves another one open, the most recently changed, when
         // there is one: the person is not sent to the first-run screen with projects still there.
         // Deleting any other project leaves the open one alone.
@@ -167,6 +170,11 @@ class ProjectRegistry(
                 record.delete()
             }
         }
+        // The templates follow it too, under whatever id it comes back as.
+        val templates = templatesBeside(trashed)
+        if (templates.isFile && !workspace.templatesDir.resolve("$projectId.templates").exists()) {
+            moveFile(templates, workspace.templatesDir.resolve("$projectId.templates"))
+        }
         return projectId
     }
 
@@ -191,13 +199,28 @@ class ProjectRegistry(
     fun deleteFromTrash(folderName: String): Boolean {
         val folder = trashFolder(folderName)
         rootBeside(folder).delete()
+        templatesBeside(folder).delete()
         return folder.deleteRecursively()
     }
 
     /** Deletes everything in the trash for good. Returns how many projects went. */
     fun emptyTrash(): Int = trashed().count {
         rootBeside(it).delete()
+        templatesBeside(it).delete()
         it.deleteRecursively()
+    }
+
+    /** A trashed project's entry templates: `<folder>.templates`, a file beside the trashed folder. */
+    private fun templatesBeside(folder: File) = File(folder.parentFile, folder.name + ".templates")
+
+    /** Moves [from] to [to] when it exists, copying if a rename is not possible. */
+    private fun moveFile(from: File, to: File) {
+        if (!from.isFile) return
+        to.parentFile?.mkdirs()
+        if (!from.renameTo(to)) {
+            from.copyTo(to, overwrite = true)
+            from.delete()
+        }
     }
 
     /** The record of a trashed project's main file: `<folder>.root`, a file beside the trashed folder. */

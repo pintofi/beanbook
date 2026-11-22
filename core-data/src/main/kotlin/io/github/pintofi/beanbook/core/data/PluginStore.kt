@@ -274,6 +274,14 @@ class PluginStore(private val projectRoot: File, private val keepRoot: File? = n
         write(indexForChange().map { if (it.id == id) it.copy(enabled = enabled) else it })
     }
 
+    /** Turns every plugin off in one write. Returns the ones that were on. */
+    fun turnAllOff(): List<InstalledPlugin> {
+        val all = indexForChange()
+        val wasOn = all.filter { it.enabled }
+        if (wasOn.isNotEmpty()) write(all.map { it.copy(enabled = false) })
+        return wasOn
+    }
+
     fun remove(id: String) {
         val remaining = indexForChange().filterNot { it.id == id }
         File(pluginsDir, id).deleteRecursively()

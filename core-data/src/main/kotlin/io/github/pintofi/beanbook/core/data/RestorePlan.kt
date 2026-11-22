@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.core.data
 
+import io.github.pintofi.beanbook.core.domain.PluginPolicy
 import java.io.File
 import java.time.Duration
 import java.time.Instant
@@ -45,7 +46,12 @@ sealed interface RestoreStaged {
 
 /** The outcome of restoring a backup as a project of its own. */
 sealed interface RestoredNew {
-    data class Restored(val projectId: String, val manifest: BackupManifest) : RestoredNew
+    data class Restored(
+        val projectId: String,
+        val manifest: BackupManifest,
+        /** The plugins that came with it, all turned off. */
+        val plugins: RestoredPlugins.Held = RestoredPlugins.Held(emptyList(), emptyList()),
+    ) : RestoredNew
 
     data class Refused(val problems: List<ArchiveProblem>) : RestoredNew
 }
@@ -57,7 +63,16 @@ sealed interface RestoredNew {
  * renames, and the project that was there is *kept* as a rollback point rather than deleted.
  * Nothing overwrites the only good copy, ever.
  */
-class RestorePlan(private val workspace: ProjectWorkspace) {
+class RestorePlan(
+    private val workspace: ProjectWorkspace,
+    /** The edition's rules for plugins, so a restored plugin it does not allow is said so. */
+    private val pluginPolicy: PluginPolicy? = null,
+) {
+
+    /** What the last [activate] did about plugins that came with the project. */
+    var lastHeld: RestoredPlugins.Held = RestoredPlugins.Held(emptyList(), emptyList())
+        private set
+
 
     private val archives = BackupArchive(workspace)
 
@@ -106,7 +121,7 @@ class RestorePlan(private val workspace: ProjectWorkspace) {
             is RestoreStaged.Refused -> RestoredNew.Refused(staged.problems)
             is RestoreStaged.Ready -> {
                 activate(id, staged.staging, manifest = manifest)
-                RestoredNew.Restored(id, manifest)
+                RestoredNew.Restored(id, manifest, lastHeld)
             }
         }
     }
@@ -150,6 +165,8 @@ class RestorePlan(private val workspace: ProjectWorkspace) {
         manifest: BackupManifest? = null,
     ): File {
         require(staging.isDirectory) { "nothing staged to activate" }
+        // Before anything is moved: no plugin arrives turned on, and a failure here changes nothing.
+        lastHeld = RestoredPlugins.hold(staging, pluginPolicy)
         val live = workspace.projectDir(projectId)
         val keptAside = workspace.projectsDir.resolve(
             "$projectId$PREVIOUS_SUFFIX${now.toEpochMilli()}",
