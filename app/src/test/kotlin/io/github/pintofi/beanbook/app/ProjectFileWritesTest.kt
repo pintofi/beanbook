@@ -36,7 +36,7 @@ class ProjectFileWritesTest {
         "core/data/HeldWrites.kt" to 5, // writes held for the person's decision, outside the project
         "core/data/ImportExport.kt" to 9, // import (the person's choice) and export copies
         "core/data/MirrorPlan.kt" to 5, // planning; applied through the writer
-        "core/data/ProjectRegistry.kt" to 18, // trash, restore and rename of whole projects
+        "core/data/ProjectRegistry.kt" to 23, // trash, restore and rename of whole projects, and their templates
         "core/data/ProjectWorkspace.kt" to 15, // creating a new ledger the person asked for
         "core/data/ProjectWriter.kt" to 4, // the write protocol itself
         "core/data/RestorePlan.kt" to 6, // restore, which the person confirms after a preview
