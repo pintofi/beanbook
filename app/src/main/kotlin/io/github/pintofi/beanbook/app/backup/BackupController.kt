@@ -41,9 +41,11 @@ class BackupController(
     private val appVersion: String,
     /** Engine versions for the manifest; empty when the engine is not running. */
     private val engineVersions: suspend () -> Map<String, String> = { emptyMap() },
+    /** The edition's plugin rules; a restored plugin is always turned off, and one this refuses is said so. */
+    pluginPolicy: io.github.pintofi.beanbook.core.domain.PluginPolicy? = null,
 ) {
     private val archives = BackupArchive(workspace)
-    private val restores = RestorePlan(workspace)
+    private val restores = RestorePlan(workspace, pluginPolicy)
     private val derivation = Argon2idKeyDerivation()
 
     /** Set when a restore stopped because the archive is encrypted and needs a passphrase. */
@@ -241,7 +243,8 @@ class BackupController(
             }
             _message.value = result.fold(
                 onSuccess = { kept ->
-                    "Restored. Your previous project is kept as ${kept.name} until you remove it."
+                    "Restored. Your previous project is kept as ${kept.name} until you remove it." +
+                        (restores.lastHeld.describe()?.let { " $it" } ?: "")
                 },
                 onFailure = { "Restore failed: ${it.message}. Your project is unchanged." },
             )

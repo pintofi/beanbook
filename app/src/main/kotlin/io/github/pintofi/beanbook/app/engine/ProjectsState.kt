@@ -35,6 +35,8 @@ class ProjectsState(
     private val scope: CoroutineScope,
     /** Reads a staged new ledger with Beancount before it is put in place; null where there is no engine. */
     private val validator: io.github.pintofi.beanbook.core.data.LedgerValidator? = null,
+    /** The edition's plugin rules; a restored plugin is always turned off, and one this refuses is said so. */
+    pluginPolicy: io.github.pintofi.beanbook.core.domain.PluginPolicy? = null,
 ) {
     private val _projects = MutableStateFlow<List<ProjectSummary>>(emptyList())
     val projects: StateFlow<List<ProjectSummary>> = _projects.asStateFlow()
@@ -53,7 +55,7 @@ class ProjectsState(
     /** Only one import at a time: a second one started on top of the first picked the same id. */
     private val importing = java.util.concurrent.atomic.AtomicBoolean(false)
 
-    private val restores = io.github.pintofi.beanbook.core.data.RestorePlan(workspace)
+    private val restores = io.github.pintofi.beanbook.core.data.RestorePlan(workspace, pluginPolicy)
     private val derivation = io.github.pintofi.beanbook.app.backup.Argon2idKeyDerivation()
 
     /** A backup chosen to be restored as a new project, kept while its passphrase is asked for. */
@@ -178,7 +180,8 @@ class ProjectsState(
                                 if (!firstRun) open(result.projectId)
                                 onOpened(result.projectId)
                                 _message.value = "Restored ${result.manifest.files.size} file(s) as " +
-                                    "${result.manifest.projectTitle}."
+                                    "${result.manifest.projectTitle}." +
+                                    (result.plugins.describe()?.let { " $it" } ?: "")
                             }
                             is io.github.pintofi.beanbook.core.data.RestoredNew.Refused -> {
                                 val asks = result.problems.any {
