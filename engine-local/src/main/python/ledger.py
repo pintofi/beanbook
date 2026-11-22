@@ -690,6 +690,51 @@ def digest(ledger_path: str) -> str:
 
 _FILTER_LOCK = threading.Lock()
 
+# The entries of the last ledger a filter was applied to, so the next filter on the same ledger
+# does not load it again (a load is most of what a filter costs). One ledger at a time: it holds
+# tens of megabytes on a large one. See `_load_for_filter` for when it may be used.
+_ENTRY_CACHE = None
+_ENTRY_CACHE_LOCK = threading.Lock()
+# A file changed this recently when a load started may have changed while it was read, so what was
+# loaded is not kept. Larger than the coarsest timestamps a phone's filesystems give.
+_RACY_NS = 2_000_000_000
+
+
+def drop_entry_cache() -> None:
+    """Forget the cached entries. Called when the system asks for memory, and on a new ledger."""
+    global _ENTRY_CACHE
+    with _ENTRY_CACHE_LOCK:
+        _ENTRY_CACHE = None
+
+
+def _load_for_filter(ledger_path: str, plugin_dirs: str, allow_bridge: bool):
+    """`_load`, from the cache when the ledger's files have not changed since it was filled.
+
+    Same result as `_load` (entries, errors, options_map, plugin_failure, load_ms) plus whether it
+    came from the cache. A hit is checked against the files' content, not their times, so a file that
+    was only touched still hits and one that was edited never does. A load is kept only when every
+    file it read was already old when the load began, so an edit made during the load cannot leave
+    old entries stored under the new content.
+    """
+    global _ENTRY_CACHE
+    key = (ledger_path, plugin_dirs, bool(allow_bridge))
+    with _ENTRY_CACHE_LOCK:
+        cached = _ENTRY_CACHE
+    if cached is not None and cached["key"] == key and _content_hash(cached["files"]) == cached["hash"]:
+        return cached["loaded"] + (True,)
+    started_ns = time.time_ns()
+    loaded = _load(ledger_path, plugin_dirs, allow_bridge)
+    files = [str(f) for f in loaded[2].get("include", [])] or [ledger_path]
+    try:
+        settled = all(Path(f).stat().st_mtime_ns < started_ns - _RACY_NS for f in files)
+    except OSError:
+        settled = False
+    with _ENTRY_CACHE_LOCK:
+        _ENTRY_CACHE = (
+            {"key": key, "files": files, "hash": _content_hash(files), "loaded": loaded} if settled else None
+        )
+    return loaded + (False,)
+
 
 def matching_transactions(
     ledger_path: str,
@@ -724,7 +769,9 @@ def matching_transactions(
     except FilterError as error:
         return json.dumps({"ok": False, "filter_error": str(error)}, ensure_ascii=False)
 
-    entries, _errors, options_map, _plugin_failure, load_ms = _load(ledger_path, plugin_dirs, allow_bridge)
+    entries, _errors, options_map, _plugin_failure, load_ms, cached = _load_for_filter(
+        ledger_path, plugin_dirs, allow_bridge,
+    )
     cut = _date_cut(entries, date_from, date_to)
     started = time.monotonic()
     try:
@@ -741,7 +788,8 @@ def matching_transactions(
             "positions": [i for i, entry in enumerate(transactions) if id(entry) in kept],
             "transaction_count": len(transactions),
             "input_hash": _content_hash(options_map.get("include", [])),
-            "load_ms": round(load_ms, 1),
+            "load_ms": 0.0 if cached else round(load_ms, 1),
+            "cached": cached,
             "filter_ms": round((time.monotonic() - started) * 1000, 1),
         }
     )

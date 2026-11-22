@@ -11,6 +11,7 @@ Fava's web pages use, and check that the positions line up with the journal `ins
 """
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -140,6 +141,69 @@ class MatchingTransactionsTest(unittest.TestCase):
         answer = json.loads(ledger.matching_transactions(self.path, "#trip", **window))
         self.assertEqual(answer["positions"], [])
         self.assertEqual(answer["transaction_count"], 2)
+
+
+class EntryCacheTest(unittest.TestCase):
+    """A second filter on the same ledger reuses the loaded entries, and only when that is safe."""
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.addCleanup(ledger.drop_entry_cache)
+        ledger.drop_entry_cache()
+        self.path = str(Path(self.dir.name) / "main.beancount")
+        Path(self.path).write_text(LEDGER, encoding="utf-8")
+        self.age(self.path)
+
+    @staticmethod
+    def age(path):
+        # Old enough that the load is not treated as racing an edit.
+        os.utime(path, (1_000_000_000, 1_000_000_000))
+
+    def ask(self, expression="#trip", **kwargs):
+        return json.loads(ledger.matching_transactions(self.path, expression, **kwargs))
+
+    def test_the_second_filter_on_an_unchanged_ledger_does_not_load_again(self):
+        first = self.ask("#trip")
+        second = self.ask("-#trip")
+        self.assertFalse(first["cached"])
+        self.assertTrue(second["cached"])
+        self.assertEqual(second["load_ms"], 0.0)
+        self.assertEqual(second["positions"], self.ask("-#trip")["positions"])
+        self.assertEqual(second["input_hash"], first["input_hash"])
+
+    def test_an_edit_is_never_answered_from_the_old_entries(self):
+        self.ask()
+        added = '\n2026-04-01 * "New" "added later" #trip\n  Expenses:Food 1.00 USD\n  Assets:Cash\n'
+        Path(self.path).write_text(LEDGER + added)
+        self.age(self.path)
+        again = self.ask()
+        self.assertFalse(again["cached"])
+        self.assertEqual(again["transaction_count"], 6)
+
+    def test_a_file_that_was_only_touched_still_hits(self):
+        self.ask()
+        os.utime(self.path, (1_100_000_000, 1_100_000_000))
+        self.assertTrue(self.ask()["cached"])
+
+    def test_a_load_that_may_have_raced_an_edit_is_not_kept(self):
+        Path(self.path).touch()  # modified just now, inside the window
+        self.ask()
+        self.assertFalse(self.ask()["cached"])
+
+    def test_another_plugin_set_or_ledger_is_a_different_entry(self):
+        self.ask()
+        self.assertFalse(self.ask(plugin_dirs=self.dir.name)["cached"])
+        other = Path(self.dir.name) / "other.beancount"
+        other.write_text(LEDGER, encoding="utf-8")
+        self.age(str(other))
+        self.assertFalse(json.loads(ledger.matching_transactions(str(other), "#trip"))["cached"])
+        self.assertFalse(self.ask()["cached"])  # one ledger at a time: the first was replaced
+
+    def test_dropping_the_cache_makes_the_next_filter_load(self):
+        self.ask()
+        ledger.drop_entry_cache()
+        self.assertFalse(self.ask()["cached"])
 
 
 if __name__ == "__main__":

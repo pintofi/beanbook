@@ -35,6 +35,15 @@ class EngineService : Service() {
 
     override fun onBind(intent: Intent?): IBinder = binder
 
+    // A filter keeps the loaded ledger in memory so the next one is quick. Give it back when the
+    // system is short of memory; the next filter loads again, which is only slower.
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_RUNNING_LOW) {
+            runCatching { python().getModule("ledger").callAttr("drop_entry_cache") }
+        }
+    }
+
     private val binder = object : IEngineService.Stub() {
 
         override fun startEngine(
