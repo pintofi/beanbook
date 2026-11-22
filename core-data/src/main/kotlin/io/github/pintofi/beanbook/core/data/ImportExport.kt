@@ -367,6 +367,8 @@ class ProjectExporter(private val workspace: ProjectWorkspace) {
         var count = 0
         projectDir.walkTopDown().filter { it.isFile }.forEach { file ->
             val relative = file.relativeTo(projectDir).path.replace(File.separatorChar, '/')
+            // The same runtime files a backup leaves out: load caches, temporary files, a crash marker.
+            if (BackupArchive.isExcluded(relative)) return@forEach
             target.openOutput(relative).use { output -> file.inputStream().use { it.copyTo(output) } }
             count++
         }

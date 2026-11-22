@@ -206,6 +206,7 @@ class BeancountApplication : Application() {
             scope = appScope,
             appVersion = appVersion,
             engineVersions = { engine.versions() },
+            pluginPolicy = pluginPolicy,
         )
     }
 
@@ -322,6 +323,7 @@ class BeancountApplication : Application() {
         ProjectsState(
             workspace, registry, ProjectImporter(workspace), appScope,
             validator = BeancountValidator(this, connection = engineConnection),
+            pluginPolicy = pluginPolicy,
         )
     }
 

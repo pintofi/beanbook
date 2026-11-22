@@ -347,7 +347,7 @@ private fun OpenAccountForm(
     val full = "$root:${AccountName.normalise(typed)}"
     val problems = if (typed.isBlank()) emptyList()
     else AccountName.problems(full, names, existing).map { it.describe(names) }
-    if (typed.isNotBlank()) Hint(problems.firstOrNull() ?: "Will be opened as $full")
+    if (typed.isNotBlank()) Hint(problems.firstOrNull() ?: "Will be opened as $full", isError = problems.isNotEmpty())
     OutlinedTextField(
         value = currencies,
         onValueChange = { currencies = it },
@@ -368,7 +368,7 @@ private fun OpenAccountForm(
         metadata = rows.filter { it.first.isNotBlank() }.associate { it.first.trim() to it.second },
     )
     val invalid = draft.validate().map { it.describe() }
-    if (typed.isNotBlank() && problems.isEmpty() && invalid.isNotEmpty()) Hint(invalid.first())
+    if (typed.isNotBlank() && problems.isEmpty() && invalid.isNotEmpty()) Hint(invalid.first(), isError = true)
     Button(
         onClick = {
             onSave(draft)

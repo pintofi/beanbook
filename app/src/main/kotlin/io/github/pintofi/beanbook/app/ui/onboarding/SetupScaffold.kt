@@ -138,11 +138,11 @@ internal fun StepRules(step: Int) {
 
 /** An explanation under a field, in the quiet colour, flush with the field's own text. */
 @Composable
-internal fun Hint(text: String, modifier: Modifier = Modifier) {
+internal fun Hint(text: String, modifier: Modifier = Modifier, isError: Boolean = false) {
     Text(
         text,
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.padding(start = 16.dp),
     )
 }

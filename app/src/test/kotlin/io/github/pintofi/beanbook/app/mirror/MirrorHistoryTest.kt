@@ -48,4 +48,27 @@ class MirrorHistoryTest {
 
         assertEquals(1, history.entries.value.size)
     }
+
+    @Test
+    fun `a file sent again is listed again, newest first`() {
+        val history = MirrorHistory(createTempDirectory("hist").toFile())
+        history.use("a")
+
+        history.record(listOf(entry(1, "files/transactions.beancount")))
+        history.record(listOf(entry(2, "files/transactions.beancount")))
+
+        assertEquals(listOf(2L, 1L), history.entries.value.map { it.atEpochMs })
+    }
+
+    @Test
+    fun `a conflict that stays is listed once`() {
+        val history = MirrorHistory(createTempDirectory("hist").toFile())
+        history.use("a")
+        val kept = MirrorHistoryEntry(1, MirrorHistoryEntry.Kind.CONFLICT, "prices/SAR.beancount")
+
+        history.record(listOf(kept))
+        history.record(listOf(kept.copy(atEpochMs = 2)))
+
+        assertEquals(1, history.entries.value.size)
+    }
 }
