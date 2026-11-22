@@ -161,16 +161,13 @@ internal suspend fun MainActivity.documentsLedger(
     val target = File(app.workspace.projectDir(projectId), "files/documents.beancount")
     val include = target.relativeTo(main.parentFile ?: target.parentFile).path.replace(File.separatorChar, '/')
     val needsInclude = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        if (!target.isFile) {
-            target.parentFile?.mkdirs()
-            target.writeText("; Documents filed under an account, written by Beanbook.\n")
-        }
         !Regex("""(?m)^\s*include\s+"${Regex.escape(include)}"""").containsMatchIn(main.readText())
     }
     if (needsInclude) {
         // Never silently: this changes which files the ledger is made of, so it is shown
         // and approved before it happens. Filing continues on the next attempt, after the line
-        // is in place.
+        // is in place. A new file is part of that change and is created only on approval.
+        val creating = !target.isFile
         val line = "include \"$include\""
         // Said where the save was tapped as well, so a form waiting on this is not left
         // showing "Saving…" behind the dialog.
@@ -185,9 +182,16 @@ internal suspend fun MainActivity.documentsLedger(
             line = line,
             why = "Documents filed under an account are written to $include. Your ledger does " +
                 "not include that file yet, so nothing would read them. Beanbook can add this " +
-                "line at the end of ${main.name}; you can also add it yourself.",
+                "line at the end of ${main.name}" +
+                (if (creating) ", and create $include with one comment line: $DOCUMENTS_FILE_HEADER" else "") +
+                "; you can also add it yourself.",
             apply = {
                 lifecycleScope.launch {
+                    if (creating) {
+                        app.writer.append(
+                            projectId, target, "$DOCUMENTS_FILE_HEADER\n", operation = "create-documents-file",
+                        )
+                    }
                     val result = app.writer.append(projectId, main, "$line\n", operation = "include-documents")
                     val added = result is io.github.pintofi.beanbook.core.data.WriteResult.Committed
                     saveMessage = if (added) {
@@ -205,6 +209,9 @@ internal suspend fun MainActivity.documentsLedger(
     }
     return target
 }
+
+/** What a freshly created documents file starts with. */
+internal const val DOCUMENTS_FILE_HEADER = "; Documents filed under an account, written by Beanbook."
 
 /** [projectPath] as a `document` directive in [ledger] names it. */
 internal fun documentPathIn(ledger: File, projectDir: File, projectPath: String): String =
