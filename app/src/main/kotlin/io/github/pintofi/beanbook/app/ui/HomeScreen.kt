@@ -110,9 +110,6 @@ fun HomeScreen(
     /** Opens Balances, where a headline's left-out commodities are listed in full. */
     onOpenBalances: () -> Unit = {},
     /** The period the figures cover, as Fava's time filter expresses it, and how to change it. */
-    dateFrom: String = "",
-    dateTo: String = "",
-    onDateRange: (String, String) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val store = remember(context) { HomePreferences(context) }
@@ -166,7 +163,7 @@ fun HomeScreen(
             // The same search, filters and period as the Journal and Balances. Home shows what they
             // match too, so a figure here is never from a different slice of the books than the one
             // the other two screens are looking at.
-            EntryFilterBar(ledger, dateFrom, dateTo, onDateRange, inset = 0.dp)
+            EntryFilterBar(ledger, inset = 0.dp)
             if (ledger == null) {
                 EmptyState(
                     title = "No ledger open",

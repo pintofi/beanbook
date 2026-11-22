@@ -129,9 +129,6 @@ internal fun SurfaceContent(
     pluginMessage: String?,
     packages: io.github.pintofi.beanbook.app.packages.PackagesUi,
     /** The period Balances is showing, and the way to change it. */
-    dateFrom: String,
-    dateTo: String,
-    onDateRange: (String, String) -> Unit,
     onInstallPlugin: () -> Unit,
     scriptRunning: String?,
     scriptOutcome: io.github.pintofi.beanbook.app.plugins.ScriptOutcome?,
@@ -205,7 +202,7 @@ internal fun SurfaceContent(
     val filter = filterState.filter
     // Fava's own filter runs in the engine; it is asked again whenever the ledger or the expression
     // changes, and a stale answer is refused by `filteredBy` rather than shown.
-    androidx.compose.runtime.LaunchedEffect(ledger, filter.expression) { filterState.resolve() }
+    androidx.compose.runtime.LaunchedEffect(ledger, filter.view) { filterState.resolve() }
     val answer = filterState.answer
     val shown = remember(ledger, filter, answer) { ledger?.filteredBy(filter, answer) }
     // The tags and links the ledger has, whatever is filtered, so the filter sheet can offer them.
@@ -256,9 +253,6 @@ internal fun SurfaceContent(
                         onSelectSurface(Surface.MORE)
                         onMoreSection(MoreSection.MIRROR)
                     },
-                    dateFrom = dateFrom,
-                    dateTo = dateTo,
-                    onDateRange = onDateRange,
                 )
             }
 
@@ -572,9 +566,6 @@ internal fun SurfaceContent(
                                 Modifier.padding(padding),
                                 onOpenEntry = { openEntry = it },
                                 onDeleteEntries = onDeleteEntries,
-                                dateFrom = dateFrom,
-                                dateTo = dateTo,
-                                onDateRange = onDateRange,
                             )
                         }
                     } else {
@@ -602,9 +593,6 @@ internal fun SurfaceContent(
                             shown ?: ledger,
                             Modifier.padding(padding),
                             tagSuggestions = tagSuggestions,
-                            dateFrom = dateFrom,
-                            dateTo = dateTo,
-                            onDateRange = onDateRange,
                         )
                     }
                 }

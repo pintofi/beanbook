@@ -94,6 +94,14 @@ interface IEngineService {
     String filterToFile(String ledgerPath, String outPath, String pluginDirs, boolean allowBridge,
                         String dateFrom, String dateTo, String filter);
 
+    /**
+     * The ledger as Fava shows it through a time period, text, tags and links, and amounts, written as
+     * JSON to outPath. Returns "ok" or "error: …"; an input Fava cannot use is an answer in the file, not an
+     * error.
+     */
+    String viewToFile(String ledgerPath, String outPath, String pluginDirs, boolean allowBridge,
+                      String time, String text, String tags, String amount);
+
     /** Re-parses a project. Returns the validation JSON (bounded: 50 errors max). */
     /**
      * Imports user plugins. Runs here, not in the app process: plugin code is Python, and

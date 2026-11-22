@@ -57,21 +57,16 @@ import io.github.pintofi.beanbook.core.domain.Valuation
 fun BalancesScreen(
     snapshot: LedgerSnapshot,
     modifier: Modifier = Modifier,
-    /** The period the figures cover, as Fava's time filter expresses it. */
-    dateFrom: String = "",
-    dateTo: String = "",
-    onDateRange: (String, String) -> Unit = { _, _ -> },
     /** Tags and links the ledger has, for the filter sheet; the snapshot's own when not given. */
     tagSuggestions: List<String>? = null,
 ) {
     // What *this* ledger calls them. A file with `option "name_expenses" "Ausgaben"`
     // used to get five headings with nothing under any of them.
     val roots = snapshot.accountNames.roots
-    var filter by rememberSaveable { mutableStateOf("") }
-    // The search and tags are the app's one shared filter, already applied to the snapshot this
-    // screen is given; they are shown and changed here, not computed here.
+    // The shared filter is already applied to the snapshot this screen is given; it is shown and changed here,
+    // not computed here. The account box on this page and the Account field in the sheet are one value.
     val shared = ledgerFilter()
-    val tagFilter = shared.filter.expression
+    val filter = shared.filter.account
     // Remembered across launches, not just recompositions. Somebody who keeps their
     // books at market value sets that once; asking again on every start is the app forgetting
     // something it was told.
@@ -89,7 +84,7 @@ fun BalancesScreen(
         // screen before any balance was visible (device audit 2026-10-10). The account filter
         // stays on the page -- it is the one typed while reading -- and the period and the tags
         // move behind one button that says how many are on.
-        val extra = listOf(dateFrom, dateTo, tagFilter, shared.filter.query).count { it.isNotBlank() }
+        val extra = activeFilterCount()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -97,49 +92,33 @@ fun BalancesScreen(
             horizontalArrangement = Arrangement.spacedBy(Measure.snug),
             verticalAlignment = Alignment.Top,
         ) {
-            SuggestingField(
-                value = filter,
-                onValueChange = { filter = it },
-                label = "Filter accounts",
-                suggestions = snapshot.accounts.map { it.name },
-                describe = "Filter accounts by name",
-                leadingIcon = {
-                    androidx.compose.material3.Icon(
-                        androidx.compose.material.icons.Icons.Filled.Search,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.weight(1f),
-            )
             FiltersButton(
                 active = extra,
                 onClick = { filtering = true },
-                // Lined up with the field's box, under the floating label's notch.
-                modifier = Modifier.padding(top = Measure.snug),
+                modifier = Modifier.fillMaxWidth(),
             )
         }
         LedgerFilterBar()
-        PeriodLine(dateFrom, dateTo, onDateRange)
         BasisChoice(describe = { "Show balances ${it.label}" })
 
         if (filtering) {
             FiltersSheet(
-                dateFrom = dateFrom,
-                dateTo = dateTo,
-                onDateRange = onDateRange,
-                tagFilter = tagFilter,
-                onTagFilter = shared::setExpression,
+                view = shared.filter.view,
+                onView = shared::setView,
+                account = shared.filter.account,
+                onAccount = shared::setAccount,
                 query = shared.filter.query,
                 onQuery = shared::setQuery,
                 tagSuggestions = tagChoices,
+                accountSuggestions = snapshot.accounts.map { it.name },
                 onDismiss = { filtering = false },
             )
         }
 
 
         val needle = filter.trim()
-        // The engine's balances, or -- when the shared filter is on -- the matching entries' own
-        // totals, which the snapshot already carries (see `LedgerSnapshot.filteredBy`).
+        // The engine's balances, or Fava's for the period and filters, or -- when the search is on -- the matching
+        // entries' own totals, which the snapshot already carries (see `LedgerSnapshot.filteredBy`).
         // A closed account with nothing in it is history, not a balance; one that still holds
         // something stays, since that is a mistake worth seeing.
         val source = snapshot.accounts.filterNot { it.isClosed && it.positions.all { p -> p.number.signum() == 0 } }
@@ -163,14 +142,13 @@ fun BalancesScreen(
             if (snapshot.hasErrors) {
                 item { ErrorBanner(snapshot.errors) }
             }
-            if (shared.filter.isActive) {
+            if (shared.filter.view.isActive || shared.filter.query.isNotBlank()) {
                 item(key = "tagNotice") {
                     Text(
-                        text = if (basis == Valuation.VALUE) {
-                            "Totals of the matching entries. Market value is " +
-                                "shown at cost here, because prices are not part of a filtered set."
+                        text = if (shared.filter.query.isNotBlank()) {
+                            "Totals of the entries the search keeps, at cost."
                         } else {
-                            "Totals of the matching entries."
+                            "Worked out by Fava for the period and filters above, valued at the end of the period."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -203,7 +181,7 @@ fun BalancesScreen(
                     // under it, which reads as an arithmetic error.
                     RootHeader(
                         root = root,
-                        totals = if (needle.isEmpty() && !shared.filter.isActive) {
+                        totals = if (needle.isEmpty() && shared.filter.query.isBlank()) {
                             snapshot.totalFor(root, basis::of)
                         } else {
                             LedgerSummary.sumByCurrency(accounts.flatMap { basis.of(it) })

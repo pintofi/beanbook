@@ -2,7 +2,10 @@ package io.github.pintofi.beanbook.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
+import io.github.pintofi.beanbook.core.domain.ViewRequest
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -33,19 +36,23 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.ui.theme.BeanbookShape
 import io.github.pintofi.beanbook.app.ui.theme.Measure
+import io.github.pintofi.beanbook.core.domain.AccountSuggestions
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 
 /*
  * The filters Home, Journal and Balances share, written once: the Filters button, the sheet it
- * opens (period, search, tags and links), and the line that says which period the figures cover.
- * The search and the tags are the app's one shared filter; the period is the engine's.
+ * opens (period, text, tags and links, amount and account), and the search box beside it. Period, text, tags and
+ * amounts are asked of Fava in the engine; the search and the account name narrow what is listed.
  */
 
-/** How many of the filters are on: the period's two ends, the tags and the search. */
+/** How many of the filters are on: period, text, tags, amounts (one), account and search. */
 @Composable
-internal fun activeFilterCount(dateFrom: String, dateTo: String): Int {
-    val shared = ledgerFilter()
-    return listOf(dateFrom, dateTo, shared.filter.expression, shared.filter.query).count { it.isNotBlank() }
+internal fun activeFilterCount(): Int {
+    val filter = ledgerFilter().filter
+    val view = filter.view
+    return listOf(
+        view.time, view.text, view.tags, view.amount, filter.account, filter.query,
+    ).count { it.isNotBlank() }
 }
 
 /** Tags and links the ledger has, as Fava's filter bar takes them: `#trip` and `^invoice-4411`. */
@@ -58,34 +65,6 @@ internal fun offeredTags(snapshot: LedgerSnapshot?, given: List<String>? = null)
         }
     }
 
-/** The period the figures are limited to, with a way to drop it. Draws nothing when there is none. */
-@Composable
-internal fun PeriodLine(
-    dateFrom: String,
-    dateTo: String,
-    onDateRange: (String, String) -> Unit,
-    inset: Dp = Measure.gutter,
-) {
-    if (dateFrom.isBlank() && dateTo.isBlank()) return
-    // Said plainly, because a balance for part of a year looks exactly like a balance for all of
-    // it and is a different number.
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(start = inset, end = Measure.tight),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            filterSummary(dateFrom, dateTo, ""),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-        OutlinedButton(
-            onClick = { onDateRange("", "") },
-            modifier = Modifier.semantics { contentDescription = "Clear the period" },
-        ) { Text("Clear") }
-    }
-}
-
 /**
  * The search box, the Filters button beside it, what is on, and the period: the top of Home and
  * Journal. Balances has its own box (it searches accounts) and uses the same button, line and sheet.
@@ -93,9 +72,6 @@ internal fun PeriodLine(
 @Composable
 internal fun EntryFilterBar(
     snapshot: LedgerSnapshot?,
-    dateFrom: String,
-    dateTo: String,
-    onDateRange: (String, String) -> Unit,
     modifier: Modifier = Modifier,
     inset: Dp = Measure.gutter,
     tagSuggestions: List<String>? = null,
@@ -109,45 +85,24 @@ internal fun EntryFilterBar(
             horizontalArrangement = Arrangement.spacedBy(Measure.snug),
             verticalAlignment = Alignment.Top,
         ) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = shared::setQuery,
-                label = { Text("Search entries") },
-                singleLine = true,
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (query.isNotEmpty()) {
-                        IconButton(
-                            onClick = { shared.setQuery("") },
-                            modifier = Modifier.semantics { contentDescription = "Clear the search" },
-                        ) { Icon(Icons.Filled.Close, contentDescription = null) }
-                    }
-                },
-                shape = BeanbookShape.control,
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { contentDescription = "Search entries by date, payee, description or account" },
-            )
             FiltersButton(
-                active = activeFilterCount(dateFrom, dateTo),
+                active = activeFilterCount(),
                 onClick = { filtering = true },
-                // Lined up with the field's box, under the floating label's notch.
-                modifier = Modifier.padding(top = Measure.snug),
+                modifier = Modifier.fillMaxWidth(),
             )
         }
         LedgerFilterBar(inset = inset)
-        PeriodLine(dateFrom, dateTo, onDateRange, inset)
     }
     if (filtering) {
         FiltersSheet(
-            dateFrom = dateFrom,
-            dateTo = dateTo,
-            onDateRange = onDateRange,
-            tagFilter = shared.filter.expression,
-            onTagFilter = shared::setExpression,
+            view = shared.filter.view,
+            onView = shared::setView,
+            account = shared.filter.account,
+            onAccount = shared::setAccount,
             query = query,
             onQuery = shared::setQuery,
             tagSuggestions = offeredTags(snapshot, tagSuggestions),
+            accountSuggestions = snapshot?.accounts.orEmpty().map { it.name },
             onDismiss = { filtering = false },
         )
     }
@@ -161,7 +116,7 @@ internal fun EntryFilterBar(
  */
 @Composable
 internal fun FiltersButton(active: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val describe = if (active == 0) "Filters: period, tags and links" else "Filters, $active on"
+    val describe = if (active == 0) "Filters: period, text, tags, amount and account" else "Filters, $active on"
     val content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {
         androidx.compose.material3.Icon(
             androidx.compose.material.icons.Icons.Filled.Tune,
@@ -191,41 +146,37 @@ internal fun FiltersButton(active: Int, onClick: () -> Unit, modifier: Modifier 
     }
 }
 
-/** "From 2026-01-01 to 2026-06-30 · #trip": what the figures below are limited to. */
-internal fun filterSummary(dateFrom: String, dateTo: String, tags: String): String {
-    val period = listOfNotNull(
-        dateFrom.takeIf { it.isNotBlank() }?.let { "from $it" },
-        dateTo.takeIf { it.isNotBlank() }?.let { "to $it" },
-    ).joinToString(" ")
-    val parts = listOfNotNull(
-        period.takeIf { it.isNotEmpty() }?.let { "Showing $it" },
-        tags.trim().takeIf { it.isNotEmpty() }?.let { "only $it" },
-    )
-    return parts.joinToString(" · ")
-}
-
 /**
- * The period and the tags, in a sheet. The two bounds are what Fava puts
- * above its own reports: they go to the engine and narrow what is computed.
+ * Every filter, in one sheet: the same on Home, Journal and Balances. Period, text, tags and links and an amount
+ * range are asked of Fava in the engine and applied when the sheet closes, because a half-typed filter such as
+ * `#trip,` is an error until it is finished. The account name narrows what is listed.
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    ExperimentalLayoutApi::class,
+)
 @Composable
 internal fun FiltersSheet(
-    dateFrom: String,
-    dateTo: String,
-    onDateRange: (String, String) -> Unit,
-    tagFilter: String,
-    onTagFilter: (String) -> Unit,
+    view: ViewRequest,
+    onView: (ViewRequest) -> Unit,
+    account: String,
+    onAccount: (String) -> Unit,
     query: String,
     onQuery: (String) -> Unit,
     tagSuggestions: List<String>,
+    accountSuggestions: List<String>,
     onDismiss: () -> Unit,
 ) {
-    // What is typed in the filter box is applied when the sheet closes, not on every key: Fava's filter
-    // runs in the engine and a half-typed one (`#trip,`) is an error until it is finished.
-    var draft by rememberSaveable { mutableStateOf(tagFilter) }
+    var draft by rememberSaveable(stateSaver = ViewRequestSaver) { mutableStateOf(view) }
+    var accountDraft by rememberSaveable { mutableStateOf(account) }
     val close = {
-        onTagFilter(draft.trim())
+        onView(
+            draft.copy(
+                time = draft.time.trim(), text = draft.text.trim(), tags = draft.tags.trim(),
+                amount = draft.amount.trim(),
+            ),
+        )
+        onAccount(accountDraft.trim())
         onDismiss()
     }
     androidx.compose.material3.ModalBottomSheet(
@@ -247,74 +198,79 @@ internal fun FiltersSheet(
                 style = MaterialTheme.typography.titleLargeEmphasized,
                 modifier = Modifier.semantics { heading() },
             )
+            FolioNote("Home, Journal and Balances share these filters.")
             FolioHeading("Period")
-            FolioGroup {
-                item {
-                    FolioBody {
-                        DateField(
-                            value = dateFrom,
-                            onValueChange = { onDateRange(it, dateTo) },
-                            label = "From",
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        DateField(
-                            value = dateTo,
-                            onValueChange = { onDateRange(dateFrom, it) },
-                            label = "To",
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        if (dateFrom.isNotBlank() || dateTo.isNotBlank()) {
-                            OutlinedButton(
-                                onClick = { onDateRange("", "") },
-                                modifier = Modifier.semantics { contentDescription = "Show every date again" },
-                            ) { Text("Clear dates") }
-                        }
-                    }
-                }
-            }
+            FilterField(
+                value = draft.time,
+                onValueChange = { draft = draft.copy(time = it) },
+                label = "Time",
+                describe = "Filter by period",
+                placeholder = "2020-03",
+            )
             FolioNote(
-                "The period narrows Home, Journal and Balances. A balance for part of a year is a different " +
-                    "number from the balance for all of it.",
+                "Fava's time filter: 2020, 2020-03, 2020-Q1, FY2020, month-1 or 2020-01-15 to 2020-03-10. " +
+                    "A period shows what each account held at its end, with earlier history carried in.",
+            )
+            FolioHeading("Text, tags and links")
+            FilterField(
+                value = draft.text,
+                onValueChange = { draft = draft.copy(text = it) },
+                label = "Text",
+                describe = "Filter by text",
+                placeholder = "grocer",
+            )
+            FolioNote("Searches payees, descriptions and notes. A comma means or.")
+            SuggestingField(
+                value = draft.tags,
+                onValueChange = { draft = draft.copy(tags = it) },
+                label = "Tags and links",
+                suggestions = tagSuggestions,
+                describe = "Filter by tags or links",
+                placeholder = "#trip -#reimbursed, ^invoice-4411",
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FolioNote(
+                "#tag and ^link, a minus to leave out, a comma for or, parentheses to group, any(account:Food).",
+            )
+            FolioHeading("Amount")
+            FilterField(
+                value = draft.amount,
+                onValueChange = { draft = draft.copy(amount = it) },
+                label = "Amount",
+                describe = "Filter by amount",
+                placeholder = ">=100 <500",
+            )
+            FolioNote(
+                "Fava's amount filter: >100, >=100, <50, <=50 or =12.5 (a minus sign ahead of it leaves it out, as " +
+                    "in -=12.5). A space means and, a comma or, and parentheses group. An entry is kept when any of " +
+                    "its postings fits; any(account:Food >20) asks about one account.",
+            )
+            FolioHeading("Account")
+            SuggestingField(
+                value = accountDraft,
+                onValueChange = { accountDraft = it },
+                label = "Account",
+                suggestions = accountSuggestions,
+                describe = "Filter by account",
+                placeholder = "Expenses:Food",
+                matcher = AccountSuggestions::matching,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FolioNote(
+                "Lists only entries with a posting to an account whose name contains this, and Balances lists only " +
+                    "those accounts. Figures stay as they are.",
             )
             FolioHeading("Search")
-            FolioGroup {
-                item {
-                    FolioBody {
-                        OutlinedTextField(
-                            value = query,
-                            onValueChange = onQuery,
-                            label = { Text("Search entries") },
-                            singleLine = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .semantics {
-                                    contentDescription = "Search entries by date, payee, description or account"
-                                },
-                        )
-                    }
-                }
-            }
-            FolioNote("Home, Journal and Balances share this search and the tags below.")
-            FolioHeading("Filter")
-            FolioGroup {
-                item {
-                    FolioBody {
-                        SuggestingField(
-                            value = draft,
-                            onValueChange = { draft = it },
-                            label = "Filter",
-                            suggestions = tagSuggestions,
-                            describe = "Filter by tags or links",
-                            placeholder = "#trip -#reimbursed, ^invoice-4411",
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-            }
+            FilterField(
+                value = query,
+                onValueChange = onQuery,
+                label = "Search entries",
+                describe = "Search entries in the sheet",
+                placeholder = "date, payee, account, amount",
+            )
             FolioNote(
-                "Fava's own filter: #tag, ^link, a minus to leave out, a comma for or, parentheses to group, " +
-                    "any(account:Food), and a plain word to search payees and descriptions. Figures then come " +
-                    "from the entries it keeps, at cost.",
+                "Narrows the entries listed by any word. Then figures are worked out again " +
+                    "from those entries, at cost.",
             )
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = Measure.gap),
@@ -326,6 +282,29 @@ internal fun FiltersSheet(
     }
 }
 
+@Composable
+private fun FilterField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    describe: String,
+    placeholder: String,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = { Text(placeholder) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = describe },
+    )
+}
+
+/** Keeps the sheet's fields across rotation. */
+private val ViewRequestSaver = androidx.compose.runtime.saveable.listSaver<ViewRequest, String>(
+    save = { listOf(it.time, it.text, it.tags, it.amount) },
+    restore = { ViewRequest(it[0], it[1], it[2], it[3]) },
+)
 
 /** The sheet's own scroll, so a tall keyboard never hides the last field. */
 @Composable
