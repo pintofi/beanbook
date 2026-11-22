@@ -250,4 +250,11 @@ class DirectiveDraftTest {
             DirectiveDraft.Close(date, "Assets:Cash").render(currencyColumn = 90),
         )
     }
+
+    @Test
+    fun `custom quotes a value the reader takes for an account but Beancount would refuse`() {
+        val text = DirectiveDraft.Custom(date, "budget", listOf("Expenses:Käse", "Größe:XL")).render()
+        assertTrue(text.contains(" Expenses:Käse"), text)
+        assertTrue(text.contains("\"Größe:XL\""), text)
+    }
 }

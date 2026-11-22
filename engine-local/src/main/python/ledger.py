@@ -11,7 +11,9 @@ Nothing here writes. Mutation is M4's business.
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -230,21 +232,13 @@ def _meta_str(value) -> str:
     return str(value)
 
 
-def inspect(
-    ledger_path: str,
-    journal_limit: int = 0,
-    plugin_dirs: str = "",
-    allow_bridge: bool = True,
-    date_from: str = "",
-    date_to: str = "",
-) -> str:
-    """Parse a ledger and return a JSON summary.
+def _load(ledger_path: str, plugin_dirs: str, allow_bridge: bool):
+    """Load a ledger the way every read of it does: user plugins made findable for the load only.
 
-    JSON rather than a Python object because this crosses the Chaquopy boundary and is
-    also written to disk by the differential runner.
+    Returns (entries, errors, options_map, plugin_failure, load_ms). Shared by `inspect` and
+    `matching_transactions` so a filter is applied to exactly the entries the summary was built from.
     """
     from beancount import loader
-    from beancount.core import data, getters
 
     import plugins
 
@@ -273,6 +267,28 @@ def inspect(
         plugins.loader_cache_pattern(plugins._module_names("" if plugin_failure else plugin_dirs)),
     )
 
+    return entries, errors, options_map, plugin_failure, load_ms
+
+
+def _content_hash(files) -> str:
+    """SHA-256 over the content of the files a load read, in path order.
+
+    Beancount's own `compute_input_hash` is keyed on modification time and size. That is right for
+    its load cache and wrong here: the app caches a snapshot by content, so a file that was only
+    touched (a sync tool does that) would give a new hash for the same journal, and an answer would
+    never match the snapshot it was made for.
+    """
+    digest = hashlib.sha256()
+    for name in sorted(str(f) for f in files):
+        digest.update(name.encode("utf-8") + b"\0")
+        try:
+            digest.update(Path(name).read_bytes())
+        except OSError:
+            digest.update(b"\0missing")
+    return digest.hexdigest()
+
+
+def _date_cut(entries, date_from: str, date_to: str):
     # A date range, applied the way Fava applies its time filter: the *entries* are narrowed,
     # and everything computed below -- balances, the journal, which accounts exist -- follows
     # from the narrowed set. Prices are the exception and are built from the whole file
@@ -281,7 +297,6 @@ def inspect(
     #
     # An unparseable bound is ignored rather than treated as the start of time: a half-typed
     # date in a filter box must not silently empty the screen.
-    all_entries = entries
     bounds = []
     for raw in (date_from, date_to):
         try:
@@ -295,6 +310,27 @@ def inspect(
             for entry in entries
             if (since is None or entry.date >= since) and (until is None or entry.date <= until)
         ]
+    return entries
+
+
+def inspect(
+    ledger_path: str,
+    journal_limit: int = 0,
+    plugin_dirs: str = "",
+    allow_bridge: bool = True,
+    date_from: str = "",
+    date_to: str = "",
+) -> str:
+    """Parse a ledger and return a JSON summary.
+
+    JSON rather than a Python object because this crosses the Chaquopy boundary and is
+    also written to disk by the differential runner.
+    """
+    from beancount.core import data, getters
+
+    entries, errors, options_map, plugin_failure, load_ms = _load(ledger_path, plugin_dirs, allow_bridge)
+    all_entries = entries
+    entries = _date_cut(entries, date_from, date_to)
 
     counts: dict[str, int] = {}
     for entry in entries:
@@ -601,6 +637,9 @@ def inspect(
         "account_count": len(accounts),
         "accounts": account_rows,
         "included_files": sorted(str(f) for f in options_map.get("include", [])),
+        # A fingerprint of the files' content. A filter answer carries the same value, so the app can
+        # tell that the two describe the same ledger before it applies one to the other.
+        "input_hash": _content_hash(options_map.get("include", [])),
         "commodities": sorted(getters.get_commodity_directives(entries).keys()),
         "price_count": counts.get("Price", 0),
         "journal": journal,
@@ -646,4 +685,111 @@ def digest(ledger_path: str) -> str:
         ensure_ascii=False,
         sort_keys=True,
         indent=2,
+    )
+
+
+_FILTER_LOCK = threading.Lock()
+
+# The entries of the last ledger a filter was applied to, so the next filter on the same ledger
+# does not load it again (a load is most of what a filter costs). One ledger at a time: it holds
+# tens of megabytes on a large one. See `_load_for_filter` for when it may be used.
+_ENTRY_CACHE = None
+_ENTRY_CACHE_LOCK = threading.Lock()
+# A file changed this recently when a load started may have changed while it was read, so what was
+# loaded is not kept. Larger than the coarsest timestamps a phone's filesystems give.
+_RACY_NS = 2_000_000_000
+
+
+def drop_entry_cache() -> None:
+    """Forget the cached entries. Called when the system asks for memory, and on a new ledger."""
+    global _ENTRY_CACHE
+    with _ENTRY_CACHE_LOCK:
+        _ENTRY_CACHE = None
+
+
+def _load_for_filter(ledger_path: str, plugin_dirs: str, allow_bridge: bool):
+    """`_load`, from the cache when the ledger's files have not changed since it was filled.
+
+    Same result as `_load` (entries, errors, options_map, plugin_failure, load_ms) plus whether it
+    came from the cache. A hit is checked against the files' content, not their times, so a file that
+    was only touched still hits and one that was edited never does. A load is kept only when every
+    file it read was already old when the load began, so an edit made during the load cannot leave
+    old entries stored under the new content.
+    """
+    global _ENTRY_CACHE
+    key = (ledger_path, plugin_dirs, bool(allow_bridge))
+    with _ENTRY_CACHE_LOCK:
+        cached = _ENTRY_CACHE
+    if cached is not None and cached["key"] == key and _content_hash(cached["files"]) == cached["hash"]:
+        return cached["loaded"] + (True,)
+    started_ns = time.time_ns()
+    loaded = _load(ledger_path, plugin_dirs, allow_bridge)
+    files = [str(f) for f in loaded[2].get("include", [])] or [ledger_path]
+    try:
+        settled = all(Path(f).stat().st_mtime_ns < started_ns - _RACY_NS for f in files)
+    except OSError:
+        settled = False
+    with _ENTRY_CACHE_LOCK:
+        _ENTRY_CACHE = (
+            {"key": key, "files": files, "hash": _content_hash(files), "loaded": loaded} if settled else None
+        )
+    return loaded + (False,)
+
+
+def matching_transactions(
+    ledger_path: str,
+    fava_filter: str,
+    plugin_dirs: str = "",
+    allow_bridge: bool = True,
+    date_from: str = "",
+    date_to: str = "",
+) -> str:
+    """Which transactions Fava's own filter keeps, as positions in the journal `inspect` returns.
+
+    The filter is Fava's `AdvancedFilter`, not a reimplementation: the same grammar (`#tag`, `^link`,
+    `-`, `,`, parentheses, `any()`, `key:"regex"`, plain words), the same results and the same error
+    text. Nothing is computed from the kept entries here. The app already holds the journal, so the
+    answer is only the positions, which keeps it small (a few hundred KB at 25,000 transactions
+    instead of the whole journal).
+
+    A position counts transactions in the entries' own order after the same date cut `inspect`
+    applies, oldest first. `input_hash` and `transaction_count` let the caller refuse an answer that
+    describes a different ledger than the journal it holds.
+
+    JSON: {"ok": true, "positions": [...], "transaction_count": n, "input_hash": "...",
+    "load_ms": ..., "filter_ms": ...} or {"ok": false, "filter_error": "<Fava's message>"}.
+    """
+    from beancount.core import data
+    from fava.core.filters import AdvancedFilter, FilterError
+
+    # Parsed before anything is loaded: a filter that cannot be read answers at once, with
+    # Fava's message, and never falls through to showing the whole ledger.
+    try:
+        advanced = AdvancedFilter(fava_filter.strip())
+    except FilterError as error:
+        return json.dumps({"ok": False, "filter_error": str(error)}, ensure_ascii=False)
+
+    entries, _errors, options_map, _plugin_failure, load_ms, cached = _load_for_filter(
+        ledger_path, plugin_dirs, allow_bridge,
+    )
+    cut = _date_cut(entries, date_from, date_to)
+    started = time.monotonic()
+    try:
+        # One filter at a time: Fava's parser is module-level state, and this runs on a binder thread
+        # beside the threads that serve Fava's own pages.
+        with _FILTER_LOCK:
+            kept = {id(entry) for entry in advanced.apply(cut)}
+    except FilterError as error:
+        return json.dumps({"ok": False, "filter_error": str(error)}, ensure_ascii=False)
+    transactions = [entry for entry in cut if isinstance(entry, data.Transaction)]
+    return json.dumps(
+        {
+            "ok": True,
+            "positions": [i for i, entry in enumerate(transactions) if id(entry) in kept],
+            "transaction_count": len(transactions),
+            "input_hash": _content_hash(options_map.get("include", [])),
+            "load_ms": 0.0 if cached else round(load_ms, 1),
+            "cached": cached,
+            "filter_ms": round((time.monotonic() - started) * 1000, 1),
+        }
     )

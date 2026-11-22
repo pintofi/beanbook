@@ -132,6 +132,7 @@ fun OnboardingFlow(
             onBack = { setup.go(SetupStep.ACCOUNTS) },
             primaryLabel = "Create my ledger",
             onPrimary = { setup.go(SetupStep.FINISH); actions.onCreate() },
+            primaryEnabled = draft.unreadableOpening.isEmpty(),
             modifier = modifier,
         ) { GetSetStep(draft, update, themeChoice, actions, notificationsGranted) }
         SetupStep.FINISH -> FinishPage(
@@ -147,7 +148,7 @@ fun OnboardingFlow(
     }
 }
 
-private fun SetupDraft.basicsReady() = name.isNotBlank() &&
+private fun SetupDraft.basicsReady() = name.isNotBlank() && fiscalYearEndReadable &&
     io.github.pintofi.beanbook.core.domain.CommodityName.isValid(mainCurrency.trim().uppercase())
 
 private fun SetupDraft.accountsReady() = accounts.any { it.on && it.name.startsWith("Assets:") }

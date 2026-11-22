@@ -45,7 +45,7 @@ import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 @Composable
 internal fun activeFilterCount(dateFrom: String, dateTo: String): Int {
     val shared = ledgerFilter()
-    return listOf(dateFrom, dateTo, shared.filter.tags, shared.filter.query).count { it.isNotBlank() }
+    return listOf(dateFrom, dateTo, shared.filter.expression, shared.filter.query).count { it.isNotBlank() }
 }
 
 /** Tags and links the ledger has, as Fava's filter bar takes them: `#trip` and `^invoice-4411`. */
@@ -143,8 +143,8 @@ internal fun EntryFilterBar(
             dateFrom = dateFrom,
             dateTo = dateTo,
             onDateRange = onDateRange,
-            tagFilter = shared.filter.tags,
-            onTagFilter = shared::setTags,
+            tagFilter = shared.filter.expression,
+            onTagFilter = shared::setExpression,
             query = query,
             onQuery = shared::setQuery,
             tagSuggestions = offeredTags(snapshot, tagSuggestions),
@@ -221,8 +221,15 @@ internal fun FiltersSheet(
     tagSuggestions: List<String>,
     onDismiss: () -> Unit,
 ) {
+    // What is typed in the filter box is applied when the sheet closes, not on every key: Fava's filter
+    // runs in the engine and a half-typed one (`#trip,`) is an error until it is finished.
+    var draft by rememberSaveable { mutableStateOf(tagFilter) }
+    val close = {
+        onTagFilter(draft.trim())
+        onDismiss()
+    }
     androidx.compose.material3.ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = close,
         sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = io.github.pintofi.beanbook.app.ui.theme.BeanbookShape.sheet,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -288,28 +295,32 @@ internal fun FiltersSheet(
                 }
             }
             FolioNote("Home, Journal and Balances share this search and the tags below.")
-            FolioHeading("Tags and links")
+            FolioHeading("Filter")
             FolioGroup {
                 item {
                     FolioBody {
                         SuggestingField(
-                            value = tagFilter,
-                            onValueChange = onTagFilter,
-                            label = "Tags or links",
+                            value = draft,
+                            onValueChange = { draft = it },
+                            label = "Filter",
                             suggestions = tagSuggestions,
                             describe = "Filter by tags or links",
-                            placeholder = "#trip ^invoice-4411",
+                            placeholder = "#trip -#reimbursed, ^invoice-4411",
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 }
             }
-            FolioNote("Figures then come from the entries with these tags or links only.")
+            FolioNote(
+                "Fava's own filter: #tag, ^link, a minus to leave out, a comma for or, parentheses to group, " +
+                    "any(account:Food), and a plain word to search payees and descriptions. Figures then come " +
+                    "from the entries it keeps, at cost.",
+            )
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = Measure.gap),
                 horizontalArrangement = Arrangement.End,
             ) {
-                androidx.compose.material3.Button(onClick = onDismiss) { Text("Done") }
+                androidx.compose.material3.Button(onClick = close) { Text("Done") }
             }
         }
     }
