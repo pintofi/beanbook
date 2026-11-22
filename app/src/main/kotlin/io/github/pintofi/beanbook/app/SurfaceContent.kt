@@ -201,8 +201,13 @@ internal fun SurfaceContent(
     val padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
     // The ledger as the shared filter sees it, for the three screens that obey it. The entry open on
     // a detail page, deletes, edits and every other surface keep working on the whole ledger.
-    val filter = io.github.pintofi.beanbook.app.ui.ledgerFilter().filter
-    val shown = remember(ledger, filter) { ledger?.filteredBy(filter) }
+    val filterState = io.github.pintofi.beanbook.app.ui.ledgerFilter()
+    val filter = filterState.filter
+    // Fava's own filter runs in the engine; it is asked again whenever the ledger or the expression
+    // changes, and a stale answer is refused by `filteredBy` rather than shown.
+    androidx.compose.runtime.LaunchedEffect(ledger, filter.expression) { filterState.resolve() }
+    val answer = filterState.answer
+    val shown = remember(ledger, filter, answer) { ledger?.filteredBy(filter, answer) }
     // The tags and links the ledger has, whatever is filtered, so the filter sheet can offer them.
     val tagSuggestions = remember(ledger) {
         ledger?.let { all ->
