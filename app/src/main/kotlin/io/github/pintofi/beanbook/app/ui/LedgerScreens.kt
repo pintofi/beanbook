@@ -230,9 +230,6 @@ fun JournalScreen(
     /** Deletes the entries picked by holding one and tapping others. */
     onDeleteEntries: (List<JournalEntry>) -> Unit = {},
     /** The period the figures cover, as Fava's time filter expresses it, and how to change it. */
-    dateFrom: String = "",
-    dateTo: String = "",
-    onDateRange: (String, String) -> Unit = { _, _ -> },
 ) {
     // Picked by holding a row; then a tap adds or removes rather than opening. Keyed by
     // file and line, which is what identifies an entry until the ledger is read again.
@@ -325,7 +322,7 @@ fun JournalScreen(
             ) { Text("Delete") }
         }
     } else {
-    EntryFilterBar(snapshot, dateFrom, dateTo, onDateRange)
+    EntryFilterBar(snapshot)
     BasisChoice(describe = { "Show amounts ${it.label}" })
     }
 
@@ -467,12 +464,13 @@ fun JournalScreen(
                 format = snapshot.format,
                 onClick = {
                     if (selecting) {
-                        picked = if (key in picked) picked - key else picked + key
+                        if (entry.file != null) picked = if (key in picked) picked - key else picked + key
                     } else {
                         onOpenEntry(entry)
                     }
                 },
-                onLongClick = { picked = picked + key },
+                // Opening-balance rows Fava makes up for a period are in no file, so they cannot be deleted.
+                onLongClick = { if (entry.file != null) picked = picked + key },
                 selected = key in picked,
                 selecting = selecting,
                 errors = faults[JournalErrors.keyOf(entry)].orEmpty(),

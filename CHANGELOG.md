@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- The filter box in Filters accepts `-#trip` to leave entries out, a comma for or, and parentheses, and says when it cannot read what you typed. ([#442])
+- Home, Journal and Balances share one Filters sheet: period, text, tags and links, amount, and account. ([#442])
 
 ### Fixed
 - Accounts with non-ASCII letters, such as `Expenses:Lebensmittel:Käse`, work in the entry form. ([#446])

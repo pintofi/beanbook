@@ -1,7 +1,8 @@
 package io.github.pintofi.beanbook.app.engine
 
 import android.util.Log
-import io.github.pintofi.beanbook.core.domain.ExpressionAnswer
+import io.github.pintofi.beanbook.core.domain.ViewAnswer
+import io.github.pintofi.beanbook.core.domain.ViewRequest
 import io.github.pintofi.beanbook.core.domain.LedgerSnapshot
 import io.github.pintofi.beanbook.engine.local.LedgerReader
 import kotlinx.coroutines.CoroutineScope
@@ -73,40 +74,18 @@ class LedgerState(
     var pluginContext: PluginContext = PluginContext { "" }
     var allowBridge: Boolean = true
 
-    private val _dateRange = MutableStateFlow("" to "")
-
-    /** The inclusive ISO date range the open snapshot describes; empty means the whole file. */
-    val dateRange: StateFlow<Pair<String, String>> = _dateRange.asStateFlow()
-
     /**
-     * Narrows every figure to a period, the way Fava's time filter does.
-     *
-     * A reload rather than a client-side filter: balances at cost and at market value are
-     * Beancount's to compute, and recomputing them here from the journal would be a second,
-     * worse implementation of the thing the engine exists to do.
-     */
-    fun setDateRange(from: String, to: String) {
-        if (_dateRange.value == from to to) return
-        _dateRange.value = from to to
-        lastPath?.let { load(it) }
-    }
-
-    /**
-     * Fava's answer to a filter [expression] for the open ledger, as positions in the journal the
-     * current snapshot holds, or null when no ledger is open. The same plugins, bridge rule and
-     * period as the snapshot, so the positions line up with it; the caller checks the answer's
+     * The ledger as Fava shows it for [request], for the open ledger: the kept transactions as positions in the
+     * journal the current snapshot holds, and balances worked out by Fava. Null when no ledger is open. The same
+     * plugins and bridge rule as the snapshot, so the positions line up with it; the caller checks the answer's
      * fingerprint against the snapshot before using it.
+     *
+     * The snapshot itself is always the whole ledger: a period is a view of it, not a reload, so the widgets, the
+     * entry form and completion never see a narrowed ledger.
      */
-    suspend fun matching(expression: String): Result<ExpressionAnswer>? {
+    suspend fun view(request: ViewRequest): Result<ViewAnswer>? {
         val path = lastPath ?: return null
-        return reader.matching(
-            path,
-            expression,
-            pluginDirs = pluginContext.directories(),
-            allowBridge = allowBridge,
-            dateFrom = _dateRange.value.first,
-            dateTo = _dateRange.value.second,
-        )
+        return reader.view(path, request, pluginContext.directories(), allowBridge)
     }
 
     fun load(ledgerPath: String) {
@@ -121,8 +100,6 @@ class LedgerState(
                     ledgerPath,
                     pluginDirs = pluginContext.directories(),
                     allowBridge = allowBridge,
-                    dateFrom = _dateRange.value.first,
-                    dateTo = _dateRange.value.second,
                 )
                     .onSuccess { snapshot ->
                         _failure.value = null

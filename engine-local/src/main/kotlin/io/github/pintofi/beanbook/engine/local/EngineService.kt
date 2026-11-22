@@ -155,6 +155,27 @@ class EngineService : Service() {
                 "ok"
             }
 
+        override fun viewToFile(
+            ledgerPath: String,
+            outPath: String,
+            pluginDirs: String,
+            allowBridge: Boolean,
+            time: String,
+            text: String,
+            tags: String,
+            amount: String,
+        ): String =
+            guarded {
+                val json = python().getModule("ledger")
+                    .callAttr(
+                        "view", ledgerPath, time, text, tags, amount,
+                        pluginDirs, allowBridge,
+                    )
+                    .toString()
+                writeOut(outPath, json)
+                "ok"
+            }
+
         override fun loadPlugins(
             pluginDir: String,
             modules: String,
