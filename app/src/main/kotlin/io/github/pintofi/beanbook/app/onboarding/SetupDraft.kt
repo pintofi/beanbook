@@ -1,5 +1,6 @@
 package io.github.pintofi.beanbook.app.onboarding
 
+import io.github.pintofi.beanbook.app.ui.parseTypedAmount
 import io.github.pintofi.beanbook.core.data.Json
 import io.github.pintofi.beanbook.core.domain.AccountPlan
 import io.github.pintofi.beanbook.core.domain.Amount
@@ -66,6 +67,18 @@ data class SetupDraft(
         .map { it.problems() }
         .getOrElse { listOf(it.message ?: "Something typed could not be read.") }
 
+    /** The financial year end as a month and day, or null when it is empty or not `MM-DD`. */
+    val fiscalYearEndMonthDay: MonthDay?
+        get() = fiscalYearEnd?.let { runCatching { MonthDay.parse("--$it") }.getOrNull() }
+
+    /** False when something is typed in the financial year end box that is not a month and day. */
+    val fiscalYearEndReadable: Boolean get() = fiscalYearEnd == null || fiscalYearEndMonthDay != null
+
+    /** The opening balances typed for accounts that are on, as the text typed, that are not numbers. */
+    val unreadableOpening: List<String>
+        get() = accounts.filter { it.on }.mapNotNull { opening[it.name]?.trim() }
+            .filter { it.isNotEmpty() && parseTypedAmount(it) == null }
+
     /**
      * The blueprint these answers describe.
      *
@@ -87,7 +100,7 @@ data class SetupDraft(
         val balances = buildMap {
             plans.forEach { plan ->
                 val typed = opening[plan.name]?.trim().orEmpty()
-                val number = typed.takeIf { it.isNotEmpty() }?.replace(",", "")?.toBigDecimalOrNull() ?: return@forEach
+                val number = typed.takeIf { it.isNotEmpty() }?.let(::parseTypedAmount) ?: return@forEach
                 val currency = plan.currencies.firstOrNull() ?: main
                 // A liability is typed as what is owed and written as a negative balance.
                 val signed = if (plan.root == "Liabilities") number.negate() else number
@@ -103,7 +116,7 @@ data class SetupDraft(
             reportCurrencies = reportIn.filter { it in others },
             decimals = everything.associateWith { places[it] ?: usualPlaces(it) },
             booking = booking,
-            fiscalYearEnd = fiscalYearEnd?.let { runCatching { MonthDay.parse("--$it") }.getOrNull() },
+            fiscalYearEnd = fiscalYearEndMonthDay,
             defaultPage = reportsOpenOn,
             checks = checks,
             explicitDecimals = places.keys,
@@ -200,5 +213,3 @@ data class SetupDraft(
         }
     }
 }
-
-private fun String.toBigDecimalOrNull(): BigDecimal? = runCatching { BigDecimal(this) }.getOrNull()

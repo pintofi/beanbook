@@ -20,7 +20,12 @@ object BeancountText {
      */
     val TRANSACTION_FLAG = Regex("[*!&#?%A-Z]")
 
-    val ACCOUNT = Regex("""[A-Z][A-Za-z0-9\-]*(:[A-Z0-9][A-Za-z0-9\-]*)+""")
+    // Any non-ASCII character is allowed in a name, as in Beancount's lexer (ACCOUNTTYPE and
+    // ACCOUNTNAME in lexer.l, 3.2.3), so "Expenses:Lebensmittel:Käse" is an account.
+    private const val NON_ASCII = """\x{80}-\x{10FFFF}"""
+    val ACCOUNT = Regex(
+        """[A-Z$NON_ASCII][A-Za-z0-9\-$NON_ASCII]*(:[A-Z0-9$NON_ASCII][A-Za-z0-9\-$NON_ASCII]*)+""",
+    )
 
     /** Currencies are upper-case and may contain digits, `.`, `_`, `-`, `'`. */
     val CURRENCY = Regex("""[A-Z][A-Z0-9'._\-]*""")
@@ -352,8 +357,9 @@ object BeancountText {
             }
 
             scan(DATE, TokenKind.DATE)
-            scan(Regex("""\b[a-z]+\b"""), TokenKind.KEYWORD) { it.value in DIRECTIVES }
+            // Accounts before keywords: \b is ASCII-only on the JVM, so "Assets:Bänote" holds "note".
             scan(ACCOUNT, TokenKind.ACCOUNT)
+            scan(Regex("""\b[a-z]+\b"""), TokenKind.KEYWORD) { it.value in DIRECTIVES }
             scan(Regex("""-?\d[\d,]*\.?\d*"""), TokenKind.NUMBER)
             scan(Regex("""#[A-Za-z0-9\-_/.]+|\^[A-Za-z0-9\-_/.]+"""), TokenKind.TAG)
             // Currencies last: the pattern also matches a bare account root, so anything that

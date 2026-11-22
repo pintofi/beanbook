@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The filter box in Filters accepts `-#trip` to leave entries out, a comma for or, and parentheses, and says when it cannot read what you typed. ([#442])
+
+### Fixed
+- Accounts with non-ASCII letters, such as `Expenses:Lebensmittel:Käse`, work in the entry form. ([#446])
+
 ## [1.0.5] - 2026-11-16
 
 ### Added
@@ -390,3 +396,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#434]: https://github.com/pintofi/beanbook/issues/434
 [#436]: https://github.com/pintofi/beanbook/issues/436
 [#438]: https://github.com/pintofi/beanbook/issues/438
+[#442]: https://github.com/pintofi/beanbook/issues/442
+[#446]: https://github.com/pintofi/beanbook/issues/446

@@ -45,24 +45,30 @@ internal suspend fun MainActivity.accountsLedger(
     val main = app.workspace.mainFile(projectId)
     val target = File(app.workspace.projectDir(projectId), ACCOUNTS_FILE)
     val include = target.relativeTo(main.parentFile ?: target.parentFile).path.replace(File.separatorChar, '/')
+    // Nothing is created here. A new file in the ledger's folder, even with only a comment in it, is a
+    // change to the ledger, so it is made only after the person has approved it (below), or by the
+    // save they asked for.
     val needsInclude = withContext(Dispatchers.IO) {
-        if (!target.isFile) {
-            target.parentFile?.mkdirs()
-            target.writeText(ACCOUNTS_FILE_HEADER)
-        }
         !isIncluded(target, include, ledger?.includedFiles.orEmpty(), main.readText())
     }
     if (!needsInclude) return target
+    val creating = !target.isFile
     val line = "include \"$include\""
     saveMessage = "Not saved yet: $include needs to be included in ${main.name} first."
     pendingLedgerEdit = MainActivity.LedgerEdit(
         file = main.name,
         line = line,
         why = "Accounts you open or close are written to $include. Your ledger does not include that file yet, " +
-            "so nothing would read them. Beanbook can add this line at the end of ${main.name}; you can also " +
-            "add it yourself. Accounts already opened in your ledger stay where they are.",
+            "so nothing would read them. Beanbook can add this line at the end of ${main.name}" +
+            (if (creating) ", and create $include with one comment line: ${ACCOUNTS_FILE_HEADER.trim()}" else "") +
+            "; you can also add it yourself. Accounts already opened in your ledger stay where they are.",
         apply = {
             lifecycleScope.launch {
+                // The new file first, through the write protocol (so Undo takes it back), then the line
+                // that makes the ledger read it.
+                if (creating) {
+                    app.writer.append(projectId, target, ACCOUNTS_FILE_HEADER, operation = "create-accounts-file")
+                }
                 val result = app.writer.append(projectId, main, "$line\n", operation = "include-accounts")
                 val added = result is io.github.pintofi.beanbook.core.data.WriteResult.Committed
                 saveMessage = if (added) {

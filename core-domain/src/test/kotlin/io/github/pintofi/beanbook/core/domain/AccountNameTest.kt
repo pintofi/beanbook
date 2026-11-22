@@ -66,4 +66,28 @@ class AccountNameTest {
             lines,
         )
     }
+
+    // What Beancount 3.2.3 accepts, checked against its loader: only the first character after the
+    // root has to be an upper-case letter or a digit.
+    @Test fun `names follow what Beancount accepts, not just what its lexer reads`() {
+        val accepted = listOf(
+            "Expenses:Ärzte", "Expenses:Käse", "Expenses:Straße", "Assets:Girokonto-Süd", "Expenses:1ä",
+        )
+        for (ok in accepted) {
+            assertTrue(AccountName.problems(ok).isEmpty(), ok)
+        }
+        val refused = listOf(
+            "Expenses:ärzte", "Expenses:ä", "Expenses:日本", "Expenses:😀", "Expenses:Foo Bar", "Expenses:Foo\u3000Bar",
+        )
+        for (bad in refused) {
+            assertEquals(listOf(AccountProblem.BadComponent(bad.substringAfter(':'))), AccountName.problems(bad), bad)
+        }
+    }
+
+    @Test fun `a decomposed name is accepted and typed text is composed`() {
+        val decomposed = "A\u0308rzte"
+        assertTrue(AccountName.problems("Expenses:$decomposed").isEmpty())
+        assertEquals("\u00C4rzte", AccountName.normalise(decomposed))
+        assertEquals("\u00C4rzte", AccountName.normalise("\u00E4rzte"))
+    }
 }

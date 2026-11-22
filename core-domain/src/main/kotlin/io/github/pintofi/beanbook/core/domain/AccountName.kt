@@ -38,7 +38,11 @@ sealed interface AccountProblem {
  * valid; the first part must be one of the five roots, under whatever names this ledger gives them.
  */
 object AccountName {
-    private val FIRST = Regex("""[\p{Lu}\p{Nd}][\p{L}\p{Nd}\-]*""")
+    // Beancount's own rule for a name it will accept (ACC_COMP_NAME_RE in grammar.py, 3.2.3): the
+    // first character after the root is an upper-case letter or a digit, the rest letters, digits
+    // and hyphens. Narrower than what its lexer reads (BeancountText.ACCOUNT), because this rule
+    // decides what the app writes. Combining marks are allowed so a decomposed "Ärzte" passes.
+    private val FIRST = Regex("""[\p{Lu}\p{Nd}][\p{L}\p{M}\p{Nd}\-]*""")
 
     /** Everything wrong with [name], in the order a person would fix it. Empty when it is usable. */
     fun problems(
@@ -72,13 +76,15 @@ object AccountName {
      * is "Food-Coffee", and "food:coffee" is "Food:Coffee".
      */
     fun normalise(typed: String, locale: java.util.Locale = java.util.Locale.ROOT): String =
-        typed.split(':')
+        java.text.Normalizer.normalize(typed, java.text.Normalizer.Form.NFC).split(':')
             .map { part ->
                 part.trim().split(Regex("""\s+""")).joinToString("-") { word ->
-                    word.filter { it.isLetterOrDigit() || it == '-' }
+                    word.filter { it.isLetterOrDigit() || it == '-' || it.isCombiningMark() }
                         .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
                 }.trim('-')
             }
             .filter { it.isNotEmpty() }
             .joinToString(":")
 }
+
+private fun Char.isCombiningMark() = Character.getType(this) == Character.NON_SPACING_MARK.toInt()

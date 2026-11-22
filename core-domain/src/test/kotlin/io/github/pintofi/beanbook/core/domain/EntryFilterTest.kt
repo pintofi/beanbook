@@ -40,9 +40,39 @@ class EntryFilterTest {
         assertEquals(listOf(Amount(BigDecimal("-40.00"), "PKR")), cash.positions)
     }
 
-    @Test fun `a search and a tag both have to match`() {
-        val shown = ledger.filteredBy(EntryFilter(query = "samuel", tags = "#trip"))
+    // The ledger's journal is newest first, as the app holds it; Fava's positions count oldest first.
+    private val hashed = ledger.copy(inputHash = "abc")
+    private fun kept(expression: String, vararg positions: Int, hash: String? = "abc", count: Int = 3) =
+        ExpressionAnswer.Kept(expression, positions.toSet(), count, hash)
+
+    @Test fun `Fava's answer decides the entries, counted oldest first, and the figures follow`() {
+        // The fixture lists newest first, so by Fava's count Taxi is 0, Groceries 1 and Lunch 2.
+        val shown = hashed.filteredBy(EntryFilter(expression = "-#trip"), kept("-#trip", 1, 2))
+        assertEquals(setOf("Lunch", "Groceries"), shown.journal.map { it.narration }.toSet())
+        val cash = shown.accounts.first { it.name == "Assets:Cash" }
+        assertEquals(listOf(Amount(BigDecimal("-30.00"), "PKR")), cash.positions)
+    }
+
+    @Test fun `a search and an expression both have to match`() {
+        val shown = hashed.filteredBy(EntryFilter(query = "samuel", expression = "#trip"), kept("#trip", 0))
         assertEquals(listOf("Taxi"), shown.journal.map { it.narration })
+    }
+
+    @Test fun `no answer, a refusal, another expression or other files show nothing, never everything`() {
+        val filter = EntryFilter(expression = "#trip")
+        val answers = listOf(
+            null,
+            ExpressionAnswer.Rejected("#trip", "Failed to parse filter: #trip"),
+            kept("#other", 0),
+            kept("#trip", 0, hash = "different"),
+            kept("#trip", 0, hash = null),
+            kept("#trip", 0, count = 99),
+        )
+        for (answer in answers) {
+            val shown = hashed.filteredBy(filter, answer)
+            assertTrue(shown.journal.isEmpty(), "$answer")
+            assertTrue(shown.accounts.isEmpty(), "$answer")
+        }
     }
 
     @Test fun `the filtered figures are at cost, not at a market value that was never computed for them`() {

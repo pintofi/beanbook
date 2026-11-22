@@ -3,12 +3,12 @@ package io.github.pintofi.beanbook.core.domain
 import java.math.BigDecimal
 
 /**
- * Account balances over only the entries that carry some tags or links.
+ * Account balances over only the entries a filter kept.
  *
- * Fava's filter bar narrows its reports with `#tag` and `^link`, and the journal here already
- * finds entries that way; the balances screen could not. This totals the postings of the
- * matching transactions, the way the engine totals every posting for the unfiltered screen:
- * units by commodity, and a posting held at a cost weighed at that cost for the cost basis.
+ * The balances screen could not narrow its figures the way Fava's filter bar does. This totals the
+ * postings of the entries it is given, the way the engine totals every posting for the unfiltered
+ * screen: units by commodity, and a posting held at a cost weighed at that cost for the cost basis.
+ * Which entries are kept is Fava's decision, made in the engine (see [EntryFilter]).
  *
  * **There is no market value for a filtered set.** The engine values a holding against the
  * file's price directives, which are not part of the journal this reads; so the value basis is
@@ -16,31 +16,10 @@ import java.math.BigDecimal
  */
 object TagBalances {
 
-    /** What to filter by: tags without their `#`, links without their `^`. Empty means none. */
-    data class Filter(val tags: Set<String> = emptySet(), val links: Set<String> = emptySet()) {
-        val isEmpty: Boolean get() = tags.isEmpty() && links.isEmpty()
-
-        /** Every tag and every link must be on the entry, as Fava combines its filter terms. */
-        fun matches(entry: JournalEntry): Boolean =
-            tags.all { it in entry.tags } && links.all { it in entry.links }
-
-        companion object {
-            /** `#trip ^invoice-4411`, or `trip`, typed in one box. A bare word is a tag. */
-            fun parse(text: String): Filter {
-                val words = text.trim().split(Regex("""\s+""")).filter { it.isNotEmpty() }
-                val (links, tags) = words.partition { it.startsWith('^') }
-                return Filter(
-                    tags = tags.map { it.removePrefix("#") }.filter { it.isNotEmpty() }.toSet(),
-                    links = links.map { it.removePrefix("^") }.filter { it.isNotEmpty() }.toSet(),
-                )
-            }
-        }
-    }
-
-    fun of(journal: List<JournalEntry>, filter: Filter): List<AccountBalance> {
+    fun of(journal: List<JournalEntry>): List<AccountBalance> {
         val units = linkedMapOf<String, MutableMap<String, BigDecimal>>()
         val cost = linkedMapOf<String, MutableMap<String, BigDecimal>>()
-        journal.filter(filter::matches).forEach { entry ->
+        journal.forEach { entry ->
             entry.postings.forEach { posting ->
                 val amount = posting.amount ?: return@forEach
                 units.getOrPut(posting.account) { linkedMapOf() }

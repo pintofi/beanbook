@@ -5,6 +5,7 @@ import android.util.Log
 import io.github.pintofi.beanbook.core.domain.AccountBalance
 import io.github.pintofi.beanbook.core.domain.Holding
 import io.github.pintofi.beanbook.core.domain.AccountNames
+import io.github.pintofi.beanbook.core.domain.ExpressionAnswer
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.Cost
 import io.github.pintofi.beanbook.core.domain.DocumentDirective
@@ -132,6 +133,51 @@ class LedgerReader(
                 }
         }
 
+    /**
+     * Which transactions Fava's own filter keeps for [expression], as positions in the journal a
+     * read with the same [dateFrom] and [dateTo] returns. A filter Fava cannot read is a
+     * [ExpressionAnswer.Rejected] with Fava's own message, not a failure.
+     *
+     * Never cached: the answer is only as good as the files on disk now, and the caller compares
+     * [ExpressionAnswer.Kept.inputHash] with the snapshot it holds before using it.
+     */
+    suspend fun matching(
+        ledgerPath: String,
+        expression: String,
+        pluginDirs: String = "",
+        allowBridge: Boolean = true,
+        dateFrom: String = "",
+        dateTo: String = "",
+    ): Result<ExpressionAnswer> =
+        withContext(io) {
+            val payload = connection.payloadFile("filter")
+            connection
+                .withEngine {
+                    it.filterToFile(
+                        ledgerPath, payload.absolutePath, pluginDirs, allowBridge, dateFrom, dateTo, expression,
+                    )
+                }
+                .mapCatching { result ->
+                    check(result == "ok") { result.removePrefix("error: ") }
+                    val root = JSONObject(payload.consumeText())
+                    if (!root.optBoolean("ok", false)) {
+                        ExpressionAnswer.Rejected(
+                            expression, root.optString("filter_error", "The filter could not be read."),
+                        )
+                    } else {
+                        val positions = root.getJSONArray("positions")
+                        ExpressionAnswer.Kept(
+                            expression = expression,
+                            positions = HashSet<Int>(positions.length() * 2).apply {
+                                for (i in 0 until positions.length()) add(positions.getInt(i))
+                            },
+                            transactionCount = root.getInt("transaction_count"),
+                            inputHash = root.optStringOrNull("input_hash"),
+                        )
+                    }
+                }
+        }
+
     private fun parse(root: JSONObject): LedgerSnapshot = LedgerSnapshot(
         title = root.optStringOrNull("title"),
         operatingCurrencies = root.optJSONArray("operating_currency").toStringList(),
@@ -147,6 +193,7 @@ class LedgerReader(
         accountNames = root.toAccountNames(),
         documentRoots = root.optJSONArray("document_dirs").toStringList(),
         commodityAttributes = root.optJSONArray("commodity_attributes").toStringList(),
+        inputHash = root.optStringOrNull("input_hash"),
         extensionHealth = root.optJSONObject("extension_health").let { health ->
             health?.keys()?.asSequence()?.associateWith { health.optStringOrNull(it) }.orEmpty()
         },

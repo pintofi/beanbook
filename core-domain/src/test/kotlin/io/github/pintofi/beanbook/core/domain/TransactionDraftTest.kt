@@ -209,6 +209,22 @@ class TransactionDraftTest {
         assertTrue(flagged("P").render().startsWith("2026-"), flagged("P").render())
         assertTrue(Regex("""^\d{4}-\d{2}-\d{2} P """).containsMatchIn(flagged("P").render()), flagged("P").render())
     }
+
+    @Test
+    fun `accounts with non-ASCII letters are valid, as in Beancount's lexer`() {
+        val accounts = listOf(
+            "Expenses:Lebensmittel:Käse", "Assets:Bank:Ünterkonto", "Expenses:ä", "Assets:Girokonto-Süd",
+        )
+        for (account in accounts) {
+            val problems = draft(
+                PostingDraft(account, Amount.parse("5.00", "EUR")),
+                PostingDraft(cash, Amount.parse("-5.00", "EUR")),
+            ).validate()
+            assertFalse(problems.any { it is DraftProblem.InvalidAccount }, account)
+        }
+        assertTrue(BeancountText.ACCOUNT.matches("Expenses:Käse"))
+        assertFalse(BeancountText.ACCOUNT.matches("Expenses:Käse Brot"))
+    }
 }
 
 class LedgerVocabularyTest {

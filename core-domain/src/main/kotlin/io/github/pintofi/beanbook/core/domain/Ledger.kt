@@ -71,6 +71,8 @@ data class LedgerSnapshot(
      * it can. Fava shows a failed extension only on its own Errors page.
      */
     val extensionHealth: Map<String, String?> = emptyMap(),
+    /** A fingerprint of the files' content this was read from; a filter answer must carry the same one. */
+    val inputHash: String? = null,
 ) {
     /** How many extensions fail to import: errors the ledger's own list does not include. */
     val extensionFailures: Int get() = extensionHealth.values.count { it != null }

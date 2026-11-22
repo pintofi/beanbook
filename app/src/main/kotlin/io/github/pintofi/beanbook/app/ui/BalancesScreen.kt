@@ -71,7 +71,7 @@ fun BalancesScreen(
     // The search and tags are the app's one shared filter, already applied to the snapshot this
     // screen is given; they are shown and changed here, not computed here.
     val shared = ledgerFilter()
-    val tagFilter = shared.filter.tags
+    val tagFilter = shared.filter.expression
     // Remembered across launches, not just recompositions. Somebody who keeps their
     // books at market value sets that once; asking again on every start is the app forgetting
     // something it was told.
@@ -128,7 +128,7 @@ fun BalancesScreen(
                 dateTo = dateTo,
                 onDateRange = onDateRange,
                 tagFilter = tagFilter,
-                onTagFilter = shared::setTags,
+                onTagFilter = shared::setExpression,
                 query = shared.filter.query,
                 onQuery = shared::setQuery,
                 tagSuggestions = tagChoices,
