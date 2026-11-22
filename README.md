@@ -471,7 +471,7 @@ that need an emulator run once a week instead, and their failures do not block a
 | Play edition boundary | Build gate | The Play build installs no native code, downloads no code and installs no packages | Every change |
 | detekt and Android lint | Static analysis | Every module; lint on both editions | Every change |
 | Same APK twice | Byte comparison | Two builds of one commit give an identical Expert APK | Every change |
-| On-device tests, API 29 and 36 | more than <!-- count:instrumentation-tests -->400<!-- /count --> test functions | Screens, the engine process, WebView settings, accessibility labels at 200% text, writes on a real file system | Weekly |
+| On-device tests, API 29 and 36 | more than <!-- count:instrumentation-tests -->500<!-- /count --> test functions | Screens, the engine process, WebView settings, accessibility labels at 200% text, writes on a real file system | Weekly |
 | Golden corpus | <!-- count:corpus-ledgers -->6<!-- /count --> ledgers | The device reads each ledger the way desktop Beancount does | Weekly |
 | Wheels built twice | Byte comparison | The cross-built beancount and watchfiles wheels F-Droid rebuilds | Weekly |
 

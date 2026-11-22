@@ -3,6 +3,7 @@ package io.github.pintofi.beanbook.app.ui
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
@@ -174,24 +175,13 @@ class InputFieldsTest {
         compose.onNodeWithText("City Garage · City Garage visit").assertIsDisplayed()
     }
 
-    @Test fun balancesTakesADateRange() {
-        var from = ""
-        var to = ""
-        compose.setContent {
-            MaterialTheme {
-                BalancesScreen(
-                    snapshot = snapshot,
-                    dateFrom = from,
-                    dateTo = to,
-                    onDateRange = { f, t -> from = f; to = t },
-                )
-            }
-        }
+    @Test fun balancesHasEveryFilterInTheSheet() {
+        compose.setContent { MaterialTheme { BalancesScreen(snapshot = snapshot) } }
 
-        // The period is in the filter sheet, one tap from the summary control.
-        compose.onNodeWithContentDescription("Filters: period, tags and links").performClick()
-        compose.onNodeWithContentDescription("Pick From from a calendar").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Pick To from a calendar").assertIsDisplayed()
+        // The period, text, tags, amount and account are in the filter sheet, one tap from the summary control.
+        compose.onNodeWithContentDescription("Filters: period, text, tags, amount and account").performClick()
+        compose.onNodeWithContentDescription("Filter by period").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Filter by account").performScrollTo().assertIsDisplayed()
     }
 }
 

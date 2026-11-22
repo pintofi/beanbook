@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Home, Journal and Balances share one Filters sheet with a period, text, tags and links, an amount range and an account. The period is now Fava's time filter (`2020-03`, `FY2020`, `month-1`, a range): it shows what each account held at its end, with earlier history carried in as opening balances, and filtered balances are valued at the end of the period. The amount range compares units as Fava's own filter does, or each posting's cost or market value. The widgets no longer follow the period. ([#442])
 - The filter box in Filters is now Fava's own filter, run by the same code Fava uses: `-#trip` leaves entries out, a comma means or, parentheses group, `any(account:Food)` and the rest of Fava's filter grammar work the same way, and a filter that cannot be read shows Fava's message instead of the whole ledger. It is applied when the sheet is closed. A plain word is now a search of payees and descriptions, as in Fava, rather than a tag, so write `#trip` for a tag. ([#442])
 
 ## [1.0.5] - 2026-11-16

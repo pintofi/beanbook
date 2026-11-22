@@ -510,7 +510,6 @@ class MainActivity : ComponentActivity() {
                     // show here too.
                     val catalogue = app.catalogueState.collectUi()
                     val packages = app.packagesState.collectPackagesUi().copy(catalogue = catalogue)
-                    val dateRange by app.ledgerState.dateRange.collectAsStateWithLifecycle()
                     val restartNeeded by app.engineRestart.needed.collectAsStateWithLifecycle()
                     // Whatever changed under the running engine -- a plugin or package installed
                     // or removed, safe mode switched -- is picked up by restarting it at once.
@@ -674,9 +673,6 @@ class MainActivity : ComponentActivity() {
                         pluginSafeMode = pluginSafeMode,
                         pluginMessage = pluginMessage,
                         packages = packages,
-                        dateFrom = dateRange.first,
-                        dateTo = dateRange.second,
-                        onDateRange = { from, to -> app.ledgerState.setDateRange(from, to) },
                         onInstallPlugin = { pluginPicker.launch(arrayOf("*/*")) },
                         scriptRunning = scriptRunning,
                         scriptOutcome = scriptOutcome,

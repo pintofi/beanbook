@@ -5,7 +5,8 @@ import android.util.Log
 import io.github.pintofi.beanbook.core.domain.AccountBalance
 import io.github.pintofi.beanbook.core.domain.Holding
 import io.github.pintofi.beanbook.core.domain.AccountNames
-import io.github.pintofi.beanbook.core.domain.ExpressionAnswer
+import io.github.pintofi.beanbook.core.domain.ViewAnswer
+import io.github.pintofi.beanbook.core.domain.ViewRequest
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.Cost
 import io.github.pintofi.beanbook.core.domain.DocumentDirective
@@ -134,45 +135,56 @@ class LedgerReader(
         }
 
     /**
-     * Which transactions Fava's own filter keeps for [expression], as positions in the journal a
-     * read with the same [dateFrom] and [dateTo] returns. A filter Fava cannot read is a
-     * [ExpressionAnswer.Rejected] with Fava's own message, not a failure.
+     * The ledger as Fava shows it for [request]: the kept transactions as positions in the journal a whole-ledger
+     * read returns, the rows Fava makes up for a period, and every account's balances. An input Fava cannot use is
+     * a [ViewAnswer.Refused] with Fava's own message, not a failure.
      *
      * Never cached: the answer is only as good as the files on disk now, and the caller compares
-     * [ExpressionAnswer.Kept.inputHash] with the snapshot it holds before using it.
+     * [ViewAnswer.Ready.inputHash] with the snapshot it holds before using it.
      */
-    suspend fun matching(
+    suspend fun view(
         ledgerPath: String,
-        expression: String,
+        request: ViewRequest,
         pluginDirs: String = "",
         allowBridge: Boolean = true,
-        dateFrom: String = "",
-        dateTo: String = "",
-    ): Result<ExpressionAnswer> =
+    ): Result<ViewAnswer> =
         withContext(io) {
-            val payload = connection.payloadFile("filter")
+            val payload = connection.payloadFile("view")
             connection
                 .withEngine {
-                    it.filterToFile(
-                        ledgerPath, payload.absolutePath, pluginDirs, allowBridge, dateFrom, dateTo, expression,
+                    it.viewToFile(
+                        ledgerPath, payload.absolutePath, pluginDirs, allowBridge,
+                        request.time, request.text, request.tags, request.amountMin, request.amountMax,
+                        request.amountBasis.wire,
                     )
                 }
                 .mapCatching { result ->
                     check(result == "ok") { result.removePrefix("error: ") }
                     val root = JSONObject(payload.consumeText())
                     if (!root.optBoolean("ok", false)) {
-                        ExpressionAnswer.Rejected(
-                            expression, root.optString("filter_error", "The filter could not be read."),
+                        ViewAnswer.Refused(
+                            request,
+                            root.optString("field", "tags"),
+                            root.optString("message", "That could not be used."),
                         )
                     } else {
                         val positions = root.getJSONArray("positions")
-                        ExpressionAnswer.Kept(
-                            expression = expression,
+                        ViewAnswer.Ready(
+                            request = request,
                             positions = HashSet<Int>(positions.length() * 2).apply {
                                 for (i in 0 until positions.length()) add(positions.getInt(i))
                             },
+                            summaryRows = root.optJSONArray("summary_rows").map { it.toJournalEntry() },
+                            accounts = root.optJSONArray("accounts").map { it.toAccountBalance() },
+                            rates = root.optJSONArray("rates").map { rate ->
+                                PriceRate(
+                                    rate.getString("base"), rate.getString("quote"), BigDecimal(rate.getString("rate")),
+                                )
+                            },
                             transactionCount = root.getInt("transaction_count"),
                             inputHash = root.optStringOrNull("input_hash"),
+                            begin = root.optStringOrNull("begin"),
+                            end = root.optStringOrNull("end"),
                         )
                     }
                 }

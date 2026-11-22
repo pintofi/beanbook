@@ -29,6 +29,18 @@ class EntryFilterTest {
         errors = emptyList(), includedFiles = emptyList(), loadMillis = 0,
     )
 
+    private val hashed = ledger.copy(inputHash = "abc")
+    private val cash = "Assets:Cash"
+
+    private fun ready(
+        request: ViewRequest,
+        vararg positions: Int,
+        summary: List<JournalEntry> = emptyList(),
+        accounts: List<AccountBalance> = listOf(AccountBalance(cash, listOf(Amount(BigDecimal("-7.00"), "PKR")))),
+        hash: String? = "abc",
+        count: Int = 3,
+    ) = ViewAnswer.Ready(request, positions.toSet(), summary, accounts, emptyList(), count, hash, null, null)
+
     @Test fun `an inactive filter is the ledger itself`() {
         assertSame(ledger, ledger.filteredBy(EntryFilter()))
     }
@@ -36,37 +48,49 @@ class EntryFilterTest {
     @Test fun `a search keeps the matching entries and totals only those`() {
         val shown = ledger.filteredBy(EntryFilter(query = "samuel"))
         assertEquals(listOf("Lunch", "Taxi"), shown.journal.map { it.narration })
-        val cash = shown.accounts.first { it.name == "Assets:Cash" }
-        assertEquals(listOf(Amount(BigDecimal("-40.00"), "PKR")), cash.positions)
+        val total = shown.accounts.first { it.name == cash }
+        assertEquals(listOf(Amount(BigDecimal("-40.00"), "PKR")), total.positions)
     }
 
-    // The ledger's journal is newest first, as the app holds it; Fava's positions count oldest first.
-    private val hashed = ledger.copy(inputHash = "abc")
-    private fun kept(expression: String, vararg positions: Int, hash: String? = "abc", count: Int = 3) =
-        ExpressionAnswer.Kept(expression, positions.toSet(), count, hash)
-
-    @Test fun `Fava's answer decides the entries, counted oldest first, and the figures follow`() {
-        // The fixture lists newest first, so by Fava's count Taxi is 0, Groceries 1 and Lunch 2.
-        val shown = hashed.filteredBy(EntryFilter(expression = "-#trip"), kept("-#trip", 1, 2))
+    // The fixture lists newest first, so by Fava's count Taxi is 0, Groceries 1 and Lunch 2.
+    @Test fun `Fava's answer decides the entries, counted oldest first, and the balances are Fava's`() {
+        val request = ViewRequest(tags = "-#trip")
+        val shown = hashed.filteredBy(EntryFilter(view = request), ready(request, 1, 2))
         assertEquals(setOf("Lunch", "Groceries"), shown.journal.map { it.narration }.toSet())
-        val cash = shown.accounts.first { it.name == "Assets:Cash" }
-        assertEquals(listOf(Amount(BigDecimal("-30.00"), "PKR")), cash.positions)
+        assertEquals(listOf(Amount(BigDecimal("-7.00"), "PKR")), shown.accounts.single().positions)
     }
 
-    @Test fun `a search and an expression both have to match`() {
-        val shown = hashed.filteredBy(EntryFilter(query = "samuel", expression = "#trip"), kept("#trip", 0))
+    @Test fun `the opening rows Fava makes up for a period come last and have no file or line`() {
+        val opening = entry("", "Opening balance", amount = "5.00").copy(file = null, line = null)
+        val request = ViewRequest(time = "2026-08")
+        val shown = hashed.filteredBy(EntryFilter(view = request), ready(request, 0, summary = listOf(opening)))
+        assertEquals(listOf("Taxi", "Opening balance"), shown.journal.map { it.narration })
+        assertEquals(null, shown.journal.last().file)
+    }
+
+    @Test fun `a search and a request both have to match`() {
+        val request = ViewRequest(tags = "#trip")
+        val shown = hashed.filteredBy(EntryFilter(query = "samuel", view = request), ready(request, 0))
         assertEquals(listOf("Taxi"), shown.journal.map { it.narration })
     }
 
-    @Test fun `no answer, a refusal, another expression or other files show nothing, never everything`() {
-        val filter = EntryFilter(expression = "#trip")
+    @Test fun `an account name lists only the entries that touch it and leaves every figure alone`() {
+        val shown = ledger.filteredBy(EntryFilter(account = "misc"))
+        assertEquals(3, shown.journal.size)
+        assertSame(ledger.accounts, shown.accounts)
+        assertEquals(0, ledger.filteredBy(EntryFilter(account = "Liabilities")).journal.size)
+    }
+
+    @Test fun `no answer, a refusal, another request or other files show nothing, never everything`() {
+        val request = ViewRequest(tags = "#trip")
+        val filter = EntryFilter(view = request)
         val answers = listOf(
             null,
-            ExpressionAnswer.Rejected("#trip", "Failed to parse filter: #trip"),
-            kept("#other", 0),
-            kept("#trip", 0, hash = "different"),
-            kept("#trip", 0, hash = null),
-            kept("#trip", 0, count = 99),
+            ViewAnswer.Refused(request, "tags", "Failed to parse filter: #trip,"),
+            ready(ViewRequest(tags = "#other"), 0),
+            ready(request, 0, hash = "different"),
+            ready(request, 0, hash = null),
+            ready(request, 0, count = 99),
         )
         for (answer in answers) {
             val shown = hashed.filteredBy(filter, answer)
@@ -75,15 +99,11 @@ class EntryFilterTest {
         }
     }
 
-    @Test fun `the filtered figures are at cost, not at a market value that was never computed for them`() {
-        val shown = ledger.filteredBy(EntryFilter(query = "imtiaz"))
-        val cash = shown.accounts.first { it.name == "Assets:Cash" }
-        assertEquals(cash.atCost, cash.atValue)
-    }
-
-    @Test fun `nothing matching leaves an empty ledger, not the whole one`() {
-        val shown = ledger.filteredBy(EntryFilter(query = "nobody"))
-        assertTrue(shown.journal.isEmpty())
-        assertTrue(shown.accounts.isEmpty())
+    @Test fun `the request is active for any of its parts and for none of the live ones`() {
+        assertEquals(false, ViewRequest().isActive)
+        assertEquals(true, ViewRequest(time = "2020").isActive)
+        assertEquals(true, ViewRequest(amountMax = "5").isActive)
+        assertEquals(false, EntryFilter(account = "x").view.isActive)
+        assertEquals(true, EntryFilter(account = "x").isActive)
     }
 }

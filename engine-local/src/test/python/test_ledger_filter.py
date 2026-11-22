@@ -288,6 +288,9 @@ class ViewTest(unittest.TestCase):
                 made_up = [e for e in theirs if e.flag in ("S", "C")]
                 self.assertEqual(sorted(e.narration for e in real), sorted(self.narrations(answer)))
                 self.assertEqual(len(made_up), len(answer["summary_rows"]))
+                for row in answer["summary_rows"]:
+                    self.assertIsNone(row["file"])
+                    self.assertIsNone(row["line"])
                 ours = sorted(
                     (p["account"], p["number"], p["currency"])
                     for row in answer["summary_rows"]

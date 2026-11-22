@@ -963,7 +963,12 @@ def view(
         if isinstance(entry, data.Transaction):
             position = index.get(id(entry))
             if position is None:
-                made_up.append(_journal_row(entry))
+                row = _journal_row(entry)
+                # Beancount gives these rows a placeholder file ("<summarize>") and line 0. They are not in any
+                # file, so say so: the app must not offer to edit or delete them.
+                row["file"] = None
+                row["line"] = None
+                made_up.append(row)
             else:
                 positions.append(position)
     _accounts, rows, rates = _account_rows(working, entries, options_map, as_of)
