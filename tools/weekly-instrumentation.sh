@@ -3,6 +3,7 @@
 # then copies the screenshots the tests wrote to the device into ./screenshots.
 #
 #   tools/weekly-instrumentation.sh [true|false]     # true: draw the screenshots again, not compare
+#   ONLY_CLASS=<test class> tools/weekly-instrumentation.sh   # run that one class (the pull request picture check)
 #
 # The tests' exit status is the script's, so a failure still fails the job after the copy.
 #
@@ -11,12 +12,14 @@
 set -u
 update="${1:-false}"
 skip=io.github.pintofi.beanbook.app.SafExportTest,io.github.pintofi.beanbook.app.ScriptWithMissingModuleTest,io.github.pintofi.beanbook.app.ZakatExtensionTest
+# One class instead of the suite, when ONLY_CLASS is set. The skipped three are then not in play.
+if [ -n "${ONLY_CLASS:-}" ]; then select="class=$ONLY_CLASS"; else select="notClass=$skip"; fi
 
 adb shell rm -rf /sdcard/Download/beanbook-screenshots
 ./gradlew :app:connectedExpertDebugAndroidTest \
   -Pbeancount.wheelDir="${BCA_WHEEL_DIR:?}" \
   -Pandroid.testInstrumentationRunnerArguments.updateScreenshots="$update" \
-  -Pandroid.testInstrumentationRunnerArguments.notClass="$skip"
+  -Pandroid.testInstrumentationRunnerArguments."$select"
 status=$?
 
 mkdir -p screenshots
