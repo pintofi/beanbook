@@ -145,7 +145,7 @@ class AppDataRestorer(
             add(
                 RestoreItem(
                     "script:${script.name}", AppDataGroup.SCRIPTS, script.nameWithoutExtension,
-                    "A program. Comes back saved; it only runs when you run it.",
+                    "Comes back saved",
                     if (exists) RestoreStatus.CLASH else RestoreStatus.NEW,
                 ),
             )
