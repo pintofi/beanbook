@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.pintofi.beanbook.core.domain.AccountBalance
@@ -81,10 +82,12 @@ class BalancesTreeTest {
 
     @Test fun filteringOpensEveryBranchItMatches() {
         render()
-        compose.onNodeWithContentDescription("Filter accounts by name").performTextInput("Savings")
+        compose.onNodeWithContentDescription("Filters: period, text, tags, amount and account").performClick()
+        compose.onNodeWithContentDescription("Filter by account").performScrollTo().performTextInput("Savings")
+        compose.onNodeWithText("Done").performScrollTo().performClick()
         compose.waitForIdle()
         // A search that hid its own result behind a fold would have answered nothing. By
-        // content description, because the filter field now holds the word "Savings" too.
+        // content description, because the filter chip now holds the word "Savings" too.
         compose.onNodeWithContentDescription("Assets:Bank:Savings").assertIsDisplayed()
     }
 }
