@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -509,7 +510,14 @@ private val SECTIONS = listOf(
     "Remote server" to setOf(AppDataGroup.REMOTE),
 )
 
-/** [rows] under a heading for each kind, each kind in its own group, with a way to tick or clear a kind at once. */
+/** More items than this in a kind and it starts folded, with how many are ticked in its heading. */
+private const val FOLD_ABOVE = 5
+
+/**
+ * [rows] under a heading for each kind, each kind in its own group, with a way to tick or clear a kind at once.
+ * A long kind (many templates or scripts) starts folded, so the page stays short; its heading says how many of
+ * its items are ticked.
+ */
 @Composable
 private fun AppDataSections(rows: List<AppDataRow>, ticked: Set<String>, onTicked: (Set<String>) -> Unit) {
     SECTIONS.forEach { (title, groups) ->
@@ -517,21 +525,32 @@ private fun AppDataSections(rows: List<AppDataRow>, ticked: Set<String>, onTicke
         if (inSection.isEmpty()) return@forEach
         val choosable = inSection.filter { it.selectable }.map { it.key }
         val allTicked = choosable.isNotEmpty() && choosable.all { it in ticked }
-        FolioHeading(
-            title,
-            trailing = if (choosable.size > 1) {
-                {
-                    OutlinedButton(
-                        onClick = { onTicked(if (allTicked) ticked - choosable.toSet() else ticked + choosable) },
-                        modifier = Modifier.semantics {
-                            contentDescription = if (allTicked) "Clear every $title item" else "Tick every $title item"
-                        },
-                    ) { Text(if (allTicked) "None" else "All") }
-                }
-            } else {
-                null
-            },
-        )
+        val folds = inSection.size > FOLD_ABOVE
+        var open by rememberSaveable(title) { mutableStateOf(!folds) }
+        val tickAll: @Composable () -> Unit = {
+            OutlinedButton(
+                onClick = { onTicked(if (allTicked) ticked - choosable.toSet() else ticked + choosable) },
+                modifier = Modifier.semantics {
+                    contentDescription = if (allTicked) "Clear every $title item" else "Tick every $title item"
+                },
+            ) { Text(if (allTicked) "None" else "All") }
+        }
+        if (folds) {
+            FolioToggleHeading(
+                text = title,
+                count = "${choosable.count { it in ticked }} of ${inSection.size}",
+                expanded = open,
+                onToggle = { open = !open },
+            )
+        } else {
+            FolioHeading(title, trailing = if (choosable.size > 1) tickAll else null)
+        }
+        if (!open) return@forEach
+        if (folds && choosable.size > 1) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = Measure.indent), horizontalArrangement = Arrangement.End) {
+                tickAll()
+            }
+        }
         FolioGroup {
             inSection.forEach { row ->
                 item {

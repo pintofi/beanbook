@@ -4,6 +4,16 @@ import android.provider.MediaStore
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.isSelectable
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.isToggleable
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -169,6 +179,9 @@ class BackupAppDataScreenTest {
         compose.onAllNodesWithText("Already here", substring = true)[0].performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithText("Replaces what is set here", substring = true)[0].performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Keep mine").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("Keep mine") and isSelectable()).assertIsSelected()
+        compose.onNode(hasText("Keep both") and isSelectable()).assertIsNotSelected()
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.SelectableGroup)).assertExists()
         compose.onNodeWithText("Scripts come back saved. None runs until you run it.").performScrollTo().assertIsDisplayed()
         picture("backup-restore-preview")
 
@@ -180,5 +193,30 @@ class BackupAppDataScreenTest {
         // Salary is new here, so it starts ticked; Rent and the script are already here and the preference and
         // server replace a setting, so none of those start ticked, and code and a server address never do.
         assertEquals(setOf("template:Salary"), ticked)
+    }
+
+    @Test fun aLongKindStartsFoldedWithItsCountAndOpens() {
+        val many = (1..7).map { item("template:T$it", AppDataGroup.TEMPLATES, "Template $it") }
+        render(AppDataUi(available = many))
+        compose.onNodeWithContentDescription("Also include app data").performScrollTo().performClick()
+
+        compose.onNodeWithText("7 of 7").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Template 1").assertDoesNotExist()
+        compose.onNodeWithText("Entry templates").performScrollTo().performClick()
+        compose.onNodeWithText("Template 1").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Clear every Entry templates item").performScrollTo().performClick()
+        compose.onNodeWithText("0 of 7").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun headingsAndChoicesCarryTheirMeaningForAScreenReader() {
+        render(AppDataUi(available = available))
+        compose.onNodeWithContentDescription("Also include app data").performScrollTo().performClick()
+
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        compose.onNode(heading and hasAnyDescendant(hasText("Entry templates"))).assertExists()
+        compose.onNode(heading and hasAnyDescendant(hasText("Saved scripts"))).assertExists()
+        // A tick row is one control that reads as on or off; an unticked script is off.
+        compose.onNode(hasText("Rent") and isToggleable()).performScrollTo().assertIsOn()
+        compose.onNode(hasText("check") and isToggleable()).performScrollTo().assertIsOff()
     }
 }
