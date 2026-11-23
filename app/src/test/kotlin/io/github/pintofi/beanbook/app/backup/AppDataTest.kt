@@ -173,4 +173,107 @@ class AppDataTest {
         assertFalse(preview.selectable)
         assertTrue(restorer.apply(dir, "a", setOf(preview.key), Clash.KEEP_MINE).catalogue.isEmpty())
     }
+
+    @Test
+    fun `a copy of a script made twice keeps a name the backup can hold`() {
+        val long = "a".repeat(55)
+        File(state, "scripts").mkdirs()
+        File(state, "scripts/$long.py").writeText("print(1)\n")
+        val dir = File(base, "twice").apply { File(this, "scripts").mkdirs() }
+        File(dir, "scripts/$long.py").writeText("print(2)\n")
+
+        repeat(2) { restorer.apply(dir, "a", setOf("script:$long.py"), Clash.KEEP_BOTH) }
+
+        val names = File(state, "scripts").list().orEmpty().sorted()
+        assertEquals(3, names.size)
+        assertTrue("$names", names.all { AppDataGroup.SCRIPTS.accepts("scripts/$it") })
+    }
+
+    @Test
+    fun `a script the backup format cannot hold is shown and not offered`() {
+        File(state, "scripts").mkdirs()
+        File(state, "scripts/my script.py").writeText("print(1)\n")
+        File(state, "scripts/fine.py").writeText("print(1)\n")
+
+        val offered = source.available("a").filter { it.group == AppDataGroup.SCRIPTS }
+
+        assertFalse(offered.single { it.title == "my script" }.selectable)
+        assertTrue(offered.single { it.title == "fine" }.selectable)
+        assertEquals(1, source.payloads("a", offered.map { it.key }.toSet()).size)
+    }
+
+    @Test
+    fun `a server address that is not a web address is not restored, and a sign-in inside one is dropped`() {
+        val dir = File(base, "bad-remote").apply { mkdirs() }
+        for (address in listOf("ftp://fava.example", "file:///etc/passwd")) {
+            File(dir, "remote.json").writeText("{\"address\":\"$address\",\"username\":\"x\"}")
+            assertEquals(address, 0, restorer.apply(dir, "a", setOf("remote"), Clash.KEEP_MINE).count)
+        }
+        assertFalse(File(state, "remote-address").exists())
+
+        File(dir, "remote.json").writeText("{\"address\":\"https://me:secret@fava.example\",\"username\":\"x\"}")
+        restorer.apply(dir, "a", setOf("remote"), Clash.KEEP_MINE)
+        assertEquals("https://fava.example", File(state, "remote-address").readText())
+    }
+
+    @Test
+    fun `the saved password goes with the server it was typed for`() {
+        val dir = File(base, "remote").apply { mkdirs() }
+        File(dir, "remote.json").writeText("{\"address\":\"https://fava.example\",\"username\":\"me\"}")
+        File(state, "remote-address").writeText("https://fava.example")
+        File(state, "remote-username").writeText("me")
+        File(state, "remote-password").writeText("secret")
+
+        restorer.apply(dir, "a", setOf("remote"), Clash.KEEP_MINE)
+        assertTrue("the same server and user keeps it", File(state, "remote-password").exists())
+
+        File(state, "remote-username").writeText("someone-else")
+        val applied = restorer.apply(dir, "a", setOf("remote"), Clash.KEEP_MINE)
+        assertFalse("another user does not", File(state, "remote-password").exists())
+        assertTrue(applied.notes.any { it.contains("password") })
+    }
+
+    @Test
+    fun `a kind that cannot be written is named and the others still come back`() {
+        // A file where the scripts folder should be: saving a script fails, saving a colour does not.
+        File(state, "scripts").writeText("in the way")
+        val dir = File(base, "partial").apply { File(this, "scripts").mkdirs() }
+        File(dir, "scripts/check.py").writeText("print(1)\n")
+        File(dir, "colour").writeText("TEAL")
+
+        val applied = restorer.apply(dir, "a", setOf("script:check.py", "colour"), Clash.KEEP_MINE)
+
+        assertEquals(1, applied.count)
+        assertTrue(applied.needsRestart)
+        assertTrue(applied.notes.single { it.startsWith("Scripts could not") }.isNotEmpty())
+        assertTrue(File(state, "appearance").readText().contains("project.a=TEAL"))
+    }
+
+    @Test
+    fun `a restored colour keeps the first version of the appearance file readable`() {
+        File(state, "appearance").writeText("DARK\ntrue\n")
+        val dir = File(base, "legacy").apply { mkdirs() }
+        File(dir, "colour").writeText("TEAL")
+
+        restorer.apply(dir, "a", setOf("colour"), Clash.KEEP_MINE)
+
+        val text = File(state, "appearance").readText()
+        assertTrue(text, text.contains("theme=DARK") && text.contains("project.a=TEAL"))
+    }
+
+    @Test
+    fun `a new preference or colour starts ticked, one that replaces a setting and code do not`() {
+        File(state, "scripts").mkdirs()
+        File(state, "scripts/check.py").writeText("print(1)\n")
+        File(state, "balances-basis").writeText("VALUE")
+        File(state, "appearance").writeText("theme=DARK\nproject.a=TEAL\n")
+        val dir = staged("a", setOf("script:check.py", "pref:balances-basis", "pref:appearance", "colour"))
+        File(state, "balances-basis").delete()
+
+        val byKey = restorer.preview(dir, "a").associateBy { it.key }
+
+        assertEquals(RestoreStatus.NEW, byKey.getValue("pref:balances-basis").status)
+        assertEquals(RestoreStatus.REPLACES, byKey.getValue("pref:appearance").status)
+        assertEquals(RestoreStatus.REPLACES, byKey.getValue("colour").status)
+    }
 }

@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.net.Uri
 import android.util.Log
 import io.github.pintofi.beanbook.app.storage.SafExportTarget
+import io.github.pintofi.beanbook.core.data.AppDataGroup
 import io.github.pintofi.beanbook.core.data.ImportResult
 import io.github.pintofi.beanbook.core.data.importLinked
 import io.github.pintofi.beanbook.core.data.ProjectExporter
@@ -37,6 +38,8 @@ class ProjectsState(
     private val validator: io.github.pintofi.beanbook.core.data.LedgerValidator? = null,
     /** The edition's plugin rules; a restored plugin is always turned off, and one this refuses is said so. */
     pluginPolicy: io.github.pintofi.beanbook.core.domain.PluginPolicy? = null,
+    /** Re-reads the preference files a restore replaced, so the running app shows them and keeps them. */
+    private val reloadPreferences: () -> Unit = {},
 ) {
     private val _projects = MutableStateFlow<List<ProjectSummary>>(emptyList())
     val projects: StateFlow<List<ProjectSummary>> = _projects.asStateFlow()
@@ -156,10 +159,12 @@ class ProjectsState(
                 .filter { it.group in AUTOMATIC && it.selectable }.map { it.key }.toSet()
             val clash = io.github.pintofi.beanbook.app.backup.Clash.KEEP_BOTH
             val applied = restorer.apply(dir, result.projectId, keys, clash)
-            val others = result.manifest.appData.any { it.group !in AUTOMATIC }
+            if (applied.needsRestart) reloadPreferences()
+            val others = result.manifest.appData.any { it.group !in AUTOMATIC && it.group != AppDataGroup.CATALOGUE }
             (applied.describe()?.let { " $it" }.orEmpty()) +
-                if (others) " Scripts, preferences and server details in the backup were not brought back." else ""
-        }.getOrDefault("").also { dir.deleteRecursively() }
+                if (others) " Its scripts, preferences and server address were left out." else ""
+        }.getOrElse { " The app data in the backup could not be brought back: ${it.message}." }
+            .also { dir.deleteRecursively() }
     }
 
     /** Retries the held backup with the passphrase just typed. */

@@ -1,11 +1,12 @@
 package io.github.pintofi.beanbook.app.backup
 
+import io.github.pintofi.beanbook.app.remote.KeystoreSecret
 import io.github.pintofi.beanbook.core.data.AppDataGroup
-import io.github.pintofi.beanbook.core.data.BackupArchive
 import io.github.pintofi.beanbook.core.data.CatalogueInstaller
 import io.github.pintofi.beanbook.core.data.Json
 import io.github.pintofi.beanbook.core.data.ProjectWorkspace
 import io.github.pintofi.beanbook.core.data.TemplateStore
+import io.github.pintofi.beanbook.engine.remote.RemoteAddress
 import java.io.File
 
 /** What restoring would do with one thing in a backup. */
@@ -24,12 +25,15 @@ enum class RestoreStatus {
 
     /** Already installed here, so there is nothing to bring back. */
     INSTALLED,
+
+    /** A single setting that is set here already; ticking it replaces what is set. */
+    REPLACES,
 }
 
 /** What to do when a template or a script has the name of one that is here already. */
 enum class Clash(val label: String) {
     KEEP_MINE("Keep mine"),
-    REPLACE("Replace with the backup's"),
+    REPLACE("Use the backup's"),
     KEEP_BOTH("Keep both"),
 }
 
@@ -41,7 +45,8 @@ data class RestoreItem(
     val detail: String,
     val status: RestoreStatus,
 ) {
-    val selectable: Boolean get() = status == RestoreStatus.NEW || status == RestoreStatus.CLASH
+    val selectable: Boolean get() =
+        status == RestoreStatus.NEW || status == RestoreStatus.CLASH || status == RestoreStatus.REPLACES
 }
 
 /** What applying did, in numbers and in words for the person. */
@@ -120,47 +125,64 @@ class AppDataRestorer(
         }
         File(staging, "colour").takeIf { it.isFile }?.let {
             val name = it.readText().trim().lowercase()
-            add(RestoreItem("colour", AppDataGroup.COLOUR, "This project's colour", name, RestoreStatus.NEW))
+            val set = appearanceLines().any { l -> l.startsWith("${AppDataSource.PROJECT_PREFIX}$projectId=") }
+            add(
+                RestoreItem(
+                    "colour", AppDataGroup.COLOUR, "This project's colour", name,
+                    if (set) RestoreStatus.REPLACES else RestoreStatus.NEW,
+                ),
+            )
         }
         for ((name, title) in AppDataSource.PREFERENCES) {
             if (File(staging, "preferences/$name").isFile) {
-                val status = if (stateFile(name).isFile) RestoreStatus.CLASH else RestoreStatus.NEW
+                val status = if (stateFile(name).isFile) RestoreStatus.REPLACES else RestoreStatus.NEW
                 add(RestoreItem("pref:$name", AppDataGroup.PREFERENCES, title, "", status))
             }
         }
         val scripts = File(staging, "scripts").listFiles().orEmpty().filter { it.isFile && it.extension == "py" }
         scripts.sortedBy { it.name }.forEach { script ->
             val exists = File(stateDir, "scripts/${script.name}").isFile
-            val hash = BackupArchive.sha256(script).take(8)
             add(
                 RestoreItem(
                     "script:${script.name}", AppDataGroup.SCRIPTS, script.nameWithoutExtension,
-                    "A program. Comes back saved and is never run. $hash",
+                    "A program. Comes back saved; it only runs when you run it.",
                     if (exists) RestoreStatus.CLASH else RestoreStatus.NEW,
                 ),
             )
         }
         remote(staging)?.let { (address, _) ->
-            val status = if (stateFile(AppDataSource.REMOTE_ADDRESS).isFile) RestoreStatus.CLASH else RestoreStatus.NEW
+            val set = stateFile(AppDataSource.REMOTE_ADDRESS).isFile
+            val status = if (set) RestoreStatus.REPLACES else RestoreStatus.NEW
             add(RestoreItem("remote", AppDataGroup.REMOTE, "Remote server address and user name", address, status))
         }
     }
 
-    /** Brings back the items in [chosen] (keys from [preview]) into [projectId], settling name clashes by [clash]. */
+    /**
+     * Brings back the items in [chosen] (keys from [preview]) into [projectId]. [clash] settles a template or a
+     * script that has the name of one already here; a preference, the colour and the server address are replaced
+     * when ticked, which is what ticking them says. Each kind is tried on its own, so one that cannot be written
+     * is named and the others still come back.
+     */
     fun apply(staging: File, projectId: String, chosen: Set<String>, clash: Clash): AppDataApplied {
         val notes = mutableListOf<String>()
-        var count = applyTemplates(staging, projectId, chosen, clash)
-        count += applyScripts(staging, chosen, clash)
-        val prefs = applyPreferences(staging, chosen)
-        val colour = applyColour(staging, projectId, chosen, notes)
-        val server = applyRemote(staging, chosen, notes)
+        var count = 0
+        var changedSettings = 0
+        fun attempt(what: String, block: () -> Int): Int =
+            runCatching(block).getOrElse {
+                notes += "$what could not be brought back: ${it.message ?: it.javaClass.simpleName}."
+                0
+            }
+        count += attempt("Templates") { applyTemplates(staging, projectId, chosen, clash) }
+        count += attempt("Scripts") { applyScripts(staging, chosen, clash) }
+        changedSettings += attempt("Preferences") { applyPreferences(staging, chosen) }
+        changedSettings += attempt("The project colour") { applyColour(staging, projectId, chosen, notes) }
+        changedSettings += attempt("The server address") { applyRemote(staging, chosen, notes) }
         val missing = catalogued(staging).map { it.first }.filterNot { it in installedHere() }
         if (missing.isNotEmpty()) {
-            val names = missing.joinToString(", ")
-            notes += "Catalogue plugins that were installed: $names. Install them again from Plugins."
+            notes += "Catalogue plugins that were installed: ${missing.joinToString(", ")}. " +
+                "Install them again from Plugins."
         }
-        val changed = prefs + colour + server
-        return AppDataApplied(count + changed, changed > 0, notes, missing)
+        return AppDataApplied(count + changedSettings, changedSettings > 0, notes, missing)
     }
 
     private fun applyTemplates(staging: File, projectId: String, chosen: Set<String>, clash: Clash): Int {
@@ -169,19 +191,24 @@ class AppDataRestorer(
         if (wanted.isEmpty() || !file.isFile) return 0
         val mine = templates.load(projectId).map { it.name.lowercase() }.toMutableSet()
         var count = 0
-        templates.decode(file.readText()).orEmpty().filter { it.name in wanted }.forEach { template ->
-            val exists = template.name.lowercase() in mine
-            when {
-                !exists || clash == Clash.REPLACE -> templates.save(projectId, template)
-                clash == Clash.KEEP_BOTH -> {
-                    val name = uniqueName(template.name, mine, " (restored)")
-                    templates.save(projectId, template.copy(name = name))
-                    mine += name.lowercase()
+        templates.decode(file.readText()).orEmpty()
+            .filter { it.name in wanted && it.name.isNotBlank() }
+            .forEach { template ->
+                val exists = template.name.lowercase() in mine
+                when {
+                    !exists || clash == Clash.REPLACE -> {
+                        templates.save(projectId, template)
+                        mine += template.name.lowercase()
+                    }
+                    clash == Clash.KEEP_BOTH -> {
+                        val name = uniqueName(template.name, mine, " (restored)")
+                        templates.save(projectId, template.copy(name = name))
+                        mine += name.lowercase()
+                    }
+                    else -> return@forEach
                 }
-                else -> return@forEach
+                count++
             }
-            count++
-        }
         return count
     }
 
@@ -198,7 +225,7 @@ class AppDataRestorer(
                     Clash.REPLACE -> Unit
                     Clash.KEEP_BOTH -> {
                         val taken = folder.list().orEmpty().map { it.lowercase() }.toSet()
-                        target = File(folder, uniqueName(name.removeSuffix(".py"), taken, "-restored", ".py"))
+                        target = File(folder, uniqueScriptName(name.removeSuffix(".py"), taken))
                     }
                 }
             }
@@ -208,20 +235,28 @@ class AppDataRestorer(
         return count
     }
 
+    /** The appearance file as key=value lines; the first version of it, two bare lines, is converted. */
+    private fun appearanceLines(): List<String> {
+        val lines = stateFile(AppDataSource.APPEARANCE).takeIf { it.isFile }?.readLines().orEmpty()
+            .filter { it.isNotBlank() }
+        if (lines.isEmpty() || lines.any { '=' in it }) return lines
+        return listOfNotNull(lines.getOrNull(0)?.let { "theme=$it" }, lines.getOrNull(1)?.let { "dynamic=$it" })
+    }
+
     private fun applyPreferences(staging: File, chosen: Set<String>): Int {
         var count = 0
         for ((name, _) in AppDataSource.PREFERENCES) {
             val source = File(staging, "preferences/$name")
             if ("pref:$name" !in chosen || !source.isFile) continue
-            val text = source.readText()
             stateDir.mkdirs()
             if (name == AppDataSource.APPEARANCE) {
-                // This device's per-project colours stay: the restored file only holds the global lines.
-                val colours = stateFile(name).takeIf { it.isFile }?.readLines().orEmpty()
-                    .filter { it.startsWith(AppDataSource.PROJECT_PREFIX) }
-                stateFile(name).writeText((text.trimEnd().lines() + colours).joinToString("\n") + "\n")
+                // This device's per-project colours stay, and the backup's are not taken: a colour belongs to a
+                // project and comes back as its own choice.
+                val restored = source.readLines().filterNot { it.startsWith(AppDataSource.PROJECT_PREFIX) }
+                val colours = appearanceLines().filter { it.startsWith(AppDataSource.PROJECT_PREFIX) }
+                stateFile(name).writeText((restored.filter { it.isNotBlank() } + colours).joinToString("\n") + "\n")
             } else {
-                stateFile(name).writeText(text)
+                stateFile(name).writeText(source.readText())
             }
             count++
         }
@@ -237,8 +272,7 @@ class AppDataRestorer(
             return 0
         }
         val prefix = "${AppDataSource.PROJECT_PREFIX}$projectId="
-        val lines = stateFile(AppDataSource.APPEARANCE).takeIf { it.isFile }?.readLines().orEmpty()
-            .filterNot { it.startsWith(prefix) }
+        val lines = appearanceLines().filterNot { it.startsWith(prefix) }
         stateDir.mkdirs()
         stateFile(AppDataSource.APPEARANCE).writeText((lines + "$prefix$value").joinToString("\n") + "\n")
         return 1
@@ -246,20 +280,24 @@ class AppDataRestorer(
 
     private fun applyRemote(staging: File, chosen: Set<String>, notes: MutableList<String>): Int {
         if ("remote" !in chosen) return 0
-        val (address, user) = remote(staging) ?: return 0
-        if (!address.startsWith("https://") && !address.startsWith("http://")) {
+        val (given, user) = remote(staging) ?: return 0
+        // The same reading of an address the Remote screen uses: a web address, no sign-in inside it.
+        val address = RemoteAddress.parse(given).getOrNull()?.base
+        if (address == null) {
             notes += "The remote server address in the backup was not usable, so it was left out."
             return 0
         }
         stateDir.mkdirs()
-        // The saved password belongs to the old address. Left in place it would be sent to the restored one.
-        if (stateFile(AppDataSource.REMOTE_ADDRESS).takeIf { it.isFile }?.readText()?.trim() != address) {
-            stateFile("remote-password").delete()
-        }
+        val sameServer = stateFile(AppDataSource.REMOTE_ADDRESS).takeIf { it.isFile }?.readText()?.trim() == address &&
+            stateFile(AppDataSource.REMOTE_USER).takeIf { it.isFile }?.readText()?.trim().orEmpty() == user.trim()
+        // A saved password belongs to the server and user it was typed for; it must not follow another address.
+        if (!sameServer) KeystoreSecret(stateFile("remote-password")).clear()
         stateFile(AppDataSource.REMOTE_ADDRESS).writeText(address)
         val userFile = stateFile(AppDataSource.REMOTE_USER)
-        if (user.isBlank()) userFile.delete() else userFile.writeText(user)
-        notes += "The remote server's password is not in a backup: enter it again to connect."
+        if (user.isBlank()) userFile.delete() else userFile.writeText(user.trim())
+        if (!stateFile("remote-password").exists()) {
+            notes += "The remote server's password is not in a backup: enter it again to connect."
+        }
         return 1
     }
 
@@ -282,10 +320,19 @@ class AppDataRestorer(
     }
 
     /** [base] with [suffix] (and a number when that is taken too), not among [taken]. */
-    private fun uniqueName(base: String, taken: Set<String>, suffix: String, extension: String = ""): String {
-        var candidate = "$base$suffix$extension"
+    private fun uniqueName(base: String, taken: Set<String>, suffix: String): String {
+        var candidate = "$base$suffix"
         var n = 2
-        while (candidate.lowercase() in taken) candidate = "$base$suffix $n$extension".also { n++ }
+        while (candidate.lowercase() in taken) candidate = "$base${suffix.removeSuffix(")")} ${n++})"
+        return candidate
+    }
+
+    /** A script file name for a copy: no spaces, and short enough that the copy can be backed up in turn. */
+    private fun uniqueScriptName(base: String, taken: Set<String>): String {
+        val stem = base.take(MAX_SCRIPT_STEM)
+        var candidate = "$stem-restored.py"
+        var n = 2
+        while (candidate.lowercase() in taken) candidate = "$stem-restored-${n++}.py"
         return candidate
     }
 
@@ -293,5 +340,8 @@ class AppDataRestorer(
         /** `DYNAMIC` or the name of an accent palette: capitals only, so the value is never a path or a line. */
         val COLOUR_NAME = Regex("[A-Z_]{1,24}")
         val CATALOGUE_ID = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,80}")
+
+        /** A script's file name is at most 64 characters (see AppDataGroup); room is left for "-restored-99.py". */
+        const val MAX_SCRIPT_STEM = 64 - "-restored-99.py".length
     }
 }

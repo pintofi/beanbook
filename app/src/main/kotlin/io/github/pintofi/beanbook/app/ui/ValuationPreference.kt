@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
  * value, so switching it in one place changes every figure rather than leaving a heading that
  * disagrees with the list under it. A one-line file beside the other display preferences, in
  * app-private storage: it belongs to the device rather than to a ledger, so it must not
- * travel in an export, a backup or a mirror.
+ * travel in an export or a mirror. A backup carries it only when the person ticks it there.
  *
  * Market value is the default, as it is for a Fava ledger that opens on its balance sheet at
  * value: it is the basis that answers "what am I worth", and it falls back to cost and then

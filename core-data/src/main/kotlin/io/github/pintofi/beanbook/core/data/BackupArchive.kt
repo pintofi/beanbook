@@ -37,8 +37,8 @@ data class BackupManifest(
      * Beanbook's own data that is not part of the ledger, chosen when the backup was made: entry templates,
      * saved scripts, some preferences. Only a backup that holds some is written as schema 3, so an older app
      * refuses it with its ordinary "newer version" message instead of failing on files it does not know.
-     * File names are not listed beyond the group and a fixed path, so a readable manifest says nothing about
-     * what the templates or scripts are called.
+     * The manifest is readable in a sealed archive too. It lists each file's group and path, which for scripts
+     * includes the script's file name, and nothing of what is inside a file.
      */
     val appData: List<AppDataEntry> = emptyList(),
 ) {
@@ -100,14 +100,20 @@ data class BackupManifest(
         const val PAYLOAD_NAME = "project.enc"
 
         /** The `app_data` list: empty when there is none, null when an entry is not one this app allows. */
-        private fun appDataFrom(root: Json.Obj): List<AppDataEntry>? = root.array("app_data")?.map { item ->
-            val entry = item as? Json.Obj ?: return null
-            val group = AppDataGroup.fromWire(entry.string("group") ?: return null) ?: return null
-            val path = entry.string("path") ?: return null
-            // The group says what the path may look like; anything else is a name made up by the archive.
-            if (!group.accepts(path)) return null
-            AppDataEntry(group, path, entry.long("size") ?: return null, entry.string("sha256") ?: return null)
-        }.orEmpty()
+        private fun appDataFrom(root: Json.Obj): List<AppDataEntry>? {
+            val list = root.array("app_data")?.map { item ->
+                val entry = item as? Json.Obj ?: return null
+                val group = AppDataGroup.fromWire(entry.string("group") ?: return null) ?: return null
+                val path = entry.string("path") ?: return null
+                // The group says what the path may look like; anything else is a name made up by the archive.
+                if (!group.accepts(path)) return null
+                AppDataEntry(group, path, entry.long("size") ?: return null, entry.string("sha256") ?: return null)
+            }.orEmpty()
+            // The limits a writer keeps, held on a reader too: more files, or one twice, is not one of ours.
+            val tooMany = list.size > BackupArchive.MAX_APP_DATA_FILES
+            if (tooMany || list.map { it.path }.distinct().size != list.size) return null
+            return list
+        }
 
         fun fromJson(json: Json?): BackupManifest? {
             val root = json as? Json.Obj ?: return null
@@ -121,7 +127,9 @@ data class BackupManifest(
             } ?: return null
 
             val schema = root.long("schema_version")?.toInt() ?: return null
-            val appData = appDataFrom(root) ?: return null
+            // A format newer than this app reads may list groups it does not know. Its manifest is still read, so
+            // the caller can say "made by a newer version" instead of "not a backup".
+            val appData = if (schema > SCHEMA_VERSION) emptyList() else appDataFrom(root) ?: return null
             // An older format has no such section, so a manifest that claims one is not one of ours.
             if (appData.isNotEmpty() && schema < 3) return null
 
@@ -571,7 +579,12 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                     ) { "refusing to write outside the app-data target: ${entry.path}" }
                     destination.parentFile?.mkdirs()
                     val stream = payload.openAppData(entry.path) ?: error("missing appdata/${entry.path}")
-                    destination.outputStream().use { out -> stream.use { it.copyTo(out) } }
+                    destination.outputStream().use { out ->
+                        stream.use { input ->
+                            val copied = input.copyTo(out)
+                            check(copied == entry.size) { "appdata/${entry.path} changed while it was being restored" }
+                        }
+                    }
                 }
             }
             emptyList()

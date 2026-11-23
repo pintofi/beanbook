@@ -209,16 +209,27 @@ class CatalogueState(
     /** Works out what installing [id] needs, and shows it. Downloads no plugin code. */
     fun request(id: String) = request(id, upgrade = false)
 
-    /** Installs [ids] one after another, leaving out any that are installed already. */
+    /** Installs [ids] one after another, leaving out any that are installed already, and says which did not install. */
     fun requestAll(ids: List<String>) {
         scope.launch {
+            val notInstalled = mutableListOf<String>()
             for (id in ids) {
                 if (id in installer.installed()) continue
+                // An install started from the Plugins screen may be running: wait for it, then start this one.
+                status.first { it !is CatalogueStatus.Installing }
+                if (catalogue.entries.none { it.id == id }) {
+                    notInstalled += id
+                    continue
+                }
                 request(id)
                 // request() marks the install as running before it returns, or does not start one at all.
                 if (_status.value is CatalogueStatus.Installing) {
                     status.first { it !is CatalogueStatus.Installing }
                 }
+                if (id !in installer.installed()) notInstalled += id
+            }
+            if (notInstalled.isNotEmpty() && _message.value == null) {
+                _message.value = "Could not install ${notInstalled.joinToString(", ")}. Try them from this screen."
             }
         }
     }

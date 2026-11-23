@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * store for that would mean a frame of the wrong theme while it loaded.
  *
  * Kept outside the project tree, like the rest of the app's own state — a display preference belongs to
- * the device, not to a ledger, and must not travel in a backup or a mirror.
+ * the device, not to a ledger. It travels in a backup only when the person ticks it there, never in a mirror.
  *
  * One `key=value` line each, so a value can be added without moving the others. The first version
  * was two bare lines (the theme, then dynamic colour) and is still read.

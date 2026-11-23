@@ -19,6 +19,8 @@ data class AppDataItem(
     val bytes: Long,
     /** Ticked when the list is first shown. Code and device-specific choices start off. */
     val onByDefault: Boolean,
+    /** False for an item that is shown but cannot go in a backup, with the reason in [detail]. */
+    val selectable: Boolean = true,
 )
 
 /**
@@ -55,7 +57,7 @@ class AppDataSource(
             add(
                 AppDataItem(
                     "plugin:${it.id}", AppDataGroup.PLUGINS, it.name,
-                    "A plugin. Comes back turned off. ${it.installedSha256.take(8)}", it.sizeBytes, true,
+                    "Comes back turned off", it.sizeBytes, true,
                 ),
             )
         }
@@ -63,7 +65,7 @@ class AppDataSource(
             add(
                 AppDataItem(
                     "catalogue:$id", AppDataGroup.CATALOGUE, id,
-                    "Catalogue plugin $version. Only its name is kept; install it again from Plugins.", 0L, true,
+                    "Version $version. Only the name is kept", 0L, true,
                 ),
             )
         }
@@ -92,14 +94,18 @@ class AppDataSource(
             add(AppDataItem("pref:$name", AppDataGroup.PREFERENCES, title, "", text.toByteArray().size.toLong(), false))
         }
         scripts.list().forEach { script ->
+            // A name the backup format cannot hold (a space, a long or unusual one) is shown, not dropped silently.
+            val backable = AppDataGroup.SCRIPTS.accepts("scripts/${script.id}") && script.file.length() <= MAX_BYTES
+            val note = if (backable) "Comes back saved, and runs only when you run it" else "Rename it to back it up"
             add(
                 AppDataItem(
                     key = "script:${script.id}",
                     group = AppDataGroup.SCRIPTS,
                     title = script.name,
-                    detail = "A program. Comes back saved, never run. ${script.sha256.take(8)}",
+                    detail = note,
                     bytes = script.file.length(),
                     onByDefault = false,
+                    selectable = backable,
                 ),
             )
         }
@@ -108,7 +114,7 @@ class AppDataSource(
             add(
                 AppDataItem(
                     "remote", AppDataGroup.REMOTE, "Remote server address and user name",
-                    "$address. The password is never included.", address.length.toLong(), false,
+                    "$address. The password is never included", address.length.toLong(), false,
                 ),
             )
         }

@@ -241,6 +241,37 @@ class BackupAppDataTest {
         assertTrue(File(workspace.projectDir("a"), "plugins/two/two.py").isFile, "the project itself is untouched")
     }
 
+    @Test
+    fun `a newer format with groups this app does not know is refused as newer, not as not a backup`() {
+        project("a", "main.beancount" to "")
+        val archive = backup("a", templates)
+        val text = manifestText(archive)
+        val newer = rewrite(archive) { name, bytes ->
+            if (name == "manifest.json") {
+                text.replace(schema3, "\"schema_version\": 4")
+                    .replace("\"templates\"", "\"a_future_group\"").toByteArray()
+            } else {
+                bytes
+            }
+        }
+
+        assertEquals(4, archives.peek(newer)!!.schemaVersion)
+        assertEquals(listOf(ArchiveProblem.UnsupportedSchema(4)), archives.verify(newer))
+    }
+
+    @Test
+    fun `a manifest that lists one app-data file twice is not an archive`() {
+        project("a", "main.beancount" to "")
+        val archive = backup("a", templates, script)
+        val text = manifestText(archive)
+        val doubled = rewrite(archive) { name, bytes ->
+            val swap = text.replace("scripts/check.py", "templates.templates")
+            if (name == "manifest.json") swap.toByteArray() else bytes
+        }
+
+        assertNull(archives.peek(doubled))
+    }
+
     /** The archive again with each entry passed through [change], and [drop] left out. */
     private fun rewrite(archive: File, drop: String? = null, change: (String, ByteArray) -> ByteArray): File {
         val out = File(base, "rw-${System.nanoTime()}.bcaz")

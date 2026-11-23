@@ -22,7 +22,7 @@ enum class HomeCard(val label: String, val description: String) {
  * Journal, shortened, which is what made the old screen redundant.
  *
  * A plain file beside the other display preferences: this belongs to the device, not to a
- * ledger, so it must not travel in an export, a backup or a mirror. Anything unreadable falls
+ * ledger. It travels in a backup only when ticked there, and never in an export or a mirror. Anything unreadable falls
  * back to the defaults rather than to an empty screen.
  */
 class HomePreferences(private val context: Context) {

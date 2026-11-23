@@ -50,7 +50,7 @@ class BackupController(
     private val reloadPreferences: () -> Unit = {},
 ) {
     /** Catalogue plugins the last restore listed, until the person installs them or leaves. */
-    private var reinstall: List<String> = emptyList()
+    @Volatile private var reinstall: List<String> = emptyList()
 
     private val stateDir = ContextHolder.require().filesDir.resolve("state")
     private val appData = AppDataSource(workspace, stateDir)
@@ -74,7 +74,7 @@ class BackupController(
     val message: StateFlow<String?> = _message.asStateFlow()
 
     /** The app-data items ticked for the backup whose file the person is choosing; read once by [backupTo]. */
-    var appDataForNextBackup: Set<String>? = null
+    @Volatile var appDataForNextBackup: Set<String>? = null
 
     /** What the Backup screen offers: what could go into a backup, and what the staged one holds. */
     fun appDataUi(projectId: String?): AppDataUi = if (projectId == null) {
@@ -279,21 +279,24 @@ class BackupController(
         // Cleared and announced at once, not when the copy ends: the Restore button stays on
         // screen for as long as the staged restore is pending, and a second tap during a
         // long copy would start a second restore over the first.
+        val left = staged.appDataStaging != null && appDataKeys.isEmpty()
         _pendingRestore.value = null
         _message.value = "Restoring…"
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching { restores.activate(projectId, staged.staging, manifest = staged.manifest) }
             }
-            val applied = if (result.isSuccess) {
-                staged.appDataStaging?.let { dir ->
-                    withContext(Dispatchers.IO) {
+            val applied = staged.appDataStaging?.let { dir ->
+                withContext(Dispatchers.IO) {
+                    // Only a restore that went through brings app data back; either way the staging is removed.
+                    val outcome = if (result.isSuccess) {
                         runCatching { appDataRestorer.apply(dir, projectId, appDataKeys, clash) }
-                            .also { dir.deleteRecursively() }
+                    } else {
+                        null
                     }
+                    dir.deleteRecursively()
+                    outcome
                 }
-            } else {
-                null
             }
             reinstall = applied?.getOrNull()?.catalogue.orEmpty()
             if (applied?.getOrNull()?.needsRestart == true) reloadPreferences()
@@ -304,7 +307,8 @@ class BackupController(
                         (applied?.fold(
                             onSuccess = { it.describe()?.let { text -> " $text" } },
                             onFailure = { " The app data could not be brought back: ${it.message}." },
-                        ) ?: "")
+                        ) ?: "") +
+                        (if (left) " Its app data was left out." else "")
                 },
                 onFailure = { "Restore failed: ${it.message}. Your project is unchanged." },
             )
