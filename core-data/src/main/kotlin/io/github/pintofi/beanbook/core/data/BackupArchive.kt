@@ -164,13 +164,27 @@ enum class AppDataGroup(val wire: String) {
     COLOUR("colour"),
 
     /** The Fava server address and user name. Never the password. */
-    REMOTE("remote");
+    REMOTE("remote"),
+
+    /**
+     * Plugins live in the project, so they are never listed in a manifest as app data. The group exists so the
+     * checklist can offer them one by one; a manifest naming it is refused.
+     */
+    PLUGINS("plugins"),
+
+    /**
+     * Which catalogue plugins were installed, by name and version. Only the list: the plugins and their
+     * packages are downloaded again from the Plugins screen, never by a restore.
+     */
+    CATALOGUE("catalogue");
 
     /** Whether [path], relative to `appdata/`, is one this group may hold. */
     fun accepts(path: String): Boolean = when (this) {
         TEMPLATES -> path == "templates.templates"
         COLOUR -> path == "colour"
         REMOTE -> path == "remote.json"
+        PLUGINS -> false
+        CATALOGUE -> path == "catalogue.json"
         PREFERENCES -> path in PREFERENCE_FILES.map { "preferences/$it" }
         SCRIPTS -> SCRIPT_PATH.matches(path)
     }
@@ -274,6 +288,8 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         kdf: String = ArchiveEncryption.ARGON2ID,
         /** Beanbook's own data to carry beside the ledger, already chosen; empty for an ordinary backup. */
         appData: List<AppDataPayload> = emptyList(),
+        /** Ids of plugins to leave out: their files, and their lines in the plugin list. */
+        leaveOutPlugins: Set<String> = emptySet(),
     ): BackupManifest {
         require(workspace.projectDir(projectId).isDirectory) { "no such project: $projectId" }
         require(appData.size <= MAX_APP_DATA_FILES) { "too many app-data files" }
@@ -293,7 +309,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
                 val manifest = staged.outputStream().buffered().use { sink ->
                     writeOnce(
                         projectId, sink, appVersion, engineVersions, projectTitle, now,
-                        passphrase, derivation, cost, kdf, appData,
+                        passphrase, derivation, cost, kdf, appData, leaveOutPlugins,
                     )
                 }
                 staged.inputStream().use { it.copyTo(out) }
@@ -327,6 +343,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         cost: KdfCost,
         kdf: String,
         appData: List<AppDataPayload>,
+        leaveOutPlugins: Set<String>,
     ): BackupManifest {
         val root = workspace.projectDir(projectId)
 
@@ -334,12 +351,19 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
             .filter { it.isFile }
             .map { it.relativeTo(root).path.replace(File.separatorChar, '/') }
             .filterNot { isExcluded(it) }
+            .filterNot { path -> leaveOutPlugins.any { path.startsWith("plugins/$it/") } }
             .sorted()
             .toList()
 
+        // The plugin list, minus the plugins left out, is held in memory and written in place of the file.
+        val replaced = mutableMapOf<String, ByteArray>()
+        if (leaveOutPlugins.isNotEmpty() && PLUGIN_INDEX in files) {
+            pluginIndexWithout(File(root, PLUGIN_INDEX), leaveOutPlugins)?.let { replaced[PLUGIN_INDEX] = it }
+        }
         val entries = files.map { path ->
             val file = File(root, path)
-            BackupManifest.Entry(path, file.length(), sha256(file))
+            replaced[path]?.let { BackupManifest.Entry(path, it.size.toLong(), sha256(it)) }
+                ?: BackupManifest.Entry(path, file.length(), sha256(file))
         }
 
         betweenHashingAndCopying?.invoke()
@@ -379,7 +403,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
 
                 files.forEach { path ->
                     zip.putNextEntry(ZipEntry(BackupManifest.PROJECT_PREFIX + path))
-                    copyChecked(File(root, path), expected.getValue(path), zip)
+                    copyOne(root, path, expected.getValue(path), replaced[path], zip)
                     zip.closeEntry()
                 }
                 appData.sortedBy { it.path }.forEach { item ->
@@ -413,7 +437,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
             ZipOutputStream(sealer.wrap(zip)).use { inner ->
                 files.forEach { path ->
                     inner.putNextEntry(ZipEntry(if (prefixed) BackupManifest.PROJECT_PREFIX + path else path))
-                    copyChecked(File(root, path), expected.getValue(path), inner)
+                    copyOne(root, path, expected.getValue(path), replaced[path], inner)
                     inner.closeEntry()
                 }
                 appData.sortedBy { it.path }.forEach { item ->
@@ -753,6 +777,18 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
     }
 
     /** Copies [file] into [sink], and throws if what was read is not the size and checksum the manifest was given. */
+    private fun copyOne(root: File, path: String, entry: BackupManifest.Entry, bytes: ByteArray?, sink: OutputStream) {
+        if (bytes != null) sink.write(bytes) else copyChecked(File(root, path), entry, sink)
+    }
+
+    /** The plugin list with the plugins in [ids] taken out; null when it cannot be read, so it is kept as it is. */
+    private fun pluginIndexWithout(index: File, ids: Set<String>): ByteArray? {
+        val root = Json.parse(index.readText()) as? Json.Obj ?: return null
+        val kept = root.array("plugins")?.filter { (it as? Json.Obj)?.string("id") !in ids } ?: return null
+        val json = Json.Obj(root.fields + ("plugins" to Json.Arr(kept)))
+        return (json.write() + "\n").toByteArray()
+    }
+
     private fun copyChecked(file: File, expected: BackupManifest.Entry, sink: OutputStream) {
         val digest = MessageDigest.getInstance("SHA-256")
         var size = 0L
@@ -792,6 +828,7 @@ class BackupArchive(private val workspace: ProjectWorkspace) {
         const val MAX_STREAMED_PAYLOAD_BYTES = 8L * 1024 * 1024 * 1024
 
         const val MAX_ENTRIES = 100_000
+        private const val PLUGIN_INDEX = "plugins/installed.json"
 
         /** One app-data file: a template list, a script or a preference is small, so a large one is refused. */
         const val MAX_APP_DATA_FILE_BYTES = 1024 * 1024

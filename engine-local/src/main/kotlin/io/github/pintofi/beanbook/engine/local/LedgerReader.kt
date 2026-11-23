@@ -5,6 +5,8 @@ import android.util.Log
 import io.github.pintofi.beanbook.core.domain.AccountBalance
 import io.github.pintofi.beanbook.core.domain.Holding
 import io.github.pintofi.beanbook.core.domain.AccountNames
+import io.github.pintofi.beanbook.core.domain.ViewAnswer
+import io.github.pintofi.beanbook.core.domain.ViewRequest
 import io.github.pintofi.beanbook.core.domain.Amount
 import io.github.pintofi.beanbook.core.domain.Cost
 import io.github.pintofi.beanbook.core.domain.DocumentDirective
@@ -132,6 +134,61 @@ class LedgerReader(
                 }
         }
 
+    /**
+     * The ledger as Fava shows it for [request]: the kept transactions as positions in the journal a whole-ledger
+     * read returns, the rows Fava makes up for a period, and every account's balances. An input Fava cannot use is
+     * a [ViewAnswer.Refused] with Fava's own message, not a failure.
+     *
+     * Never cached: the answer is only as good as the files on disk now, and the caller compares
+     * [ViewAnswer.Ready.inputHash] with the snapshot it holds before using it.
+     */
+    suspend fun view(
+        ledgerPath: String,
+        request: ViewRequest,
+        pluginDirs: String = "",
+        allowBridge: Boolean = true,
+    ): Result<ViewAnswer> =
+        withContext(io) {
+            val payload = connection.payloadFile("view")
+            connection
+                .withEngine {
+                    it.viewToFile(
+                        ledgerPath, payload.absolutePath, pluginDirs, allowBridge,
+                        request.time, request.text, request.tags, request.amount,
+                    )
+                }
+                .mapCatching { result ->
+                    check(result == "ok") { result.removePrefix("error: ") }
+                    val root = JSONObject(payload.consumeText())
+                    if (!root.optBoolean("ok", false)) {
+                        ViewAnswer.Refused(
+                            request,
+                            root.optString("field", "tags"),
+                            root.optString("message", "That could not be used."),
+                        )
+                    } else {
+                        val positions = root.getJSONArray("positions")
+                        ViewAnswer.Ready(
+                            request = request,
+                            positions = HashSet<Int>(positions.length() * 2).apply {
+                                for (i in 0 until positions.length()) add(positions.getInt(i))
+                            },
+                            summaryRows = root.optJSONArray("summary_rows").map { it.toJournalEntry() },
+                            accounts = root.optJSONArray("accounts").map { it.toAccountBalance() },
+                            rates = root.optJSONArray("rates").map { rate ->
+                                PriceRate(
+                                    rate.getString("base"), rate.getString("quote"), BigDecimal(rate.getString("rate")),
+                                )
+                            },
+                            transactionCount = root.getInt("transaction_count"),
+                            inputHash = root.optStringOrNull("input_hash"),
+                            begin = root.optStringOrNull("begin"),
+                            end = root.optStringOrNull("end"),
+                        )
+                    }
+                }
+        }
+
     private fun parse(root: JSONObject): LedgerSnapshot = LedgerSnapshot(
         title = root.optStringOrNull("title"),
         operatingCurrencies = root.optJSONArray("operating_currency").toStringList(),
@@ -147,6 +204,7 @@ class LedgerReader(
         accountNames = root.toAccountNames(),
         documentRoots = root.optJSONArray("document_dirs").toStringList(),
         commodityAttributes = root.optJSONArray("commodity_attributes").toStringList(),
+        inputHash = root.optStringOrNull("input_hash"),
         extensionHealth = root.optJSONObject("extension_health").let { health ->
             health?.keys()?.asSequence()?.associateWith { health.optStringOrNull(it) }.orEmpty()
         },

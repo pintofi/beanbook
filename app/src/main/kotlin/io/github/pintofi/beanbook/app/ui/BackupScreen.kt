@@ -4,7 +4,9 @@ import io.github.pintofi.beanbook.app.backup.RestoreStatus
 import io.github.pintofi.beanbook.app.backup.RestoreItem
 import io.github.pintofi.beanbook.app.backup.Clash
 import io.github.pintofi.beanbook.app.backup.AppDataItem
+import io.github.pintofi.beanbook.core.data.AppDataGroup
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.RadioButton
@@ -67,7 +69,7 @@ fun BackupScreen(
     scheduleFolder: String?,
     lastRun: String?,
     rollbackPoints: List<String>,
-    onBackUpNow: (CharArray?, Set<String>) -> Unit,
+    onBackUpNow: (CharArray?, Set<String>?) -> Unit,
     onUnlockRestore: (CharArray) -> Unit,
     onChooseRestoreFile: () -> Unit,
     onAcceptRestore: (Set<String>, Clash) -> Unit,
@@ -77,8 +79,13 @@ fun BackupScreen(
     scheduleEncryption: ScheduleEncryption,
     modifier: Modifier = Modifier,
     message: String? = null,
-    appData: AppDataUi = AppDataUi(),
+    loadAppData: () -> AppDataUi = { AppDataUi() },
 ) {
+    // Read when this screen opens and again after a backup or a restore, never from a list made at launch: a
+    // template, plugin or script made since would be missing from it.
+    val appData by androidx.compose.runtime.produceState(AppDataUi(), message, pendingRestore) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { loadAppData() }
+    }
     var ticked by remember(appData.available) {
         mutableStateOf(appData.available.filter { it.onByDefault }.map { it.key }.toSet())
     }
@@ -165,7 +172,7 @@ fun BackupScreen(
                                     "A backup with app data can only be opened by this version or a later one.",
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            appData.available.forEach { entry ->
+                            Sections(appData.available, { it.group }) { entry ->
                                 TickRow(
                                     title = entry.title,
                                     detail = listOf(entry.detail, formatBytes(entry.bytes))
@@ -187,7 +194,7 @@ fun BackupScreen(
             onClick = {
                 onBackUpNow(
                     if (encrypt) passphrase.toCharArray() else null,
-                    if (includeAppData) ticked else emptySet(),
+                    if (includeAppData) ticked else null,
                 )
             },
             enabled = !encrypt || passphrasesMatch,
@@ -198,6 +205,16 @@ fun BackupScreen(
         ) { Text(if (encrypt) "Back up, encrypted" else "Back up now") }
 
         message?.let { StatusLine(it, modifier = Modifier.padding(horizontal = Measure.indent)) }
+        val installAgain = appData.installAgain
+        if (appData.reinstall.isNotEmpty() && installAgain != null) {
+            Button(
+                onClick = installAgain,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+                    .semantics { contentDescription = "Install the catalogue plugins again" },
+            ) { Text("Install again: ${appData.reinstall.joinToString(", ")}") }
+        }
 
         FolioHeading("Restore")
         FolioGroup {
@@ -426,7 +443,7 @@ private fun RestorePreview(
 
             if (items.isNotEmpty()) {
                 Text("App data in this backup", style = MaterialTheme.typography.titleSmall)
-                items.forEach { item ->
+                Sections(items, { it.group }) { item ->
                     TickRow(
                         title = item.title,
                         detail = listOf(
@@ -478,8 +495,38 @@ private fun RestorePreview(
 
 private const val REMOVED_SHOWN = 5
 
+/** The headings app data is grouped under, in the order shown, with the groups each one holds. */
+private val SECTIONS = listOf(
+    "Entry templates" to setOf(AppDataGroup.TEMPLATES),
+    "Plugins" to setOf(AppDataGroup.PLUGINS),
+    "Catalogue plugins" to setOf(AppDataGroup.CATALOGUE),
+    "Saved scripts" to setOf(AppDataGroup.SCRIPTS),
+    "Preferences" to setOf(AppDataGroup.PREFERENCES, AppDataGroup.COLOUR),
+    "Remote server" to setOf(AppDataGroup.REMOTE),
+)
+
+/** [items] under a heading for each kind, so all templates sit together, then all plugins, and so on. */
+@Composable
+private fun <T> Sections(items: List<T>, groupOf: (T) -> AppDataGroup, row: @Composable (T) -> Unit) {
+    SECTIONS.forEach { (title, groups) ->
+        val inSection = items.filter { groupOf(it) in groups }
+        if (inSection.isNotEmpty()) {
+            Text(
+                title,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(top = Measure.snug).semantics { heading() },
+            )
+            inSection.forEach { row(it) }
+        }
+    }
+}
+
 /** What the Backup screen needs to offer app data: what can go in, and what a chosen backup holds. */
 data class AppDataUi(
+    /** Catalogue plugins the last restore listed; offered for installing again. */
+    val reinstall: List<String> = emptyList(),
+    /** Starts installing [reinstall]; null where this edition cannot download plugins. */
+    val installAgain: (() -> Unit)? = null,
     val available: List<AppDataItem> = emptyList(),
     val restoreItems: List<RestoreItem> = emptyList(),
 )

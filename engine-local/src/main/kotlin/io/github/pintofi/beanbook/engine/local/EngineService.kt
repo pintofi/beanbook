@@ -35,6 +35,15 @@ class EngineService : Service() {
 
     override fun onBind(intent: Intent?): IBinder = binder
 
+    // A filter keeps the loaded ledger in memory so the next one is quick. Give it back when the
+    // system is short of memory; the next filter loads again, which is only slower.
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_RUNNING_LOW) {
+            runCatching { python().getModule("ledger").callAttr("drop_entry_cache") }
+        }
+    }
+
     private val binder = object : IEngineService.Stub() {
 
         override fun startEngine(
@@ -115,6 +124,52 @@ class EngineService : Service() {
                         allowBridge,
                         dateFrom.orEmpty(),
                         dateTo.orEmpty(),
+                    )
+                    .toString()
+                writeOut(outPath, json)
+                "ok"
+            }
+
+        override fun filterToFile(
+            ledgerPath: String,
+            outPath: String,
+            pluginDirs: String,
+            allowBridge: Boolean,
+            dateFrom: String?,
+            dateTo: String?,
+            filter: String,
+        ): String =
+            guarded {
+                val json = python().getModule("ledger")
+                    .callAttr(
+                        "matching_transactions",
+                        ledgerPath,
+                        filter,
+                        pluginDirs,
+                        allowBridge,
+                        dateFrom.orEmpty(),
+                        dateTo.orEmpty(),
+                    )
+                    .toString()
+                writeOut(outPath, json)
+                "ok"
+            }
+
+        override fun viewToFile(
+            ledgerPath: String,
+            outPath: String,
+            pluginDirs: String,
+            allowBridge: Boolean,
+            time: String,
+            text: String,
+            tags: String,
+            amount: String,
+        ): String =
+            guarded {
+                val json = python().getModule("ledger")
+                    .callAttr(
+                        "view", ledgerPath, time, text, tags, amount,
+                        pluginDirs, allowBridge,
                     )
                     .toString()
                 writeOut(outPath, json)

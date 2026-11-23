@@ -34,6 +34,12 @@ class ValuationPreference(private val context: Context) {
 
     fun read(): Valuation = flow.value
 
+    /** Reads the file again, for when a restored backup has replaced it. */
+    fun reload() {
+        loaded = false
+        flow
+    }
+
     fun write(basis: Valuation) {
         flow
         shared.value = basis

@@ -32,12 +32,15 @@ class SavedScripts(stateDir: File) {
     fun list(): List<SavedScript> = root.listFiles()
         .orEmpty()
         .filter { it.isFile && it.extension == "py" }
-        .map { file ->
+        // A script removed (or made unreadable) between listing the folder and reading it is not in the
+        // list. It used to throw here, on a background coroutine, and take the whole app down.
+        .mapNotNull { file ->
+            val digest = runCatching { sha256(file) }.getOrNull() ?: return@mapNotNull null
             SavedScript(
                 id = file.name,
                 name = file.nameWithoutExtension,
                 savedAtEpochMs = file.lastModified(),
-                sha256 = sha256(file),
+                sha256 = digest,
                 file = file,
             )
         }

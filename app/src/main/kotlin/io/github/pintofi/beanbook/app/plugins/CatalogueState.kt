@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -207,6 +208,20 @@ class CatalogueState(
 
     /** Works out what installing [id] needs, and shows it. Downloads no plugin code. */
     fun request(id: String) = request(id, upgrade = false)
+
+    /** Installs [ids] one after another, leaving out any that are installed already. */
+    fun requestAll(ids: List<String>) {
+        scope.launch {
+            for (id in ids) {
+                if (id in installer.installed()) continue
+                request(id)
+                // request() marks the install as running before it returns, or does not start one at all.
+                if (_status.value is CatalogueStatus.Installing) {
+                    status.first { it !is CatalogueStatus.Installing }
+                }
+            }
+        }
+    }
 
     private fun request(id: String, upgrade: Boolean) {
         val entry = catalogue.entries.firstOrNull { it.id == id } ?: return

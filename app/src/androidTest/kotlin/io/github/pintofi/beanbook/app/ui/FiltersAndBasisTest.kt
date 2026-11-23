@@ -2,6 +2,8 @@ package io.github.pintofi.beanbook.app.ui
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import io.github.pintofi.beanbook.core.domain.ViewRequest
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -94,30 +96,33 @@ class FiltersAndBasisTest {
         chooseBasis(Valuation.VALUE)
     }
 
+    private val filtersButton = "Filters: period, text, tags, amount and account"
+
     @Test fun theJournalOpensTheFiltersSheet() {
         compose.setContent { MaterialTheme { JournalScreen(ledger) } }
-        compose.onNodeWithContentDescription("Filters: period, tags and links").performClick()
+        compose.onNodeWithContentDescription(filtersButton).performClick()
         compose.onNodeWithText("Period").assertIsDisplayed()
-        compose.onNodeWithText("From").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Filter by period").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Filter by text").performScrollTo().assertIsDisplayed()
         compose.onNodeWithContentDescription("Filter by tags or links").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Filter by amount").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Filter by account").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun homeHasTheFiltersButtonToo() {
         compose.setContent { MaterialTheme { HomeScreen(ledger = ledger, hideAmounts = false) } }
-        compose.onNodeWithContentDescription("Filters: period, tags and links").performClick()
+        compose.onNodeWithContentDescription(filtersButton).performClick()
         compose.onNodeWithText("Period").assertIsDisplayed()
     }
 
     @Test fun aPeriodIsSaidAndCanBeCleared() {
-        var from by mutableStateOf("2026-01-01")
+        val shared = LedgerFilterState().apply { setView(ViewRequest(time = "2026-03")) }
         compose.setContent {
-            MaterialTheme {
-                JournalScreen(ledger, dateFrom = from, onDateRange = { f, _ -> from = f })
-            }
+            CompositionLocalProvider(LocalLedgerFilter provides shared) { MaterialTheme { JournalScreen(ledger) } }
         }
-        compose.onNodeWithText("Showing from 2026-01-01", substring = true).assertIsDisplayed()
-        compose.onNodeWithContentDescription("Clear the period").performClick()
+        compose.onNodeWithText("Time: 2026-03").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Remove the period 2026-03").performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Showing from", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Time: 2026-03").assertDoesNotExist()
     }
 }

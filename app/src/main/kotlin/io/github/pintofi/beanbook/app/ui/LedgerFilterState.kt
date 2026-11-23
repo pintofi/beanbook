@@ -22,6 +22,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.pintofi.beanbook.app.ui.theme.Measure
 import io.github.pintofi.beanbook.core.domain.EntryFilter
+import io.github.pintofi.beanbook.core.domain.ViewAnswer
+import io.github.pintofi.beanbook.core.domain.ViewRequest
 
 /**
  * The one filter that Home, Journal and Balances share.
@@ -38,12 +40,61 @@ class LedgerFilterState {
         filter = filter.copy(query = query)
     }
 
-    fun setTags(tags: String) {
-        filter = filter.copy(tags = tags)
+    fun setAccount(account: String) {
+        filter = filter.copy(account = account)
+    }
+
+    /** Sets what Fava is asked, all at once: the sheet applies its fields together when it closes. */
+    fun setView(view: ViewRequest) {
+        filter = filter.copy(view = view)
     }
 
     fun clear() {
         filter = EntryFilter()
+    }
+
+    /**
+     * Fava's answer to the current view request, or null before there is one. It is only ever read together with
+     * the request and the ledger it was made for (see `filteredBy`).
+     */
+    var answer by mutableStateOf<ViewAnswer?>(null)
+        private set
+
+    /** True while the engine is working out the current request. */
+    var applying by mutableStateOf(false)
+        private set
+
+    /** Why there is no answer when the engine itself could not be asked, not when Fava refused an input. */
+    var unavailable by mutableStateOf<String?>(null)
+        private set
+
+    /** Asks the engine for Fava's answer; set by the application, null where there is no engine. */
+    var matcher: (suspend (ViewRequest) -> Result<ViewAnswer>?)? = null
+
+    /**
+     * Works out the current request. Called again whenever the ledger or the request changes, and cancelled by
+     * the caller when either does, so a late answer for an old one is never kept.
+     */
+    suspend fun resolve() {
+        val request = filter.view
+        unavailable = null
+        if (!request.isActive) {
+            answer = null
+            applying = false
+            return
+        }
+        applying = true
+        try {
+            val result = matcher?.invoke(request)
+            answer = result?.getOrNull()
+            unavailable = when {
+                result == null -> "This ledger has no engine to apply a filter with."
+                result.isFailure -> "The filter could not be applied: ${result.exceptionOrNull()?.message}"
+                else -> null
+            }
+        } finally {
+            applying = false
+        }
     }
 }
 
@@ -82,14 +133,53 @@ fun LedgerFilterBar(modifier: Modifier = Modifier, inset: androidx.compose.ui.un
                 val words = filter.query.trim()
                 FilterChipWithCross("Search: $words", "Remove the search $words") { state.setQuery("") }
             }
-            if (filter.tags.isNotBlank()) {
-                val terms = filter.tags.trim()
-                FilterChipWithCross("Tags: $terms", "Remove the tags and links $terms") { state.setTags("") }
+            val view = filter.view
+            val spoken = { text: String -> text.trim().replace(Regex("-(?=[#^])"), "without ") }
+            if (filter.account.isNotBlank()) {
+                val account = filter.account.trim()
+                FilterChipWithCross("Account: $account", "Remove the account $account") { state.setAccount("") }
+            }
+            if (view.time.isNotBlank()) {
+                val time = view.time.trim()
+                FilterChipWithCross("Time: $time", "Remove the period $time") { state.setView(view.copy(time = "")) }
+            }
+            if (view.text.isNotBlank()) {
+                val text = view.text.trim()
+                FilterChipWithCross("Text: $text", "Remove the text $text") { state.setView(view.copy(text = "")) }
+            }
+            if (view.tags.isNotBlank()) {
+                FilterChipWithCross("Tags: ${view.tags.trim()}", "Remove the tags and links ${spoken(view.tags)}") {
+                    state.setView(view.copy(tags = ""))
+                }
+            }
+            if (view.amount.isNotBlank()) {
+                FilterChipWithCross("Amount: ${view.amount.trim()}", "Remove the amount ${spoken(view.amount)}") {
+                    state.setView(view.copy(amount = ""))
+                }
             }
             OutlinedButton(
                 onClick = state::clear,
                 modifier = Modifier.semantics { contentDescription = "Remove every filter" },
             ) { Text("Clear all") }
+        }
+        // Why nothing is shown, in Fava's own words when it refused the filter. Never left to look like
+        // an empty ledger.
+        val refusal = (state.answer as? ViewAnswer.Refused)?.takeIf { it.request == filter.view }
+        val status = refusal?.let { "${fieldName(it.field)}: ${it.message}" } ?: state.unavailable
+        if (filter.view.isActive && status != null) {
+            Text(
+                status,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = Measure.snug),
+            )
+        } else if (filter.view.isActive && state.applying) {
+            Text(
+                "Applying the filter…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = Measure.snug),
+            )
         }
         Text(
             "Home, Journal and Balances show only the matching entries. Balances are at cost while this is on.",
@@ -109,4 +199,12 @@ private fun FilterChipWithCross(text: String, describe: String, onRemove: () -> 
         trailingIcon = { Icon(Icons.Filled.Close, contentDescription = null) },
         modifier = Modifier.semantics { contentDescription = describe },
     )
+}
+
+/** What a person calls the box an input was typed in. */
+internal fun fieldName(field: String): String = when (field) {
+    "time" -> "Time"
+    "text" -> "Text"
+    "amount" -> "Amount"
+    else -> "Tags and links"
 }

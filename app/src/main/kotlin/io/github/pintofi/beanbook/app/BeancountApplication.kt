@@ -91,7 +91,10 @@ class BeancountApplication : Application() {
     }
 
     /** The filter Home, Journal and Balances share, kept for as long as the app runs. */
-    val ledgerFilter = io.github.pintofi.beanbook.app.ui.LedgerFilterState()
+    val ledgerFilter = io.github.pintofi.beanbook.app.ui.LedgerFilterState().also { state ->
+        // Fava's filter is applied in the engine, to the ledger that is open.
+        state.matcher = { request -> ledgerState.view(request) }
+    }
 
     /** The first-run setup's answers, kept across rotation and a killed process until a ledger exists. */
     val newLedgerSetup: io.github.pintofi.beanbook.app.onboarding.NewLedgerSetup by lazy {
@@ -204,6 +207,11 @@ class BeancountApplication : Application() {
             appVersion = appVersion,
             engineVersions = { engine.versions() },
             pluginPolicy = pluginPolicy,
+            installCatalogue = catalogueState.takeIf { it.canInstall }?.let { it::requestAll },
+            reloadPreferences = {
+                themeSettings.reload()
+                io.github.pintofi.beanbook.app.ui.ValuationPreference(this).reload()
+            },
         )
     }
 

@@ -3,6 +3,8 @@ package io.github.pintofi.beanbook.app.backup
 import io.github.pintofi.beanbook.app.plugins.SavedScripts
 import io.github.pintofi.beanbook.core.data.AppDataGroup
 import io.github.pintofi.beanbook.core.data.AppDataPayload
+import io.github.pintofi.beanbook.core.data.CatalogueInstaller
+import io.github.pintofi.beanbook.core.data.PluginStore
 import io.github.pintofi.beanbook.core.data.ProjectWorkspace
 import io.github.pintofi.beanbook.core.data.TemplateStore
 import java.io.File
@@ -29,10 +31,15 @@ data class AppDataItem(
  *
  * [stateDir] is the app's `state` folder, where its small settings files live.
  */
-class AppDataSource(private val workspace: ProjectWorkspace, private val stateDir: File) {
+class AppDataSource(
+    private val workspace: ProjectWorkspace,
+    private val stateDir: File,
+    private val catalogueRoot: File = File(stateDir.parentFile, "catalogue"),
+) {
 
     private val templates = TemplateStore(workspace)
     private val scripts = SavedScripts(stateDir)
+    private val catalogue = CatalogueInstaller(catalogueRoot)
 
     private fun stateFile(name: String) = File(stateDir, name)
 
@@ -43,6 +50,23 @@ class AppDataSource(private val workspace: ProjectWorkspace, private val stateDi
 
     /** What can be backed up for [projectId], in the order the checklist shows it. */
     fun available(projectId: String): List<AppDataItem> = buildList {
+        // Plugins already travel with the project, so they start ticked; unticking one leaves it out.
+        runCatching { PluginStore(workspace.projectDir(projectId)).list() }.getOrDefault(emptyList()).forEach {
+            add(
+                AppDataItem(
+                    "plugin:${it.id}", AppDataGroup.PLUGINS, it.name,
+                    "A plugin. Comes back turned off. ${it.installedSha256.take(8)}", it.sizeBytes, true,
+                ),
+            )
+        }
+        runCatching { catalogue.installed() }.getOrDefault(emptyMap()).toSortedMap().forEach { (id, version) ->
+            add(
+                AppDataItem(
+                    "catalogue:$id", AppDataGroup.CATALOGUE, id,
+                    "Catalogue plugin $version. Only its name is kept; install it again from Plugins.", 0L, true,
+                ),
+            )
+        }
         templates.load(projectId).forEach { template ->
             add(
                 AppDataItem(
@@ -90,6 +114,11 @@ class AppDataSource(private val workspace: ProjectWorkspace, private val stateDi
         }
     }
 
+    /** The plugins in the project that are not ticked in [chosen], to be left out of the backup. */
+    fun pluginsLeftOut(projectId: String, chosen: Set<String>): Set<String> =
+        runCatching { PluginStore(workspace.projectDir(projectId)).list() }.getOrDefault(emptyList())
+            .map { it.id }.filter { "plugin:$it" !in chosen }.toSet()
+
     /** The files that carry the items in [chosen] (keys from [available]). A key that is not offered is ignored. */
     fun payloads(projectId: String, chosen: Set<String>): List<AppDataPayload> = buildList {
         val names = chosen.filter { it.startsWith("template:") }.map { it.removePrefix("template:") }.toSet()
@@ -99,6 +128,12 @@ class AppDataSource(private val workspace: ProjectWorkspace, private val stateDi
                 val text = templates.encode(picked)
                 add(AppDataPayload(AppDataGroup.TEMPLATES, "templates.templates", text.toByteArray()))
             }
+        }
+        val kept = runCatching { catalogue.installed() }.getOrDefault(emptyMap())
+            .filterKeys { "catalogue:$it" in chosen }.toSortedMap()
+        if (kept.isNotEmpty()) {
+            val list = kept.entries.joinToString(",") { "{\"id\":${quote(it.key)},\"version\":${quote(it.value)}}" }
+            add(AppDataPayload(AppDataGroup.CATALOGUE, "catalogue.json", "{\"plugins\":[$list]}\n".toByteArray()))
         }
         if ("colour" in chosen) {
             colourLine(projectId)?.let {

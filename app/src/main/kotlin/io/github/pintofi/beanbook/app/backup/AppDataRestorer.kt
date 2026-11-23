@@ -2,6 +2,7 @@ package io.github.pintofi.beanbook.app.backup
 
 import io.github.pintofi.beanbook.core.data.AppDataGroup
 import io.github.pintofi.beanbook.core.data.BackupArchive
+import io.github.pintofi.beanbook.core.data.CatalogueInstaller
 import io.github.pintofi.beanbook.core.data.Json
 import io.github.pintofi.beanbook.core.data.ProjectWorkspace
 import io.github.pintofi.beanbook.core.data.TemplateStore
@@ -17,6 +18,12 @@ enum class RestoreStatus {
 
     /** This app cannot read it (a format from a newer version); it is listed but not restored. */
     UNREADABLE,
+
+    /** Only a reminder: shown so it is not forgotten, and never applied by a restore. */
+    REMINDER,
+
+    /** Already installed here, so there is nothing to bring back. */
+    INSTALLED,
 }
 
 /** What to do when a template or a script has the name of one that is here already. */
@@ -34,11 +41,17 @@ data class RestoreItem(
     val detail: String,
     val status: RestoreStatus,
 ) {
-    val selectable: Boolean get() = status != RestoreStatus.UNREADABLE
+    val selectable: Boolean get() = status == RestoreStatus.NEW || status == RestoreStatus.CLASH
 }
 
 /** What applying did, in numbers and in words for the person. */
-data class AppDataApplied(val count: Int, val needsRestart: Boolean, val notes: List<String>) {
+data class AppDataApplied(
+    val count: Int,
+    val needsRestart: Boolean,
+    val notes: List<String>,
+    /** Catalogue plugins the backup listed, to be installed again by the person's tap. */
+    val catalogue: List<String> = emptyList(),
+) {
     fun describe(): String? {
         if (count == 0 && notes.isEmpty()) return null
         val head = if (count == 0) null else "Brought back $count item${if (count == 1) "" else "s"} of app data."
@@ -54,7 +67,16 @@ data class AppDataApplied(val count: Int, val needsRestart: Boolean, val notes: 
  * Writes go to the places the app already reads, by name, and nowhere else: [AppDataGroup] decides which paths
  * a backup may hold, and this class only reads those from the staging folder.
  */
-class AppDataRestorer(private val workspace: ProjectWorkspace, private val stateDir: File) {
+class AppDataRestorer(
+    private val workspace: ProjectWorkspace,
+    private val stateDir: File,
+    catalogueRoot: File = File(stateDir.parentFile, "catalogue"),
+) {
+    private val catalogue = CatalogueInstaller(catalogueRoot)
+
+    /** The catalogue plugins installed here now, by id. */
+    private fun installedHere(): Set<String> = runCatching { catalogue.installed().keys }.getOrDefault(emptySet())
+
 
     private val templates = TemplateStore(workspace)
 
@@ -84,6 +106,17 @@ class AppDataRestorer(private val workspace: ProjectWorkspace, private val state
                     )
                 }
             }
+        }
+        val here = installedHere()
+        catalogued(staging).forEach { (id, version) ->
+            val installed = id in here
+            add(
+                RestoreItem(
+                    "catalogue:$id", AppDataGroup.CATALOGUE, id,
+                    if (installed) "Already installed here." else "Was installed, $version. Install it again.",
+                    if (installed) RestoreStatus.INSTALLED else RestoreStatus.REMINDER,
+                ),
+            )
         }
         File(staging, "colour").takeIf { it.isFile }?.let {
             val name = it.readText().trim().lowercase()
@@ -121,7 +154,13 @@ class AppDataRestorer(private val workspace: ProjectWorkspace, private val state
         val prefs = applyPreferences(staging, chosen)
         val colour = applyColour(staging, projectId, chosen, notes)
         val server = applyRemote(staging, chosen, notes)
-        return AppDataApplied(count + prefs + colour + server, prefs + colour + server > 0, notes)
+        val missing = catalogued(staging).map { it.first }.filterNot { it in installedHere() }
+        if (missing.isNotEmpty()) {
+            val names = missing.joinToString(", ")
+            notes += "Catalogue plugins that were installed: $names. Install them again from Plugins."
+        }
+        val changed = prefs + colour + server
+        return AppDataApplied(count + changed, changed > 0, notes, missing)
     }
 
     private fun applyTemplates(staging: File, projectId: String, chosen: Set<String>, clash: Clash): Int {
@@ -213,11 +252,26 @@ class AppDataRestorer(private val workspace: ProjectWorkspace, private val state
             return 0
         }
         stateDir.mkdirs()
+        // The saved password belongs to the old address. Left in place it would be sent to the restored one.
+        if (stateFile(AppDataSource.REMOTE_ADDRESS).takeIf { it.isFile }?.readText()?.trim() != address) {
+            stateFile("remote-password").delete()
+        }
         stateFile(AppDataSource.REMOTE_ADDRESS).writeText(address)
         val userFile = stateFile(AppDataSource.REMOTE_USER)
         if (user.isBlank()) userFile.delete() else userFile.writeText(user)
         notes += "The remote server's password is not in a backup: enter it again to connect."
         return 1
+    }
+
+    /** The catalogue plugins the backup lists, as name and version. Read from a verified file, still checked. */
+    private fun catalogued(staging: File): List<Pair<String, String>> {
+        val file = File(staging, "catalogue.json").takeIf { it.isFile } ?: return emptyList()
+        val root = runCatching { Json.parse(file.readText()) }.getOrNull() as? Json.Obj ?: return emptyList()
+        return root.array("plugins").orEmpty().mapNotNull { item ->
+            val entry = item as? Json.Obj ?: return@mapNotNull null
+            val id = entry.string("id")?.takeIf { CATALOGUE_ID.matches(it) } ?: return@mapNotNull null
+            id to entry.string("version").orEmpty().take(40)
+        }
     }
 
     private fun remote(staging: File): Pair<String, String>? {
@@ -238,5 +292,6 @@ class AppDataRestorer(private val workspace: ProjectWorkspace, private val state
     private companion object {
         /** `DYNAMIC` or the name of an accent palette: capitals only, so the value is never a path or a line. */
         val COLOUR_NAME = Regex("[A-Z_]{1,24}")
+        val CATALOGUE_ID = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,80}")
     }
 }

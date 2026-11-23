@@ -42,6 +42,22 @@ class ThemeSettings(stateDir: File) {
     val comfort: StateFlow<Comfort> = _comfort.asStateFlow()
 
     init {
+        load()
+    }
+
+    /**
+     * Reads the file again, for when something else has replaced it (a restored backup). Without it the next
+     * change made here would write the old values back over the restored ones.
+     */
+    fun reload() {
+        _choice.value = ThemeChoice.SYSTEM
+        _comfort.value = Comfort()
+        defaultColour = ProjectColour.Dynamic
+        _projectColours.value = emptyMap()
+        load()
+    }
+
+    private fun load() {
         // An unreadable or hand-edited file falls back to the defaults rather than failing
         // to start: nothing here is worth refusing to launch over.
         runCatching {

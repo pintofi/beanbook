@@ -210,7 +210,8 @@ fun EntryDetailScreen(
                     contentDescription = "Clone this transaction into a new entry"
                 },
             ) { Text("Clone") }
-            if (onEdit != null && !confirmingDelete) {
+            // An entry with no file (the opening balances Fava makes up for a period) is nowhere to edit or delete.
+            if (onEdit != null && entry.file != null && !confirmingDelete) {
                 OutlinedButton(
                     onClick = onEdit,
                     modifier = Modifier.semantics {
@@ -218,7 +219,7 @@ fun EntryDetailScreen(
                     },
                 ) { Text("Edit") }
             }
-            if (onDelete != null && !confirmingDelete) {
+            if (onDelete != null && entry.file != null && !confirmingDelete) {
                 OutlinedButton(
                     onClick = { confirmingDelete = true },
                     modifier = Modifier.semantics {
@@ -232,7 +233,7 @@ fun EntryDetailScreen(
         // Invariant 7: a destructive action names its scope and is confirmable. It says
         // which entry, says the file it will be taken out of, and says that undo exists --
         // because the honest reassurance is that this is recoverable, not that it is small.
-        if (onDelete != null && confirmingDelete) {
+        if (onDelete != null && entry.file != null && confirmingDelete) {
             Notice(
                 NoticeTone.PROBLEM,
                 modifier = Modifier.semantics {

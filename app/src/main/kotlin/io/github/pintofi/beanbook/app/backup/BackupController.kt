@@ -44,7 +44,14 @@ class BackupController(
     private val engineVersions: suspend () -> Map<String, String> = { emptyMap() },
     /** The edition's plugin rules; a restored plugin is always turned off, and one this refuses is said so. */
     pluginPolicy: io.github.pintofi.beanbook.core.domain.PluginPolicy? = null,
+    /** Installs catalogue plugins by id, one after another; null where this edition cannot. */
+    private val installCatalogue: ((List<String>) -> Unit)? = null,
+    /** Re-reads the preference files a restore replaced, so the running app shows them and keeps them. */
+    private val reloadPreferences: () -> Unit = {},
 ) {
+    /** Catalogue plugins the last restore listed, until the person installs them or leaves. */
+    private var reinstall: List<String> = emptyList()
+
     private val stateDir = ContextHolder.require().filesDir.resolve("state")
     private val appData = AppDataSource(workspace, stateDir)
     private val appDataRestorer = AppDataRestorer(workspace, stateDir)
@@ -67,13 +74,22 @@ class BackupController(
     val message: StateFlow<String?> = _message.asStateFlow()
 
     /** The app-data items ticked for the backup whose file the person is choosing; read once by [backupTo]. */
-    var appDataForNextBackup: Set<String> = emptySet()
+    var appDataForNextBackup: Set<String>? = null
 
     /** What the Backup screen offers: what could go into a backup, and what the staged one holds. */
     fun appDataUi(projectId: String?): AppDataUi = if (projectId == null) {
         AppDataUi()
     } else {
         AppDataUi(
+            reinstall = reinstall,
+            installAgain = installCatalogue?.let { install ->
+                {
+                    val ids = reinstall
+                    reinstall = emptyList()
+                    _message.value = "Installing the catalogue plugins. Progress is on the Plugins screen."
+                    install(ids)
+                }
+            },
             available = appData.available(projectId),
             restoreItems = _pendingRestore.value?.appDataStaging
                 ?.let { appDataRestorer.preview(it, projectId) }.orEmpty(),
@@ -101,7 +117,7 @@ class BackupController(
         passphrase: CharArray? = null,
     ) {
         val appDataKeys = appDataForNextBackup
-        appDataForNextBackup = emptySet()
+        appDataForNextBackup = null
         // Copied synchronously, before the coroutine starts. The caller is entitled to wipe
         // its own array the moment this returns — and does — so reading it later would derive
         // a key from a wiped buffer and produce an archive nobody can open. That is exactly
@@ -124,7 +140,8 @@ class BackupController(
                             projectTitle = title,
                             passphrase = ownPassphrase,
                             derivation = if (ownPassphrase == null) null else derivation,
-                            appData = appData.payloads(projectId, appDataKeys),
+                            appData = appDataKeys?.let { appData.payloads(projectId, it) }.orEmpty(),
+                            leaveOutPlugins = appDataKeys?.let { appData.pluginsLeftOut(projectId, it) }.orEmpty(),
                         )
                     } ?: error("the provider refused to write there")
                 }
@@ -278,6 +295,8 @@ class BackupController(
             } else {
                 null
             }
+            reinstall = applied?.getOrNull()?.catalogue.orEmpty()
+            if (applied?.getOrNull()?.needsRestart == true) reloadPreferences()
             _message.value = result.fold(
                 onSuccess = { kept ->
                     "Restored. Your previous project is kept as ${kept.name} until you remove it." +

@@ -215,6 +215,32 @@ class BackupAppDataTest {
         assertNull(staged.appDataStaging)
     }
 
+    @Test
+    fun `a plugin left out takes its files and its line in the plugin list with it`() {
+        project(
+            "a",
+            "main.beancount" to "",
+            "plugins/one/one.py" to "print(1)\n",
+            "plugins/two/two.py" to "print(2)\n",
+            "plugins/installed.json" to """
+                {"schema":1,"plugins":[{"id":"one","name":"One"},{"id":"two","name":"Two"}]}
+            """.trimIndent(),
+        )
+        val archive = File(base, "left-out.bcaz")
+        archive.outputStream().use {
+            archives.write("a", it, appVersion = "1.0.6", now = now, leaveOutPlugins = setOf("two"))
+        }
+
+        assertEquals(emptyList(), archives.verify(archive))
+        val out = File(base, "left-out")
+        assertEquals(emptyList(), archives.extract(archive, out))
+        assertTrue(File(out, "plugins/one/one.py").isFile)
+        assertFalse(File(out, "plugins/two").exists())
+        val index = File(out, "plugins/installed.json").readText()
+        assertTrue(index.contains("\"one\"") && !index.contains("\"two\""), index)
+        assertTrue(File(workspace.projectDir("a"), "plugins/two/two.py").isFile, "the project itself is untouched")
+    }
+
     /** The archive again with each entry passed through [change], and [drop] left out. */
     private fun rewrite(archive: File, drop: String? = null, change: (String, ByteArray) -> ByteArray): File {
         val out = File(base, "rw-${System.nanoTime()}.bcaz")

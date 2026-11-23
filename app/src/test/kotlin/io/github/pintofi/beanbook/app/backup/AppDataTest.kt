@@ -140,4 +140,37 @@ class AppDataTest {
         File(state, "remote-address").delete()
         assertEquals(0, restorer.apply(dir, "a", setOf("remote"), Clash.KEEP_MINE).count)
     }
+
+    @Test
+    fun `catalogue plugins are listed by name and version and a restore only reminds`() {
+        File(base, "catalogue/fava-portfolio-returns").apply { mkdirs() }
+        File(base, "catalogue/fava-portfolio-returns/installed-version").writeText("1.2\n")
+
+        val offered = source.available("a").single { it.group == AppDataGroup.CATALOGUE }
+        assertEquals("fava-portfolio-returns", offered.title)
+
+        val dir = staged("a", setOf(offered.key))
+        File(base, "catalogue").deleteRecursively()
+        val preview = restorer.preview(dir, "a").single()
+        assertEquals(RestoreStatus.REMINDER, preview.status)
+        assertFalse(preview.selectable)
+
+        val applied = restorer.apply(dir, "a", setOf(preview.key), Clash.KEEP_MINE)
+        assertEquals(0, applied.count)
+        assertEquals(listOf("fava-portfolio-returns"), applied.catalogue)
+        assertTrue(applied.notes.single().contains("fava-portfolio-returns"))
+        assertFalse(File(base, "catalogue").exists())
+    }
+
+    @Test
+    fun `a catalogue plugin that is installed already is said to be, and is not offered again`() {
+        File(base, "catalogue/fava-portfolio-returns").apply { mkdirs() }
+        File(base, "catalogue/fava-portfolio-returns/installed-version").writeText("1.2\n")
+        val dir = staged("a", setOf("catalogue:fava-portfolio-returns"))
+
+        val preview = restorer.preview(dir, "a").single()
+        assertEquals(RestoreStatus.INSTALLED, preview.status)
+        assertFalse(preview.selectable)
+        assertTrue(restorer.apply(dir, "a", setOf(preview.key), Clash.KEEP_MINE).catalogue.isEmpty())
+    }
 }

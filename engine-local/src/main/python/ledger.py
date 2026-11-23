@@ -11,8 +11,11 @@ Nothing here writes. Mutation is M4's business.
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
+import threading
 import time
+import time as time_module
 from pathlib import Path
 from typing import Any
 
@@ -230,21 +233,13 @@ def _meta_str(value) -> str:
     return str(value)
 
 
-def inspect(
-    ledger_path: str,
-    journal_limit: int = 0,
-    plugin_dirs: str = "",
-    allow_bridge: bool = True,
-    date_from: str = "",
-    date_to: str = "",
-) -> str:
-    """Parse a ledger and return a JSON summary.
+def _load(ledger_path: str, plugin_dirs: str, allow_bridge: bool):
+    """Load a ledger the way every read of it does: user plugins made findable for the load only.
 
-    JSON rather than a Python object because this crosses the Chaquopy boundary and is
-    also written to disk by the differential runner.
+    Returns (entries, errors, options_map, plugin_failure, load_ms). Shared by `inspect` and
+    `matching_transactions` so a filter is applied to exactly the entries the summary was built from.
     """
     from beancount import loader
-    from beancount.core import data, getters
 
     import plugins
 
@@ -273,6 +268,28 @@ def inspect(
         plugins.loader_cache_pattern(plugins._module_names("" if plugin_failure else plugin_dirs)),
     )
 
+    return entries, errors, options_map, plugin_failure, load_ms
+
+
+def _content_hash(files) -> str:
+    """SHA-256 over the content of the files a load read, in path order.
+
+    Beancount's own `compute_input_hash` is keyed on modification time and size. That is right for
+    its load cache and wrong here: the app caches a snapshot by content, so a file that was only
+    touched (a sync tool does that) would give a new hash for the same journal, and an answer would
+    never match the snapshot it was made for.
+    """
+    digest = hashlib.sha256()
+    for name in sorted(str(f) for f in files):
+        digest.update(name.encode("utf-8") + b"\0")
+        try:
+            digest.update(Path(name).read_bytes())
+        except OSError:
+            digest.update(b"\0missing")
+    return digest.hexdigest()
+
+
+def _date_cut(entries, date_from: str, date_to: str):
     # A date range, applied the way Fava applies its time filter: the *entries* are narrowed,
     # and everything computed below -- balances, the journal, which accounts exist -- follows
     # from the narrowed set. Prices are the exception and are built from the whole file
@@ -281,7 +298,6 @@ def inspect(
     #
     # An unparseable bound is ignored rather than treated as the start of time: a half-typed
     # date in a filter box must not silently empty the screen.
-    all_entries = entries
     bounds = []
     for raw in (date_from, date_to):
         try:
@@ -295,11 +311,45 @@ def inspect(
             for entry in entries
             if (since is None or entry.date >= since) and (until is None or entry.date <= until)
         ]
+    return entries
 
-    counts: dict[str, int] = {}
-    for entry in entries:
-        name = type(entry).__name__
-        counts[name] = counts.get(name, 0) + 1
+
+def _market_of(pos, operating, price_map, as_of):
+    """The market value of one position, the way Fava's "Market Value" reads it.
+
+    At the latest price on or before [as_of]; in the operating currency when the ledger declares one,
+    otherwise in whatever the price is quoted in. Where no price connects the position, it is shown
+    **at cost** if it was bought at one, and in its own units if it was not -- so a purchase price is
+    never silently dropped, and a holding nobody priced is never given a value nobody stated.
+    """
+    from beancount.core import convert
+
+    if operating is not None:
+        value = convert.convert_position(pos, operating, price_map, as_of)
+        if value.currency == operating:
+            return value
+    else:
+        value = convert.get_value(pos, price_map, as_of)
+        if value.currency != pos.units.currency:
+            return value
+    if pos.cost is not None:
+        cost = convert.get_cost(pos)
+        if operating is not None and cost.currency != operating:
+            return convert.convert_amount(cost, operating, price_map, as_of)
+        return cost
+    return value
+
+
+def _account_rows(entries, all_entries, options_map, as_of=None):
+    """Every account's balances, as `inspect` reports them, for the [entries] given.
+
+    Prices come from [all_entries] (the whole file) and the valuation date is the last of [entries], so a
+    filtered or clamped set is valued at the end of what it describes. Shared by `inspect` and `view`, so a
+    filtered figure is worked out by exactly the code that works out the unfiltered one.
+
+    Returns (account names, account rows, the latest rate of each priced pair).
+    """
+    from beancount.core import data, getters
 
     # Account balances, computed the way Beancount does it rather than by hand.
     from beancount.core import convert
@@ -331,7 +381,8 @@ def inspect(
     price_map = prices_lib.build_price_map(_with_posting_prices(all_entries, options_map))
     # The end of the range being shown, not the end of the file: valuing a filtered ledger at
     # today's price would put figures on the screen that the chosen period never held.
-    as_of = max((entry.date for entry in entries), default=None)
+    if as_of is None:
+        as_of = max((entry.date for entry in entries), default=None)
 
     def _amounts(inventory, reducer):
         if inventory is None:
@@ -348,28 +399,7 @@ def inspect(
     operating = (options_map.get("operating_currency") or [None])[0]
 
     def _market(pos):
-        """The market value of one position, the way Fava's "Market Value" reads it.
-
-        At the latest price on or before the end of the range; in the operating currency when
-        the ledger declares one, otherwise in whatever the price is quoted in. Where no price
-        connects the position, it is shown **at cost** if it was bought at one, and in its own
-        units if it was not -- so a purchase price is never silently dropped, and a holding
-        nobody priced is never given a value nobody stated.
-        """
-        if operating is not None:
-            value = convert.convert_position(pos, operating, price_map, as_of)
-            if value.currency == operating:
-                return value
-        else:
-            value = convert.get_value(pos, price_map, as_of)
-            if value.currency != pos.units.currency:
-                return value
-        if pos.cost is not None:
-            cost = convert.get_cost(pos)
-            if operating is not None and cost.currency != operating:
-                return convert.convert_amount(cost, operating, price_map, as_of)
-            return cost
-        return value
+        return _market_of(pos, operating, price_map, as_of)
 
     def _valued(inventory):
         if inventory is None:
@@ -455,6 +485,60 @@ def inspect(
             }
         )
 
+    return accounts, account_rows, _latest_rates()
+
+
+def _journal_row(entry) -> dict[str, Any]:
+    """One transaction as the journal reports it."""
+    return {
+        "date": str(entry.date),
+        "flag": entry.flag,
+        "payee": entry.payee,
+        "narration": entry.narration,
+        "tags": sorted(entry.tags or []),
+        "links": sorted(entry.links or []),
+        "file": entry.meta.get("filename"),
+        "line": entry.meta.get("lineno"),
+        # The user's own keys only. Beancount keeps its bookkeeping in the same dict
+        # -- filename, lineno, and anything it prefixes with two underscores -- and
+        # showing "__automatic__" to somebody as though they had written it would be
+        # wrong. This is also where `fava.plugins.link_documents` records a linked
+        # receipt, which is what makes offering to open one possible at all.
+        "metadata": {
+            key: _meta_str(value)
+            for key, value in (entry.meta or {}).items()
+            if key not in ("filename", "lineno") and not key.startswith("__")
+        },
+        "postings": [_posting_dict(posting) for posting in entry.postings],
+    }
+
+
+def inspect(
+    ledger_path: str,
+    journal_limit: int = 0,
+    plugin_dirs: str = "",
+    allow_bridge: bool = True,
+    date_from: str = "",
+    date_to: str = "",
+) -> str:
+    """Parse a ledger and return a JSON summary.
+
+    JSON rather than a Python object because this crosses the Chaquopy boundary and is
+    also written to disk by the differential runner.
+    """
+    from beancount.core import data, getters
+
+    entries, errors, options_map, plugin_failure, load_ms = _load(ledger_path, plugin_dirs, allow_bridge)
+    all_entries = entries
+    entries = _date_cut(entries, date_from, date_to)
+
+    counts: dict[str, int] = {}
+    for entry in entries:
+        name = type(entry).__name__
+        counts[name] = counts.get(name, 0) + 1
+
+    accounts, account_rows, rates = _account_rows(entries, all_entries, options_map)
+
     # 0 means every transaction. The window used to be 200 so the JSON stayed small and the
     # cold-start budget held, but 200 is also all the Journal screen could ever show,
     # which is not what a ledger is for. Measured on the 25k corpus: the whole journal costs
@@ -465,29 +549,7 @@ def inspect(
     for entry in window:
         if not isinstance(entry, data.Transaction):
             continue
-        journal.append(
-            {
-                "date": str(entry.date),
-                "flag": entry.flag,
-                "payee": entry.payee,
-                "narration": entry.narration,
-                "tags": sorted(entry.tags or []),
-                "links": sorted(entry.links or []),
-                "file": entry.meta.get("filename"),
-                "line": entry.meta.get("lineno"),
-                # The user's own keys only. Beancount keeps its bookkeeping in the same dict
-                # -- filename, lineno, and anything it prefixes with two underscores -- and
-                # showing "__automatic__" to somebody as though they had written it would be
-                # wrong. This is also where `fava.plugins.link_documents` records a linked
-                # receipt, which is what makes offering to open one possible at all.
-                "metadata": {
-                    key: _meta_str(value)
-                    for key, value in (entry.meta or {}).items()
-                    if key not in ("filename", "lineno") and not key.startswith("__")
-                },
-                "postings": [_posting_dict(posting) for posting in entry.postings],
-            }
-        )
+        journal.append(_journal_row(entry))
 
     # The `document` directives, so the app can say what a document is filed under and tell
     # one the ledger knows about from a file merely sitting in the folder. Beancount has
@@ -590,7 +652,7 @@ def inspect(
             {"name": str(entry[0]), "config": None if len(entry) < 2 else entry[1]}
             for entry in (options_map.get("plugin") or [])
         ],
-        "rates": _latest_rates(),
+        "rates": rates,
         "load_ms": round(load_ms, 1),
         "title": options_map.get("title"),
         "operating_currency": list(options_map.get("operating_currency") or []),
@@ -601,6 +663,9 @@ def inspect(
         "account_count": len(accounts),
         "accounts": account_rows,
         "included_files": sorted(str(f) for f in options_map.get("include", [])),
+        # A fingerprint of the files' content. A filter answer carries the same value, so the app can
+        # tell that the two describe the same ledger before it applies one to the other.
+        "input_hash": _content_hash(options_map.get("include", [])),
         "commodities": sorted(getters.get_commodity_directives(entries).keys()),
         "price_count": counts.get("Price", 0),
         "journal": journal,
@@ -646,4 +711,221 @@ def digest(ledger_path: str) -> str:
         ensure_ascii=False,
         sort_keys=True,
         indent=2,
+    )
+
+
+_FILTER_LOCK = threading.Lock()
+
+# The entries of the last ledger a filter was applied to, so the next filter on the same ledger
+# does not load it again (a load is most of what a filter costs). One ledger at a time: it holds
+# tens of megabytes on a large one. See `_load_for_filter` for when it may be used.
+_ENTRY_CACHE = None
+_ENTRY_CACHE_LOCK = threading.Lock()
+# A file changed this recently when a load started may have changed while it was read, so what was
+# loaded is not kept. Larger than the coarsest timestamps a phone's filesystems give.
+_RACY_NS = 2_000_000_000
+
+
+def drop_entry_cache() -> None:
+    """Forget the cached entries. Called when the system asks for memory, and on a new ledger."""
+    global _ENTRY_CACHE
+    with _ENTRY_CACHE_LOCK:
+        _ENTRY_CACHE = None
+
+
+def _load_for_filter(ledger_path: str, plugin_dirs: str, allow_bridge: bool):
+    """`_load`, from the cache when the ledger's files have not changed since it was filled.
+
+    Same result as `_load` (entries, errors, options_map, plugin_failure, load_ms) plus whether it
+    came from the cache. A hit is checked against the files' content, not their times, so a file that
+    was only touched still hits and one that was edited never does. A load is kept only when every
+    file it read was already old when the load began, so an edit made during the load cannot leave
+    old entries stored under the new content.
+    """
+    global _ENTRY_CACHE
+    key = (ledger_path, plugin_dirs, bool(allow_bridge))
+    with _ENTRY_CACHE_LOCK:
+        cached = _ENTRY_CACHE
+    if cached is not None and cached["key"] == key and _content_hash(cached["files"]) == cached["hash"]:
+        return cached["loaded"] + (True,)
+    started_ns = time.time_ns()
+    loaded = _load(ledger_path, plugin_dirs, allow_bridge)
+    files = [str(f) for f in loaded[2].get("include", [])] or [ledger_path]
+    try:
+        settled = all(Path(f).stat().st_mtime_ns < started_ns - _RACY_NS for f in files)
+    except OSError:
+        settled = False
+    with _ENTRY_CACHE_LOCK:
+        _ENTRY_CACHE = (
+            {"key": key, "files": files, "hash": _content_hash(files), "loaded": loaded} if settled else None
+        )
+    return loaded + (False,)
+
+
+def matching_transactions(
+    ledger_path: str,
+    fava_filter: str,
+    plugin_dirs: str = "",
+    allow_bridge: bool = True,
+    date_from: str = "",
+    date_to: str = "",
+) -> str:
+    """Which transactions Fava's own filter keeps, as positions in the journal `inspect` returns.
+
+    The filter is Fava's `AdvancedFilter`, not a reimplementation: the same grammar (`#tag`, `^link`,
+    `-`, `,`, parentheses, `any()`, `key:"regex"`, plain words), the same results and the same error
+    text. Nothing is computed from the kept entries here. The app already holds the journal, so the
+    answer is only the positions, which keeps it small (a few hundred KB at 25,000 transactions
+    instead of the whole journal).
+
+    A position counts transactions in the entries' own order after the same date cut `inspect`
+    applies, oldest first. `input_hash` and `transaction_count` let the caller refuse an answer that
+    describes a different ledger than the journal it holds.
+
+    JSON: {"ok": true, "positions": [...], "transaction_count": n, "input_hash": "...",
+    "load_ms": ..., "filter_ms": ...} or {"ok": false, "filter_error": "<Fava's message>"}.
+    """
+    from beancount.core import data
+    from fava.core.filters import AdvancedFilter, FilterError
+
+    # Parsed before anything is loaded: a filter that cannot be read answers at once, with
+    # Fava's message, and never falls through to showing the whole ledger.
+    try:
+        advanced = AdvancedFilter(fava_filter.strip())
+    except FilterError as error:
+        return json.dumps({"ok": False, "filter_error": str(error)}, ensure_ascii=False)
+
+    entries, _errors, options_map, _plugin_failure, load_ms, cached = _load_for_filter(
+        ledger_path, plugin_dirs, allow_bridge,
+    )
+    cut = _date_cut(entries, date_from, date_to)
+    started = time.monotonic()
+    try:
+        # One filter at a time: Fava's parser is module-level state, and this runs on a binder thread
+        # beside the threads that serve Fava's own pages.
+        with _FILTER_LOCK:
+            kept = {id(entry) for entry in advanced.apply(cut)}
+    except FilterError as error:
+        return json.dumps({"ok": False, "filter_error": str(error)}, ensure_ascii=False)
+    transactions = [entry for entry in cut if isinstance(entry, data.Transaction)]
+    return json.dumps(
+        {
+            "ok": True,
+            "positions": [i for i, entry in enumerate(transactions) if id(entry) in kept],
+            "transaction_count": len(transactions),
+            "input_hash": _content_hash(options_map.get("include", [])),
+            "load_ms": 0.0 if cached else round(load_ms, 1),
+            "cached": cached,
+            "filter_ms": round((time.monotonic() - started) * 1000, 1),
+        }
+    )
+
+
+def _refused(field: str, message: str) -> str:
+    return json.dumps({"ok": False, "field": field, "message": message}, ensure_ascii=False)
+
+
+def view(
+    ledger_path: str,
+    time: str = "",
+    text: str = "",
+    tags: str = "",
+    amount: str = "",
+    plugin_dirs: str = "",
+    allow_bridge: bool = True,
+) -> str:
+    """The ledger as Fava shows it through a time period and a filter, with amounts as Fava reads them.
+
+    Fava's own classes do the work, in Fava's order: the advanced filter (words, tags and links, and amounts
+    such as `>=100`, `<50`, `=12.5` or `any(account:Food >20)`), then the time filter, which carries earlier history into opening balances as Fava does. The
+    balances are worked out by the same code `inspect` uses, over the entries that are left.
+
+    Answers {"ok": true, ...} with the kept transactions as positions in the whole ledger's transactions
+    (oldest first, as `matching_transactions` counts), the rows Fava makes up for a period (opening balances,
+    which have no file or line), every account's balances and the latest rates; or {"ok": false, "field",
+    "message"}, naming the input that cannot be used and saying why in Fava's words where Fava has them.
+    """
+    from beancount.core import data
+    from fava.core.fava_options import parse_options
+    from fava.core.filters import AdvancedFilter, FilterError, TimeFilter
+
+    # Each part is read on its own first, so a mistake is attributed to the field it was typed in, and
+    # then they are joined as AND terms, each in parentheses: `rent, tea #trip` must not read as
+    # `rent, (tea #trip)`. Fava's own filter bar has one box, so this is how two fields make one filter.
+    parts = []
+    for field, value in (("text", text), ("tags", tags), ("amount", amount)):
+        value = value.strip()
+        if not value:
+            continue
+        try:
+            AdvancedFilter(value)
+        except FilterError as error:
+            return _refused(field, str(error))
+        parts.append(f"({value})")
+    try:
+        advanced = AdvancedFilter(" ".join(parts)) if parts else None
+    except FilterError as error:
+        return _refused("tags", str(error))
+
+    entries, _errors, options_map, _failure, load_ms, cached = _load_for_filter(
+        ledger_path, plugin_dirs, allow_bridge,
+    )
+    started = time_module.monotonic()
+    time_text = time.strip()
+    time_filter = None
+    if time_text:
+        custom = [e for e in entries if isinstance(e, data.Custom) and e.type == "fava-option"]
+        fava_options, _ = parse_options(custom)
+        try:
+            time_filter = TimeFilter(options_map, fava_options, time_text)
+        except FilterError as error:
+            return _refused("time", str(error))
+        except (ValueError, OverflowError):
+            # Fava lets an impossible date such as 2020-02-30 escape as an exception; here it is a message.
+            return _refused("time", f"Failed to parse date: {time_text}")
+    end = time_filter.date_range.end_inclusive if time_filter else None
+    as_of = end or max((entry.date for entry in entries), default=None)
+
+    with _FILTER_LOCK:
+        working = list(entries)
+        if advanced is not None:
+            working = list(advanced.apply(working))
+        if time_filter is not None:
+            working = list(time_filter.apply(working))
+    filter_ms = (time_module.monotonic() - started) * 1000
+
+    index = {
+        id(entry): position
+        for position, entry in enumerate(e for e in entries if isinstance(e, data.Transaction))
+    }
+    positions, made_up = [], []
+    for entry in working:
+        if isinstance(entry, data.Transaction):
+            position = index.get(id(entry))
+            if position is None:
+                row = _journal_row(entry)
+                # Beancount gives these rows a placeholder file ("<summarize>") and line 0. They are not in any
+                # file, so say so: the app must not offer to edit or delete them.
+                row["file"] = None
+                row["line"] = None
+                made_up.append(row)
+            else:
+                positions.append(position)
+    _accounts, rows, rates = _account_rows(working, entries, options_map, as_of)
+    return json.dumps(
+        {
+            "ok": True,
+            "positions": sorted(positions),
+            "summary_rows": made_up,
+            "transaction_count": len(index),
+            "input_hash": _content_hash(options_map.get("include", [])),
+            "begin": str(time_filter.date_range.begin) if time_filter else None,
+            "end": str(end) if end else None,
+            "accounts": rows,
+            "rates": rates,
+            "cached": cached,
+            "load_ms": 0.0 if cached else round(load_ms, 1),
+            "filter_ms": round(filter_ms, 1),
+        },
+        ensure_ascii=False,
     )
