@@ -161,7 +161,7 @@ private fun BeancountContent() {
         LedgerHairline()
         Highlight(
             "A ledger is a few text files",
-            "A new ledger here is five files, starting with main.beancount. Beancount reads them when the " +
+            "A new ledger here is five files, starting with the main one. Beancount reads them when the " +
                 "ledger loads, and the app shows any errors it finds.",
         )
         LedgerHairline()
