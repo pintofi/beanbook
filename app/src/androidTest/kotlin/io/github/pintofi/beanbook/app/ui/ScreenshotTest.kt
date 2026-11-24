@@ -112,7 +112,12 @@ class ScreenshotTest {
     @Test fun home() = shoot("home") {
         // The day is fixed: "this month" follows it, and the fixture ledger is October 2026, so on any
         // other day Home would show no spending and the picture would stop matching.
-        HomeScreen(ledger = ledger, hideAmounts = false, today = LocalDate.of(2026, 10, 25))
+        // The default cards, not whatever order an earlier test left in the Home settings file: the picture
+        // has to be the same when this test runs alone (the pull request check) as in the whole suite.
+        HomeScreen(
+            ledger = ledger, hideAmounts = false, today = LocalDate.of(2026, 10, 25),
+            layout = io.github.pintofi.beanbook.app.ui.HomePreferences.Layout(),
+        )
     }
 
     @Test fun journal() = shoot("journal") { JournalScreen(snapshot = ledger) }

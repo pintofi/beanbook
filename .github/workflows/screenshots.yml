@@ -1,0 +1,116 @@
+name: screenshots
+
+# Draws the pictures of the main screens on an emulator and compares them with the kept ones, for a
+# pull request that changes how a screen looks. It is the one test in weekly.yml that a screen
+# change breaks most often, so it runs here, where the change is, instead of the Monday after.
+# Nothing here is a required check: a difference is a picture to look at, or to draw again
+# (see CONTRIBUTING.md), not a block.
+
+on:
+  pull_request:
+    paths:
+      - 'app/src/main/kotlin/io/github/pintofi/beanbook/app/ui/**'
+      - 'app/src/main/kotlin/io/github/pintofi/beanbook/app/*.kt'
+      - 'app/src/main/res/**'
+      - 'app/src/androidTest/assets/screenshots/**'
+      - 'app/src/androidTest/kotlin/io/github/pintofi/beanbook/app/ui/ScreenshotTest.kt'
+      - 'app/src/androidTest/kotlin/io/github/pintofi/beanbook/app/ui/Screenshots.kt'
+      - '.github/workflows/screenshots.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wheels:
+    name: Cross-build the Android wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.13'
+      - name: Cache the built wheels
+        id: cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: wheels
+          key: android-wheels-${{ hashFiles('engine-local/wheels.lock', 'engine-local/build-backends.lock', 'tools/build-wheels.sh') }}
+      - name: Android SDK command-line tools
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+        with:
+          packages: ''
+      - name: Rust with the Android targets
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: rustup target add aarch64-linux-android x86_64-linux-android
+      - name: Build
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: tools/build-wheels.sh --out wheels
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-wheels
+          path: wheels/*.whl
+          retention-days: 1
+
+  pictures:
+    name: Screen pictures match, on API 36
+    needs: wheels
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.13'
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-provider: basic
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: android-wheels
+          path: wheels
+
+      - name: Prepare
+        run: |
+          WHEELS="$GITHUB_WORKSPACE/wheels"
+          python3 tools/lock-python.py --refresh-local --wheel-dir "$WHEELS"
+          echo "BCA_WHEEL_DIR=$WHEELS" >> "$GITHUB_ENV"
+          echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
+      - name: Let the emulator use hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Draw the pictures and compare them
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        env:
+          ONLY_CLASS: io.github.pintofi.beanbook.app.ui.ScreenshotTest
+        with:
+          # The pictures are drawn on Android 16 only, the same emulator as the weekly job.
+          api-level: 36
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          ram-size: 4096M
+          disable-animations: true
+          script: tools/weekly-instrumentation.sh "false"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        # What was drawn, and a picture with the differing pixels in red, so a failure can be read.
+        if: failure()
+        with:
+          name: screenshots-api-36
+          path: |
+            screenshots
+            app/build/outputs/androidTest-results
+          retention-days: 7
