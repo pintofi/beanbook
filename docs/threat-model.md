@@ -12,7 +12,7 @@ network interactions. Revised as the app changes.
 | A1 Ledger files | The user's complete financial history. Loss or corruption is the worst outcome in this product. |
 | A2 Documents | Receipts, invoices, statements; they often contain names, addresses, card fragments |
 | A3 Remote credentials | Access to a self-hosted Fava, potentially the whole ledger |
-| A5 Backup archives | A1+A2 in one portable, exfiltratable file |
+| A5 Backup archives | A1+A2 in one portable, exfiltratable file; with app data ticked, also saved scripts and a server address (never a password) |
 | A6 App integrity | A tampered APK could exfiltrate everything above |
 
 ---
@@ -22,7 +22,7 @@ network interactions. Revised as the app changes.
 | # | Adversary | Capability |
 |---|---|---|
 | T1 | Malicious ledger file | Arbitrary text the parser must survive; crafted `include` paths, huge inputs |
-| T2 | Malicious plugin / script (expert) | **Arbitrary code with full app privileges** |
+| T2 | Malicious plugin / script (expert) | **Arbitrary code with full app privileges**. A backup can carry saved scripts; they come back unticked and never run by themselves |
 | T3 | Malicious archive | Zip bomb, traversal, symlink, case collision |
 | T4 | Malicious PDF / image | Parser exploits in system components |
 | T5 | Malicious or compromised remote server | Hostile HTML/JS in the WebView, hostile API responses |

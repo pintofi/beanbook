@@ -207,7 +207,15 @@ class BeancountApplication : Application() {
             appVersion = appVersion,
             engineVersions = { engine.versions() },
             pluginPolicy = pluginPolicy,
+            installCatalogue = catalogueState.takeIf { it.canInstall }?.let { it::requestAll },
+            reloadPreferences = ::reloadPreferences,
         )
+    }
+
+    /** After a restore has replaced the preference files: read them again, so they show and are not written over. */
+    private fun reloadPreferences() {
+        themeSettings.reload()
+        io.github.pintofi.beanbook.app.ui.ValuationPreference(this).reload()
     }
 
     /** Recorded in every backup manifest, so an archive says which app wrote it. */
@@ -308,7 +316,7 @@ class BeancountApplication : Application() {
 
     /**
      * How the app should look. Outside the project tree: a display preference belongs to the
-     * device, not to a ledger, and must not travel in a backup or a mirror.
+     * device, not to a ledger. It travels in a backup only when the person ticks it there, and never in a mirror.
      */
     val themeSettings: io.github.pintofi.beanbook.app.ui.theme.ThemeSettings by lazy {
         io.github.pintofi.beanbook.app.ui.theme.ThemeSettings(filesDir.resolve("state"))
@@ -324,6 +332,7 @@ class BeancountApplication : Application() {
             workspace, registry, ProjectImporter(workspace), appScope,
             validator = BeancountValidator(this, connection = engineConnection),
             pluginPolicy = pluginPolicy,
+            reloadPreferences = ::reloadPreferences,
         )
     }
 

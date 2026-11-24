@@ -1,5 +1,16 @@
 package io.github.pintofi.beanbook.app.ui
 
+import io.github.pintofi.beanbook.app.backup.RestoreStatus
+import io.github.pintofi.beanbook.app.backup.RestoreItem
+import io.github.pintofi.beanbook.app.backup.Clash
+import io.github.pintofi.beanbook.app.backup.AppDataItem
+import io.github.pintofi.beanbook.core.data.AppDataGroup
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.RadioButton
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,17 +69,33 @@ fun BackupScreen(
     scheduleFolder: String?,
     lastRun: String?,
     rollbackPoints: List<String>,
-    onBackUpNow: (CharArray?) -> Unit,
+    onBackUpNow: (CharArray?, Set<String>?) -> Unit,
     onUnlockRestore: (CharArray) -> Unit,
     onChooseRestoreFile: () -> Unit,
-    onAcceptRestore: () -> Unit,
+    onAcceptRestore: (Set<String>, Clash) -> Unit,
     onDiscardRestore: () -> Unit,
     onChooseScheduleFolder: () -> Unit,
     onScheduleChanged: (Boolean) -> Unit,
     scheduleEncryption: ScheduleEncryption,
     modifier: Modifier = Modifier,
     message: String? = null,
+    loadAppData: () -> AppDataUi = { AppDataUi() },
 ) {
+    // Read when this screen opens and again after a backup or a restore, never from a list made at launch: a
+    // template, plugin or script made since would be missing from it.
+    val appData by androidx.compose.runtime.produceState(AppDataUi(), message, pendingRestore, projectTitle) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { loadAppData() }
+    }
+    var ticked by remember(appData.available) {
+        mutableStateOf(appData.available.filter { it.onByDefault }.map { it.key }.toSet())
+    }
+    var includeAppData by remember { mutableStateOf(false) }
+    // What the restore brings back from the app data: new items start ticked, except code and a server address,
+    // and anything that would replace a setting here starts off. A file is only a checksum away from being altered.
+    var restoreTicked by remember(appData.restoreItems) {
+        mutableStateOf(appData.restoreItems.filter { it.startsTicked() }.map { it.key }.toSet())
+    }
+    var clash by remember { mutableStateOf(Clash.KEEP_MINE) }
     var askingSchedulePassphrase by remember { mutableStateOf(false) }
     var schedulePassphrase by remember { mutableStateOf("") }
     var scheduleConfirmation by remember { mutableStateOf("") }
@@ -131,13 +159,51 @@ fun BackupScreen(
                 }
             }
         }
+        if (appData.available.isNotEmpty()) {
+            FolioGroup {
+                item {
+                    FolioSwitchRow(
+                        title = "Also include app data",
+                        checked = includeAppData,
+                        onCheckedChange = { includeAppData = it },
+                        icon = Icons.Outlined.Tune,
+                        detail = "Templates, plugins, scripts, preferences and more",
+                        describe = "Also include app data",
+                    )
+                }
+            }
+            if (includeAppData) {
+                FolioNote(
+                    "Choose what goes in. Passwords are never included. Plugins in this project go in unless " +
+                        "you untick them. A backup with app data opens only in this version or a later one.",
+                )
+                AppDataSections(
+                    rows = appData.available.map { it.asRow() },
+                    ticked = ticked,
+                    onTicked = { ticked = it },
+                )
+                val readable = ticked.any { it.startsWith("script:") || it == "remote" }
+                if (!encrypt && readable) {
+                    Notice(NoticeTone.ATTENTION, modifier = Modifier.padding(horizontal = Measure.indent)) {
+                        Text(
+                            "Without a passphrase, anyone with the file can read the scripts and the server " +
+                                "address in it.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+            }
+        }
         FolioNote(
             "One .bcaz file holding the whole project. Without a passphrase it is an ordinary zip, " +
                 "openable without this app.",
         )
         Button(
             onClick = {
-                onBackUpNow(if (encrypt) passphrase.toCharArray() else null)
+                onBackUpNow(
+                    if (encrypt) passphrase.toCharArray() else null,
+                    if (includeAppData) ticked else null,
+                )
             },
             enabled = !encrypt || passphrasesMatch,
             modifier = Modifier
@@ -180,16 +246,39 @@ fun BackupScreen(
                     }
                 }
             } else {
-                item {
-                    FolioBody {
-                        RestorePreview(
-                            staged = pendingRestore,
-                            onAccept = onAcceptRestore,
-                            onDiscard = onDiscardRestore,
-                        )
-                    }
-                }
+                item { FolioBody { RestoreSummary(staged = pendingRestore) } }
             }
+        }
+        if (pendingRestore != null) {
+            RestoreAppData(
+                items = appData.restoreItems,
+                ticked = restoreTicked,
+                onTicked = { restoreTicked = it },
+                clash = clash,
+                onClash = { clash = it },
+            )
+            FolioNote("Your current project is kept first, so you can go back to it. Nothing is deleted.")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(horizontal = Measure.indent),
+            ) {
+                Button(
+                    onClick = { onAcceptRestore(restoreTicked, clash) },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Restore this backup over the current project"
+                    },
+                ) { Text("Restore") }
+                OutlinedButton(onClick = onDiscardRestore) { Text("Cancel") }
+            }
+        }
+        val installAgain = appData.installAgain
+        if (appData.reinstall.isNotEmpty() && installAgain != null) {
+            val names = appData.reinstall.take(3).joinToString(", ") +
+                if (appData.reinstall.size > 3) " and ${appData.reinstall.size - 3} more" else ""
+            Button(
+                onClick = installAgain,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            ) { Text("Install again: $names") }
         }
 
         if (rollbackPoints.isNotEmpty()) {
@@ -324,11 +413,7 @@ fun BackupScreen(
 
 /** What a restore would do, before it does it. */
 @Composable
-private fun RestorePreview(
-    staged: RestoreStaged.Ready,
-    onAccept: () -> Unit,
-    onDiscard: () -> Unit,
-) {
+private fun RestoreSummary(staged: RestoreStaged.Ready) {
     Column(verticalArrangement = Arrangement.spacedBy(Measure.snug)) {
         run {
             Text(
@@ -365,23 +450,162 @@ private fun RestorePreview(
                     Text("· $it", style = MaterialTheme.typography.bodySmall)
                 }
             }
-
-            Text(
-                "Your current project is kept first, so you can go back to it. Nothing is deleted.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = onAccept,
-                    modifier = Modifier.semantics {
-                        contentDescription = "Restore this backup over the current project"
-                    },
-                ) { Text("Restore") }
-                OutlinedButton(onClick = onDiscard) { Text("Cancel") }
-            }
         }
     }
 }
 
 private const val REMOVED_SHOWN = 5
+
+/** What the Backup screen needs to offer app data: what can go in, and what a chosen backup holds. */
+data class AppDataUi(
+    /** Catalogue plugins the last restore listed; offered for installing again. */
+    val reinstall: List<String> = emptyList(),
+    /** Starts installing [reinstall]; null where this edition cannot download plugins. */
+    val installAgain: (() -> Unit)? = null,
+    val available: List<AppDataItem> = emptyList(),
+    val restoreItems: List<RestoreItem> = emptyList(),
+)
+
+/** One line of either checklist, so the two share their layout. */
+private class AppDataRow(
+    val key: String,
+    val group: AppDataGroup,
+    val title: String,
+    val detail: String,
+    /** False for a line that is only information: no checkbox. */
+    val selectable: Boolean,
+)
+
+private fun AppDataItem.asRow() = AppDataRow(
+    key, group, title,
+    listOf(detail, bytes.takeIf { it > 0 }?.let { formatBytes(it) }.orEmpty()).filter { it.isNotEmpty() }
+        .joinToString(" · "),
+    selectable,
+)
+
+private fun RestoreItem.asRow() = AppDataRow(
+    key, group, title,
+    listOf(
+        detail,
+        when (status) {
+            RestoreStatus.CLASH -> "Already here"
+            RestoreStatus.REPLACES -> "Replaces what is set here"
+            else -> ""
+        },
+    ).filter { it.isNotEmpty() }.joinToString(" · "),
+    selectable,
+)
+
+/** Whether a restore ticks this item by itself: new things, but never code or a server address. */
+private fun RestoreItem.startsTicked() =
+    selectable && status == RestoreStatus.NEW && group != AppDataGroup.SCRIPTS && group != AppDataGroup.REMOTE
+
+/** The headings app data is grouped under, in the order shown, with the groups each one holds. */
+private val SECTIONS = listOf(
+    "Entry templates" to setOf(AppDataGroup.TEMPLATES),
+    "Plugins in this project" to setOf(AppDataGroup.PLUGINS),
+    "Catalogue plugins, names only" to setOf(AppDataGroup.CATALOGUE),
+    "Saved scripts" to setOf(AppDataGroup.SCRIPTS),
+    "Preferences" to setOf(AppDataGroup.PREFERENCES, AppDataGroup.COLOUR),
+    "Remote server" to setOf(AppDataGroup.REMOTE),
+)
+
+/** More items than this in a kind and it starts folded, with how many are ticked in its heading. */
+private const val FOLD_ABOVE = 5
+
+/**
+ * [rows] under a heading for each kind, each kind in its own group, with a way to tick or clear a kind at once.
+ * A long kind (many templates or scripts) starts folded, so the page stays short; its heading says how many of
+ * its items are ticked.
+ */
+@Composable
+private fun AppDataSections(rows: List<AppDataRow>, ticked: Set<String>, onTicked: (Set<String>) -> Unit) {
+    SECTIONS.forEach { (title, groups) ->
+        val inSection = rows.filter { it.group in groups }
+        if (inSection.isEmpty()) return@forEach
+        val choosable = inSection.filter { it.selectable }.map { it.key }
+        val allTicked = choosable.isNotEmpty() && choosable.all { it in ticked }
+        val folds = inSection.size > FOLD_ABOVE
+        var open by rememberSaveable(title) { mutableStateOf(!folds) }
+        val tickAll: @Composable () -> Unit = {
+            OutlinedButton(
+                onClick = { onTicked(if (allTicked) ticked - choosable.toSet() else ticked + choosable) },
+                modifier = Modifier.semantics {
+                    contentDescription = if (allTicked) "Clear every $title item" else "Tick every $title item"
+                },
+            ) { Text(if (allTicked) "None" else "All") }
+        }
+        if (folds) {
+            FolioToggleHeading(
+                text = title,
+                count = "${choosable.count { it in ticked }} of ${inSection.size}",
+                expanded = open,
+                onToggle = { open = !open },
+            )
+        } else {
+            FolioHeading(title, trailing = if (choosable.size > 1) tickAll else null)
+        }
+        if (!open) return@forEach
+        if (folds && choosable.size > 1) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = Measure.indent), horizontalArrangement = Arrangement.End) {
+                tickAll()
+            }
+        }
+        FolioGroup {
+            inSection.forEach { row ->
+                item {
+                    if (row.selectable) {
+                        FolioCheckRow(
+                            title = row.title,
+                            checked = row.key in ticked,
+                            onCheckedChange = { on -> onTicked(if (on) ticked + row.key else ticked - row.key) },
+                            detail = row.detail.ifEmpty { null },
+                        )
+                    } else {
+                        FolioRow(title = row.title, detail = row.detail.ifEmpty { null })
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** What a restore would bring back besides the ledger, each kind together, and how a clash is settled. */
+@Composable
+private fun RestoreAppData(
+    items: List<RestoreItem>,
+    ticked: Set<String>,
+    onTicked: (Set<String>) -> Unit,
+    clash: Clash,
+    onClash: (Clash) -> Unit,
+) {
+    if (items.isEmpty()) return
+    FolioHeading("App data in this backup")
+    AppDataSections(items.map { it.asRow() }, ticked, onTicked)
+    if (items.any { it.status == RestoreStatus.CLASH }) {
+        FolioNote("When a template or script has the same name as one here:")
+        Column(Modifier.selectableGroup().padding(horizontal = Measure.indent)) {
+            Clash.entries.forEach { option ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .selectable(selected = clash == option, role = Role.RadioButton) { onClash(option) },
+                ) {
+                    RadioButton(selected = clash == option, onClick = null)
+                    Text(option.label, modifier = Modifier.padding(start = 8.dp))
+                }
+            }
+        }
+    }
+    if (items.any { it.group == AppDataGroup.SCRIPTS }) {
+        FolioNote("Scripts come back saved. None runs until you run it.")
+    }
+}
+
+private fun formatBytes(bytes: Long): String = when {
+    bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1e6)
+    bytes >= 1_000 -> "${bytes / 1000} KB"
+    else -> "$bytes B"
+}

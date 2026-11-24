@@ -6,6 +6,7 @@ import android.provider.DocumentsContract
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import io.github.pintofi.beanbook.app.storage.ContextHolder
+import io.github.pintofi.beanbook.app.ui.AppDataUi
 import io.github.pintofi.beanbook.core.data.ArchiveEncryption
 import io.github.pintofi.beanbook.core.data.ArchiveProblem
 import io.github.pintofi.beanbook.core.data.BackupArchive
@@ -43,7 +44,17 @@ class BackupController(
     private val engineVersions: suspend () -> Map<String, String> = { emptyMap() },
     /** The edition's plugin rules; a restored plugin is always turned off, and one this refuses is said so. */
     pluginPolicy: io.github.pintofi.beanbook.core.domain.PluginPolicy? = null,
+    /** Installs catalogue plugins by id, one after another; null where this edition cannot. */
+    private val installCatalogue: ((List<String>) -> Unit)? = null,
+    /** Re-reads the preference files a restore replaced, so the running app shows them and keeps them. */
+    private val reloadPreferences: () -> Unit = {},
 ) {
+    /** Catalogue plugins the last restore listed, until the person installs them or leaves. */
+    @Volatile private var reinstall: List<String> = emptyList()
+
+    private val stateDir = ContextHolder.require().filesDir.resolve("state")
+    private val appData = AppDataSource(workspace, stateDir)
+    private val appDataRestorer = AppDataRestorer(workspace, stateDir)
     private val archives = BackupArchive(workspace)
     private val restores = RestorePlan(workspace, pluginPolicy)
     private val derivation = Argon2idKeyDerivation()
@@ -61,6 +72,29 @@ class BackupController(
 
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
+
+    /** The app-data items ticked for the backup whose file the person is choosing; read once by [backupTo]. */
+    @Volatile var appDataForNextBackup: Set<String>? = null
+
+    /** What the Backup screen offers: what could go into a backup, and what the staged one holds. */
+    fun appDataUi(projectId: String?): AppDataUi = if (projectId == null) {
+        AppDataUi()
+    } else {
+        AppDataUi(
+            reinstall = reinstall,
+            installAgain = installCatalogue?.let { install ->
+                {
+                    val ids = reinstall
+                    reinstall = emptyList()
+                    _message.value = "Installing the catalogue plugins. Progress is on the Plugins screen."
+                    install(ids)
+                }
+            },
+            available = appData.available(projectId),
+            restoreItems = _pendingRestore.value?.appDataStaging
+                ?.let { appDataRestorer.preview(it, projectId) }.orEmpty(),
+        )
+    }
 
     /** The default name for a new archive: sortable, and obvious a year later. */
     fun suggestedName(projectId: String, now: Instant = Instant.now()): String {
@@ -82,6 +116,8 @@ class BackupController(
         projectId: String,
         passphrase: CharArray? = null,
     ) {
+        val appDataKeys = appDataForNextBackup
+        appDataForNextBackup = null
         // Copied synchronously, before the coroutine starts. The caller is entitled to wipe
         // its own array the moment this returns — and does — so reading it later would derive
         // a key from a wiped buffer and produce an archive nobody can open. That is exactly
@@ -104,6 +140,8 @@ class BackupController(
                             projectTitle = title,
                             passphrase = ownPassphrase,
                             derivation = if (ownPassphrase == null) null else derivation,
+                            appData = appDataKeys?.let { appData.payloads(projectId, it) }.orEmpty(),
+                            leaveOutPlugins = appDataKeys?.let { appData.pluginsLeftOut(projectId, it) }.orEmpty(),
                         )
                     } ?: error("the provider refused to write there")
                 }
@@ -136,7 +174,8 @@ class BackupController(
             else -> "${manifest.totalBytes} B"
         }
         val sealed = if (manifest.encryption is ArchiveEncryption.None) "" else ", encrypted"
-        return "Backed up ${manifest.files.size} file(s), $size$sealed."
+        val extra = manifest.appData.size.takeIf { it > 0 }?.let { " and $it app-data file(s)" }.orEmpty()
+        return "Backed up ${manifest.files.size} file(s)$extra, $size$sealed."
     }
 
     /**
@@ -230,21 +269,46 @@ class BackupController(
     }
 
     /** Puts the staged restore in place, keeping the previous project as a rollback point. */
-    fun acceptRestore(projectId: String, onRestored: () -> Unit) {
+    fun acceptRestore(
+        projectId: String,
+        appDataKeys: Set<String> = emptySet(),
+        clash: Clash = Clash.KEEP_MINE,
+        onRestored: () -> Unit,
+    ) {
         val staged = _pendingRestore.value ?: return
         // Cleared and announced at once, not when the copy ends: the Restore button stays on
         // screen for as long as the staged restore is pending, and a second tap during a
         // long copy would start a second restore over the first.
+        val left = staged.appDataStaging != null && appDataKeys.isEmpty()
         _pendingRestore.value = null
         _message.value = "Restoring…"
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching { restores.activate(projectId, staged.staging, manifest = staged.manifest) }
             }
+            val applied = staged.appDataStaging?.let { dir ->
+                withContext(Dispatchers.IO) {
+                    // Only a restore that went through brings app data back; either way the staging is removed.
+                    val outcome = if (result.isSuccess) {
+                        runCatching { appDataRestorer.apply(dir, projectId, appDataKeys, clash) }
+                    } else {
+                        null
+                    }
+                    dir.deleteRecursively()
+                    outcome
+                }
+            }
+            reinstall = applied?.getOrNull()?.catalogue.orEmpty()
+            if (applied?.getOrNull()?.needsRestart == true) reloadPreferences()
             _message.value = result.fold(
                 onSuccess = { kept ->
                     "Restored. Your previous project is kept as ${kept.name} until you remove it." +
-                        (restores.lastHeld.describe()?.let { " $it" } ?: "")
+                        (restores.lastHeld.describe()?.let { " $it" } ?: "") +
+                        (applied?.fold(
+                            onSuccess = { it.describe()?.let { text -> " $text" } },
+                            onFailure = { " The app data could not be brought back: ${it.message}." },
+                        ) ?: "") +
+                        (if (left) " Its app data was left out." else "")
                 },
                 onFailure = { "Restore failed: ${it.message}. Your project is unchanged." },
             )

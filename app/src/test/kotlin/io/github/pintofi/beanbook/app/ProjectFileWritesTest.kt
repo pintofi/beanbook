@@ -31,7 +31,7 @@ class ProjectFileWritesTest {
         "app/mirror/MirrorController.kt" to 11, // Mirror's own state; ledger files go through the writer
         "app/onboarding/NewLedgerSetup.kt" to 6, // the setup draft, outside the project tree
         "app/storage/SafBridge.kt" to 1, // copies out to a folder the person chose
-        "core/data/BackupArchive.kt" to 9, // writes the archive; restore stages and swaps in
+        "core/data/BackupArchive.kt" to 12, // writes the archive, app data and plugin list; restore stages them
         "core/data/DocumentStore.kt" to 11, // documents and the document trash, not Beancount files
         "core/data/HeldWrites.kt" to 5, // writes held for the person's decision, outside the project
         "core/data/ImportExport.kt" to 9, // import (the person's choice) and export copies
@@ -39,7 +39,7 @@ class ProjectFileWritesTest {
         "core/data/ProjectRegistry.kt" to 23, // trash, restore and rename of whole projects, and their templates
         "core/data/ProjectWorkspace.kt" to 15, // creating a new ledger the person asked for
         "core/data/ProjectWriter.kt" to 4, // the write protocol itself
-        "core/data/RestorePlan.kt" to 6, // restore, which the person confirms after a preview
+        "core/data/RestorePlan.kt" to 9, // restore, which the person confirms after a preview
         "core/data/TemplateStore.kt" to 4, // templates, outside the project tree
         "core/data/WriteJournal.kt" to 12, // snapshots and journal, outside the project tree
     )

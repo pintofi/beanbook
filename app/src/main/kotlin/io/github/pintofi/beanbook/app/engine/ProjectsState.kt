@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.net.Uri
 import android.util.Log
 import io.github.pintofi.beanbook.app.storage.SafExportTarget
+import io.github.pintofi.beanbook.core.data.AppDataGroup
 import io.github.pintofi.beanbook.core.data.ImportResult
 import io.github.pintofi.beanbook.core.data.importLinked
 import io.github.pintofi.beanbook.core.data.ProjectExporter
@@ -37,6 +38,8 @@ class ProjectsState(
     private val validator: io.github.pintofi.beanbook.core.data.LedgerValidator? = null,
     /** The edition's plugin rules; a restored plugin is always turned off, and one this refuses is said so. */
     pluginPolicy: io.github.pintofi.beanbook.core.domain.PluginPolicy? = null,
+    /** Re-reads the preference files a restore replaced, so the running app shows them and keeps them. */
+    private val reloadPreferences: () -> Unit = {},
 ) {
     private val _projects = MutableStateFlow<List<ProjectSummary>>(emptyList())
     val projects: StateFlow<List<ProjectSummary>> = _projects.asStateFlow()
@@ -142,6 +145,28 @@ class ProjectsState(
         resolver.openInputStream(from)?.use { input -> to.outputStream().use { input.copyTo(it) } } != null
     }.getOrDefault(false)
 
+    /**
+     * Applies the parts of a restored backup's app data that belong to the new project and cannot clash with
+     * anything: its templates and colour. Scripts, preferences and the server address are left behind here;
+     * they come back through Backup, where each can be chosen.
+     */
+    private fun bringBackAppData(result: io.github.pintofi.beanbook.core.data.RestoredNew.Restored): String {
+        val dir = result.appDataStaging ?: return ""
+        return runCatching {
+            val stateDir = io.github.pintofi.beanbook.app.storage.ContextHolder.require().filesDir.resolve("state")
+            val restorer = io.github.pintofi.beanbook.app.backup.AppDataRestorer(workspace, stateDir)
+            val keys = restorer.preview(dir, result.projectId)
+                .filter { it.group in AUTOMATIC && it.selectable }.map { it.key }.toSet()
+            val clash = io.github.pintofi.beanbook.app.backup.Clash.KEEP_BOTH
+            val applied = restorer.apply(dir, result.projectId, keys, clash)
+            if (applied.needsRestart) reloadPreferences()
+            val others = result.manifest.appData.any { it.group !in AUTOMATIC && it.group != AppDataGroup.CATALOGUE }
+            (applied.describe()?.let { " $it" }.orEmpty()) +
+                if (others) " Its scripts, preferences and server address were left out." else ""
+        }.getOrElse { " The app data in the backup could not be brought back: ${it.message}." }
+            .also { dir.deleteRecursively() }
+    }
+
     /** Retries the held backup with the passphrase just typed. */
     fun unlockBackup(passphrase: CharArray, onOpened: (String) -> Unit) = restoreHeldBackup(passphrase, onOpened)
 
@@ -176,12 +201,13 @@ class ProjectsState(
                                 heldBackup = null
                                 _backupLocked.value = false
                                 withContext(Dispatchers.IO) { archive.delete() }
+                                val appDataNote = withContext(Dispatchers.IO) { bringBackAppData(result) }
                                 refresh()
                                 if (!firstRun) open(result.projectId)
                                 onOpened(result.projectId)
                                 _message.value = "Restored ${result.manifest.files.size} file(s) as " +
                                     "${result.manifest.projectTitle}." +
-                                    (result.plugins.describe()?.let { " $it" } ?: "")
+                                    (result.plugins.describe()?.let { " $it" } ?: "") + appDataNote
                             }
                             is io.github.pintofi.beanbook.core.data.RestoredNew.Refused -> {
                                 val asks = result.problems.any {
@@ -375,6 +401,11 @@ class ProjectsState(
     }
 
     private companion object {
+        private val AUTOMATIC = setOf(
+            io.github.pintofi.beanbook.core.data.AppDataGroup.TEMPLATES,
+            io.github.pintofi.beanbook.core.data.AppDataGroup.COLOUR,
+        )
+
         const val TAG = "ProjectsState"
     }
 }

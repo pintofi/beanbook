@@ -613,7 +613,8 @@ class MainActivity : ComponentActivity() {
                         onUnlockRestore = { typed ->
                             app.backupController.retryRestoreWithPassphrase(activeId!!, typed)
                         },
-                        onBackUpNowWithPassphrase = { typed ->
+                        onBackUpNowWithPassphrase = { typed, appDataKeys ->
+                            app.backupController.appDataForNextBackup = appDataKeys
                             // Held only until the save-file picker comes back with a target.
                             pendingBackupPassphrase = typed
                             backupWriter.launch(app.backupController.suggestedName(activeId!!))
@@ -626,8 +627,9 @@ class MainActivity : ComponentActivity() {
                         onChooseRestoreFile = {
                             backupReader.launch(arrayOf("application/octet-stream", "*/*"))
                         },
-                        onAcceptRestore = {
-                            app.backupController.acceptRestore(activeId!!) {
+                        loadAppData = { app.backupController.appDataUi(activeId) },
+                        onAcceptRestore = { keys, clash ->
+                            app.backupController.acceptRestore(activeId!!, keys, clash) {
                                 openProject(app, activeId!!)
                             }
                         },

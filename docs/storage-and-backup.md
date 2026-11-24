@@ -261,6 +261,35 @@ names a file the archive does not hold, is refused. Restoring sets the project's
 the backup's (and forgets one the backup does not have), whether it restores over a project or as a
 new one.
 
+**App data.** A backup can also carry some of Beanbook's own data that is not part of the ledger. The
+person ticks each item on the Backup screen. Without "Also include app data", nothing of it is added, and
+the plugins in the project travel with it as before. With it, the items are grouped: entry templates (one by
+one, ticked), the plugins in the project (one by one, ticked; an unticked plugin is left out with its line in
+the plugin list), the catalogue plugins installed (name and version only, ticked), saved scripts (one by one,
+off), the theme, Home layout and valuation basis (each on its own, off), the project's colour (ticked) and
+the remote server's address and user name (off). A script whose file name the format cannot hold is shown
+with the reason and cannot be ticked. The password, the Share on Wi-Fi sign-in, the scheduled-backup
+passphrase, folder grants, widgets, Mirror state, drafts, held writes, the undo journal, trash and
+diagnostics are never included. Scheduled backups do not include app data.
+
+A backup with app data is `schema_version` 3, with an `app_data` list in the manifest (group, path, size,
+checksum) and the files under `appdata/`. In a sealed archive the project's files move under `project/` as
+well, so a project file can never collide with an app-data file. Each group may only use fixed paths, a
+manifest naming anything else is refused, every file is checked like a project file, and an unlisted
+`appdata/` file is refused. An older app reads a 3 as "written by a newer version" and refuses it. A
+backup without app data is still written as before.
+
+Restoring stages the app data apart from the project and shows each item: new, already here, one that
+replaces a setting here, or only a reminder (catalogue plugins, with an Install again button in the Expert
+edition). Only what is ticked is applied, and new items start ticked except scripts and the server address.
+A template or script with the name of one already here is kept, replaced, or kept alongside, as chosen;
+a preference, the colour and the server address are replaced when ticked. Each kind is written on its own,
+so one that cannot be written is named and the others still come back. Restored scripts are only saved;
+nothing runs. A restored server address is read by the same rules as the Remote screen, and the saved
+password is removed unless the server and user are the same. Restoring a backup as a new project from the
+start screen brings back its templates and colour only. A checksum shows a backup is intact, not who made
+it, so nothing from a backup is run, and code and the server address are never ticked for you.
+
 **Encryption:** optional, off by default. Plain archives are interoperable and
 recoverable without this app, which is the right default for a plain-text-accounting product.
 When enabled: AES-256-GCM with a key derived by Argon2id from the user's passphrase. The
