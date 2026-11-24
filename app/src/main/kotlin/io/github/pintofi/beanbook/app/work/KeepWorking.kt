@@ -148,7 +148,7 @@ object KeepWorking {
             )
         }
         val builder = Notification.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_stat_beanbook)
             .setContentTitle(what)
             .setProgress(0, 0, true)
             .setOngoing(true)
