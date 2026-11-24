@@ -25,6 +25,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
@@ -94,11 +97,29 @@ fun OnboardingFlow(
     LaunchedEffect(draft.step) { if (notificationsAllowed(context)) setup.notificationsGranted.value = true }
     val update = setup::update
     when (draft.step) {
-        SetupStep.WELCOME -> WelcomePage(
-            resumable = setup.resumable,
-            onContinue = { setup.go(SetupStep.WAYS_IN) },
-            modifier = modifier,
-        )
+        SetupStep.WELCOME -> {
+            // Which page of the welcome is showing: 0 the welcome, 1 Beancount, 2 Fava. Kept across rotation and
+            // a killed process by saved state and never written to the setup draft, so reading a page is not
+            // taken for a setup in progress.
+            var intro by rememberSaveable { mutableIntStateOf(0) }
+            val toWays = { setup.go(SetupStep.WAYS_IN) }
+            when (intro) {
+                0 -> WelcomePage(
+                    resumable = setup.resumable,
+                    onContinue = { if (setup.resumable) toWays() else intro = 1 },
+                    onAlreadyKeepOne = toWays,
+                    modifier = modifier,
+                )
+                1 -> IntroductionPage(
+                    IntroPage.BEANCOUNT, "Next", onPrimary = { intro = 2 }, onBack = { intro = 0 },
+                    modifier = modifier, skipLabel = "Skip to setup", onSkip = toWays,
+                )
+                else -> IntroductionPage(
+                    IntroPage.FAVA, "Set up a ledger", onPrimary = toWays, onBack = { intro = 1 },
+                    modifier = modifier, skipLabel = "Skip to setup", onSkip = toWays,
+                )
+            }
+        }
         SetupStep.WAYS_IN -> WaysInPage(
             draft = draft,
             onName = { name -> update { it.copy(name = name) } },
@@ -154,7 +175,12 @@ private fun SetupDraft.basicsReady() = name.isNotBlank() && fiscalYearEndReadabl
 private fun SetupDraft.accountsReady() = accounts.any { it.on && it.name.startsWith("Assets:") }
 
 @Composable
-private fun WelcomePage(resumable: Boolean, onContinue: () -> Unit, modifier: Modifier = Modifier) {
+private fun WelcomePage(
+    resumable: Boolean,
+    onContinue: () -> Unit,
+    onAlreadyKeepOne: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
@@ -166,7 +192,7 @@ private fun WelcomePage(resumable: Boolean, onContinue: () -> Unit, modifier: Mo
                     contentDescription = if (resumable) {
                         "Pick up where I left off. Goes back to the setup you started."
                     } else {
-                        "Get started. Opens the ways to add a ledger."
+                        "Get started. Opens a short introduction to Beancount and Fava."
                     }
                 },
             )
@@ -182,8 +208,14 @@ private fun WelcomePage(resumable: Boolean, onContinue: () -> Unit, modifier: Mo
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             WelcomeHeader(mark = { ArrivingMark() })
-            WelcomeExample()
             WhatThisIs()
+            // For somebody who keeps a ledger already: straight to the ways to add one, no introduction.
+            if (!resumable) {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = onAlreadyKeepOne,
+                    modifier = Modifier.semantics { contentDescription = "I already keep a Beancount ledger" },
+                ) { Text("I already keep a Beancount ledger") }
+            }
             Text(
                 "Nothing leaves this phone unless you set up a copy yourself.",
                 style = MaterialTheme.typography.bodyMedium,

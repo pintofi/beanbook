@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The first run has two short pages on Beancount and Fava before setup, with Skip to setup, and they can be reopened from About. ([#461])
+
 ### Fixed
 - The status-bar icon of Beanbook's notifications is larger and easier to recognise. ([#460])
 
@@ -427,3 +430,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#455]: https://github.com/pintofi/beanbook/issues/455
 [#456]: https://github.com/pintofi/beanbook/issues/456
 [#460]: https://github.com/pintofi/beanbook/issues/460
+[#461]: https://github.com/pintofi/beanbook/issues/461
