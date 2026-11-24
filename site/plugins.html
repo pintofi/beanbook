@@ -112,7 +112,7 @@
           <div class="callout callout-pending">
             <strong>Not every plugin works on a phone.</strong>
             <p>
-              The projects below are listed because people use them with Beancount, not because this app vouches for them. Some need libraries that have no Android build, and some assume a desktop computer. The list inside the app marks the ones known not to work here.
+              The list inside the app holds plugins that were tried on a phone. It leaves out the ones that failed there, and shows for each what was tested and what it needs. Some need libraries the app does not bundle, which the Expert edition can fetch. A plugin you add from a file, or one that is not on the list, is yours to judge.
             </p>
           </div>
         </div>
@@ -165,8 +165,8 @@
           <div class="section-header" data-in>
             <h2 class="total">Plugins people use</h2>
             <p>
-              Independent projects, each with its own authors and licence. The
-              links go to their own pages.
+              Examples from the in-app list: independent projects, each with their own
+              authors and licence. The links go to their own pages.
             </p>
           </div>
           <div class="tiles tiles-3">
@@ -205,20 +205,12 @@
               </p>
               <p><a href="https://github.com/andreasgerstmayr/fava-dashboards">fava-dashboards on GitHub</a></p>
             </article>
-            <article class="tile">
-              <h3>smart_importer</h3>
-              <p>
-                Guesses the account for an imported transaction from what you
-                have categorised before, so a bank export needs less editing.
-              </p>
-              <p><a href="https://github.com/beancount/smart_importer">smart_importer on GitHub</a></p>
-            </article>
             <article class="tile tile-ink">
               <h3>Your bank's importer</h3>
               <p>
                 Most importers are a short beangulp script written for one
-                bank's export. Yours can live with your ledger and be run from
-                the app like any other script.
+                bank's export. The app has no importer screen yet, so such a
+                script is yours to run outside it.
               </p>
             </article>
           </div>
@@ -239,6 +231,12 @@
               The app says which of those happened. A failing plugin does not
               take your ledger with it: it is held back, and the ledger loads
               without it.
+            </p>
+            <p>
+              The Expert edition can check the plugins it installed for newer
+              versions, only when you tap Check. It keeps an update only if it
+              loads; otherwise the earlier version comes back. A restored
+              backup turns every plugin off until you turn it on.
             </p>
             <p>
               The Play edition adds one limit that is a store rule rather than
