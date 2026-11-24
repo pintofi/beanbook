@@ -44,7 +44,7 @@ documentFile = "1.1.0"
 # CameraX for receipt capture. Apache-2.0, like the rest of AndroidX: the engine runs
 # in its own process, which is what keeps that compatible with a GPL-2.0-only app
 # (docs/architecture.md 7.1). 1.5.0 -> 1.6.2 on 2026-09-03, the current stable.
-camerax = "1.6.2"
+camerax = "1.7.0"
 # Zoom and pan for documents and pages. Apache-2.0 (me.saket.telephoto). 1.0 is in
 # alpha on 2026-09-14, so the last stable release is pinned.
 telephoto = "0.19.0"
