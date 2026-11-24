@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The status-bar mark: the same two brackets and two bars as the launcher icon, drawn to fill a 24dp
+  box and with heavier strokes.
+
+  The notification shade uses only this drawable's coverage and tints it white, so the shape has to
+  read in one colour at about 24dp. The launcher's themed-icon layer (ic_launcher_monochrome) is
+  drawn for an adaptive icon's inner 72 of 108, so used here it came out at under half the box with
+  strokes under 1dp, and nobody could tell whose notification it was.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- The mark spans x 126 to 386 and y 150 to 362 in the designer's 512 tile; scaled about its centre to fill the box. -->
+    <group
+        android:scaleX="1.6"
+        android:scaleY="1.6"
+        android:pivotX="256"
+        android:pivotY="256">
+        <path
+            android:pathData="M214,150 H150 Q128,150 128,172 V340 Q128,362 150,362 H214"
+            android:strokeColor="#000000"
+            android:strokeWidth="38"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M298,150 H362 Q384,150 384,172 V340 Q384,362 362,362 H298"
+            android:strokeColor="#000000"
+            android:strokeWidth="38"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M220,232 H292"
+            android:strokeColor="#000000"
+            android:strokeWidth="30"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M220,290 H292"
+            android:strokeColor="#000000"
+            android:strokeWidth="30"
+            android:strokeLineCap="round" />
+    </group>
+</vector>
