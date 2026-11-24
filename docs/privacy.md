@@ -55,7 +55,7 @@ on.
 catalogue plugin, it is downloaded from the Python Package Index (`pypi.org` and
 `files.pythonhosted.org`), from Chaquopy's index of Android builds (`chaquo.com`), or from
 GitHub (`codeload.github.com`). The request contains the package name; none of your ledger goes
-with it. Each download is checked against a recorded hash before it is unpacked. The Play
+with it. A download from the Python Package Index must match the hash the index publishes before it is unpacked. A GitHub archive publishes none, so only HTTPS protects it, and the app records that. The Play
 edition never downloads code from anywhere.
 
 **Share on Wi-Fi (incoming connections, off by default).** If you turn this on in More → Share on

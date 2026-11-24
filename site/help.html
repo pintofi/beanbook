@@ -85,7 +85,7 @@
           <p class="folio">Beanbook:Help</p>
           <h1 class="display display-sub" data-split>Start with a project, not an account.</h1>
           <p class="lede">
-            Create a ledger, or import the folder your existing ledger is in. The app reads the
+            Create a ledger, or select the main Beancount file of an existing one. The app reads the
             same Beancount syntax used on desktop.
           </p>
         </div>
@@ -103,7 +103,7 @@
               <strong>Open More, then Projects.</strong>Create a new ledger, or select your Beancount file to import one.
             </li>
             <li>
-              <strong>Keep the whole folder together.</strong>Import the folder, not only the main file, so included files and linked documents come with it.
+              <strong>Pick the main file.</strong>Select the file that includes the others. The files it links to come with it, with their names and folders.
             </li>
             <li>
               <strong>Fix errors after importing.</strong>A ledger that Beancount reports errors in still imports. Each error shows its file and line, and you can correct it in More, Files.
@@ -122,19 +122,19 @@
           <div data-in><h2 class="total">Importing an existing ledger</h2></div>
           <div class="prose">
             <p>
-              Import the whole folder tree or an archive, not only the root
-              <code>.beancount</code> file. That keeps included files and linked
-              documents together.
+              Select your main <code>.beancount</code> file. The app brings the
+              files it links to, in the same folders, not the whole folder around
+              it. A Beanbook backup (<code>.bcaz</code>) is restored from
+              Projects or from the first screen, and comes back as a new project.
             </p>
             <p>
               Imported projects keep their own layout. The app does not require
               the folder names used for a new project.
             </p>
             <p>
-              Before writing anything, import rejects path traversal, absolute
-              paths, archive symlinks, zip bombs, case collisions, and duplicate
-              names. It imports into a new project rather than overwriting an
-              existing one.
+              Before writing anything, import and restore refuse paths that climb
+              out of the project, absolute paths, case collisions and duplicate
+              names. They make a new project and never overwrite an existing one.
             </p>
           </div>
         </div>
