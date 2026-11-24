@@ -503,7 +503,10 @@ and the status of every item.
   - [x] Save anyway: a change you typed that adds an error asks instead of only refusing ([#411](https://github.com/pintofi/beanbook/issues/411)), merged for 1.0.5
   - [x] Importing a ledger by selecting its file: any name, the files it links to come with it in the same folders, after a preview; the mirror covers exactly those files ([#369](https://github.com/pintofi/beanbook/issues/369)), merged for 1.0.5
   - [x] Renaming a project ([#368](https://github.com/pintofi/beanbook/issues/368)), merged for 1.0.5
-- [ ] **1.0.6 Trust and polish, continued** (now)
+- [x] **1.0.6 Trust and polish, continued**: one Filters sheet, a backup that can carry app data, plugins turned off on restore, and approval before a new ledger file or line
+  - [x] One Filters sheet on Home, Journal and Balances, with an amount box and account suggestions ([#442](https://github.com/pintofi/beanbook/issues/442)), merged for 1.0.6
+  - [x] Backup of the app's own data, chosen item by item ([#455](https://github.com/pintofi/beanbook/issues/455)), merged for 1.0.6
+- [ ] **1.0.7 Trust and polish, continued** (now)
   - [ ] TalkBack pass on a device ([#18](https://github.com/pintofi/beanbook/issues/18))
   - [ ] Instrumentation tests in CI, weekly ([#19](https://github.com/pintofi/beanbook/issues/19))
   - [ ] User-facing strings moved into resources ([#21](https://github.com/pintofi/beanbook/issues/21), [#76](https://github.com/pintofi/beanbook/issues/76))

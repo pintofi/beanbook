@@ -12,11 +12,12 @@ Status of an item: **proposed** (an idea, not yet taken), **accepted** (it has a
 milestone), **in progress**, **shipped in x.y.z**.
 
 Versions follow [semantic versioning](https://semver.org/): a new feature goes in a minor release
-(1.1.0, 1.2.0 and so on), and fixes and tidy-ups go in patch releases (1.0.5, 1.0.6). The milestones
+(1.1.0, 1.2.0 and so on), and fixes and tidy-ups go in patch releases (1.0.6, 1.0.7). The milestones
 are named that way.
 
 ## Shipped
 
+- **1.0.6** (2026-11-24): one Filters sheet for Home, Journal and Balances with an amount box and account suggestions, a backup that can carry templates, plugins, scripts and preferences, a restore that turns plugins off, and a new file or line in your ledger made only after you approve it. See the [changelog](CHANGELOG.md).
 - **1.0.5** (2026-11-16): importing starts from the Beancount file you select, a project can be renamed and given its own colour, a change that adds an error asks before it is refused, Share on Wi-Fi can allow editing, plugins and packages can be updated and rolled back (Expert), and Appearance has reading options. See the [changelog](CHANGELOG.md).
 - **1.0.4** (2026-11-07): the entry form's flag is Cleared, Pending or any other flag Beancount allows, a backup (.bcaz) can be restored from the first-run setup, the Journal's filters are one choice, templates can be renamed and deleted, the widgets follow the system colours and the Balances widget shows the basis you tap, Mirror settles a file deleted on one side, and a set of fixes to rounding, suggestions and notifications. See the [changelog](CHANGELOG.md).
 - **1.0.3** (2026-10-30): the scanner's zoom slider, one Filters button for Home, Journal and Balances, the Units, At cost and Market value choice on the Journal and on the widgets, a notice when the phone's WebView is too old for Reports, and a set of fixes to setup, importing, unlinking documents, large text and widget resizing. See the [changelog](CHANGELOG.md).
@@ -24,10 +25,10 @@ are named that way.
 - **1.0.1** (2026-10-18): one APK per processor type for F-Droid, a Trash list for deleted projects, receipt-photo cleanup, a safer document Unlink, a more careful balance check, and many other fixes from the repository review. See the [changelog](CHANGELOG.md).
 - **1.0.0** (2026-10-15): local Beancount and Fava on the phone, entry forms and editors, documents and scanning, backup and restore, mirror, remote Fava, plugins and Fava extensions (Expert), Share on Wi-Fi. See the [changelog](CHANGELOG.md).
 
-## Now: 1.0.6 Trust and polish, continued
+## Now: 1.0.7 Trust and polish, continued
 
-1.0.6 is a patch release: fixes and tidy-ups, with new features in the 1.x.0 releases that follow.
-What is left from 1.0.5:
+1.0.7 is a patch release: fixes and tidy-ups, with new features in the 1.x.0 releases that follow.
+What is left from 1.0.6:
 
 | Item | Status | Why |
 |---|---|---|
@@ -83,4 +84,4 @@ when a milestone takes it. A bug is not a roadmap item: use the
 [bug form](https://github.com/pintofi/beanbook/issues/new?template=bug_report.yml). Security
 problems go through [SECURITY.md](SECURITY.md).
 
-Last reviewed: 2026-11-16. The README carries a shorter checklist of the same plan; this page is the detail.
+Last reviewed: 2026-11-24. The README carries a shorter checklist of the same plan; this page is the detail.

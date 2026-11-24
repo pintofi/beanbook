@@ -7,11 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-11-24
+
+### Added
+- Backup can include the app's own data, ticked item by item: entry templates, plugins, saved scripts, preferences, the project colour and the remote server address. ([#455])
+- Home, Journal and Balances share one Filters sheet: period, text, tags and links, amount, and account. ([#442], [#456])
+- Filters can leave entries out: `-#trip` drops a tag, a comma means or, and parentheses group. ([#442], [#448])
+
 ### Changed
-- Home, Journal and Balances share one Filters sheet: period, text, tags and links, amount, and account. ([#442])
+- A new file or line in your ledger is made only after you approve it. ([#451])
+- The entry form says when typed text is not something Beancount accepts. ([#450])
+- The document scanner uses OpenCV 5.1.0. ([#445])
 
 ### Fixed
-- Accounts with non-ASCII letters, such as `Expenses:Lebensmittel:Käse`, work in the entry form. ([#446])
+- Accounts with non-ASCII letters, such as `Expenses:Lebensmittel:Käse`, work in the entry form. ([#446], [#447])
+- Mirror's recent activity lists a file again each time it is sent. ([#449])
+- A saved script that disappears while the list is read no longer breaks the list. ([#453])
+
+### Security
+- A restored backup turns every plugin off until you turn it on, and a deleted project's templates go with it. ([#452])
 
 ## [1.0.5] - 2026-11-16
 
@@ -244,7 +258,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A refused save names the errors it would add; accounts the ledger has not opened are refused.
 - Widgets keep each project's figures.
 
-[Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.5...HEAD
+[Unreleased]: https://github.com/pintofi/beanbook/compare/v1.0.6...HEAD
+[1.0.6]: https://github.com/pintofi/beanbook/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/pintofi/beanbook/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/pintofi/beanbook/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/pintofi/beanbook/compare/v1.0.2...v1.0.3
@@ -397,4 +412,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#436]: https://github.com/pintofi/beanbook/issues/436
 [#438]: https://github.com/pintofi/beanbook/issues/438
 [#442]: https://github.com/pintofi/beanbook/issues/442
+[#445]: https://github.com/pintofi/beanbook/issues/445
 [#446]: https://github.com/pintofi/beanbook/issues/446
+[#447]: https://github.com/pintofi/beanbook/issues/447
+[#448]: https://github.com/pintofi/beanbook/issues/448
+[#449]: https://github.com/pintofi/beanbook/issues/449
+[#450]: https://github.com/pintofi/beanbook/issues/450
+[#451]: https://github.com/pintofi/beanbook/issues/451
+[#452]: https://github.com/pintofi/beanbook/issues/452
+[#453]: https://github.com/pintofi/beanbook/issues/453
+[#455]: https://github.com/pintofi/beanbook/issues/455
+[#456]: https://github.com/pintofi/beanbook/issues/456
