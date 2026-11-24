@@ -52,7 +52,7 @@ def main():
         print(f"check-site-screens: {e}", file=sys.stderr)
     commit = cap.get("commit")
     if commit and not errors:
-        r = subprocess.run(["git", "log", "--oneline", f"{commit}..HEAD", "--", "app/src/main/java", "app/src/main/res"],
+        r = subprocess.run(["git", "log", "--oneline", f"{commit}..HEAD", "--", "app/src/main/kotlin", "app/src/main/res"],
                            cwd=ROOT, capture_output=True, text=True)
         n = len(r.stdout.splitlines()) if r.returncode == 0 else 0
         if n:
