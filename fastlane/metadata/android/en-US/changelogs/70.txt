@@ -1,0 +1,5 @@
+Filters, backup of app data, and safer saving.
+• One Filters sheet for Home, Journal and Balances, with an amount box and account suggestions.
+• Backup can include templates, plugins, scripts and preferences, each ticked on its own.
+• A new file or line in your ledger is made only after you approve it.
+• A restored backup turns every plugin off until you turn it on.
