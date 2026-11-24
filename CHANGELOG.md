@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- After an update, a What's new sheet lists the changes in each version, and About opens it any time. ([#464])
 - The first run has two short pages on Beancount and Fava before setup, with Skip to setup, and they can be reopened from About. ([#461])
 
 ### Fixed
@@ -241,7 +242,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Scripts show their output live, can be cancelled, and no longer stop after 30 seconds.
 - The Mirror page lists the last ten files and decisions.
 - A README with animated artwork, screenshots, a social preview and store images.
-- A Support row in About in the Expert edition, linking to Ko-fi.
+- Expert edition: A Support row in About, linking to Ko-fi.
 - Units, At cost and Market value on Home, Balances and the widgets, matching Fava's switch.
 - Journal filters for errors, pending and flagged entries.
 - Add forms follow the ledger's plugins (`commodity_attr`, `leafonly`, `check_commodity`).
@@ -431,3 +432,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#456]: https://github.com/pintofi/beanbook/issues/456
 [#460]: https://github.com/pintofi/beanbook/issues/460
 [#461]: https://github.com/pintofi/beanbook/issues/461
+[#464]: https://github.com/pintofi/beanbook/issues/464

@@ -19,11 +19,30 @@ val copyCatalogueToAssets = tasks.register<Copy>("copyCatalogueToAssets") {
     from(rootProject.layout.projectDirectory.file("catalog/plugins.json"))
     into(layout.buildDirectory.dir("generated/catalogueAssets/catalog"))
 }
+// The changelog, into the assets of each edition for the "What's new" sheet. It is the file itself, so nothing is
+// kept in step by hand. The link definitions at its foot are dropped, so no address ships, and the Play build is
+// made without the entries only the Expert edition has (they start with "Expert edition:").
+fun registerChangelogCopy(edition: String, withExpertEntries: Boolean) =
+    tasks.register<Copy>("copyChangelogToAssets${edition.replaceFirstChar { it.uppercase() }}") {
+        from(rootProject.layout.projectDirectory.file("CHANGELOG.md"))
+        into(layout.buildDirectory.dir("generated/changelogAssets/$edition/whats-new"))
+        val linkDefinition = Regex("""^\[[^\]]+]:\s+https?://.*""")
+        filter { line: String ->
+            when {
+                linkDefinition.matches(line) -> null
+                !withExpertEntries && line.startsWith("- Expert edition:") -> null
+                else -> line
+            }
+        }
+    }
+val copyChangelogPlay = registerChangelogCopy("play", withExpertEntries = false)
+val copyChangelogExpert = registerChangelogCopy("expert", withExpertEntries = true)
+
 tasks.matching {
     (it.name.startsWith("merge") && it.name.endsWith("Assets")) ||
         it.name.contains("Lint", ignoreCase = true)
 }.configureEach {
-    dependsOn(copyCatalogueToAssets)
+    dependsOn(copyCatalogueToAssets, copyChangelogPlay, copyChangelogExpert)
 }
 
 // AGP's SourceSet API rejects task Providers, so the dependency is declared explicitly:
@@ -199,8 +218,14 @@ android {
             kotlin.srcDir("src/main/kotlin")
             assets.srcDir(layout.buildDirectory.dir("generated/catalogueAssets").get().asFile)
         }
-        getByName("play") { kotlin.srcDir("src/play/kotlin") }
-        getByName("expert") { kotlin.srcDir("src/expert/kotlin") }
+        getByName("play") {
+            kotlin.srcDir("src/play/kotlin")
+            assets.srcDir(layout.buildDirectory.dir("generated/changelogAssets/play").get().asFile)
+        }
+        getByName("expert") {
+            kotlin.srcDir("src/expert/kotlin")
+            assets.srcDir(layout.buildDirectory.dir("generated/changelogAssets/expert").get().asFile)
+        }
         // Flavor-specific instrumentation. Tests for the expert edition's self-update cannot
         // live in the shared androidTest source set: the classes they exercise do not exist
         // in the play build, by policy, so the shared set would not compile for it.

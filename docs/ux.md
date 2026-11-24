@@ -243,3 +243,19 @@ The Expert edition shows one notice on Home after a week of use -- "Beanbook is 
 *Support on Ko-fi* and *No thanks* -- and never again once either is pressed. The Play edition
 shows no donation notice or link (Play Payments policy); it describes the Expert edition at the
 top of More. Never a modal interruption mid-task, and never a dark pattern.
+
+## 11. What's new
+
+After an update, the first time Home is shown, a sheet from the bottom of the screen lists what changed:
+the newest release open, older ones folded, each as a version and a date. The text is `CHANGELOG.md`,
+copied into the app when it is built, with the references to pull requests and issues taken out, so
+the sheet shows no link and needs no network. The Play build is made without the entries that begin
+"Expert edition:", and the Expert build shows them with an "Expert" label.
+
+It shows once for each version and is closed by Close, the scrim, a swipe down or Back. It is only ever
+hosted by Home, which is composed only when it is the page in front and no entry is being added, so it
+never opens over the entry form, the first-run setup, a restore or a passphrase prompt. If the support
+notice is also due, it waits for the next launch. A first install records the version and shows nothing:
+the introduction on the first run is for new people. A version no newer than the one recorded (a
+downgrade, or the same one again) shows nothing and never lowers the record. The record is one line in
+`state/whats-new`; it is not in a backup or a mirror. **What's new** in About opens the same sheet at any time.

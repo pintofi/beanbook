@@ -71,6 +71,7 @@ fun AboutSection(onOpenLicences: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     // The two introduction pages, shown in place of this page; Back or Done returns to it.
     var introduction by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var whatsNew by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     if (introduction) {
         io.github.pintofi.beanbook.app.ui.onboarding.IntroductionView(
             onClose = { introduction = false },
@@ -126,7 +127,19 @@ fun AboutSection(onOpenLicences: () -> Unit, modifier: Modifier = Modifier) {
                 )
             }
 
+            if (whatsNew) {
+                WhatsNewSheet(releases = remember { loadWhatsNew(context) }, onDismiss = { whatsNew = false })
+            }
             io.github.pintofi.beanbook.app.ui.FolioGroup {
+                item {
+                    io.github.pintofi.beanbook.app.ui.FolioRow(
+                        title = "What's new",
+                        detail = "Changes in each version",
+                        icon = Icons.Filled.Info,
+                        onClick = { whatsNew = true },
+                        opens = true,
+                    )
+                }
                 item {
                     io.github.pintofi.beanbook.app.ui.FolioRow(
                         title = "Beancount and Fava",
