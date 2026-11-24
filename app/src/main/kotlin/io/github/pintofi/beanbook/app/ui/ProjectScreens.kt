@@ -357,8 +357,8 @@ internal fun WhatThisIs() {
     RuledColumn {
         Highlight(
             "Your ledger is plain text",
-            "Ordinary Beancount files in a folder you can open on a computer whenever you like. " +
-                "Nothing is locked in a database only this app can read.",
+            "Ordinary Beancount files, kept in the app's storage on this phone. Export a copy or keep a mirror " +
+                "in a folder you choose, and Beancount on a computer reads them as they are.",
         )
         LedgerHairline()
         Highlight(
@@ -383,7 +383,7 @@ internal fun WhatThisIs() {
 
 /** One capability: a claim, and the detail under it. */
 @Composable
-private fun Highlight(title: String, detail: String) {
+internal fun Highlight(title: String, detail: String) {
     Column(
         verticalArrangement = Arrangement.spacedBy(Measure.tight),
         // One description for the pair. Read separately a screen reader announces a heading

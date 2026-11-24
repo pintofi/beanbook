@@ -306,6 +306,14 @@ class AccessibilityTest {
         assertAccessible()
         compose.onNodeWithContentDescription("Get started", substring = true).performClick()
 
+        // The two introduction pages sit between the welcome and the ways in.
+        compose.onNodeWithText("Free, open-source accounting software", substring = true).assertExists()
+        assertAccessible()
+        compose.onNodeWithContentDescription("Next").performClick()
+        compose.onNodeWithText("The web interface made for Beancount", substring = true).assertExists()
+        assertAccessible()
+        compose.onNodeWithContentDescription("Set up a ledger").performClick()
+
         compose.onNodeWithText("Select your Beancount file").performScrollTo().assertExists()
         compose.onNodeWithText("Restore a backup (.bcaz)").performScrollTo().assertExists()
         compose.onNodeWithText("Create with defaults").performScrollTo().assertExists()

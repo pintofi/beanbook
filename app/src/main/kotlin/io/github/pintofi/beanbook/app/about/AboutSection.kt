@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.ui.res.vectorResource
@@ -25,6 +26,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +69,15 @@ private const val CONTACT_EMAIL = "pintofinan@gmail.com"
 @Composable
 fun AboutSection(onOpenLicences: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    // The two introduction pages, shown in place of this page; Back or Done returns to it.
+    var introduction by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    if (introduction) {
+        io.github.pintofi.beanbook.app.ui.onboarding.IntroductionView(
+            onClose = { introduction = false },
+            modifier = modifier,
+        )
+        return
+    }
 
     val version = remember {
         runCatching {
@@ -114,6 +127,15 @@ fun AboutSection(onOpenLicences: () -> Unit, modifier: Modifier = Modifier) {
             }
 
             io.github.pintofi.beanbook.app.ui.FolioGroup {
+                item {
+                    io.github.pintofi.beanbook.app.ui.FolioRow(
+                        title = "Beancount and Fava",
+                        detail = "What they are and how Beanbook uses them",
+                        icon = Icons.Filled.Info,
+                        onClick = { introduction = true },
+                        opens = true,
+                    )
+                }
                 item {
                     io.github.pintofi.beanbook.app.ui.FolioRow(
                         title = "Source",

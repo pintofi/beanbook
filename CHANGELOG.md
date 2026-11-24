@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The first run has two short pages on Beancount and Fava before setup, with Skip to setup, and they can be reopened from About. ([#461])
+
 ## [1.0.6] - 2026-11-24
 
 ### Added
@@ -423,3 +426,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#453]: https://github.com/pintofi/beanbook/issues/453
 [#455]: https://github.com/pintofi/beanbook/issues/455
 [#456]: https://github.com/pintofi/beanbook/issues/456
+[#461]: https://github.com/pintofi/beanbook/issues/461

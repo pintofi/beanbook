@@ -163,11 +163,19 @@ Behaviour rules:
 
 ## 9. Onboarding
 
-No account, no network. The first run is a welcome page, a page of ways in, and three steps.
+No account, no network. The first run is a welcome page, two introduction pages, a page of ways in, and three steps.
 
 **Welcome.** What the app is, in four plain facts and one line about privacy: everything runs on
 your device, nothing is uploaded or tracked, files stay plain text and exportable at any time.
-A setup left half done offers to pick up where it was.
+A setup left half done offers to pick up where it was. **I already keep a Beancount ledger** goes
+straight to the ways in.
+
+**Introduction.** Two plain pages after the welcome, one on Beancount (a ledger is text, an entry adds
+up to zero, five kinds of account, the files are yours) and one on Fava (what Reports shows, which
+screens are Beanbook's own, a server of your own). Each has **Skip to setup**, and Back steps one page
+back. The page being read is kept across rotation and a killed process but is not part of the setup
+draft, so reading it never counts as a setup in progress. The same two pages open from About, under
+**Beancount and Fava**.
 
 **Ways in.** Name the ledger and either **Set it up** (the three steps) or **Create with
 defaults** (the device's currency, a short list of everyday accounts, the usual checks).
