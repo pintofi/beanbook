@@ -111,7 +111,7 @@
       <section class="section">
         <div class="shell reading prose">
           <p>
-            <strong>Applies to both the Play and Expert editions. Last updated 17 October 2026.</strong>
+            <strong>Applies to both the Play and Expert editions. Last updated 24 November 2026.</strong>
           </p>
 
           <h2 class="total">What the developer collects</h2>
@@ -144,16 +144,18 @@
             on the lock screen regardless.
           </p>
           <p>
-            Remote credentials and tokens are stored through Android Keystore,
-            and are excluded from logs, backups, widget previews, and
-            diagnostics.
+            The remote server's password and tokens are stored through Android
+            Keystore, and are excluded from logs, backups, widget previews, and
+            diagnostics. A backup can carry the server's address and user name
+            only if you tick them.
           </p>
 
           <h2 class="total">When data leaves the device</h2>
           <p>
             There are two outbound code paths: the address entered for remote
             mode and, in the Expert edition only, downloading a plugin or an
-            optional package when you ask for it. User-initiated sharing can
+            optional package, or checking for newer versions, when you ask
+            for it. User-initiated sharing can
             also send a selected document to an app the user chooses.
           </p>
 
@@ -174,7 +176,7 @@
 
           <h3>Plugins and optional packages in Expert</h3>
           <p>
-            The Expert edition can make network requests to download a plugin you choose to install from its list, from GitHub or the Python package index, and optional Python packages, from the Python package index or Chaquopy's index of Android builds (chaquo.com). Each download is checked against a recorded hash before it is unpacked. Nothing is downloaded unless you ask.
+            The Expert edition can make network requests to download a plugin you choose to install from its list, from GitHub or the Python package index, and optional Python packages, from the Python package index or Chaquopy's index of Android builds (chaquo.com). A download from the Python package index must match the hash the index publishes before it is unpacked. A GitHub archive publishes none, so only HTTPS protects it, and the app records that. Check for updates, only when you tap it, asks pypi.org and api.github.com where each installed catalogue plugin came from and which version is newest; it sends a project or repository name and a version, and no ledger data. Nothing is downloaded unless you ask.
           </p>
 
           <h3>Updates</h3>
@@ -191,7 +193,10 @@
           <p>
             Incoming connections, off by default. If you turn this on in
             More &rarr; Share on Wi-Fi, other devices on the same private Wi-Fi
-            network can open your Reports in a browser. It does not start until
+            network can open your Reports in a browser. It is read only by
+            default. You can choose Can edit when you start it; the choice is
+            not remembered, it ends when you stop or restart Reports, and the
+            connection is still not encrypted. It does not start until
             you start it. It listens only on the phone&rsquo;s private network
             address, never a public one. It shows nothing until someone signs
             in with the username and password you set, it locks out repeated

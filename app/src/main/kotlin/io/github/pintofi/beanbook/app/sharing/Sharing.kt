@@ -309,7 +309,7 @@ class SharingService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         return Notification.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_stat_beanbook)
             .setContentTitle("Sharing Reports on Wi-Fi")
             .setContentText(
                 if (editing) "$address · sign-in required · can edit · not encrypted"
