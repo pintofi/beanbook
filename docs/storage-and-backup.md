@@ -270,7 +270,7 @@ off), the theme, Home layout and valuation basis (each on its own, off), the pro
 the remote server's address and user name (off). A script whose file name the format cannot hold is shown
 with the reason and cannot be ticked. The password, the Share on Wi-Fi sign-in, the scheduled-backup
 passphrase, folder grants, widgets, Mirror state, drafts, held writes, the undo journal, trash and
-diagnostics are never included. Scheduled backups do not include app data.
+diagnostics and the record of which version's changes were shown are never included. Scheduled backups do not include app data.
 
 A backup with app data is `schema_version` 3, with an `app_data` list in the manifest (group, path, size,
 checksum) and the files under `appdata/`. In a sealed archive the project's files move under `project/` as

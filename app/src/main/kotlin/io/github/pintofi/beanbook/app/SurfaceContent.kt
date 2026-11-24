@@ -223,7 +223,12 @@ internal fun SurfaceContent(
         when (showing) {
             Surface.HOME -> Refreshable(refreshing, onRefresh) {
                 HomeScreen(
-                    header = { io.github.pintofi.beanbook.app.about.SupportNoticeHost() },
+                    header = {
+                        // What's new first; the support notice, if it is due, waits for the next launch.
+                        if (!io.github.pintofi.beanbook.app.about.WhatsNewHost()) {
+                            io.github.pintofi.beanbook.app.about.SupportNoticeHost()
+                        }
+                    },
                     stamped = stamped,
                     ledger = shown,
                     hideAmounts = hideWidgetAmounts,

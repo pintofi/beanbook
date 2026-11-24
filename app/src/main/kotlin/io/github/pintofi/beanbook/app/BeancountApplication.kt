@@ -327,6 +327,11 @@ class BeancountApplication : Application() {
         io.github.pintofi.beanbook.core.data.SupportPrompt(filesDir.resolve("state"))
     }
 
+    /** Which version's changes this install has been shown; one line in the state folder. */
+    val whatsNewRecord: io.github.pintofi.beanbook.core.data.WhatsNewRecord by lazy {
+        io.github.pintofi.beanbook.core.data.WhatsNewRecord(filesDir.resolve("state"))
+    }
+
     val projectsState: ProjectsState by lazy {
         ProjectsState(
             workspace, registry, ProjectImporter(workspace), appScope,

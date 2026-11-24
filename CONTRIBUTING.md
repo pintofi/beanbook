@@ -243,7 +243,8 @@ A release is a tag, but the text is written before it. For version `x.y.z`:
    [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) and Semantic Versioning. Group
    entries under `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed` and
    `### Security`, and leave out a section with nothing in it. List every deprecation, removal and
-   breaking change, even a small one. A release that had to be pulled keeps its heading with
+   breaking change, even a small one. An entry that only the Expert edition has starts with
+   `Expert edition:`, and the Play build leaves it out of the "What's new" sheet. A release that had to be pulled keeps its heading with
    ` [YANKED]` after the date. Write for the people who use the app, not as a commit log. Every
    entry ends with the pull request or issue it came from, written as `([#93], fixes [#69])`. Add
    one `fastlane/metadata/android/en-US/changelogs/<code>.txt` for each of the three codes (`<code>`
